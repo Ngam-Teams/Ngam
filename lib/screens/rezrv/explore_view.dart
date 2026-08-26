@@ -1407,41 +1407,6 @@ RESPONSE FORMAT (JSON ONLY):
                           ),
                         ),
                       ),
-                      
-                      // AI VOICE BUTTON
-                      GestureDetector(
-                        onTap: _toggleAIVoiceInline,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: _aiInlineIsListening ? Colors.red.withValues(alpha: 0.2) : Colors.transparent,
-                            shape: BoxShape.circle,
-                          ),
-                          child: HugeIcon(
-                            icon: _aiInlineIsListening ? HugeIcons.strokeRoundedMic02 : HugeIcons.strokeRoundedMic01,
-                            color: _aiInlineIsListening ? Colors.red : (isDark ? Colors.white54 : Colors.black38),
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                      
-                      // AI CHAT BUTTON
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _isAIPanelOpen = !_isAIPanelOpen;
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const HugeIcon(icon: HugeIcons.strokeRoundedSparkles, color: Colors.blue, size: 20),
-                        ),
-                      ),
 
                     if (_searchController.text.isNotEmpty)
                       GestureDetector(onTap: _clearSearch,
@@ -1455,43 +1420,42 @@ RESPONSE FORMAT (JSON ONLY):
           ),
           const SizedBox(width: 12),
           _AnimatedPressable(
-            onTap: () {
-              _killFocus();
-              Navigator.push(context, MaterialPageRoute(
-                  builder: (context) => const QRScannerScreen()));
-            },
-            child: GlassContainer(
-              useOwnLayer: true,
-              quality: GlassQuality.standard,
-              shape: LiquidRoundedSuperellipse(borderRadius: 100.0),
-              settings: _getGlassSettings(isDark),
-              child: Container(
-                height: 48,
-                width: 48,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(100),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
-                    width: 1.0,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+              onTap: () {
+                setState(() {
+                  _isAIPanelOpen = !_isAIPanelOpen;
+                });
+              },
+              child: GlassContainer(
+                useOwnLayer: true,
+                quality: GlassQuality.standard,
+                shape: LiquidRoundedSuperellipse(borderRadius: 100.0),
+                settings: _getGlassSettings(isDark),
+                child: Container(
+                  height: 48,
+                  width: 48,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(100),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
+                      width: 1.0,
                     ),
-                  ],
-                ),
-                child: Center(
-                  // --- APPLIED GRAY ICON ---
-                    child: HugeIcon(icon: HugeIcons.strokeRoundedQrCode01,
-                        color: isDark ? Colors.white70 : _lightModeGray,
-                        size: 22,
-                        strokeWidth: 2.0)
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                      child: HugeIcon(icon: HugeIcons.strokeRoundedSparkles,
+                          color: Colors.blue,
+                          size: 22,
+                          strokeWidth: 2.0)
+                  ),
                 ),
               ),
             ),
-          ),
         ]),
       );
 

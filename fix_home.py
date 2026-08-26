@@ -1,19 +1,16 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_native_splash/flutter_native_splash.dart';
+import re
 
-import '../../widgets/bottom_nav_customer.dart';
-import '../rezrv/explore_view.dart';
-import '../rezrv/my_rezrv_view.dart';
-import '../shared/chat_screen.dart';
-import '../shared/profile_screen.dart';
+def main():
+    try:
+        with open('C:\\Project\\Ngam\\lib\\screens\\customer\\customer_home_screen.dart', 'r', encoding='utf-8') as f:
+            content = f.read()
+    except Exception as e:
+        print("Error:", e)
+        return
 
-class CustomerHomeScreen extends StatefulWidget {
-  const CustomerHomeScreen({super.key});
-
-  @override
-  State<CustomerHomeScreen> createState() => _CustomerHomeScreenState();
-}
-
+    # Replace the body and bottomNavigationBar with Stack and lazy init
+    
+    new_state = """
 class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   int _currentIndex = 0;
   
@@ -68,3 +65,15 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     );
   }
 }
+"""
+
+    pattern = r'class _CustomerHomeScreenState extends State<CustomerHomeScreen> \{.*?\}\n\}'
+    
+    content = re.sub(pattern, new_state.strip(), content, flags=re.DOTALL)
+    
+    with open('C:\\Project\\Ngam\\lib\\screens\\customer\\customer_home_screen.dart', 'w', encoding='utf-8') as f:
+        f.write(content)
+    print("Patched customer_home_screen!")
+
+if __name__ == '__main__':
+    main()
