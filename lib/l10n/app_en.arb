@@ -1,0 +1,272 @@
+{
+    "@@locale": "en",
+
+    "profile": "Profile",
+    "@profile": {
+        "description": "The title shown in the AppBar"
+    },
+    "preferences": "Preferences",
+    "darkMode": "Dark Mode",
+    "language": "Language",
+    "currentLanguage": "English",
+    "account": "Account",
+    "personalInformation": "Personal Information",
+    "paymentMethods": "Payment Methods",
+    "privacySecurity": "Privacy & Security",
+    "logOut": "Log Out",
+    "selectLanguage": "Select Language",
+    "english": "English",
+    "malay": "Bahasa Melayu",
+
+    "searchHint": "Search",
+    "nearby": "Nearby",
+    "statusOpenCaps": "OPEN",
+    "statusClosingCaps": "CLOSING SOON",
+    "statusClosedCaps": "CLOSED",
+    "statusOpenNow": "Open Now",
+    "statusClosingSoon": "Closing Soon",
+    "statusClosed": "Closed",
+
+    "closingIn": "CLOSING IN {minutes}M",
+    "@closingIn": {
+        "description": "Countdown for when a shop is closing soon",
+        "placeholders": {
+            "minutes": {
+                "type": "int",
+                "example": "15"
+            }
+        }
+    },
+
+    "rating": "Rating",
+    "reviews": "Reviews",
+    "away": "Away",
+    "call": "Call",
+    "directions": "Directions",
+    "operatingHours": "Operating Hours",
+    "today": "Today",
+
+    "todayDay": "Today ({day})",
+    "@todayDay": {
+        "description": "Shows 'Today' along with the day of the week",
+        "placeholders": {
+            "day": {
+                "type": "String",
+                "example": "Mon"
+            }
+        }
+    },
+
+    "servicesAvailable": "Services Available",
+    "generalService": "General Service",
+    "recentReviews": "Recent Reviews",
+    "noReviewsYet": "No reviews yet.",
+    "user": "User",
+    "rezrvNow": "Rezrv Now",
+
+    "resultsFor": "Results for '{query}'",
+    "@resultsFor": {
+        "description": "Carousel title shown when search results are found",
+        "placeholders": {
+            "query": {
+                "type": "String",
+                "example": "Haircut"
+            }
+        }
+    },
+    "noResultsFoundTitle": "No results found",
+    "noLocationsMatch": "No locations match your search.",
+    "noMatchesFound": "No matches found",
+    "trySearchingDifferent": "Try searching for a different shop or service.",
+    "clear": "Clear",
+
+    "locating": "Locating...",
+    "locationDisabled": "Location disabled",
+    "permissionDenied": "Permission denied",
+    "permissionDeniedForever": "Permission denied forever",
+    "unknownCity": "Unknown City",
+    "unknownState": "Unknown State",
+    "locationUnavailable": "Location unavailable",
+
+    "hiUser": "Hi, {firstName}",
+    "@hiUser": {
+        "description": "Greeting on the home screen",
+        "placeholders": {
+            "firstName": {
+                "type": "String"
+            }
+        }
+    },
+
+    "promotions": "Promotions",
+    "categories": "Categories",
+    "recommended": "Recommended",
+    "seeAll": "See All",
+    "promoLabel": "PROMO",
+    "claimButton": "Claim",
+
+    "catHaircuts": "Haircuts",
+    "catShaving": "Shaving",
+    "catColoring": "Coloring",
+    "catStyling": "Styling",
+    "catFacial": "Facial",
+    "catMassage": "Massage",
+    "catNails": "Nails",
+    "catMore": "More",
+
+    "unknownShop": "Unknown",
+    "generalCategory": "General",
+
+    "myBarbrTitle": "My Barbr",
+    "tabUpcoming": "Upcoming",
+    "tabHistory": "History",
+    "noPastReservations": "No past or cancelled reservations.",
+    "noUpcomingReservations": "No upcoming reservations yet.\nBook a service to see it here!",
+    "cancelBtn": "Cancel",
+    "viewTicketBtn": "View Ticket",
+    "statusCancelled": "Cancelled",
+    "statusDone": "Done",
+
+    "ticketOrderTitle": "Order",
+    "ticketProvider": "Provider",
+    "ticketDate": "Date",
+    "ticketTime": "Time",
+    "ticketBookingId": "Booking ID",
+    "ticketTotalPaid": "Total Paid",
+    "ticketScanHint": "Scan at the counter upon arrival",
+    "ticketCallOwner": "Call Owner",
+
+    "bkTitleComplete": "Booking complete!",
+    "bkTitleProvider": "Select provider:",
+    "bkTitleServices": "Select Services:",
+    "bkTitleCheckout": "Checkout & payment:",
+
+    "bkApptDate": "Appointment Date",
+    "bkAvailTime": "Available Time",
+
+    "bkMainService": "Select Main Service",
+    "bkAddons": "Extra Add-ons",
+    "bkHealthSafety": "Health & Safety",
+    "bkAllergies": "Skin allergies or sensitivities?",
+
+    "bkSummary": "Booking Summary",
+    "bkLocation": "Location",
+    "bkProvider": "Provider",
+    "bkDate": "Date",
+    "bkTime": "Time",
+    "bkEstDuration": "Estimated Duration",
+
+    "bkMins": "~{time} mins",
+    "@bkMins": {
+        "placeholders": {
+            "time": { "type": "int" }
+        }
+    },
+
+    "bkPaymentMethod": "Payment Method",
+    "bkCreditCard": "Credit / Debit Card",
+    "bkOnlineBanking": "Online Banking (FPX)",
+    "bkCash": "Cash at Counter",
+    "bkNoCards": "No cards saved. Please add one in your Profile.",
+    "bkGrandTotal": "Grand Total",
+
+    "bkContinue": "Continue",
+    "bkConfirmPay": "Confirm & Pay {price}",
+    "@bkConfirmPay": {
+        "placeholders": {
+            "price": { "type": "String" }
+        }
+    },
+
+    "bkCardHolder": "Card Holder",
+    "bkExpires": "Expires",
+
+    "bkConfirmed": "Booking Confirmed!",
+    "bkNotified": "Your provider has been notified.",
+    "bkViewOrder": "View Order",
+    "bkBackHome": "Back to Home",
+
+    "navHome": "Home",
+    "navExplore": "Explore",
+    "navMyBarbr": "My Barbr",
+    "navSaved": "Saved",
+
+    "shopDetailDummyAddress": "123 Main Street, City Center",
+    "shopDetailDummyHours": "Open Now • Closes at 10:00 PM",
+    "shopDetailAbout": "About",
+    "shopDetailAboutDesc": "Experience premium grooming and wellness services in a relaxing environment. Our professionals are dedicated to making you look and feel your absolute best.",
+
+    "exploreCatBeauty": "Beauty & Wellness",
+    "exploreCatBarber": "Barber Shop",
+    "exploreCatHealth": "Health & Clinic",
+    "exploreCatFood": "Food & Drinks",
+    "exploreCatRestaurant": "Restaurant",
+    "exploreCatCafe": "Cafe",
+    "exploreCatAuto": "Auto & Transport",
+    "exploreCatWorkshop": "Workshop & Repair",
+    "exploreCatGas": "Gas Station",
+    "exploreCatDaily": "Daily Needs",
+    "exploreCatSupermarket": "Supermarket",
+    "exploreCatBanking": "Banking",
+    "exploreCatCommunity": "Community",
+    "exploreCatSchool": "School",
+    "exploreCatReligion": "Religion",
+
+    "searchAll": "All {category}",
+    "@searchAll": {
+        "placeholders": {
+            "category": { "type": "String" }
+        }
+    },
+
+    "searchHeadersCategories": "CATEGORIES",
+    "searchHeadersShops": "SHOPS & SERVICES",
+    "searchMatchProvides": "Provides {service}",
+    "@searchMatchProvides": {
+        "placeholders": {
+            "service": { "type": "String" }
+        }
+    },
+
+    "msgVia": "Message via",
+    "msgWhatsApp": "WhatsApp",
+    "msgTelegram": "Telegram",
+    "msgSMS": "SMS Message",
+
+    "btnViewProfile": "View Profile",
+
+    "piProfileUpdated": "Profile updated successfully!",
+    "piFullName": "Full Name",
+    "piFullNameHint": "Enter your full name",
+    "piEmail": "Email Address",
+    "piEmailHint": "Enter your email",
+    "piPhone": "Phone Number",
+    "piPhoneHint": "Enter your phone number",
+    "piDob": "Date of Birth",
+    "piDobHint": "DD / MM / YYYY",
+    "piSaveChanges": "Save Changes",
+
+    "savedTitle": "My Saved",
+    "savedEmptyState": "You haven't saved any spots yet.",
+
+    "ticketCountdownPast": "Appointment Started/Passed",
+    "ticketCountdownStartsIn": "Starts in: {duration}",
+    "@ticketCountdownStartsIn": {
+        "placeholders": {
+            "duration": {
+                "type": "String"
+            }
+        }
+    },
+
+    "support": "Support",
+    "helpCenter": "Help Center",
+    "contactUs": "Contact Us",
+    "about": "About",
+    "termsOfService": "Terms of Service",
+    "privacyPolicy": "Privacy Policy",
+    "rateUs": "Rate the App",
+    "inviteFriends": "Invite Friends",
+    "referralText": "Get RM10 for every referral",
+    "madeIn": "Made with ❤️ in Malaysia"
+}

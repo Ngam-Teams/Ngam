@@ -4,7 +4,7 @@ import 'custom_bottom_nav.dart';
 
 // ============================================================
 // Ngam App — Menu Bawah (Customer)
-// Utama, Post, Task Aku, Profil
+// Home, Bookings, Inbox, Profile
 // ============================================================
 
 class BottomNavCustomer extends StatelessWidget {
@@ -28,12 +28,12 @@ class BottomNavCustomer extends StatelessWidget {
           title: 'Home',
         ),
         NavItem(
-          icon: HugeIcons.strokeRoundedNote01,
-          title: 'Tasks',
+          icon: HugeIcons.strokeRoundedTicket01,
+          title: 'Bookings',
         ),
         NavItem(
-          icon: HugeIcons.strokeRoundedBubbleChat,
-          title: 'Chat',
+          icon: HugeIcons.strokeRoundedMessage02,
+          title: 'Inbox',
         ),
         NavItem(
           icon: HugeIcons.strokeRoundedUser,

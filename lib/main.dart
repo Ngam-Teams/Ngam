@@ -10,6 +10,7 @@ import 'services/supabase_service.dart';
 import 'utils/app_theme.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'services/push_service.dart';
+import 'l10n/generated/app_localizations.dart';
 
 // ─── Screens ─────────────────────────────────────────────────
 import 'screens/auth/login_screen.dart';
@@ -93,7 +94,10 @@ class NgamApp extends StatelessWidget {
             builder: (context, child) {
               return AppLockWrapper(child: child!);
             },
-            localizationsDelegates: context.localizationDelegates,
+            localizationsDelegates: [
+              ...context.localizationDelegates,
+              AppLocalizations.delegate,
+            ],
             supportedLocales: context.supportedLocales,
             locale: context.locale,
             debugShowCheckedModeBanner: false,

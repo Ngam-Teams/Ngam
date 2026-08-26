@@ -1,0 +1,271 @@
+{
+  "@@locale": "ms",
+
+  "profile": "Profil",
+  "@profile": {
+    "description": "The title shown in the AppBar"
+  },
+  "preferences": "Keutamaan",
+  "darkMode": "Mod Gelap",
+  "language": "Bahasa",
+  "currentLanguage": "Bahasa Inggeris",
+  "account": "Akaun",
+  "personalInformation": "Maklumat Peribadi",
+  "paymentMethods": "Kaedah Pembayaran",
+  "privacySecurity": "Privasi & Keselamatan",
+  "logOut": "Log Keluar",
+  "selectLanguage": "Pilih Bahasa",
+  "english": "Bahasa Inggeris",
+  "malay": "Bahasa Melayu",
+
+  "searchHint": "Cari",
+  "nearby": "Berdekatan",
+  "statusOpenCaps": "DIBUKA",
+  "statusClosingCaps": "AKAN DITUTUP",
+  "statusClosedCaps": "DITUTUP",
+  "statusOpenNow": "Dibuka Sekarang",
+  "statusClosingSoon": "Akan Ditutup",
+  "statusClosed": "Ditutup",
+
+  "closingIn": "DITUTUP DALAM {minutes}M",
+  "@closingIn": {
+    "description": "Countdown for when a shop is closing soon",
+    "placeholders": {
+      "minutes": {
+        "type": "int",
+        "example": "15"
+      }
+    }
+  },
+
+  "rating": "Penilaian",
+  "reviews": "Ulasan",
+  "away": "Jauh",
+  "call": "Hubungi",
+  "directions": "Arah",
+  "operatingHours": "Waktu Operasi",
+  "today": "Hari Ini",
+
+  "todayDay": "Hari Ini ({day})",
+  "@todayDay": {
+    "description": "Shows 'Today' along with the day of the week",
+    "placeholders": {
+      "day": {
+        "type": "String",
+        "example": "Isnin"
+      }
+    }
+  },
+
+  "servicesAvailable": "Perkhidmatan Tersedia",
+  "generalService": "Perkhidmatan Umum",
+  "recentReviews": "Ulasan Terkini",
+  "noReviewsYet": "Belum ada ulasan.",
+  "user": "Pengguna",
+  "rezrvNow": "REZRV Sekarang",
+
+  "resultsFor": "Hasil carian untuk '{query}'",
+  "@resultsFor": {
+    "description": "Carousel title shown when search results are found",
+    "placeholders": {
+      "query": {
+        "type": "String",
+        "example": "Gunting rambut"
+      }
+    }
+  },
+  "noResultsFoundTitle": "Tiada hasil dijumpai",
+  "noLocationsMatch": "Tiada lokasi yang sepadan dengan carian anda.",
+  "noMatchesFound": "Tiada padanan dijumpai",
+  "trySearchingDifferent": "Cuba cari kedai atau perkhidmatan lain.",
+  "clear": "Kosongkan",
+
+  "locating": "Mengesan lokasi...",
+  "locationDisabled": "Lokasi dilumpuhkan",
+  "permissionDenied": "Kebenaran ditolak",
+  "permissionDeniedForever": "Kebenaran ditolak selamanya",
+  "unknownCity": "Bandar Tidak Diketahui",
+  "unknownState": "Negeri Tidak Diketahui",
+  "locationUnavailable": "Lokasi tidak tersedia",
+
+  "hiUser": "Hi, {firstName}",
+  "@hiUser": {
+    "description": "Greeting on the home screen",
+    "placeholders": {
+      "firstName": {
+        "type": "String"
+      }
+    }
+  },
+
+  "promotions": "Promosi",
+  "categories": "Kategori",
+  "recommended": "Disyorkan",
+  "seeAll": "Lihat Semua",
+  "promoLabel": "PROMO",
+  "claimButton": "Tuntut",
+
+  "catHaircuts": "Gunting Rambut",
+  "catShaving": "Bercukur",
+  "catColoring": "Mewarna",
+  "catStyling": "Penggayaan",
+  "catFacial": "Rawatan Wajah",
+  "catMassage": "Urutan",
+  "catNails": "Kuku",
+  "catMore": "Lagi",
+
+  "unknownShop": "Tidak Diketahui",
+  "generalCategory": "Umum",
+
+  "myBarbrTitle": "Barbr Saya",
+  "tabUpcoming": "Akan Datang",
+  "tabHistory": "Sejarah",
+  "noPastReservations": "Tiada tempahan lepas atau yang dibatalkan.",
+  "noUpcomingReservations": "Belum ada tempahan akan datang.\nTempah perkhidmatan untuk melihatnya di sini!",
+  "cancelBtn": "Batal",
+  "viewTicketBtn": "Lihat Tiket",
+  "statusCancelled": "Dibatalkan",
+  "statusDone": "Selesai",
+
+  "ticketOrderTitle": "Pesanan",
+  "ticketProvider": "Penyedia",
+  "ticketDate": "Tarikh",
+  "ticketTime": "Masa",
+  "ticketBookingId": "ID Tempahan",
+  "ticketTotalPaid": "Jumlah Dibayar",
+  "ticketScanHint": "Imbas di kaunter semasa ketibaan",
+  "ticketCallOwner": "Hubungi Pemilik",
+
+  "bkTitleComplete": "Tempahan selesai!",
+  "bkTitleProvider": "Pilih penyedia:",
+  "bkTitleServices": "Pilih Perkhidmatan:",
+  "bkTitleCheckout": "Daftar keluar & pembayaran:",
+
+  "bkApptDate": "Tarikh Temu Janji",
+  "bkAvailTime": "Masa Tersedia",
+
+  "bkMainService": "Pilih Perkhidmatan Utama",
+  "bkAddons": "Tambahan Ekstra",
+  "bkHealthSafety": "Kesihatan & Keselamatan",
+  "bkAllergies": "Alahan atau sensitiviti kulit?",
+
+  "bkSummary": "Ringkasan Tempahan",
+  "bkLocation": "Lokasi",
+  "bkProvider": "Penyedia",
+  "bkDate": "Tarikh",
+  "bkTime": "Masa",
+  "bkEstDuration": "Anggaran Tempoh",
+
+  "bkMins": "~{time} min",
+  "@bkMins": {
+    "placeholders": {
+      "time": { "type": "int" }
+    }
+  },
+
+  "bkPaymentMethod": "Kaedah Pembayaran",
+  "bkCreditCard": "Kad Kredit / Debit",
+  "bkOnlineBanking": "Perbankan Dalam Talian (FPX)",
+  "bkCash": "Tunai di Kaunter",
+  "bkNoCards": "Tiada kad disimpan. Sila tambah di Profil anda.",
+  "bkGrandTotal": "Jumlah Keseluruhan",
+
+  "bkContinue": "Teruskan",
+  "bkConfirmPay": "Sahkan & Bayar {price}",
+  "@bkConfirmPay": {
+    "placeholders": {
+      "price": { "type": "String" }
+    }
+  },
+
+  "bkCardHolder": "Pemegang Kad",
+  "bkExpires": "Tamat Tempoh",
+
+  "bkConfirmed": "Tempahan Disahkan!",
+  "bkNotified": "Penyedia anda telah dimaklumkan.",
+  "bkViewOrder": "Lihat Pesanan",
+  "bkBackHome": "Kembali ke Laman Utama",
+
+  "navHome": "Utama",
+  "navExplore": "Teroka",
+  "navMyBarbr": "Barbr Saya",
+  "navSaved": "Disimpan",
+
+  "shopDetailDummyAddress": "123 Jalan Utama, Pusat Bandar",
+  "shopDetailDummyHours": "Dibuka Sekarang • Ditutup pada 10:00 PM",
+  "shopDetailAbout": "Mengenai Kami",
+  "shopDetailAboutDesc": "Alami perkhidmatan dandanan dan kesejahteraan premium dalam persekitaran yang santai. Pakar kami berdedikasi untuk membuatkan anda tampil dan berasa lebih yakin.",
+
+  "exploreCatBeauty": "Kecantikan & Kesejahteraan",
+  "exploreCatBarber": "Kedai Gunting Rambut",
+  "exploreCatHealth": "Kesihatan & Klinik",
+  "exploreCatFood": "Makanan & Minuman",
+  "exploreCatRestaurant": "Restoran",
+  "exploreCatCafe": "Kafe",
+  "exploreCatAuto": "Auto & Pengangkutan",
+  "exploreCatWorkshop": "Bengkel & Pembaikan",
+  "exploreCatGas": "Stesen Minyak",
+  "exploreCatDaily": "Keperluan Harian",
+  "exploreCatSupermarket": "Pasaraya",
+  "exploreCatBanking": "Perbankan",
+  "exploreCatCommunity": "Komuniti",
+  "exploreCatSchool": "Sekolah",
+  "exploreCatReligion": "Agama",
+
+  "searchAll": "Semua {category}",
+  "@searchAll": {
+    "placeholders": {
+      "category": { "type": "String" }
+    }
+  },
+
+  "searchHeadersCategories": "KATEGORI",
+  "searchHeadersShops": "KEDAI & PERKHIDMATAN",
+  "searchMatchProvides": "Menyediakan {service}",
+  "@searchMatchProvides": {
+    "placeholders": {
+      "service": { "type": "String" }
+    }
+  },
+
+  "msgVia": "Mesej melalui",
+  "msgWhatsApp": "WhatsApp",
+  "msgTelegram": "Telegram",
+  "msgSMS": "Mesej SMS",
+
+  "btnViewProfile": "Lihat Profil",
+
+  "piProfileUpdated": "Profil berjaya dikemas kini!",
+  "piFullName": "Nama Penuh",
+  "piFullNameHint": "Masukkan nama penuh anda",
+  "piEmail": "Alamat E-mel",
+  "piEmailHint": "Masukkan e-mel anda",
+  "piPhone": "Nombor Telefon",
+  "piPhoneHint": "Masukkan nombor telefon anda",
+  "piDob": "Tarikh Lahir",
+  "piDobHint": "HH / BB / TTTT",
+  "piSaveChanges": "Simpan Perubahan",
+
+  "savedTitle": "Simpanan Saya",
+  "savedEmptyState": "Anda belum menyimpan sebarang tempat lagi.",
+
+  "ticketCountdownPast": "Temu Janji Bermula/Berlalu",
+  "ticketCountdownStartsIn": "Bermula dalam: {duration}",
+  "@ticketCountdownStartsIn": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "support": "Sokongan",
+  "helpCenter": "Pusat Bantuan",
+  "contactUs": "Hubungi Kami",
+  "about": "Tentang Kami",
+  "termsOfService": "Syarat Perkhidmatan",
+  "privacyPolicy": "Dasar Privasi",
+  "rateUs": "Nilaikan Aplikasi",
+  "inviteFriends": "Jemput Rakan",
+  "referralText": "Dapat RM10 untuk setiap rujukan",
+  "madeIn": "Dibuat dengan ❤️ di Malaysia"
+}
