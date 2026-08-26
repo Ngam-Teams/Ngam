@@ -10,6 +10,7 @@ import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../widgets/animated_background.dart';
 import '../../widgets/glass_card.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 // ============================================================
 // Ngam App — Skrin Register
@@ -82,16 +83,6 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
     );
 
     if (success && mounted) {
-      if (_selectedRole == UserRole.runner) {
-        // Hantar data verification runner
-        await authProvider.submitRunnerVerification(
-          fullName: _nameController.text.trim(),
-          icNumber: _icNumberController.text.trim().isEmpty ? 'N/A' : _icNumberController.text.trim(),
-          vehicleType: _vehicleTypeController.text.trim().isEmpty ? 'Motorcycle' : _vehicleTypeController.text.trim(),
-          plateNumber: _plateNumberController.text.trim(),
-        );
-      }
-      
       final role = authProvider.userRole;
       if (role == 'runner') {
         Navigator.pushReplacementNamed(context, '/runner-home');
@@ -323,7 +314,95 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
                     );
                   },
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 32),
+
+                // ─── Login Guna Social Media ───────────
+                Row(
+                  children: [
+                    const Expanded(child: Divider(color: Colors.grey, thickness: 0.5)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'auth.or_continue_with'.tr(),
+                        style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const Expanded(child: Divider(color: Colors.grey, thickness: 0.5)),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      final authProvider = context.read<AuthProvider>();
+                      final success = await authProvider.signInWithGoogle();
+                      if (success && mounted) {
+                        Navigator.pushReplacementNamed(context, '/customer-home');
+                      }
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const FaIcon(FontAwesomeIcons.google, size: 20),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('auth.google_signin'.tr()),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      final authProvider = context.read<AuthProvider>();
+                      final success = await authProvider.signInWithApple();
+                      if (success && mounted) {
+                        Navigator.pushReplacementNamed(context, '/customer-home');
+                      }
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      foregroundColor: isDark ? Colors.white : Colors.black,
+                      side: BorderSide(
+                        color: isDark ? Colors.white30 : Colors.black26,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const FaIcon(FontAwesomeIcons.apple, size: 22),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('Continue with Apple'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
 
                 // ─── Link Login ──────────────────────────
                   Wrap(

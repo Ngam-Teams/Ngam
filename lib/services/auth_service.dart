@@ -1,5 +1,9 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart' as g_sign_in;
+import 'dart:convert';
+import 'dart:math';
+import 'package:crypto/crypto.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
 import '../utils/constants.dart';
@@ -12,6 +16,12 @@ import 'supabase_service.dart';
 
 class AuthService {
   static final _client = SupabaseService.client;
+
+  static String _generateRandomString(int length) {
+    const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(length, (_) => charset[random.nextInt(charset.length)]).join();
+  }
 
   /// Sign up a new user with email/password and insert profile into users table
   static Future<UserModel> signUp({
@@ -163,4 +173,73 @@ class AuthService {
 
   /// Check if user is currently logged in
   static bool get isLoggedIn => _client.auth.currentSession != null;
+
+  /// Sign in with Apple
+  static Future<UserModel> signInWithApple() async {
+    final rawNonce = _generateRandomString(32);
+    final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+
+    final appleCredential = await SignInWithApple.getAppleIDCredential(
+      scopes: [
+        AppleIDAuthorizationScopes.email,
+        AppleIDAuthorizationScopes.fullName,
+      ],
+      nonce: hashedNonce,
+    );
+
+    final idToken = appleCredential.identityToken;
+    if (idToken == null) {
+      throw Exception('Could not find ID Token from Apple Sign In.');
+    }
+
+    final authResponse = await _client.auth.signInWithIdToken(
+      provider: OAuthProvider.apple,
+      idToken: idToken,
+      nonce: rawNonce,
+    );
+
+    if (authResponse.user == null) {
+      throw Exception('Login failed. Could not authenticate with Apple.');
+    }
+
+    final userId = authResponse.user!.id;
+
+    // Semak kalau user dah ada dalam table 'users'
+    final existingUserRes = await _client
+        .from(DbTable.users)
+        .select()
+        .eq('id', userId)
+        .maybeSingle();
+
+    if (existingUserRes != null) {
+      return UserModel.fromJson(existingUserRes);
+    } else {
+      // User baru (first time login guna Apple)
+      String defaultName = appleCredential.givenName != null 
+          ? ' '.trim()
+          : 'Apple User';
+      if (defaultName.isEmpty) defaultName = 'Apple User';
+
+      final newProfile = {
+        'id': userId,
+        'email': authResponse.user!.email ?? '',
+        'name': defaultName,
+        'phone': 'N/A',
+        'role': 'customer',
+        'balance': 0,
+        'rating': 5.0,
+        'created_at': DateTime.now().toIso8601String(),
+      };
+
+      await _client.from(DbTable.users).insert(newProfile);
+
+      final createdUserRes = await _client
+          .from(DbTable.users)
+          .select()
+          .eq('id', userId)
+          .single();
+
+      return UserModel.fromJson(createdUserRes);
+    }
+  }
 }

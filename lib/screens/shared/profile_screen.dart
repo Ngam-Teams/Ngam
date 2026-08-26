@@ -473,11 +473,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader("profile.ngam_rank".tr()),
-        StreamBuilder<int>(
-          stream: GigService.streamCompletedCount(user.id),
-          initialData: _tasksCompleted,
-          builder: (context, snapshot) {
-            int completed = snapshot.data ?? 0;
+        Builder(
+          builder: (context) {
+            int completed = _tasksCompleted;
             String rankName = _getRankName(completed);
             List<Color> colors = _getRankColors(completed);
             int target = _getNextRankTarget(completed);

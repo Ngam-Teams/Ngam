@@ -143,6 +143,35 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+
+  /// Sign in with Apple
+  Future<bool> signInWithApple() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      _user = await AuthService.signInWithApple();
+      if (_user != null) {
+        await PushService.saveTokenToSupabase(_user!.id);
+        ChatService.prefetchChats(_user!.id); // Auto-fetch chats background
+      }
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      String errorMsg = e.toString();
+      if (errorMsg.contains('canceled') || errorMsg.contains('SignInWithAppleException')) {
+        _error = 'Apple Sign-In canceled.';
+      } else {
+        _error = errorMsg.replaceAll('Exception: ', '');
+      }
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Sign out
   Future<void> signOut() async {
     if (_user != null) {

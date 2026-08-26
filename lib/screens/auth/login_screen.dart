@@ -315,6 +315,44 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                           ),
                         ),
+                        const SizedBox(height: 12),
+                        
+                        // ─── Butang Apple Sign In ─────────────
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: () async {
+                              final authProvider = context.read<AuthProvider>();
+                              final success = await authProvider.signInWithApple();
+                              if (success && mounted) {
+                                Navigator.pushReplacementNamed(context, '/customer-home');
+                              }
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              foregroundColor: isDark ? Colors.white : Colors.black,
+                              side: BorderSide(
+                                color: isDark ? Colors.white30 : Colors.black26,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const FaIcon(FontAwesomeIcons.apple, size: 22),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text('Continue with Apple'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 32),
       
                         // ─── Link Sign Up ──────────────────────
