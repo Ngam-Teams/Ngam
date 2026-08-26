@@ -67,12 +67,7 @@ class _LoginScreenState extends State<LoginScreen>
     );
 
     if (success && mounted) {
-      final role = authProvider.userRole;
-      if (role == 'runner') {
-        Navigator.pushReplacementNamed(context, '/runner-home');
-      } else {
-        Navigator.pushReplacementNamed(context, '/customer-home');
-      }
+      Navigator.pushReplacementNamed(context, '/customer-home');
     }
   }
 
@@ -296,12 +291,7 @@ class _LoginScreenState extends State<LoginScreen>
                               final authProvider = context.read<AuthProvider>();
                               final success = await authProvider.signInWithGoogle();
                               if (success && mounted) {
-                                final role = authProvider.userRole;
-                                if (role == 'runner') {
-                                  Navigator.pushReplacementNamed(context, '/runner-home');
-                                } else {
-                                  Navigator.pushReplacementNamed(context, '/customer-home');
-                                }
+                                Navigator.pushReplacementNamed(context, '/customer-home');
                               }
                             },
                             style: OutlinedButton.styleFrom(

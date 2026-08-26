@@ -28,7 +28,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import '../../services/local_database_service.dart';
-import '../runner/task_detail_screen.dart';
+
 import '../../services/push_service.dart';
 
 // ============================================================
@@ -2236,10 +2236,9 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                 height: 70,
                 child: GestureDetector(
                   onTap: () {
-                    Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => const TaskDetailScreen(),
-                      settings: RouteSettings(arguments: _linkedGig),
-                    ));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Gig details feature removed')),
+                    );
                   },
                   child: GlassContainer(
                     useOwnLayer: true,

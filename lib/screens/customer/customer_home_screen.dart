@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 import '../../widgets/bottom_nav_customer.dart';
-import '../rezrv/explore_view.dart';
-import '../rezrv/my_rezrv_view.dart';
+import '../explore/explore_view.dart';
+import '../explore/my_rezrv_view.dart';
 import '../shared/chat_screen.dart';
 import '../shared/profile_screen.dart';
 

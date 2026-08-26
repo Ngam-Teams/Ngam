@@ -21,11 +21,6 @@ import 'screens/customer/task_posted_screen.dart';
 import 'screens/customer/my_tasks_screen.dart';
 import 'screens/customer/order_status_screen.dart';
 import 'screens/customer/review_screen.dart';
-import 'screens/runner/runner_home_screen.dart';
-import 'screens/runner/task_detail_screen.dart';
-import 'screens/runner/confirm_acceptance_screen.dart';
-import 'screens/runner/active_job_screen.dart';
-import 'screens/runner/my_jobs_screen.dart';
 import 'screens/shared/profile_screen.dart';
 import 'screens/shared/privacy_security_screen.dart';
 import 'package:flutter/services.dart';
@@ -114,9 +109,7 @@ class NgamApp extends StatelessWidget {
                 if (!auth.isLoggedIn) {
                   return const LoginScreen();
                 }
-                if (auth.isRunner) {
-                  return const RunnerHomeScreen();
-                }
+
                 return const CustomerHomeScreen();
               },
             ),
@@ -131,12 +124,8 @@ class NgamApp extends StatelessWidget {
               '/my-tasks': (context) => const MyTasksScreen(),
               '/order-status': (context) => const OrderStatusScreen(),
               '/review': (context) => const ReviewScreen(),
-              '/runner-home': (context) => const RunnerHomeScreen(),
-              '/task-detail': (context) => const TaskDetailScreen(),
-              '/confirm-acceptance': (context) =>
-                  const ConfirmAcceptanceScreen(),
-              '/active-job': (context) => const ActiveJobScreen(),
-              '/my-jobs': (context) => const MyJobsScreen(),
+              
+
               '/profile': (context) => const ProfileScreen(),
             },
           );

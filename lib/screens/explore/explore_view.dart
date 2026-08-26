@@ -12,7 +12,6 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
-import 'qr_scanner_screen.dart';
 import 'bookings_view.dart';
 import 'dart:math';
 import 'package:ngam/l10n/generated/app_localizations.dart';

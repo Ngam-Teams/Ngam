@@ -16,7 +16,7 @@ import 'account_details_screen.dart';
 import 'support_screens.dart';
 import 'about_screens.dart';
 import 'privacy_security_screen.dart';
-import '../runner/runner_verification_screen.dart';
+
 import 'wallet_screen.dart';
 
 import 'package:easy_localization/easy_localization.dart';
