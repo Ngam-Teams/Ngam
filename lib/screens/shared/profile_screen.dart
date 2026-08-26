@@ -7,7 +7,6 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
-import '../../services/gig_service.dart';
 import '../../services/review_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
@@ -48,8 +47,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (user == null) return;
 
     try {
-      final posted = await GigService.getPostedCount(user.id);
-      final completed = await GigService.getCompletedCount(user.id);
+      final posted = 0;
+      final completed = 0;
       final rating = await ReviewService.getAverageRating(user.id);
 
       if (mounted) {

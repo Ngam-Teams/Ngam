@@ -40,7 +40,6 @@ class AuthService {
       'email': email,
       'phone': phone,
       'role': role,
-      'is_verified_runner': false,
       'created_at': DateTime.now().toIso8601String(),
     };
 
@@ -120,8 +119,7 @@ class AuthService {
         'email': authResponse.user!.email,
         'phone': '',
         'role': 'customer', // Bagi role default untuk OAuth (social login)
-        'is_verified_runner': false,
-        'created_at': DateTime.now().toIso8601String(),
+          'created_at': DateTime.now().toIso8601String(),
         'avatar_url': authResponse.user!.userMetadata?['avatar_url'],
       };
       await _client.from(DbTable.users).insert(userData);
@@ -162,29 +160,6 @@ class AuthService {
         .eq('id', userId);
   }
 
-  /// Submit runner verification details
-  static Future<void> submitRunnerVerification({
-    required String userId,
-    required String fullName,
-    required String icNumber,
-    required String vehicleType,
-    String? plateNumber,
-  }) async {
-    // 1. Sumbat masuk dalam runner_verifications
-    await _client.from('runner_verifications').insert({
-      'user_id': userId,
-      'full_name': fullName,
-      'ic_number': icNumber,
-      'vehicle_type': vehicleType,
-      if (plateNumber != null && plateNumber.isNotEmpty) 'plate_number': plateNumber,
-    });
-
-    // 2. Update users table to set is_verified_runner = true
-    await _client
-        .from(DbTable.users)
-        .update({'is_verified_runner': true})
-        .eq('id', userId);
-  }
 
   /// Check if user is currently logged in
   static bool get isLoggedIn => _client.auth.currentSession != null;

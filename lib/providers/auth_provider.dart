@@ -184,31 +184,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Submit runner verification
-  Future<void> submitRunnerVerification({
-    required String fullName,
-    required String icNumber,
-    required String vehicleType,
-    String? plateNumber,
-  }) async {
-    if (_user == null) return;
-    try {
-      await AuthService.submitRunnerVerification(
-        userId: _user!.id,
-        fullName: fullName,
-        icNumber: icNumber,
-        vehicleType: vehicleType,
-        plateNumber: plateNumber,
-      );
-      _user = _user!.copyWith(isVerifiedRunner: true);
-      notifyListeners();
-    } catch (e) {
-      _error = 'Failed to verify runner';
-      notifyListeners();
-      rethrow;
-    }
-  }
-
   /// Update profile details
   Future<String?> updateProfile({
     required String name,

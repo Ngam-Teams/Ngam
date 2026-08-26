@@ -4,7 +4,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'providers/auth_provider.dart';
-import 'providers/gig_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/supabase_service.dart';
 import 'utils/app_theme.dart';
@@ -16,10 +15,6 @@ import 'l10n/generated/app_localizations.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/customer/customer_home_screen.dart';
-import 'screens/customer/post_task_screen.dart';
-import 'screens/customer/task_posted_screen.dart';
-import 'screens/customer/my_tasks_screen.dart';
-import 'screens/customer/order_status_screen.dart';
 import 'screens/customer/review_screen.dart';
 import 'screens/shared/profile_screen.dart';
 import 'screens/shared/privacy_security_screen.dart';
@@ -78,7 +73,6 @@ class NgamApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()..initialize()),
-        ChangeNotifierProvider(create: (_) => GigProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
       child: Consumer<ThemeProvider>(
@@ -119,13 +113,7 @@ class NgamApp extends StatelessWidget {
               '/login': (context) => const LoginScreen(),
               '/register': (context) => const RegisterScreen(),
               '/customer-home': (context) => const CustomerHomeScreen(),
-              '/post-task': (context) => const PostTaskScreen(),
-              '/task-posted': (context) => const TaskPostedScreen(),
-              '/my-tasks': (context) => const MyTasksScreen(),
-              '/order-status': (context) => const OrderStatusScreen(),
               '/review': (context) => const ReviewScreen(),
-              
-
               '/profile': (context) => const ProfileScreen(),
             },
           );

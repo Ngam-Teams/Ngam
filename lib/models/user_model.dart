@@ -8,7 +8,6 @@ class UserModel {
   final String email;
   final String phone;
   final String role; // 'customer' atau 'runner'
-  final bool isVerifiedRunner;
   final String? avatarUrl;
   final String? bio;
   final String? gender;
@@ -26,7 +25,6 @@ class UserModel {
     required this.email,
     required this.phone,
     required this.role,
-    this.isVerifiedRunner = false,
     this.avatarUrl,
     this.bio,
     this.gender,
@@ -47,7 +45,6 @@ class UserModel {
       email: json['email'] as String? ?? '',
       phone: json['phone'] as String? ?? '',
       role: json['role'] as String? ?? 'customer',
-      isVerifiedRunner: json['is_verified_runner'] as bool? ?? false,
       avatarUrl: json['avatar_url'] as String?,
       bio: json['bio'] as String?,
       gender: json['gender'] as String?,
@@ -69,7 +66,6 @@ class UserModel {
       'email': email,
       'phone': phone,
       'role': role,
-      'is_verified_runner': isVerifiedRunner,
       if (avatarUrl != null) 'avatar_url': avatarUrl,
       if (bio != null) 'bio': bio,
       if (gender != null) 'gender': gender,
@@ -88,7 +84,6 @@ class UserModel {
     String? email,
     String? phone,
     String? role,
-    bool? isVerifiedRunner,
     String? avatarUrl,
     String? bio,
     String? gender,
@@ -104,7 +99,6 @@ class UserModel {
       email: email ?? this.email,
       phone: phone ?? this.phone,
       role: role ?? this.role,
-      isVerifiedRunner: isVerifiedRunner ?? this.isVerifiedRunner,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       bio: bio ?? this.bio,
       gender: gender ?? this.gender,
