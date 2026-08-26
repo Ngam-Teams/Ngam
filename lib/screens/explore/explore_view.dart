@@ -1,9 +1,5 @@
 import 'dart:async';
-import 'package:flutter_tts/flutter_tts.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'dart:convert';
 import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import 'dart:ui';
@@ -38,284 +34,6 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   @override
   bool get wantKeepAlive => true;
 
-  void _initAI() {
-    _flutterTts = FlutterTts();
-    _flutterTts?.setSpeechRate(0.4);
-  }
-
-  void _initSpeech() async {
-    try {
-      _speechEnabled = await _speechToText.initialize(
-        onStatus: (status) {
-          if (status == 'done' || status == 'notListening') {
-            if (mounted && _aiInlineIsListening) {
-              setState(() => _aiInlineIsListening = false);
-              if (_aiInlineRecognizedWords.isNotEmpty) {
-                _aiHandleSend(_aiInlineRecognizedWords);
-              }
-            }
-          }
-        },
-      );
-      if (mounted) setState(() {});
-    } catch (e) {
-      debugPrint("Speech initialization error: $e");
-    }
-  }
-  
-  void _aiScrollToBottom({bool force = false}) {
-    if (!_aiScrollController.hasClients) return;
-    bool nearBottom = _aiScrollController.position.maxScrollExtent - _aiScrollController.offset <= 150;
-    if (force || nearBottom) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_aiScrollController.hasClients) {
-          _aiScrollController.animateTo(
-            _aiScrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        }
-      });
-    }
-  }
-
-  void _toggleAIVoiceInline() async {
-    if (!_speechEnabled) {
-      setState(() => _aiChatHistory.add({"role": "system", "message": "Sila benarkan akses mikrofon."}));
-      return;
-    }
-    if (_aiInlineIsListening) {
-      _speechToText.stop();
-      setState(() => _aiInlineIsListening = false);
-    } else {
-      _aiInlineRecognizedWords = "";
-      setState(() => _aiInlineIsListening = true);
-      _speechToText.listen(
-        onResult: (val) {
-          setState(() {
-            _aiInlineRecognizedWords = val.recognizedWords;
-          });
-        },
-        localeId: 'ms_MY',
-      );
-    }
-  }
-  
-  String _aiSearchByKeyword(String? keyword, {String sortBy = 'distance', String? focusedShopId}) {
-    if (!mounted) return "";
-    setState(() {
-      if (keyword != null && keyword.isNotEmpty) {
-        _searchController.text = keyword;
-        _activeSearchQuery = keyword;
-        _isSearchPanelOpen = true;
-        _handleSearch(keyword);
-      } else {
-        _searchController.clear();
-        _activeSearchQuery = null;
-        _handleSearch('');
-      }
-    });
-
-    int count = _displayedShops.length;
-    return "$count kedai/servis dijumpai";
-  }
-
-  Future<void> _aiHandleSend(String text) async {
-    if (text.trim().isEmpty) return;
-    final isMalay = true;
-    setState(() {
-      _aiChatHistory.add({"role": "user", "message": text});
-      _aiIsTyping = true;
-      _isAIPanelOpen = true;
-      _aiInlineIsListening = false;
-    });
-    _aiInputController.clear();
-    _aiScrollToBottom(force: true);
-
-    try {
-      await dotenv.load();
-      final apiKey = dotenv.env['NVIDIA_API_KEY'] ?? '';
-      if (apiKey.isEmpty) {
-        setState(() {
-          _aiIsTyping = false;
-          _aiChatHistory.add({"role": "ai", "message": "Maaf, API Key tidak dijumpai."});
-        });
-        _aiScrollToBottom();
-        return;
-      }
-
-      final allShops = List<Map<String, dynamic>>.from(_nearbyShops);
-      final currentLoc = _currentLocation;
-      
-      final StringBuffer shopList = StringBuffer();
-      int count = 0;
-      for (var shop in allShops.take(20)) {
-        shopList.writeln('- [' + shop['category'] + '] ' + shop['name'] + ' | ID: ' + shop['id']);
-        count++;
-      }
-      final jobContext = count > 0
-          ? 'There are ' + count.toString() + ' available shops right now:\n' + shopList.toString()
-          : 'There are no available shops listed right now.';
-
-      final messages = [
-        {
-          "role": "system",
-          "content": """You are a smart, friendly AI assistant for Ngam app.
-LIVE CUSTOMER SHOP DATA:
-$jobContext
-
-YOUR JOB:
-- Help the user find a shop, salon, or service.
-- You understand Malay and English.
-- Keep message EXTREMELY concise (max 2 short sentences).
-
-RESPONSE FORMAT (JSON ONLY):
-{
-  "message": "Your reply",
-  "search_keyword": "One exact substring to search, or null"
-}"""
-        }
-      ];
-
-      for (var msg in _aiChatHistory) {
-        String role = msg['role'] == 'ai' ? 'assistant' : 'user';
-        String content = msg['message'] as String;
-        if (msg['role'] == 'ai') {
-          content = '{"message": "' + content.replaceAll('"', '\\"') + '", "search_keyword": null}';
-        }
-        if (msg['role'] != 'system_context') {
-           messages.add({"role": role, "content": content});
-        }
-      }
-
-      final response = await http.post(
-        Uri.parse('https://integrate.api.nvidia.com/v1/chat/completions'),
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $apiKey'},
-        body: jsonEncode({"model": "meta/llama-3.1-8b-instruct", "messages": messages, "temperature": 0.4, "max_tokens": 200, "response_format": {"type": "json_object"}}),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        String rawReply = data['choices'][0]['message']['content'];
-        String aiMessage = rawReply;
-        String? searchKeyword;
-        try {
-          final jsonMatch = RegExp(r'\{.*\}', dotAll: true).firstMatch(rawReply);
-          if (jsonMatch != null) {
-            final parsed = jsonDecode(jsonMatch.group(0)!);
-            aiMessage = (parsed['message']?.toString() ?? rawReply);
-            final kw = parsed['search_keyword'];
-            if (kw is String && kw.toLowerCase() != 'null' && kw.trim().isNotEmpty) {
-              searchKeyword = kw.trim();
-            }
-          }
-        } catch (_) {
-          aiMessage = rawReply;
-        }
-
-        String resultSummary = _aiSearchByKeyword(searchKeyword);
-        
-        if (mounted) {
-          setState(() {
-            _aiIsTyping = false;
-            _aiChatHistory.add({"role": "ai", "message": aiMessage});
-          });
-          _aiScrollToBottom(force: true);
-          _flutterTts?.speak(aiMessage);
-        }
-      } else {
-        setState(() {
-          _aiIsTyping = false;
-          _aiChatHistory.add({"role": "ai", "message": "Maaf, ralat pelayan: ${response.statusCode}"});
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _aiIsTyping = false;
-        _aiChatHistory.add({"role": "ai", "message": "Ralat rangkaian."});
-      });
-    }
-  }
-
-  Widget _buildAIChatPanel(bool isDark) {
-    if (!_isAIPanelOpen) return const SizedBox.shrink();
-    return Positioned(
-      bottom: 90,
-      left: 16,
-      right: 16,
-      child: _buildGlassBox(
-        isDark: isDark,
-        radius: 24,
-        child: Container(
-          height: 380,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      const HugeIcon(icon: HugeIcons.strokeRoundedSparkles, color: Colors.blue, size: 20),
-                      const SizedBox(width: 8),
-                      Text("Ngam AI", style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold, fontSize: 16)),
-                    ],
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.close, color: isDark ? Colors.white54 : Colors.black54),
-                    onPressed: () => setState(() => _isAIPanelOpen = false),
-                  )
-                ],
-              ),
-              const Divider(color: Colors.blueAccent, thickness: 0.3),
-              Expanded(
-                child: ListView.builder(
-                  controller: _aiScrollController,
-                  itemCount: _aiChatHistory.length,
-                  itemBuilder: (context, index) {
-                    final msg = _aiChatHistory[index];
-                    if (msg['role'] == 'system' || msg['role'] == 'system_context') return const SizedBox.shrink();
-                    final isUser = msg['role'] == 'user';
-                    return Align(
-                      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: isUser ? Colors.blue.withValues(alpha: 0.2) : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: isUser ? Colors.blue.withValues(alpha: 0.3) : Colors.transparent),
-                        ),
-                        child: Text(msg['message'], style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              if (_aiIsTyping) const Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator(strokeWidth: 2)),
-              const SizedBox(height: 12),
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.0),
-                ),
-                child: TextField(
-                  controller: _aiInputController,
-                  onSubmitted: _aiHandleSend,
-                  style: TextStyle(color: isDark ? Colors.white : Colors.black87),
-                  decoration: const InputDecoration(
-                    hintText: 'Taip mesej...',
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  ),
-                ),
-              )
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
 
   final MapController _mapController = MapController();
@@ -326,18 +44,6 @@ RESPONSE FORMAT (JSON ONLY):
 
   final Color _lightModeGray = const Color(0xFF3A3A3C);
 
-  // State untuk AI panel
-  bool _isAIPanelOpen = false;
-  final List<Map<String, dynamic>> _aiChatHistory = [];
-  bool _aiIsTyping = false;
-  bool _aiShouldReopenMic = true;
-  FlutterTts? _flutterTts;
-  final TextEditingController _aiInputController = TextEditingController();
-  final ScrollController _aiScrollController = ScrollController();
-  bool _aiInlineIsListening = false;
-  String _aiInlineRecognizedWords = "";
-  final stt.SpeechToText _speechToText = stt.SpeechToText();
-  bool _speechEnabled = false;
   bool _isSearchPanelOpen = false;
   bool _isMapReady = false;
   bool _isMapLocked = false;
@@ -1266,7 +972,6 @@ RESPONSE FORMAT (JSON ONLY):
                       duration: const Duration(milliseconds: 300),
                       opacity: isSearchActive ? 1.0 : 0.0,
                       child: isSearchActive ? _buildResultsGlass(isDark) : const SizedBox.shrink())),
-                _buildAIChatPanel(isDark),
               AnimatedPositioned(
                   duration: const Duration(milliseconds: 400),
                   curve: Curves.easeInOutBack,
@@ -1420,9 +1125,7 @@ RESPONSE FORMAT (JSON ONLY):
           const SizedBox(width: 12),
           _AnimatedPressable(
               onTap: () {
-                setState(() {
-                  _isAIPanelOpen = !_isAIPanelOpen;
-                });
+                showGlassToast(context, 'Lagi (Akan Datang)');
               },
               child: GlassContainer(
                 useOwnLayer: true,
@@ -1446,9 +1149,9 @@ RESPONSE FORMAT (JSON ONLY):
                       ),
                     ],
                   ),
-                  child: const Center(
-                      child: HugeIcon(icon: HugeIcons.strokeRoundedSparkles,
-                          color: Colors.blue,
+                  child: Center(
+                      child: HugeIcon(icon: HugeIcons.strokeRoundedMoreHorizontal,
+                          color: isDark ? Colors.white70 : Colors.black87,
                           size: 22,
                           strokeWidth: 2.0)
                   ),
