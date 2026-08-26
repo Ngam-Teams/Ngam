@@ -78,7 +78,24 @@ class AuthService {
         .from(DbTable.users)
         .select()
         .eq('id', userId)
-        .single();
+        .maybeSingle();
+
+    if (response == null) {
+      // User wujud kat auth.users tapi takde profile di public.users
+      final newProfile = {
+        'id': userId,
+        'email': email,
+        'name': email.split('@').first,
+        'phone': 'N/A',
+        'role': 'customer',
+        'balance': 0,
+        'rating': 5.0,
+        'created_at': DateTime.now().toIso8601String(),
+      };
+      
+      await _client.from(DbTable.users).insert(newProfile);
+      return UserModel.fromJson(newProfile);
+    }
 
     return UserModel.fromJson(response);
   }
