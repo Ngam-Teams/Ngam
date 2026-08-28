@@ -235,12 +235,12 @@ class AuthProvider extends ChangeNotifier {
       );
       if (error == null) {
         _user = _user!.copyWith(
-          name: name, 
-          phone: phone,
-          bio: bio,
-          gender: gender,
-          birthDate: birthDate,
-          address: address,
+          userName: name, 
+          userPhone: phone,
+          userBio: bio,
+          userGender: gender,
+          userBirthDate: birthDate,
+          userAddress: address,
         );
         notifyListeners();
       }
@@ -269,7 +269,7 @@ class AuthProvider extends ChangeNotifier {
       );
 
       if (error == null) {
-        _user = _user!.copyWith(avatarUrl: publicUrl);
+        _user = _user!.copyWith(userAvatarUrl: publicUrl);
         notifyListeners();
       }
       return error;
@@ -297,7 +297,7 @@ class AuthProvider extends ChangeNotifier {
       );
 
       if (error == null) {
-        _user = _user!.copyWith(qrCodeUrl: publicUrl);
+        _user = _user!.copyWith(userQrCodeUrl: publicUrl);
         notifyListeners();
       }
       return error;
@@ -312,11 +312,11 @@ class AuthProvider extends ChangeNotifier {
     try {
       final response = await Supabase.instance.client
           .from('users')
-          .select('balance')
+          .select('user_balance')
           .eq('id', _user!.id)
           .single();
-      final newBalance = (response['balance'] as num?)?.toDouble() ?? 0.0;
-      _user = _user!.copyWith(balance: newBalance);
+      final newBalance = (response['user_balance'] as num?)?.toDouble() ?? 0.0;
+      _user = _user!.copyWith(userBalance: newBalance);
       notifyListeners();
     } catch (e) {
       debugPrint('Failed to refresh balance: $e');

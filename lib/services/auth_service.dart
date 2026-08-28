@@ -46,9 +46,9 @@ class AuthService {
     // 2. Lepas tu sumbat profil dia masuk table 'users'
     final userData = {
       'id': userId,
-      'name': name,
-      'email': email,
-      'phone': phone,
+      'user_name': name,
+      'user_email': email,
+      'user_phone': phone,
       'role': role,
       'created_at': DateTime.now().toIso8601String(),
     };
@@ -84,12 +84,11 @@ class AuthService {
       // User wujud kat auth.users tapi takde profile di public.users
       final newProfile = {
         'id': userId,
-        'email': email,
-        'name': email.split('@').first,
-        'phone': 'N/A',
+        'user_email': email,
+        'user_name': email.split('@').first,
+        'user_phone': 'N/A',
         'role': 'customer',
-        'balance': 0,
-        'rating': 5.0,
+        'user_balance': 0.0,
         'created_at': DateTime.now().toIso8601String(),
       };
       
@@ -142,12 +141,12 @@ class AuthService {
       // User baru! Kita masukkan dia dalam public.users
       final userData = {
         'id': userId,
-        'name': authResponse.user!.userMetadata?['full_name'] ?? 'Google User',
-        'email': authResponse.user!.email,
-        'phone': '',
+        'user_name': authResponse.user!.userMetadata?['full_name'] ?? 'Google User',
+        'user_email': authResponse.user!.email,
+        'user_phone': '',
         'role': 'customer', // Bagi role default untuk OAuth (social login)
           'created_at': DateTime.now().toIso8601String(),
-        'avatar_url': authResponse.user!.userMetadata?['avatar_url'],
+        'user_avatar_url': authResponse.user!.userMetadata?['avatar_url'],
       };
       await _client.from(DbTable.users).insert(userData);
       return UserModel.fromJson(userData);
@@ -239,12 +238,11 @@ class AuthService {
 
       final newProfile = {
         'id': userId,
-        'email': authResponse.user!.email ?? '',
-        'name': defaultName,
-        'phone': 'N/A',
+        'user_email': authResponse.user!.email ?? '',
+        'user_name': defaultName,
+        'user_phone': 'N/A',
         'role': 'customer',
-        'balance': 0,
-        'rating': 5.0,
+        'user_balance': 0.0,
         'created_at': DateTime.now().toIso8601String(),
       };
 

@@ -193,7 +193,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 final duitnowMethods = methods.where((m) => m["type"] == "duitnow_qr").toList();
 
                 final authProvider = context.watch<AuthProvider>();
-                final realBalance = authProvider.user?.balance ?? 0.0;
+                final realBalance = authProvider.user?.userBalance ?? 0.0;
                 
                 // Virtual list: Ngam Pay sentiasa duk kat index 0 (paling atas)
                 final virtualCards = [ {"id": "ngam_pay", "type": "wallet", "name": "Ngam Pay", "balance": realBalance}, ...savedCards, ...bankMethods, ...duitnowMethods ];
@@ -783,7 +783,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                         SnackBar(content: Text('RM ${amount.toStringAsFixed(2)} added to your wallet!')),
                       );
                       
-                      if (widget.requiredAmountForPendingTask != null && authProvider.user!.balance >= widget.requiredAmountForPendingTask!) {
+                      if (widget.requiredAmountForPendingTask != null && authProvider.user!.userBalance >= widget.requiredAmountForPendingTask!) {
                         final isDark = Theme.of(context).brightness == Brightness.dark;
                         final proceed = await showDialog<bool>(
                           context: context,
@@ -870,7 +870,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
               final amount = await _showAmountDialog(context, 'Withdraw Amount', 'Withdraw', isWithdrawal: true);
               if (amount != null && amount > 0) {
                 final authProvider = context.read<AuthProvider>();
-                final currentBalance = authProvider.user?.balance ?? 0.0;
+                final currentBalance = authProvider.user?.userBalance ?? 0.0;
                 
                 if (amount > currentBalance) {
                   if (context.mounted) {
@@ -891,7 +891,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                   } catch (e) {
                     // Lakonan (simulation) kalau RPC withdraw_wallet takde lagi kat DB
                     final newBalance = currentBalance - amount;
-                    await SupabaseService.client.from('users').update({'balance': newBalance}).eq('id', authProvider.user!.id);
+                    await SupabaseService.client.from('users').update({'user_balance': newBalance}).eq('id', authProvider.user!.id);
                     await SupabaseService.client.from('transactions').insert({
                       'user_id': authProvider.user!.id,
                       'type': 'withdrawal',

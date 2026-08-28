@@ -38,14 +38,14 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
   void initState() {
     super.initState();
     final user = context.read<AuthProvider>().user;
-    _nameController = TextEditingController(text: user?.name ?? '');
-    _emailController = TextEditingController(text: user?.email ?? '');
-    _phoneController = TextEditingController(text: user?.phone ?? '');
-    _selectedDob = user?.birthDate;
+    _nameController = TextEditingController(text: user?.userName ?? '');
+    _emailController = TextEditingController(text: user?.userEmail ?? '');
+    _phoneController = TextEditingController(text: user?.userPhone ?? '');
+    _selectedDob = user?.userBirthDate;
     _dobController = TextEditingController(
       text: _selectedDob != null ? DateFormat('dd MMM yyyy').format(_selectedDob!) : '',
     );
-    _addressController = TextEditingController(text: user?.address ?? '');
+    _addressController = TextEditingController(text: user?.userAddress ?? '');
     _currentPasswordController = TextEditingController();
     _newPasswordController = TextEditingController();
   }
@@ -255,14 +255,14 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                                   color: Colors.white.withValues(alpha: isDark ? 0.2 : 0.6),
                                   width: 2,
                                 ),
-                                image: context.watch<AuthProvider>().user?.avatarUrl != null
+                                image: context.watch<AuthProvider>().user?.userAvatarUrl != null
                                     ? DecorationImage(
-                                        image: NetworkImage(context.watch<AuthProvider>().user!.avatarUrl!),
+                                        image: NetworkImage(context.watch<AuthProvider>().user!.userAvatarUrl!),
                                         fit: BoxFit.cover,
                                       )
                                     : null,
                               ),
-                              child: context.watch<AuthProvider>().user?.avatarUrl == null
+                              child: context.watch<AuthProvider>().user?.userAvatarUrl == null
                                   ? HugeIcon(
                                       icon: HugeIcons.strokeRoundedUser,
                                       color: isDark ? Colors.white54 : Colors.black54,
@@ -373,14 +373,14 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                                             color: Colors.white.withValues(alpha: isDark ? 0.2 : 0.6),
                                             width: 2,
                                           ),
-                                          image: context.watch<AuthProvider>().user?.qrCodeUrl != null
+                                          image: context.watch<AuthProvider>().user?.userQrCodeUrl != null
                                               ? DecorationImage(
-                                                  image: NetworkImage(context.watch<AuthProvider>().user!.qrCodeUrl!),
+                                                  image: NetworkImage(context.watch<AuthProvider>().user!.userQrCodeUrl!),
                                                   fit: BoxFit.cover,
                                                 )
                                               : null,
                                         ),
-                                        child: context.watch<AuthProvider>().user?.qrCodeUrl == null
+                                        child: context.watch<AuthProvider>().user?.userQrCodeUrl == null
                                             ? HugeIcon(
                                                 icon: HugeIcons.strokeRoundedQrCode01,
                                                 color: isDark ? Colors.white54 : Colors.black54,

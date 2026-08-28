@@ -49,17 +49,17 @@ class SupabaseService {
   }) async {
     try {
       final updates = <String, dynamic>{};
-      if (name != null) updates['name'] = name;
-      if (phone != null) updates['phone'] = phone;
-      if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
-      if (bio != null) updates['bio'] = bio;
-      if (gender != null) updates['gender'] = gender;
-      if (birthDate != null) updates['birth_date'] = "${birthDate.year}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}";
-      if (address != null) updates['address'] = address;
-      if (addressLat != null) updates['address_lat'] = addressLat;
-      if (addressLng != null) updates['address_lng'] = addressLng;
-      if (fcmToken != null) updates['fcm_token'] = fcmToken;
-      if (qrCodeUrl != null) updates['qr_code_url'] = qrCodeUrl;
+      if (name != null) updates['user_name'] = name;
+      if (phone != null) updates['user_phone'] = phone;
+      if (avatarUrl != null) updates['user_avatar_url'] = avatarUrl;
+      if (bio != null) updates['user_bio'] = bio;
+      if (gender != null) updates['user_gender'] = gender;
+      if (birthDate != null) updates['user_birth_date'] = "${birthDate.year}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}";
+      if (address != null) updates['user_address'] = address;
+      if (addressLat != null) updates['user_address_lat'] = addressLat;
+      if (addressLng != null) updates['user_address_lng'] = addressLng;
+      if (fcmToken != null) updates['user_fcm_token'] = fcmToken;
+      if (qrCodeUrl != null) updates['user_qr_code_url'] = qrCodeUrl;
       if (updates.isEmpty) return null;
 
       await client.from('users').update(updates).eq('id', userId);

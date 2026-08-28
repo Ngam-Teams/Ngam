@@ -261,7 +261,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       final conversations = _searchQuery.isEmpty 
                           ? allConversations 
                           : allConversations.where((c) {
-                              final nameMatch = (c.otherUser?.name ?? '').toLowerCase().contains(_searchQuery);
+                              final nameMatch = (c.otherUser?.userName ?? '').toLowerCase().contains(_searchQuery);
                               final msgMatch = _matchingConversationIds.contains(c.id);
                               return nameMatch || msgMatch;
                             }).toList();
@@ -276,8 +276,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       
                       if (_searchQuery.isNotEmpty) {
                         groupedList.sort((aList, bList) {
-                          final aName = (aList.first.otherUser?.name ?? '').toLowerCase();
-                          final bName = (bList.first.otherUser?.name ?? '').toLowerCase();
+                          final aName = (aList.first.otherUser?.userName ?? '').toLowerCase();
+                          final bName = (bList.first.otherUser?.userName ?? '').toLowerCase();
                           final aMatchName = aName.contains(_searchQuery);
                           final bMatchName = bName.contains(_searchQuery);
                           

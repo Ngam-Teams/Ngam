@@ -219,8 +219,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     _shopsSubscription?.cancel(); // Kill any old streams
 
     _shopsSubscription = Supabase.instance.client
-        .from('businesses')
+        .from('users')
         .stream(primaryKey: ['id'])
+        .eq('role', 'business')
         .listen((data) {
       if (!mounted) return;
 
@@ -230,37 +231,24 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         int parsedOpenHour = 9; int parsedOpenMin = 0;
         int parsedCloseHour = 22; int parsedCloseMin = 0;
 
-        try {
-          if (row['open_time'] != null) {
-            final parts = row['open_time'].toString().split(':');
-            parsedOpenHour = int.parse(parts[0]);
-            parsedOpenMin = int.parse(parts[1].split(' ')[0]);
-          }
-          if (row['close_time'] != null) {
-            final parts = row['close_time'].toString().split(':');
-            parsedCloseHour = int.parse(parts[0]);
-            parsedCloseMin = int.parse(parts[1].split(' ')[0]);
-          }
-        } catch (_) {}
-
         return {
           'id': row['id'],
-          'name': row['name'] ?? 'Unknown Business',
-          'category': row['business_type']?.toString().toLowerCase() ?? 'service',
+          'name': row['business_name'] ?? 'Unknown Business',
+          'category': 'service', // Default to service for now
           'location': LatLng(
-              (row['latitude'] as num?)?.toDouble() ?? 0.0,
-              (row['longitude'] as num?)?.toDouble() ?? 0.0
+              (row['user_address_lat'] as num?)?.toDouble() ?? 0.0,
+              (row['user_address_lng'] as num?)?.toDouble() ?? 0.0
           ),
-          'image': row['logo_url'] ?? "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=300",
-          'phone': row['phone'],
-          'address': row['address'],
+          'image': row['business_logo_url'] ?? "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=300",
+          'phone': row['business_phone'] ?? row['user_phone'],
+          'address': row['business_address'] ?? row['user_address'],
           'openHour': parsedOpenHour,
           'openMinute': parsedOpenMin,
           'closeHour': parsedCloseHour,
           'closeMinute': parsedCloseMin,
-          'rating': 4.8,
+          'rating': 4.8, // Hardcoded fallback for now since rating was removed
           'reviews': 124,
-          'services': [row['business_type'] ?? 'General Services'],
+          'services': ['General Services'],
         };
       }).toList();
 
@@ -862,6 +850,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                       urlTemplate: isDark
                           ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
                           : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                      userAgentPackageName: 'com.ngam.app',
 
                       // 🟢 PERFECT FIX: Has (context), but NO 'const' keyword!
                       retinaMode: RetinaMode.isHighDensity(context),

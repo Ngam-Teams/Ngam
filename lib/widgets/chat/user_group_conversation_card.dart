@@ -160,9 +160,9 @@ class _UserGroupConversationCardState extends State<UserGroupConversationCard> {
     }
 
     final avatarColor = AppTheme.primary;
-    final avatarUrl = widget.otherUser.avatarUrl;
-    final name = widget.otherUser.name;
-    final avatar = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    final avatarUrl = widget.otherUser.userAvatarUrl;
+    final name = widget.otherUser.userName;
+    final avatar = (name?.isNotEmpty ?? false) ? name![0].toUpperCase() : '?';
 
     return GlassContainer(
       useOwnLayer: true,
@@ -270,7 +270,7 @@ class _UserGroupConversationCardState extends State<UserGroupConversationCard> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            name,
+                            name ?? '',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,

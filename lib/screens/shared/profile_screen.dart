@@ -110,10 +110,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   backgroundColor: isDark
                                       ? Colors.white10
                                       : Colors.black12,
-                                  backgroundImage: user.avatarUrl != null 
-                                      ? CachedNetworkImageProvider(user.avatarUrl!) 
+                                  backgroundImage: user.userAvatarUrl != null 
+                                      ? CachedNetworkImageProvider(user.userAvatarUrl!) 
                                       : null,
-                                  child: user.avatarUrl == null 
+                                  child: user.userAvatarUrl == null 
                                       ? HugeIcon(
                                           icon: HugeIcons.strokeRoundedUser,
                                           color: isDark
@@ -126,7 +126,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                user.name.isNotEmpty ? user.name : 'User',
+                                (user.userName?.isNotEmpty ?? false) ? user.userName! : 'User',
                                 style: GoogleFonts.outfit(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w900,
@@ -160,7 +160,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                user.email,
+                                user.userEmail ?? '',
                                 style: TextStyle(
                                   color: isDark ? Colors.white70 : Colors.grey,
                                   fontSize: 14,
