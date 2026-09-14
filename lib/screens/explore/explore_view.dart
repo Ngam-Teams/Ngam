@@ -14,6 +14,8 @@ import 'package:ngam/l10n/generated/app_localizations.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'shop_detail_screen.dart';
+import 'business_products_view.dart';
+import 'business_store_view.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import '../../widgets/glass_toast.dart';
 import '../auth/login_screen.dart'; // Make sure this matches your auth screen file name
@@ -187,8 +189,24 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     final double bottomSheetTop = screenHeight * (1.0 - sheetExtent);
 
     // 4. Find the exact middle pixel in the visible map gap
-    // Return shop location directly (pixel offset simplified for flutter_map v8 compatibility)
-    return shop['location'];
+    double visibleCenterY = searchBarBottom + (bottomSheetTop - searchBarBottom) / 2.0;
+    
+    // 5. Account for the popup which sits above the marker (approx 60px tall)
+    // We want the whole block (marker + popup) to be centered, so we push the target center down slightly.
+    visibleCenterY += 30.0; 
+
+    // 6. Calculate pixel difference from true screen center
+    double pixelOffset = visibleCenterY - (screenHeight / 2.0);
+
+    // 7. Convert pixel offset to latitude offset
+    // Based on the user's base offset: 0.0055 degrees ~= 64 pixels at zoom 14
+    double degreesPerPixelAtZoom14 = 0.0055 / 64.0;
+    double latOffset = pixelOffset * degreesPerPixelAtZoom14 * pow(2, 14.0 - targetZoom);
+
+    return LatLng(
+      shop['location'].latitude + latOffset,
+      shop['location'].longitude,
+    );
   }
 
 
@@ -384,11 +402,6 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   void _onMapPinTapped(Map<String, dynamic> shop, int index, {double? targetZoom}) {
     _killFocus();
 
-    if (_selectedShop?['name'] == shop['name']) {
-      _showBusinessProfile(context, shop);
-      return;
-    }
-
     _isMapLocked = true;
 
     setState(() {
@@ -547,14 +560,17 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     // --- FIX: 1. Force an immediate GPS grab for a fast first load ---
     try {
       // Tries to get the location quickly. If it takes more than 4 seconds, it fails gracefully.
-      Position initialPos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 4),
-      );
+      Position? initialPos = await Geolocator.getLastKnownPosition();
+      
+      if (initialPos == null) {
+        initialPos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
+        ).timeout(const Duration(seconds: 4));
+      }
 
-      if (mounted) {
+      if (mounted && initialPos != null) {
         setState(() {
-          _currentLocation = LatLng(initialPos.latitude, initialPos.longitude);
+          _currentLocation = LatLng(initialPos!.latitude, initialPos!.longitude);
         });
 
         if (_followUser) {
@@ -564,7 +580,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           } catch (_) {}
           double adaptiveOffset = _baseLatitudeOffset * pow(2, 14.0 - zoom);
           LatLng offsetLocation = LatLng(
-              initialPos.latitude + adaptiveOffset, initialPos.longitude);
+              initialPos!.latitude + adaptiveOffset, initialPos!.longitude);
 
           // Jump immediately to the real location
           if (_isMapReady) {
@@ -577,10 +593,11 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     }
 
     // --- 2. THEN start the stream to track them as they walk/drive ---
+    _positionStream?.cancel();
     _positionStream = Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            distanceFilter: 10 // Only updates if they move 10+ meters
+            accuracy: LocationAccuracy.best,
+            distanceFilter: 1 // Only updates if they move 1+ meters (responsive real-time)
         )
     ).listen((Position pos) {
       if (!mounted) return;
@@ -1858,9 +1875,27 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
             children: [
               ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                  child: Image.network(
-                      "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=200",
-                      width: 70, height: 70, fit: BoxFit.cover)
+                  child: shop['image'] != null && shop['image'].toString().isNotEmpty
+                      ? Image.network(
+                          shop['image'],
+                          width: 70, height: 70, fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 70, height: 70,
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.blue.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Center(child: HugeIcon(icon: HugeIcons.strokeRoundedStore01, color: isDark ? Colors.white54 : Colors.blue, size: 28, strokeWidth: 2.0)),
+                          ),
+                        )
+                      : Container(
+                          width: 70, height: 70,
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.blue.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Center(child: HugeIcon(icon: HugeIcons.strokeRoundedStore01, color: isDark ? Colors.white54 : Colors.blue, size: 28, strokeWidth: 2.0)),
+                        )
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -1989,7 +2024,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
           return DraggableScrollableSheet(
             initialChildSize: adaptiveInitialSize,
-            minChildSize: adaptiveInitialSize,
+            minChildSize: 0.2,
             maxChildSize: 1.0,
             expand: false,
             builder: (context, scrollController) {
@@ -2002,7 +2037,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                         if (sheetExtent != notification.extent) {
                           setSheetState(() => sheetExtent = notification.extent);
                         }
-                        return true;
+                        // MUST return false so the notification bubbles up to showModalBottomSheet
+                        // for auto-dismiss behavior when dragged down.
+                        return false;
                       },
                       child: ClipRRect(
                         borderRadius: BorderRadius.vertical(top: Radius.circular(currentRadius)),
@@ -2034,6 +2071,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                             ListView(
                               controller: scrollController,
                               padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 120),
+                              shrinkWrap: true,
                               children: [
                                 AnimatedOpacity(
                                   duration: const Duration(milliseconds: 150),
@@ -2162,21 +2200,41 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                   ],
                                 ),
                                 const SizedBox(height: 24),
-                                _buildSectionTitle(AppLocalizations.of(context)!.operatingHours, isDark),
+                                // 🟢 VIEW STORE BUTTON → BusinessStoreView (main store page)
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.pop(context); // Close bottom sheet first
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => BusinessStoreView(shop: shop),
+                                      ),
+                                    );
+                                  },
+                                  child: _buildInnerGlassCard(
+                                    isDark: isDark,
+                                    radius: 18.0,
+                                    padding: const EdgeInsets.symmetric(vertical: 20),
+                                    child: Center(
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          HugeIcon(icon: HugeIcons.strokeRoundedStore01, color: isDark ? Colors.white : Colors.black87, size: 22),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            "View Store",
+                                            style: TextStyle(
+                                              color: isDark ? Colors.white : Colors.black87,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold
+                                            )
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
 
-                                // 🟢 PASSED LOCAL STATE INSTEAD OF GLOBAL STATE
-                                _buildHoursSection(shop, status, isDark, setSheetState, localIsHoursExpanded, () {
-                                  setSheetState(() {
-                                    localIsHoursExpanded = !localIsHoursExpanded;
-                                  });
-                                }),
-
-                                const SizedBox(height: 24),
-                                _buildSectionTitle(AppLocalizations.of(context)!.servicesAvailable, isDark),
-                                _buildServicesSection(shop, isDark),
-                                const SizedBox(height: 24),
-                                _buildSectionTitle(AppLocalizations.of(context)!.recentReviews, isDark),
-                                _buildReviewsSection(shop, isDark),
                               ],
                             ),
                             Positioned(
@@ -2195,14 +2253,14 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                         ])),
                                 child: Row(
                                   children: [
-                                    // 🟢 BUTTON 1: View Profile
+                                    // 🟢 BUTTON 1: View Store
                                     Expanded(
                                       child: _AnimatedPressable(
                                         onTap: () {
                                           _searchFocus.unfocus();
                                           Navigator.pop(context); // Close the bottom sheet
                                           // Navigate to the full detail screen
-                                          Navigator.push(context, MaterialPageRoute(builder: (context) => ShopDetailScreen(shop: shop)));
+                                          Navigator.push(context, MaterialPageRoute(builder: (context) => BusinessStoreView(shop: shop)));
                                         },
                                         // 👇 CHANGED: Now uses the exact same frosted glass style as the Stats Dashboard!
                                         child: _buildInnerGlassCard(

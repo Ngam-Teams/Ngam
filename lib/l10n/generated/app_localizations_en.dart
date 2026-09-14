@@ -118,7 +118,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get user => 'User';
 
   @override
-  String get rezrvNow => 'Rezrv Now';
+  String get rezrvNow => 'Book';
 
   @override
   String resultsFor(String query) {
@@ -463,7 +463,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get msgSMS => 'SMS Message';
 
   @override
-  String get btnViewProfile => 'View Profile';
+  String get btnViewProfile => 'View Store';
 
   @override
   String get piProfileUpdated => 'Profile updated successfully!';

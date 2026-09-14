@@ -62,7 +62,7 @@
   "recentReviews": "Ulasan Terkini",
   "noReviewsYet": "Belum ada ulasan.",
   "user": "Pengguna",
-  "rezrvNow": "REZRV Sekarang",
+  "rezrvNow": "Tempah",
 
   "resultsFor": "Hasil carian untuk '{query}'",
   "@resultsFor": {
@@ -233,7 +233,7 @@
   "msgTelegram": "Telegram",
   "msgSMS": "Mesej SMS",
 
-  "btnViewProfile": "Lihat Profil",
+  "btnViewProfile": "Lihat Kedai",
 
   "piProfileUpdated": "Profil berjaya dikemas kini!",
   "piFullName": "Nama Penuh",

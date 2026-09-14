@@ -35,17 +35,63 @@ class _MapPickerState extends State<MapPicker> {
       setState(() => _isLoadingLocation = true);
     }
     try {
-      final hasPermission = await Geolocator.requestPermission();
-      if (hasPermission == LocationPermission.always || hasPermission == LocationPermission.whileInUse) {
-        final pos = await Geolocator.getCurrentPosition();
-        final latLng = LatLng(pos.latitude, pos.longitude);
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
         if (mounted) {
-          _mapController.move(latLng, 15.0);
-          setState(() {
-            _selectedLocation = latLng;
-          });
-          widget.onLocationSelected(latLng);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Sila aktifkan servis lokasi (GPS).')),
+          );
         }
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Keizinan lokasi ditolak.')),
+            );
+          }
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Keizinan lokasi ditolak secara kekal. Sila tukar di tetapan peranti.')),
+          );
+        }
+        return;
+      }
+
+      // Try to get last known position first (fast, doesn't hang emulators)
+      Position? pos = await Geolocator.getLastKnownPosition();
+
+      // If no last known position, try to get current position with low accuracy
+      if (pos == null) {
+        pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
+        ).timeout(const Duration(seconds: 5), onTimeout: () {
+          throw 'Location timeout';
+        });
+      }
+      
+      final latLng = LatLng(pos.latitude, pos.longitude);
+      if (mounted) {
+        _mapController.move(latLng, 15.0);
+        setState(() {
+          _selectedLocation = latLng;
+        });
+        widget.onLocationSelected(latLng);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal mendapatkan lokasi semasa. Sila set lokasi anda di emulator.')),
+        );
       }
     } finally {
       if (mounted) {

@@ -62,7 +62,7 @@
     "recentReviews": "Recent Reviews",
     "noReviewsYet": "No reviews yet.",
     "user": "User",
-    "rezrvNow": "Rezrv Now",
+    "rezrvNow": "Book",
 
     "resultsFor": "Results for '{query}'",
     "@resultsFor": {
@@ -233,7 +233,7 @@
     "msgTelegram": "Telegram",
     "msgSMS": "SMS Message",
 
-    "btnViewProfile": "View Profile",
+    "btnViewProfile": "View Store",
 
     "piProfileUpdated": "Profile updated successfully!",
     "piFullName": "Full Name",
