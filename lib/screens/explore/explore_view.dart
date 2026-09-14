@@ -2086,17 +2086,23 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                           children: [
                             Positioned.fill(
                                 child: GlassContainer(
-                                  useOwnLayer: false,
+                                useOwnLayer: true,
                                 quality: GlassQuality.standard,
                                 shape: LiquidRoundedSuperellipse(borderRadius: currentRadius),
                                 settings: _getGlassSettings(isDark, blur: 4),
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    color: isDark ? Colors.black.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.4),
                                     border: Border.all(
                                       color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
                                       width: 1.0,
                                     ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
