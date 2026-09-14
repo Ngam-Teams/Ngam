@@ -808,7 +808,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isSearchActive = _isSearchPanelOpen;
     final bool hideBottomPanel = isSearchActive || _isProfileOpen;
-    final double bottomPosition = hideBottomPanel ? -500 : (MediaQuery.of(context).viewInsets.bottom > 0 ? MediaQuery.of(context).viewInsets.bottom + 20 : 110);
+    final double bottomPosition = hideBottomPanel ? -500 : (MediaQuery.of(context).viewInsets.bottom > 0 ? MediaQuery.of(context).viewInsets.bottom + 20 : 105);
 
     return PopScope(
       canPop: !_searchFocus.hasFocus && _searchController.text.isEmpty,
@@ -864,31 +864,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                     onPositionChanged: (pos, hasGesture) {
                       if (hasGesture) {
                         _onMapInteractionStart();
-                        if (_isProfileOpen && _sheetController.isAttached) {
-                          double textAvailableWidth = MediaQuery.of(context).size.width - 108;
-                          final TextPainter textPainter = TextPainter(
-                            text: TextSpan(
-                                text: _selectedShop?['name'] ?? '',
-                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                            textDirection: TextDirection.ltr,
-                            maxLines: 2,
-                          )..layout(maxWidth: textAvailableWidth);
-
-                          int numLines = textPainter.computeLineMetrics().length;
-                          double baseHeight = numLines > 1 ? 430.0 : 400;
-                          double adaptiveInitialSize = (baseHeight + MediaQuery.of(context).padding.bottom) / MediaQuery.of(context).size.height;
-                          adaptiveInitialSize = adaptiveInitialSize.clamp(0.40, 0.85);
-
-                          if (_sheetController.size > adaptiveInitialSize && !_isSheetAnimating) {
-                            _isSheetAnimating = true;
-                            _sheetController.animateTo(
-                              adaptiveInitialSize, 
-                              duration: const Duration(milliseconds: 300), 
-                              curve: Curves.easeOut
-                            ).whenComplete(() {
-                              _isSheetAnimating = false;
-                            });
-                          }
+                        // Dismiss the bottom sheet if it's open — carousel will slide back up
+                        if (_isProfileOpen) {
+                          Navigator.of(context).pop();
                         }
                       } else {
                         _startSnapBackTimer();
@@ -1459,87 +1437,84 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-                padding: const EdgeInsets.only(right: 24, bottom: 4),
-                child: Align(
-                    alignment: Alignment.centerRight,
-                    child: _AnimatedPressable(
-                        onTap: () {
-                          setState(() => _followUser = true);
-                          double zoom = 14.0;
-                          try {
-                            zoom = _mapController.camera.zoom;
-                          } catch (_) {}
-                          double adaptiveOffset = _baseLatitudeOffset *
-                              pow(2, 14.0 - zoom);
-                          LatLng offsetLocation = LatLng(
-                              _currentLocation.latitude + adaptiveOffset,
-                              _currentLocation.longitude);
-                          _animatedMapMove(offsetLocation, zoom);
-                        },
-                        child: GlassContainer(
-                          useOwnLayer: true,
-                          quality: GlassQuality.standard,
-                          shape: LiquidRoundedSuperellipse(borderRadius: 100.0),
-                          settings: _getGlassSettings(isDark),
-                          child: Container(
-                              height: 48,
-                              width: 48,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(100),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 
-                                      isDark ? 0.15 : 0.4),
-                                  width: 1.0,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 
-                                        isDark ? 0.2 : 0.05),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Center(
-                                  child: HugeIcon(
-                                      icon: HugeIcons
-                                          .strokeRoundedLocationShare02,
-                                      // --- APPLIED GRAY ICON ---
-                                      color: _followUser ? Colors.blue : (isDark
-                                          ? Colors.white70
-                                          : _lightModeGray),
-                                      size: 22,
-                                      strokeWidth: 2.0
-                                  )
-                              )
-                          ),
-                        )
-                    )
-                )
-            ),
-            Padding(
                 padding: EdgeInsets.only(
-                    left: (MediaQuery
-                        .of(context)
-                        .size
-                        .width * 0.075) + 8,
-                    bottom: 4
+                    left: (MediaQuery.of(context).size.width * 0.075) + 8,
+                    right: 24,
+                    bottom: 8
                 ),
-                child: Text(
-                    _activeSearchQuery == null
-                        ? AppLocalizations.of(context)!.nearby
-                        : (_displayedShops.isNotEmpty
-                        ? AppLocalizations.of(context)!.resultsFor(
-                        _activeSearchQuery!)
-                        : AppLocalizations.of(context)!.noResultsFoundTitle),
-                    // --- APPLIED GRAY TEXT ---
-                    style: TextStyle(
-                        color: isDark ? Colors.white : _lightModeGray,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold)
+                child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                        Text(
+                            _activeSearchQuery == null
+                                ? AppLocalizations.of(context)!.nearby
+                                : (_displayedShops.isNotEmpty
+                                ? AppLocalizations.of(context)!.resultsFor(_activeSearchQuery!)
+                                : AppLocalizations.of(context)!.noResultsFoundTitle),
+                            // --- APPLIED GRAY TEXT ---
+                            style: TextStyle(
+                                color: isDark ? Colors.white : _lightModeGray,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold)
+                        ),
+                        _AnimatedPressable(
+                            onTap: () {
+                              setState(() => _followUser = true);
+                              double zoom = 14.0;
+                              try {
+                                zoom = _mapController.camera.zoom;
+                              } catch (_) {}
+                              double adaptiveOffset = _baseLatitudeOffset *
+                                  pow(2, 14.0 - zoom);
+                              LatLng offsetLocation = LatLng(
+                                  _currentLocation.latitude + adaptiveOffset,
+                                  _currentLocation.longitude);
+                              _animatedMapMove(offsetLocation, zoom);
+                            },
+                            child: GlassContainer(
+                              useOwnLayer: true,
+                              quality: GlassQuality.standard,
+                              shape: LiquidRoundedSuperellipse(borderRadius: 100.0),
+                              settings: _getGlassSettings(isDark),
+                              child: Container(
+                                  height: 48,
+                                  width: 48,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(100),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(alpha: 
+                                          isDark ? 0.15 : 0.4),
+                                      width: 1.0,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 
+                                            isDark ? 0.2 : 0.05),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Center(
+                                      child: HugeIcon(
+                                          icon: HugeIcons
+                                              .strokeRoundedLocationShare02,
+                                          // --- APPLIED GRAY ICON ---
+                                          color: _followUser ? Colors.blue : (isDark
+                                              ? Colors.white70
+                                              : _lightModeGray),
+                                          size: 22,
+                                          strokeWidth: 2.0
+                                      )
+                                  )
+                              ),
+                            )
+                        )
+                    ]
                 )
             ),
-            SizedBox(height: 135, child: PageView.builder(controller: _pageController, onPageChanged: _onCarouselPageChanged, physics: const ClampingScrollPhysics(), itemCount: _displayedShops.length, itemBuilder: (context, i) => _AnimatedPressable(onTap: () => _onMapPinTapped(_displayedShops[i], i), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: _buildCarouselCard(isDark, _displayedShops[i]))))),
+            SizedBox(height: 95, child: PageView.builder(controller: _pageController, onPageChanged: _onCarouselPageChanged, physics: const ClampingScrollPhysics(), itemCount: _displayedShops.length, itemBuilder: (context, i) => _AnimatedPressable(onTap: () => _onMapPinTapped(_displayedShops[i], i), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: _buildCarouselCard(isDark, _displayedShops[i]))))),
           ]);
 
   Widget _buildEmptyState(bool isDark) {
@@ -1887,6 +1862,25 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           blurRadius: 0),
     ];
 
+    // Compute status for badge
+    final ShopStatus status = _getShopStatus(shop);
+    Color statusColor;
+    String statusText;
+    switch (status) {
+      case ShopStatus.open:
+        statusColor = Colors.blue;
+        statusText = AppLocalizations.of(context)!.statusOpenCaps;
+        break;
+      case ShopStatus.closingSoon:
+        statusColor = Colors.orange;
+        statusText = AppLocalizations.of(context)!.statusClosingCaps;
+        break;
+      case ShopStatus.closed:
+        statusColor = Colors.red;
+        statusText = AppLocalizations.of(context)!.statusClosedCaps;
+        break;
+    }
+
     return GlassContainer(
       useOwnLayer: true,
       quality: GlassQuality.standard,
@@ -1894,7 +1888,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       settings: _getGlassSettings(isDark),
       child: Container(
         width: 285,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white
               .withValues(alpha: 0.1),
@@ -1913,6 +1907,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         ),
         child: Row(
             children: [
+              // Shop image
               ClipRRect(
                   borderRadius: BorderRadius.circular(16),
                   child: shop['image'] != null && shop['image'].toString().isNotEmpty
@@ -1937,44 +1932,69 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                           child: Center(child: HugeIcon(icon: HugeIcons.strokeRoundedStore01, color: isDark ? Colors.white54 : Colors.blue, size: 28, strokeWidth: 2.0)),
                         )
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
+              // Info column: name, category + status
               Expanded(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        // Business name
                         Text(
                             shop['name'],
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontWeight: FontWeight.w900,
-                              fontSize: 14,
-                              // --- APPLIED GRAY TEXT ---
+                              fontSize: 15,
                               color: isDark ? Colors.white : _lightModeGray,
                               shadows: isDark ? frostedGlow : [],
                             )
                         ),
+                        const SizedBox(height: 4),
+                        // Category
+                        Text(
+                            (shop['category'] ?? '').toString().toUpperCase(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.blue,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.8,
+                            )
+                        ),
                         const SizedBox(height: 6),
+                        // Status badge + distance
                         Row(
                             children: [
-                              // --- APPLIED GRAY ICON ---
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                decoration: BoxDecoration(
+                                    color: statusColor.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: statusColor.withValues(alpha: 0.4))),
+                                child: Text(statusText,
+                                    style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: statusColor)),
+                              ),
+                              const SizedBox(width: 8),
                               HugeIcon(icon: HugeIcons.strokeRoundedLocation01,
-                                  color: isDark ? Colors.white : _lightModeGray,
-                                  size: 14,
+                                  color: isDark ? Colors.white54 : _lightModeGray.withValues(alpha: 0.6),
+                                  size: 12,
                                   strokeWidth: 2.5),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 2),
                               Flexible(
                                   child: Text(
                                       _getDistanceString(shop['location']),
                                       style: TextStyle(
-                                        fontSize: 12,
-                                        // --- APPLIED GRAY TEXT ---
+                                        fontSize: 11,
                                         color: isDark
-                                            ? Colors.white
-                                            : _lightModeGray,
+                                            ? Colors.white54
+                                            : _lightModeGray.withValues(alpha: 0.6),
                                         fontWeight: FontWeight.w600,
-                                        shadows: isDark ? frostedGlow : [],
                                       ),
                                       overflow: TextOverflow.ellipsis
                                   )
@@ -1983,7 +2003,34 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                         )
                       ]
                   )
-              )
+              ),
+              const SizedBox(width: 8),
+              // Share button
+              GlassContainer(
+                useOwnLayer: true,
+                quality: GlassQuality.standard,
+                shape: LiquidRoundedSuperellipse(borderRadius: 100.0),
+                settings: _getGlassSettings(isDark),
+                child: Container(
+                  height: 38,
+                  width: 38,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(100),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
+                      width: 1.0,
+                    ),
+                  ),
+                  child: Center(
+                    child: HugeIcon(
+                      icon: HugeIcons.strokeRoundedShare01,
+                      color: isDark ? Colors.white70 : _lightModeGray,
+                      size: 16,
+                      strokeWidth: 2.0,
+                    ),
+                  ),
+                ),
+              ),
             ]
         ),
       ),
@@ -2039,6 +2086,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     _scaffoldKey.currentState!.showBottomSheet(
       backgroundColor: Colors.transparent,
       elevation: 0,
+      enableDrag: false,
       (context) {
         return LayoutBuilder(builder: (context, constraints) {
           final String shopName = shop['name'] ?? '';
@@ -2061,65 +2109,58 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           return DraggableScrollableSheet(
             controller: _sheetController,
             initialChildSize: adaptiveInitialSize,
-            minChildSize: 0.2,
+            minChildSize: 0.15,
             maxChildSize: 1.0,
+            snap: true,
+            snapSizes: [adaptiveInitialSize],
             expand: false,
             builder: (context, scrollController) {
-              return StatefulBuilder(
-                  builder: (BuildContext context, StateSetter setSheetState) {
-                    double currentRadius = ((1.0 - sheetExtent) * 150).clamp(0.0, 32.0);
-
-                    return NotificationListener<DraggableScrollableNotification>(
-                      onNotification: (notification) {
-                        if (sheetExtent != notification.extent) {
-                          setSheetState(() => sheetExtent = notification.extent);
-                        }
-                        // MUST return false so the notification bubbles up to showModalBottomSheet
-                        // for auto-dismiss behavior when dragged down.
-                        return false;
-                      },
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(currentRadius)),
-                        child: Stack(
-                          children: [
-                            Positioned.fill(
-                              child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 4.0, sigmaY: 4.0),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white.withValues(alpha: 0.15),
-                                    border: Border.all(
-                                      color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
-                                      width: 1.0,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
+              return NotificationListener<DraggableScrollableNotification>(
+                onNotification: (notification) {
+                  // Auto-close when dragged below 25% of screen
+                  if (notification.extent <= 0.25) {
+                    Navigator.of(context).pop();
+                  }
+                  return true;
+                },
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: GlassContainer(
+                        useOwnLayer: true,
+                        quality: GlassQuality.standard,
+                        shape: LiquidRoundedSuperellipse(borderRadius: 32.0),
+                        settings: _getGlassSettings(isDark, blur: 4),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
+                              width: 1.0,
                             ),
-                            ListView(
-                              controller: scrollController,
-                              padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 120),
-                              shrinkWrap: true,
-                              children: [
-                                AnimatedOpacity(
-                                  duration: const Duration(milliseconds: 150),
-                                  opacity: sheetExtent > 0.95 ? 0.0 : 1.0,
-                                  child: Center(
-                                      child: Container(
-                                          width: 40,
-                                          height: 4,
-                                          decoration: BoxDecoration(
-                                              color: isDark ? Colors.white24 : _lightModeGray.withValues(alpha: 0.2),
-                                              borderRadius: BorderRadius.circular(10)))),
-                                ),
-                                const SizedBox(height: 24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    ListView(
+                      controller: scrollController,
+                      padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 120),
+                      shrinkWrap: true,
+                      children: [
+                        Center(
+                            child: Container(
+                                width: 40,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                    color: isDark ? Colors.white24 : _lightModeGray.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(10)))),
+                        const SizedBox(height: 24),
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2359,11 +2400,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                 ),
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    );
-                  });
+                  ], // End Stack children
+                ), // End Stack
+              ); // End NotificationListener
             },
           );
         });
