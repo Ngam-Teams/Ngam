@@ -41,6 +41,8 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   final MapController _mapController = MapController();
   final FocusNode _searchFocus = FocusNode();
   final TextEditingController _searchController = TextEditingController();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final DraggableScrollableController _sheetController = DraggableScrollableController();
 
   Timer? _minuteTicker;
 
@@ -76,6 +78,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   bool _followUser = true;
   bool _isSearching = false;
   bool _isProfileOpen = false;
+  bool _isSheetAnimating = false;
 
   Map<String, dynamic>? _selectedShop;
   int _currentCarouselIndex = 0;
@@ -293,6 +296,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           _displayedShops = List.from(_realShops);
         }
       });
+    }, onError: (error) {
+      debugPrint('Supabase Stream Error: $error');
+      // If Realtime is not enabled, the stream will throw an error here.
     });
   }
 
@@ -315,6 +321,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     _searchFocus.removeListener(_onSearchFocusChanged);
     _searchFocus.dispose();
     _searchController.dispose();
+    _sheetController.dispose();
     super.dispose();
   }
 
@@ -819,6 +826,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           _killFocus();
         },
         child: Scaffold(
+          key: _scaffoldKey,
           resizeToAvoidBottomInset: false,
           body: Stack(
             children: [
@@ -856,10 +864,37 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                       _clearSearch();
                     },
                     onPositionChanged: (pos, hasGesture) {
-                      if (hasGesture)
+                      if (hasGesture) {
                         _onMapInteractionStart();
-                      else
+                        if (_isProfileOpen && _sheetController.isAttached) {
+                          double textAvailableWidth = MediaQuery.of(context).size.width - 108;
+                          final TextPainter textPainter = TextPainter(
+                            text: TextSpan(
+                                text: _selectedShop?['name'] ?? '',
+                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                            textDirection: TextDirection.ltr,
+                            maxLines: 2,
+                          )..layout(maxWidth: textAvailableWidth);
+
+                          int numLines = textPainter.computeLineMetrics().length;
+                          double baseHeight = numLines > 1 ? 430.0 : 400;
+                          double adaptiveInitialSize = (baseHeight + MediaQuery.of(context).padding.bottom) / MediaQuery.of(context).size.height;
+                          adaptiveInitialSize = adaptiveInitialSize.clamp(0.40, 0.85);
+
+                          if (_sheetController.size > adaptiveInitialSize && !_isSheetAnimating) {
+                            _isSheetAnimating = true;
+                            _sheetController.animateTo(
+                              adaptiveInitialSize, 
+                              duration: const Duration(milliseconds: 300), 
+                              curve: Curves.easeOut
+                            ).whenComplete(() {
+                              _isSheetAnimating = false;
+                            });
+                          }
+                        }
+                      } else {
                         _startSnapBackTimer();
+                      }
                     },
                   ),
                   children: [
@@ -969,11 +1004,18 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                   ],
                 ),
               ),
-              Positioned(top: MediaQuery
-                  .of(context)
-                  .padding
-                  .top + 20, left: 0, right: 0, child: _buildSearchRow(isDark)),
-              Positioned(top: MediaQuery.of(context).padding.top + 80, left: 24, right: 24,
+              Positioned(
+                // TWEAK THIS: Change the `+ 8` to move the search bar up or down.
+                top: MediaQuery.of(context).padding.top + 6, 
+                left: 0, 
+                right: 0, 
+                child: _buildSearchRow(isDark)
+              ),
+              Positioned(
+                // TWEAK THIS: Match the spacing for the search results dropdown below the search bar (e.g., + 68)
+                top: MediaQuery.of(context).padding.top + 68, 
+                left: 24, 
+                right: 24,
                   child: AnimatedOpacity(
                       duration: const Duration(milliseconds: 300),
                       opacity: isSearchActive ? 1.0 : 0.0,
@@ -1996,14 +2038,10 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     // 🟢 DEFINE THE HOURS STATE HERE! It lives locally inside the bottom sheet.
     bool localIsHoursExpanded = false;
 
-    showModalBottomSheet(
-      context: context,
+    _scaffoldKey.currentState!.showBottomSheet(
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.transparent,
       elevation: 0,
-      isScrollControlled: true,
-      useSafeArea: false,
-      builder: (context) {
+      (context) {
         return LayoutBuilder(builder: (context, constraints) {
           final String shopName = shop['name'] ?? '';
 
@@ -2023,6 +2061,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           double sheetExtent = adaptiveInitialSize;
 
           return DraggableScrollableSheet(
+            controller: _sheetController,
             initialChildSize: adaptiveInitialSize,
             minChildSize: 0.2,
             maxChildSize: 1.0,
@@ -2046,24 +2085,18 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                         child: Stack(
                           children: [
                             Positioned.fill(
-                              child: GlassContainer(
-                                useOwnLayer: true,
+                                child: GlassContainer(
+                                  useOwnLayer: false,
                                 quality: GlassQuality.standard,
                                 shape: LiquidRoundedSuperellipse(borderRadius: currentRadius),
                                 settings: _getGlassSettings(isDark, blur: 4),
                                 child: Container(
                                   decoration: BoxDecoration(
+                                    color: isDark ? Colors.black.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.4),
                                     border: Border.all(
                                       color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
                                       width: 1.0,
                                     ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
                                   ),
                                 ),
                               ),
@@ -2333,7 +2366,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           );
         });
       },
-    ).whenComplete(() {
+    ).closed.whenComplete(() {
       if (mounted) {
         setState(() {
           _isProfileOpen = false;

@@ -39,6 +39,8 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
 
+  bool _isLiked = false;
+
   // ── Status Helpers ───────────────────────────────────────────
 
   _StoreStatus get _status {
@@ -241,39 +243,38 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
   Widget _glassBox({
     required bool isDark,
     required Widget child,
-    double radius = 20,
+    double radius = 16.0,
     EdgeInsetsGeometry? padding,
     Color? overrideColor,
     Color? overrideBorder,
-    double blur = 16,
+    double blur = 4.0,
   }) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            color: overrideColor ??
-                (isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.white.withValues(alpha: 0.6)),
-            borderRadius: BorderRadius.circular(radius),
-            border: Border.all(
-              color: overrideBorder ??
-                  Colors.white.withValues(alpha: isDark ? 0.15 : 0.5),
-              width: 1.0,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.05),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
+    return GlassContainer(
+      useOwnLayer: true,
+      quality: GlassQuality.standard,
+      shape: LiquidRoundedSuperellipse(borderRadius: radius),
+      settings: _glassSettings(isDark, blur: blur),
+      child: Container(
+        padding: padding,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(radius),
+          color: overrideColor ??
+              (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white
+                  .withValues(alpha: 0.4)),
+          border: Border.all(
+            color: overrideBorder ??
+                Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
+            width: 1.0,
           ),
-          child: child,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.1 : 0.02),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
+        child: child,
       ),
     );
   }
@@ -679,17 +680,48 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                 _liquidGlassBox(
                   isDark: isDark,
                   radius: 100,
-                  child: SizedBox(
-                    width: 44,
-                    height: 44,
-                    child: Center(
-                      child: HugeIcon(
-                        icon: HugeIcons.strokeRoundedShoppingBag01,
-                        color: isDark ? Colors.white : const Color(0xFF1C1C1E),
-                        size: 22,
-                        strokeWidth: 2.0,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Like button
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _isLiked = !_isLiked;
+                          });
+                        },
+                        child: SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: Center(
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 300),
+                              transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                              child: Icon(
+                                _isLiked ? Icons.favorite : Icons.favorite_border_rounded,
+                                key: ValueKey(_isLiked),
+                                color: _isLiked ? Colors.red : (isDark ? Colors.white : const Color(0xFF1C1C1E)),
+                                size: 22,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                      // Divider removed as per user request
+                      // Cart button
+                      SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: Center(
+                          child: HugeIcon(
+                            icon: HugeIcons.strokeRoundedShoppingBag01,
+                            color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                            size: 22,
+                            strokeWidth: 2.0,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -881,152 +913,238 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
       useSafeArea: false,
       builder: (context) {
         return DraggableScrollableSheet(
-          initialChildSize: 0.65,
+          initialChildSize: 0.72,
           minChildSize: 0.4,
-          maxChildSize: 0.95,
+          maxChildSize: 1.0,
           expand: false,
           builder: (context, scrollController) {
-            return ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: GlassContainer(
-                      useOwnLayer: true,
-                      quality: GlassQuality.standard,
-                      shape: LiquidRoundedSuperellipse(borderRadius: 32.0),
-                      settings: _glassSettings(isDark, blur: 4.0),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          border: Border(
-                            top: BorderSide(
-                              color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.6),
-                              width: 1.0,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  ListView(
-                    controller: scrollController,
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    children: [
-                      Center(
-                        child: Container(
-                          margin:
-                              const EdgeInsets.only(top: 14, bottom: 12),
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.white24
-                                : Colors.black.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                      ClipRRect(
-                              borderRadius: BorderRadius.circular(24),
-                              child: product.imageUrl.isNotEmpty
-                                  ? Image.network(
-                                      product.imageUrl,
-                                      height: 240,
-                                      width: double.infinity,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : Container(
-                                      height: 240,
-                                      color: isDark
-                                          ? Colors.white
-                                              .withValues(alpha: 0.05)
-                                          : Colors.blue
-                                              .withValues(alpha: 0.08),
-                                      child: const Icon(Icons.image,
-                                          size: 50, color: Colors.grey),
-                                    ),
-                            ),
-                            const SizedBox(height: 20),
-                            Text(
-                              product.name,
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? Colors.white
-                                    : const Color(0xFF1C1C1E),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'RM ${product.price.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.blue,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            Text(
-                              'Description',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? Colors.white
-                                    : const Color(0xFF1C1C1E),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              product.description.isEmpty
-                                  ? 'No description provided.'
-                                  : product.description,
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: isDark
-                                    ? Colors.white70
-                                    : Colors.black87,
-                                height: 1.5,
-                              ),
-                            ),
-                            const SizedBox(height: 28),
-                            GestureDetector(
-                              onTap: () => Navigator.pop(context),
+            bool isProductLiked = false;
+            return StatefulBuilder(
+              builder: (BuildContext context, StateSetter setSheetState) {
+                double sheetExtent = 0.72;
+                return NotificationListener<DraggableScrollableNotification>(
+                  onNotification: (notification) {
+                    if (sheetExtent != notification.extent) {
+                      setSheetState(() => sheetExtent = notification.extent);
+                    }
+                    return false;
+                  },
+                  child: Builder(builder: (context) {
+                    double currentRadius = ((1.0 - sheetExtent) * 150).clamp(0.0, 32.0);
+                    return ClipRRect(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(currentRadius)),
+                      child: Stack(
+                        children: [
+                          // ── LAYER 1: Outer frosted glass background ──
+                          Positioned.fill(
+                            child: GlassContainer(
+                              useOwnLayer: true,
+                              quality: GlassQuality.standard,
+                              shape: LiquidRoundedSuperellipse(borderRadius: currentRadius),
+                              settings: _glassSettings(isDark, blur: 4.0),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 16),
                                 decoration: BoxDecoration(
-                                  color: Colors.blue,
-                                  borderRadius:
-                                      BorderRadius.circular(18),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
+                                    width: 1.0,
+                                  ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.blue
-                                          .withValues(alpha: 0.35),
-                                      blurRadius: 16,
-                                      offset: const Offset(0, 6),
+                                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
                                     ),
                                   ],
                                 ),
-                                child: const Center(
-                                  child: Text(
-                                    'Add to Cart',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
                               ),
                             ),
-                            const SizedBox(height: 32),
-
-                    ],
-                  ),
-                ],
-              ),
+                          ),
+                          // ── LAYER 2: Scrollable content ──
+                          SingleChildScrollView(
+                            controller: scrollController,
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 40),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // Drag handle
+                                  AnimatedOpacity(
+                                    duration: const Duration(milliseconds: 150),
+                                    opacity: sheetExtent > 0.95 ? 0.0 : 1.0,
+                                    child: Center(
+                                      child: Container(
+                                        width: 40,
+                                        height: 4,
+                                        decoration: BoxDecoration(
+                                          color: isDark ? Colors.white24 : Colors.black.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  // Product image
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(24),
+                                    child: product.imageUrl.isNotEmpty
+                                        ? Image.network(
+                                            product.imageUrl,
+                                            height: 240,
+                                            width: double.infinity,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => Container(
+                                              height: 240,
+                                              color: isDark
+                                                  ? Colors.white.withValues(alpha: 0.05)
+                                                  : Colors.blue.withValues(alpha: 0.08),
+                                              child: const Center(
+                                                child: Icon(Icons.image, size: 50, color: Colors.grey),
+                                              ),
+                                            ),
+                                          )
+                                        : Container(
+                                            height: 240,
+                                            color: isDark
+                                                ? Colors.white.withValues(alpha: 0.05)
+                                                : Colors.blue.withValues(alpha: 0.08),
+                                            child: const Center(
+                                              child: Icon(Icons.image, size: 50, color: Colors.grey),
+                                            ),
+                                          ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  // ── INNER GLASS CARD: Product info ──
+                                  _glassBox(
+                                    isDark: isDark,
+                                    radius: 24,
+                                    padding: const EdgeInsets.all(20),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        if (product.category.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(bottom: 8),
+                                            child: Text(
+                                              product.category.toUpperCase(),
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.blue,
+                                                fontWeight: FontWeight.bold,
+                                                letterSpacing: 1.2,
+                                              ),
+                                            ),
+                                          ),
+                                        Text(
+                                          product.name,
+                                          style: TextStyle(
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.bold,
+                                            color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'RM ${product.price.toStringAsFixed(2)}',
+                                          style: const TextStyle(
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.w900,
+                                            color: Colors.blue,
+                                          ),
+                                        ),
+                                        Divider(
+                                          height: 28,
+                                          color: isDark ? Colors.white12 : Colors.black12,
+                                        ),
+                                        Text(
+                                          'Description',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          product.description.isEmpty
+                                              ? 'No description provided.'
+                                              : product.description,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: isDark ? Colors.white70 : Colors.black87,
+                                            height: 1.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  // ── Action Buttons ──
+                                  Row(
+                                    children: [
+                                      // Like Button
+                                      GestureDetector(
+                                        onTap: () {
+                                          setSheetState(() => isProductLiked = !isProductLiked);
+                                        },
+                                        child: _glassBox(
+                                          isDark: isDark,
+                                          radius: 18, // matches cart button radius
+                                          padding: const EdgeInsets.all(16),
+                                          child: AnimatedSwitcher(
+                                            duration: const Duration(milliseconds: 300),
+                                            transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                                            child: Icon(
+                                              isProductLiked ? Icons.favorite : Icons.favorite_border_rounded,
+                                              key: ValueKey(isProductLiked),
+                                              color: isProductLiked ? Colors.red : (isDark ? Colors.white : Colors.black87),
+                                              size: 24,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      // Add to Cart Button
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: () => Navigator.pop(context),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(vertical: 18),
+                                            decoration: BoxDecoration(
+                                              color: Colors.blue,
+                                              borderRadius: BorderRadius.circular(18),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.blue.withValues(alpha: 0.35),
+                                                  blurRadius: 16,
+                                                  offset: const Offset(0, 6),
+                                                ),
+                                              ],
+                                            ),
+                                            child: const Center(
+                                              child: Text(
+                                                'Add to Cart',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                );
+              },
             );
           },
         );
@@ -1034,3 +1152,4 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
     );
   }
 }
+
