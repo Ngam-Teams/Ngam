@@ -36,8 +36,6 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   @override
   bool get wantKeepAlive => true;
 
-
-
   final MapController _mapController = MapController();
   final FocusNode _searchFocus = FocusNode();
   final TextEditingController _searchController = TextEditingController();
@@ -2089,20 +2087,15 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                 useOwnLayer: true,
                                 quality: GlassQuality.standard,
                                 shape: LiquidRoundedSuperellipse(borderRadius: currentRadius),
-                                settings: _getGlassSettings(isDark, blur: 4),
+                                settings: _getGlassSettings(isDark, blur: 20.0),
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
-                                      width: 1.0,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 4),
+                                    border: Border(
+                                      top: BorderSide(
+                                        color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.6),
+                                        width: 1.0,
                                       ),
-                                    ],
+                                    ),
                                   ),
                                 ),
                               ),
