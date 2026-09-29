@@ -32,12 +32,6 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  String _selectedRole = UserRole.customer;
-
-  // Detail untuk Runner
-  final _icNumberController = TextEditingController();
-  final _vehicleTypeController = TextEditingController();
-  final _plateNumberController = TextEditingController();
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -63,9 +57,6 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
     _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _icNumberController.dispose();
-    _vehicleTypeController.dispose();
-    _plateNumberController.dispose();
     _fadeController.dispose();
     super.dispose();
   }
@@ -79,16 +70,11 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
       password: _passwordController.text,
       name: _nameController.text.trim(),
       phone: _phoneController.text.trim(),
-      role: _selectedRole,
+      role: UserRole.customer,
     );
 
     if (success && mounted) {
-      final role = authProvider.userRole;
-      if (role == 'runner') {
-        Navigator.pushReplacementNamed(context, '/runner-home');
-      } else {
-        Navigator.pushReplacementNamed(context, '/customer-home');
-      }
+      Navigator.pushReplacementNamed(context, '/customer-home');
     }
   }
 
@@ -510,71 +496,6 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Widget Butang Pilih Role ────────────────────────────────
-class _RoleButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _RoleButton({
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppTheme.primary.withValues(alpha: 0.15)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected ? AppTheme.primary : Colors.grey.shade400,
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              size: 28,
-              color: isSelected ? AppTheme.primary : Colors.grey.shade500,
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (isSelected)
-                  const Icon(Icons.check, size: 16, color: AppTheme.primary),
-                if (isSelected) const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: isSelected ? AppTheme.primary : Colors.grey.shade600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
         ),
       ),
     );

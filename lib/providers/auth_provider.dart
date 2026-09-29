@@ -25,8 +25,8 @@ class AuthProvider extends ChangeNotifier {
   String? get error => _error;
   bool get isLoggedIn => _user != null;
   String get userRole => _user?.role ?? 'customer';
-  bool get isCustomer => userRole == 'customer';
-  bool get isRunner => userRole == 'runner';
+  bool get isCustomer => true;
+  bool get isRunner => false;
 
   /// Try to restore session on app start
   Future<void> initialize() async {
@@ -73,11 +73,7 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       String errorMessage = e.toString().replaceAll('Exception: ', '');
       if (errorMessage.toLowerCase().contains('already registered') || errorMessage.toLowerCase().contains('already exists')) {
-        if (role == 'runner') {
-          errorMessage = 'Emel ini telah didaftarkan. Sila log masuk dan pergi ke Profil > Runner untuk memohon.';
-        } else {
-          errorMessage = 'Emel ini telah didaftarkan. Sila log masuk ke akaun anda.';
-        }
+        errorMessage = 'Emel ini telah didaftarkan. Sila log masuk ke akaun anda.';
       }
       _error = errorMessage;
       _isLoading = false;

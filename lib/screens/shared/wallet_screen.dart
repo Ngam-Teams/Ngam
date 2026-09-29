@@ -81,8 +81,8 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     
     try {
       final data = await SupabaseService.client
-          .from('transactions')
-          .select('*, gigs(title)')
+          .from('wallet_transactions')
+          .select('*')
           .eq('user_id', authProvider.user!.id)
           .order('created_at', ascending: false)
           .limit(20);
@@ -91,7 +91,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
         final type = row['type'] as String;
         final amount = (row['amount'] as num).toDouble();
         final date = DateTime.parse(row['created_at']).toLocal();
-        final gig = row['gigs'] as Map<String, dynamic>?;
+        final desc = row['description'] as String?;
         
         String title = '';
         String subtitle = '';
@@ -100,27 +100,27 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
         switch (type) {
           case 'topup':
             title = 'Top Up';
-            subtitle = 'Wallet Deposit';
+            subtitle = desc ?? 'Wallet Deposit';
             break;
           case 'withdrawal':
             title = 'Withdrawal';
-            subtitle = 'Bank Transfer';
+            subtitle = desc ?? 'Bank Transfer';
             break;
           case 'payment':
-            title = 'Task Payment';
-            subtitle = gig?['title'] ?? 'Service charge';
+            title = 'Payment';
+            subtitle = desc ?? 'Service charge';
             break;
           case 'refund':
             title = 'Refund';
-            subtitle = gig?['title'] ?? 'Task Cancelled';
+            subtitle = desc ?? 'Payment Refund';
             break;
           case 'earning':
             title = 'Earning';
-            subtitle = gig?['title'] ?? 'Task Completed';
+            subtitle = desc ?? 'Income Received';
             break;
           default:
             title = 'Transaction';
-            subtitle = 'Other';
+            subtitle = desc ?? 'Other';
         }
         
         return {
@@ -892,10 +892,11 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                     // Lakonan (simulation) kalau RPC withdraw_wallet takde lagi kat DB
                     final newBalance = currentBalance - amount;
                     await SupabaseService.client.from('users').update({'user_balance': newBalance}).eq('id', authProvider.user!.id);
-                    await SupabaseService.client.from('transactions').insert({
+                    await SupabaseService.client.from('wallet_transactions').insert({
                       'user_id': authProvider.user!.id,
                       'type': 'withdrawal',
                       'amount': -amount,
+                      'description': 'Bank Transfer Withdrawal',
                     });
                   }
                   
@@ -1110,11 +1111,6 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 _buildTypeOption(isDark: isDark, icon: HugeIcons.strokeRoundedCreditCard, title: "Credit / Debit Card", subtitle: "Visa, Mastercard, Amex", color: Colors.blue, onTap: () { Navigator.pop(dialogContext); _showAddCardSheet(context, isDark); }),
                 const SizedBox(height: 8),
                 _buildTypeOption(isDark: isDark, icon: HugeIcons.strokeRoundedBank, title: "Link Bank Account", subtitle: "For quick payments & refunds", color: Colors.green, onTap: () { Navigator.pop(dialogContext); _showAddBankSheet(context, isDark); }),
-                // DuitNow QR — Hanya untuk runner je
-                if (context.read<AuthProvider>().isRunner) ...[  
-                  const SizedBox(height: 8),
-                  _buildTypeOption(isDark: isDark, icon: HugeIcons.strokeRoundedQrCode, title: "DuitNow QR", subtitle: "Upload your QR code for customers to pay", color: const Color(0xFF00A86B), onTap: () { Navigator.pop(dialogContext); _showAddDuitNowSheet(context, isDark); }),
-                ],
 
                 const SizedBox(height: 16),
                 SizedBox(
@@ -1359,169 +1355,6 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 ),
               );
             }
-        );
-      },
-    );
-  }
-
-  void _showAddDuitNowSheet(BuildContext context, bool isDark) {
-    File? pickedQr;
-    final picker = ImagePicker();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                  child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E242B).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8),
-                      border: Border(top: BorderSide(color: Colors.white.withValues(alpha: isDark ? 0.1 : 0.4), width: 1.5)),
-                    ),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(10)))),
-                          const SizedBox(height: 16),
-
-                          // Header
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(color: const Color(0xFF00A86B).withValues(alpha: 0.15), shape: BoxShape.circle),
-                                child: const HugeIcon(icon: HugeIcons.strokeRoundedQrCode, color: Color(0xFF00A86B), size: 22),
-                              ),
-                              const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text("DuitNow QR", style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 18, fontWeight: FontWeight.bold)),
-                                  Text("wallet.customers_scan_qr".tr(), style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Label nama dibuang sebab QR DuitNow tu sendiri dah ada nama kat gambar.
-
-
-                          // Kawasan upload QR
-                          Text("YOUR QR CODE".toUpperCase(), style: const TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
-                          const SizedBox(height: 8),
-                          GestureDetector(
-                            onTap: () async {
-                              final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 90);
-                              if (picked != null) {
-                                setSheetState(() => pickedQr = File(picked.path));
-                              }
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
-                              width: double.infinity,
-                              height: 180,
-                              decoration: BoxDecoration(
-                                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: pickedQr != null ? const Color(0xFF00A86B).withValues(alpha: 0.6) : Colors.grey.withValues(alpha: 0.3),
-                                  width: pickedQr != null ? 2 : 1.5,
-                                  style: pickedQr != null ? BorderStyle.solid : BorderStyle.solid,
-                                ),
-                              ),
-                              child: pickedQr != null
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(15),
-                                    child: Image.file(pickedQr!, fit: BoxFit.contain),
-                                  )
-                                : Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.upload_rounded, size: 36, color: Colors.grey.shade400),
-                                      const SizedBox(height: 8),
-                                      Text("wallet.tap_upload_qr".tr(), style: TextStyle(color: Colors.grey.shade500, fontSize: 13, fontWeight: FontWeight.w500)),
-                                      const SizedBox(height: 4),
-                                      Text("wallet.from_any_bank".tr(), style: TextStyle(color: Colors.grey.shade400, fontSize: 11)),
-                                    ],
-                                  ),
-                            ),
-                          ),
-
-                          // Kotak info
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF00A86B).withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: const Color(0xFF00A86B).withValues(alpha: 0.2)),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.auto_fix_high_rounded, color: Color(0xFF00A86B), size: 16),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    "Your QR will be displayed in a clean, standardized format. Bank branding will be removed.",
-                                    style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 11),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Butang Save
-                          _AnimatedPressable(
-                            onTap: () async {
-                              if (pickedQr == null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text("wallet.upload_qr_first".tr())),
-                                );
-                                return;
-                              }
-                              await PaymentService.addPaymentMethod({
-                                "id": DateTime.now().millisecondsSinceEpoch.toString(),
-                                "type": "duitnow_qr",
-                                "qrPath": pickedQr!.path,
-                                "isPrimary": _savedMethods.value.where((m) => m['type'] == 'duitnow_qr').isEmpty,
-                                "color": 0,
-                              });
-                              await _loadMethods();
-                              if (mounted) Navigator.pop(context);
-                            },
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF00A86B),
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [BoxShadow(color: const Color(0xFF00A86B).withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
-                              ),
-                              child: Center(child: Text("wallet.save_duitnow_qr".tr(), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
         );
       },
     );

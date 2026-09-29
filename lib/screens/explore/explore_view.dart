@@ -82,6 +82,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   int _currentCarouselIndex = 0;
   List<Map<String, dynamic>> _nearbyShops = [];
   List<Map<String, dynamic>> _displayedShops = []; // 🟢 Added this back!
+  bool _pendingSheetPop = false;
   String? _activeSearchQuery;
 
   // --- NEW: ADVANCED SEARCH STATE ---
@@ -238,9 +239,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     _shopsSubscription?.cancel(); // Kill any old streams
 
     _shopsSubscription = Supabase.instance.client
-        .from('users')
+        .from('businesses')
         .stream(primaryKey: ['id'])
-        .eq('role', 'business')
+        .eq('status', 'active')
         .listen((data) {
       if (!mounted) return;
 
@@ -253,20 +254,20 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         return {
           'id': row['id'],
           'name': row['business_name'] ?? 'Unknown Business',
-          'category': 'service', // Default to service for now
+          'category': row['business_industry'] ?? 'service',
           'location': LatLng(
-              (row['user_address_lat'] as num?)?.toDouble() ?? 0.0,
-              (row['user_address_lng'] as num?)?.toDouble() ?? 0.0
+              (row['latitude'] as num?)?.toDouble() ?? 0.0,
+              (row['longitude'] as num?)?.toDouble() ?? 0.0
           ),
           'image': row['business_logo_url'] ?? "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=300",
-          'phone': row['business_phone'] ?? row['user_phone'],
-          'address': row['business_address'] ?? row['user_address'],
+          'phone': row['business_phone'] ?? '',
+          'address': row['address_line'] ?? row['address_city'] ?? '',
           'openHour': parsedOpenHour,
           'openMinute': parsedOpenMin,
           'closeHour': parsedCloseHour,
           'closeMinute': parsedCloseMin,
-          'rating': 4.8, // Hardcoded fallback for now since rating was removed
-          'reviews': 124,
+          'rating': (row['rating_average'] as num?)?.toDouble() ?? 4.8,
+          'reviews': (row['total_reviews'] as num?)?.toInt() ?? 0,
           'services': ['General Services'],
         };
       }).toList();
@@ -866,6 +867,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                         _onMapInteractionStart();
                         // Dismiss the bottom sheet if it's open — carousel will slide back up
                         if (_isProfileOpen) {
+                          _isProfileOpen = false;
                           Navigator.of(context).pop();
                         }
                       } else {
@@ -2109,17 +2111,26 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           return DraggableScrollableSheet(
             controller: _sheetController,
             initialChildSize: adaptiveInitialSize,
-            minChildSize: 0.15,
+            minChildSize: 0.0,
             maxChildSize: 1.0,
             snap: true,
-            snapSizes: [adaptiveInitialSize],
+            snapSizes: [0.0, adaptiveInitialSize],
             expand: false,
             builder: (context, scrollController) {
               return NotificationListener<DraggableScrollableNotification>(
                 onNotification: (notification) {
                   // Auto-close when dragged below 25% of screen
-                  if (notification.extent <= 0.25) {
-                    Navigator.of(context).pop();
+                  if (notification.extent <= 0.25 && _isProfileOpen) {
+                    _isProfileOpen = false;
+                    _sheetController
+                        .animateTo(0.0,
+                            duration: const Duration(milliseconds: 200),
+                            curve: Curves.easeOut)
+                        .then((_) {
+                      if (mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    });
                   }
                   return true;
                 },

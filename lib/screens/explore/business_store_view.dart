@@ -150,7 +150,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
           description: 'A stylish and clean premium haircut by professional barbers.',
           price: 35.0,
           category: 'Haircut',
-          imageUrl: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=400',
+          imageUrl: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=300',
           isActive: true,
         ),
         ProductModel(

@@ -28,7 +28,7 @@ class UserData {
     final user = Supabase.instance.client.auth.currentUser;
     if (user != null) {
       try {
-        await Supabase.instance.client.from('profiles').upsert({'id': user.id, 'name': userName.value, 'phone_number': userPhone.value});
+        await Supabase.instance.client.from('users').upsert({'id': user.id, 'user_name': userName.value, 'user_phone': userPhone.value});
       } catch (e) { debugPrint('Error updating profile: $e'); }
     }
   }

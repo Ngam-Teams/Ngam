@@ -558,6 +558,7 @@ class _BookingsViewState extends State<BookingsView> {
                       // Insert a 'holding' record to claim the slot instantly!
                       final holdResponse = await Supabase.instance.client.from('bookings').insert({
                         'business_id': widget.shopId,
+                        'customer_id': Supabase.instance.client.auth.currentUser!.id,
                         'customer_name': UserData.userName.value.isNotEmpty ? UserData.userName.value : 'Guest',
                         'service_name': 'Holding...',
                         'booking_date': targetDate,

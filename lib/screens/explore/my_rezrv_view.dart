@@ -30,7 +30,6 @@ class _MyRezrvViewState extends State<MyRezrvView> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final myUid = Supabase.instance.client.auth.currentUser?.id;
 
     return SafeArea(
       child: Padding(
@@ -85,7 +84,8 @@ class _MyRezrvViewState extends State<MyRezrvView> {
                   // 🟢 Filter bookings that belong only to the logged-in user
                   final myBookings = snapshot.data!.where((b) {
                     final meta = b['booking_metadata'] as Map<String, dynamic>?;
-                    return meta?['customer_auth_id'] == myUid && b['status'] != 'holding';
+                    final belongsToUser = b['customer_id'] == myUid || meta?['customer_auth_id'] == myUid;
+                    return belongsToUser && b['status'] != 'holding';
                   }).toList();
 
                   // Map Database Format back to UI Format so your tickets look perfect

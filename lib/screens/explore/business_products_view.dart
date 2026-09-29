@@ -90,7 +90,7 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
           price: 35.0,
           category: 'Haircut',
           imageUrl:
-              'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=400',
+              'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=300',
           isActive: true,
         ),
         ProductModel(
@@ -101,7 +101,7 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
           price: 25.0,
           category: 'Shaving',
           imageUrl:
-              'https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=400',
+              'https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=300',
           isActive: true,
         ),
         ProductModel(

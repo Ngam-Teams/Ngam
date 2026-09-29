@@ -149,7 +149,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 child: Text(
                                   user.role == UserRole.customer
                                       ? "CUSTOMER"
-                                      : "RUNNER",
+                                      : "CUSTOMER",
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 10,
