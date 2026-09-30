@@ -1,13 +1,16 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../models/product_model.dart';
+import '../../widgets/glass_toast.dart';
 import 'business_products_view.dart';
+import 'bookings_view.dart';
+import 'store_cart_view.dart';
+import 'store_info_view.dart';
+import 'store_reviews_view.dart';
 
 // ============================================================
 // BusinessStoreView — Main store landing page
@@ -28,7 +31,6 @@ class BusinessStoreView extends StatefulWidget {
 
 class _BusinessStoreViewState extends State<BusinessStoreView>
     with TickerProviderStateMixin {
-  final SupabaseClient _supabase = Supabase.instance.client;
   StreamSubscription? _productSub;
 
   List<ProductModel> _allProducts = [];
@@ -40,6 +42,21 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
   late Animation<double> _fadeAnim;
 
   bool _isLiked = false;
+  final List<CartItem> _cart = [];
+
+  int get _cartItemCount => _cart.fold(0, (sum, item) => sum + item.quantity);
+
+  void _addToCart(ProductModel product) {
+    setState(() {
+      final index = _cart.indexWhere((c) => c.product.id == product.id);
+      if (index >= 0) {
+        _cart[index].quantity += 1;
+      } else {
+        _cart.add(CartItem(product: product, quantity: 1));
+      }
+    });
+    showGlassToast(context, 'Added "${product.name}" to cart!');
+  }
 
   // ── Status Helpers ───────────────────────────────────────────
 
@@ -367,47 +384,171 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                 ),
                               ),
                               const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Welcome to',
-                                  style: TextStyle(
-                                    color: textSecondary,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Welcome to',
+                                      style: TextStyle(
+                                        color: textSecondary,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      widget.shop['name'] ?? 'Business',
+                                      style: TextStyle(
+                                        color: textPrimary,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -0.3,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    GestureDetector(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => StoreInfoView(shop: widget.shop),
+                                          ),
+                                        );
+                                      },
+                                      child: _buildStatusBadge(isDark),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  widget.shop['name'] ?? 'Business',
-                                  style: TextStyle(
-                                    color: textPrimary,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -0.3,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 6),
-                                _buildStatusBadge(isDark),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
 
-                      const SizedBox(height: 28),
+                          const SizedBox(height: 16),
 
-                      // ── 2. SEARCH BAR → navigates to BusinessProductsView
-                      Row(
-                        children: [
-                          Expanded(
-                            child: GlassContainer(
+                          // ── 3 QUICK REDIRECTION CARDS ──
+                          Row(
+                            children: [
+                              // 1. Book Service
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => BookingsView(
+                                          shopId: widget.shop['id']?.toString() ?? '1',
+                                          shopName: widget.shop['name'] ?? 'Store',
+                                          category: widget.shop['category']?.toString().toUpperCase() ?? 'SERVICE',
+                                          shopImage: widget.shop['image'] ?? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: _glassBox(
+                                    isDark: isDark,
+                                    radius: 16,
+                                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(Icons.calendar_month_rounded, color: Colors.blue, size: 16),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'Book Slot',
+                                          style: TextStyle(
+                                            color: textPrimary,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // 2. Store Info
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => StoreInfoView(shop: widget.shop),
+                                      ),
+                                    );
+                                  },
+                                  child: _glassBox(
+                                    isDark: isDark,
+                                    radius: 16,
+                                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(Icons.info_outline_rounded, color: Colors.blue, size: 16),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'Info & Hours',
+                                          style: TextStyle(
+                                            color: textPrimary,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // 3. Reviews
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => StoreReviewsView(shop: widget.shop),
+                                      ),
+                                    );
+                                  },
+                                  child: _glassBox(
+                                    isDark: isDark,
+                                    radius: 16,
+                                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Reviews',
+                                          style: TextStyle(
+                                            color: textPrimary,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // ── 2. SEARCH BAR → navigates to BusinessProductsView
+                          Row(
+                            children: [
+                              Expanded(
+                                child: GlassContainer(
                               useOwnLayer: true,
                               quality: GlassQuality.standard,
                               shape: LiquidRoundedSuperellipse(borderRadius: 24),
@@ -709,15 +850,63 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                       ),
                       // Divider removed as per user request
                       // Cart button
-                      SizedBox(
-                        width: 44,
-                        height: 44,
-                        child: Center(
-                          child: HugeIcon(
-                            icon: HugeIcons.strokeRoundedShoppingBag01,
-                            color: isDark ? Colors.white : const Color(0xFF1C1C1E),
-                            size: 22,
-                            strokeWidth: 2.0,
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => StoreCartView(
+                                shop: widget.shop,
+                                cartItems: _cart,
+                                onUpdateQuantity: (product, delta) {
+                                  setState(() {
+                                    final idx = _cart.indexWhere((c) => c.product.id == product.id);
+                                    if (idx >= 0) {
+                                      _cart[idx].quantity += delta;
+                                      if (_cart[idx].quantity <= 0) _cart.removeAt(idx);
+                                    }
+                                  });
+                                },
+                                onClearCart: () => setState(() => _cart.clear()),
+                              ),
+                            ),
+                          );
+                        },
+                        child: SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              HugeIcon(
+                                icon: HugeIcons.strokeRoundedShoppingBag01,
+                                color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                                size: 22,
+                                strokeWidth: 2.0,
+                              ),
+                              if (_cartItemCount > 0)
+                                Positioned(
+                                  right: 6,
+                                  top: 6,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(3),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.blue,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                                    child: Text(
+                                      '$_cartItemCount',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       ),
@@ -1106,7 +1295,10 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                       // Add to Cart Button
                                       Expanded(
                                         child: GestureDetector(
-                                          onTap: () => Navigator.pop(context),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            _addToCart(product);
+                                          },
                                           child: Container(
                                             padding: const EdgeInsets.symmetric(vertical: 18),
                                             decoration: BoxDecoration(
@@ -1135,6 +1327,46 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                       ),
                                     ],
                                   ),
+                                   const SizedBox(height: 12),
+                                   // Book Service / Appointment Button
+                                   GestureDetector(
+                                     onTap: () {
+                                       Navigator.pop(context);
+                                       Navigator.push(
+                                         context,
+                                         MaterialPageRoute(
+                                           builder: (_) => BookingsView(
+                                             shopId: widget.shop['id']?.toString() ?? '1',
+                                             shopName: widget.shop['name'] ?? 'Store',
+                                             category: widget.shop['category']?.toString().toUpperCase() ?? 'SERVICE',
+                                             shopImage: widget.shop['image'] ?? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400',
+                                           ),
+                                         ),
+                                       );
+                                     },
+                                     child: _glassBox(
+                                       isDark: isDark,
+                                       radius: 18,
+                                       padding: const EdgeInsets.symmetric(vertical: 16),
+                                       child: Center(
+                                         child: Row(
+                                           mainAxisAlignment: MainAxisAlignment.center,
+                                           children: [
+                                             Icon(Icons.calendar_today_rounded, color: isDark ? Colors.white : Colors.black87, size: 18),
+                                             const SizedBox(width: 8),
+                                             Text(
+                                               'Book Appointment / Slot',
+                                               style: TextStyle(
+                                                 color: isDark ? Colors.white : Colors.black87,
+                                                 fontSize: 15,
+                                                 fontWeight: FontWeight.bold,
+                                               ),
+                                             ),
+                                           ],
+                                         ),
+                                       ),
+                                     ),
+                                   ),
                                 ],
                               ),
                             ),

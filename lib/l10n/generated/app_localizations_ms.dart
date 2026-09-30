@@ -118,7 +118,7 @@ class AppLocalizationsMs extends AppLocalizations {
   String get user => 'Pengguna';
 
   @override
-  String get rezrvNow => 'Tempah';
+  String get rezrvNow => 'Tempah Sekarang';
 
   @override
   String resultsFor(String query) {

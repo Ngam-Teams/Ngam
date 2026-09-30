@@ -118,7 +118,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get user => 'User';
 
   @override
-  String get rezrvNow => 'Book';
+  String get rezrvNow => 'Book Now';
 
   @override
   String resultsFor(String query) {
