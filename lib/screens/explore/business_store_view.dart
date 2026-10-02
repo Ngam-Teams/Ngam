@@ -19,7 +19,7 @@ import 'store_reviews_view.dart';
 // Glassmorphism matching Ngam default style
 // ============================================================
 
-enum _StoreStatus { open, closingSoon, closed }
+enum _StoreStatus { open, closingSoon, closed, holiday }
 
 class BusinessStoreView extends StatefulWidget {
   final Map<String, dynamic> shop;
@@ -45,6 +45,10 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
   int? _syncedCloseMinute;
   String? _syncedCoverUrl;
   Map<String, dynamic>? _syncedOperatingHours;
+  bool? _syncedIsOpen;
+  List<Map<String, dynamic>> _syncedWeeklySchedule = [];
+  List<Map<String, dynamic>> _syncedSpecialHolidays = [];
+  String? _activeHolidayName;
 
   int get _openHour => _syncedOpenHour ?? widget.shop['openHour'] ?? 9;
   int get _openMinute => _syncedOpenMinute ?? widget.shop['openMinute'] ?? 0;
@@ -84,12 +88,92 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
   // ── Status Helpers ───────────────────────────────────────────
 
   _StoreStatus get _status {
+    final now = DateTime.now();
+
+    // 1. Check special holidays
+    final todayDateStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    for (final h in _syncedSpecialHolidays) {
+      final hDate = h['date']?.toString();
+      final bool isClosed = h['isClosed'] == true || h['is_closed'] == true;
+      if (hDate == todayDateStr && isClosed) {
+        _activeHolidayName = h['name']?.toString() ?? 'Cuti Perayaan';
+        return _StoreStatus.holiday;
+      }
+    }
+
+    // 2. Check if business is manually marked closed or in rush mode
+    if (_syncedIsOpen == false) {
+      return _StoreStatus.closed;
+    }
+    if (_syncedOperatingHours?['is_rush_mode'] == true) {
+      return _StoreStatus.closed;
+    }
+
+    // 3. Check weekly schedule for current day
+    const dayNames = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday'
+    ];
+    final todayName = dayNames[now.weekday - 1];
+
+    if (_syncedWeeklySchedule.isNotEmpty) {
+      final todayItem = _syncedWeeklySchedule.firstWhere(
+        (s) => s['day']?.toString().toLowerCase() == todayName.toLowerCase(),
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (todayItem.isNotEmpty) {
+        final bool isOpenToday =
+            todayItem['isOpen'] != false && todayItem['is_open'] != false;
+        if (!isOpenToday) {
+          return _StoreStatus.closed;
+        }
+
+        final openStr = todayItem['open']?.toString();
+        final closeStr = todayItem['close']?.toString();
+        int? openH, openM, closeH, closeM;
+        if (openStr != null && openStr.contains(':')) {
+          final p = openStr.split(':');
+          openH = int.tryParse(p[0]);
+          openM = int.tryParse(p[1]);
+        }
+        if (closeStr != null && closeStr.contains(':')) {
+          final p = closeStr.split(':');
+          closeH = int.tryParse(p[0]);
+          closeM = int.tryParse(p[1]);
+        }
+
+        if (openH != null && openM != null && closeH != null && closeM != null) {
+          DateTime open = DateTime(now.year, now.month, now.day, openH, openM);
+          DateTime close = DateTime(now.year, now.month, now.day, closeH, closeM);
+
+          if (close.isBefore(open)) {
+            if (now.isAfter(open)) {
+              close = close.add(const Duration(days: 1));
+            } else {
+              open = open.subtract(const Duration(days: 1));
+            }
+          }
+
+          if (now.isBefore(open) || now.isAfter(close)) return _StoreStatus.closed;
+          if (close.difference(now).inMinutes <= 30) return _StoreStatus.closingSoon;
+          return _StoreStatus.open;
+        }
+      }
+    }
+
+    // 4. Fallback to default openHour / closeHour
     final int openH = _openHour;
     final int openM = _openMinute;
     final int closeH = _closeHour;
     final int closeM = _closeMinute;
 
-    final now = DateTime.now();
     DateTime open = DateTime(now.year, now.month, now.day, openH, openM);
     DateTime close = DateTime(now.year, now.month, now.day, closeH, closeM);
 
@@ -117,6 +201,14 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
     final st = _status;
     final closeStr = _formatTime(_closeHour, _closeMinute);
     final openStr = _formatTime(_openHour, _openMinute);
+
+    if (_syncedOperatingHours?['is_rush_mode'] == true) {
+      return 'Tutup Sementara (Rush Hour)';
+    }
+    if (_syncedIsOpen == false) {
+      return 'Tutup Sementara';
+    }
+
     switch (st) {
       case _StoreStatus.open:
         return 'Open Now · Closes $closeStr';
@@ -124,6 +216,8 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
         return 'Closing Soon · $closeStr';
       case _StoreStatus.closed:
         return 'Closed · Opens $openStr';
+      case _StoreStatus.holiday:
+        return 'Holiday · ${_activeHolidayName ?? "Store Holiday"}';
     }
   }
 
@@ -135,6 +229,8 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
         return Colors.orange;
       case _StoreStatus.closed:
         return Colors.red;
+      case _StoreStatus.holiday:
+        return Colors.purpleAccent;
     }
   }
 
@@ -146,6 +242,8 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
         return HugeIcons.strokeRoundedTime02;
       case _StoreStatus.closed:
         return HugeIcons.strokeRoundedUnavailable;
+      case _StoreStatus.holiday:
+        return HugeIcons.strokeRoundedCalendar03;
     }
   }
 
@@ -233,16 +331,17 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
     try {
       final biz = await Supabase.instance.client
           .from('businesses')
-          .select('business_cover_url, business_logo_url')
+          .select('business_cover_url, business_logo_url, is_open')
           .eq('id', shopId)
           .maybeSingle();
 
       if (biz != null && mounted) {
         final cover = biz['business_cover_url'] as String?;
         if (cover != null && cover.isNotEmpty) {
-          setState(() {
-            _syncedCoverUrl = cover;
-          });
+          _syncedCoverUrl = cover;
+        }
+        if (biz['is_open'] != null) {
+          _syncedIsOpen = biz['is_open'] == true;
         }
       }
 
@@ -268,8 +367,21 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
           _syncedCloseHour = int.tryParse(p[0]);
           _syncedCloseMinute = int.tryParse(p[1]);
         }
-        setState(() {});
+
+        final weekly = op['weekly_schedule'] as List?;
+        if (weekly != null) {
+          _syncedWeeklySchedule =
+              weekly.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+
+        final holidays = op['special_holidays'] as List?;
+        if (holidays != null) {
+          _syncedSpecialHolidays =
+              holidays.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
       }
+
+      if (mounted) setState(() {});
     } catch (e) {
       debugPrint('Error syncing business details: $e');
     }
@@ -1016,6 +1128,9 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                               builder: (_) => StoreCartView(
                                 shop: widget.shop,
                                 cartItems: _cart,
+                                isStoreOpen: _status == _StoreStatus.open || _status == _StoreStatus.closingSoon,
+                                storeStatusText: _statusText,
+                                isHoliday: _status == _StoreStatus.holiday,
                                 onUpdateQuantity: (product, delta) {
                                   setState(() {
                                     final idx = _cart.indexWhere((c) => c.product.id == product.id);

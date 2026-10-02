@@ -23,6 +23,9 @@ class CartItem {
 class StoreCartView extends StatefulWidget {
   final Map<String, dynamic> shop;
   final List<CartItem> cartItems;
+  final bool isStoreOpen;
+  final String? storeStatusText;
+  final bool isHoliday;
   final Function(ProductModel product, int delta)? onUpdateQuantity;
   final VoidCallback? onClearCart;
 
@@ -30,6 +33,9 @@ class StoreCartView extends StatefulWidget {
     super.key,
     required this.shop,
     required this.cartItems,
+    this.isStoreOpen = true,
+    this.storeStatusText,
+    this.isHoliday = false,
     this.onUpdateQuantity,
     this.onClearCart,
   });
@@ -46,6 +52,7 @@ class _StoreCartViewState extends State<StoreCartView> {
   bool _voucherApplied = false;
   double _discountAmount = 0.0;
   bool _isProcessing = false;
+  bool _isPreOrder = false;
 
   final List<String> _orderTypes = ['Pickup / Dine-In', 'Delivery'];
 
@@ -157,81 +164,140 @@ class _StoreCartViewState extends State<StoreCartView> {
       return;
     }
 
+    if (!widget.isStoreOpen && !_isPreOrder) {
+      showGlassToast(context, 'Kedai sedang tutup. Sila aktifkan pilihan Pesanan Awal (Pre-Order) untuk teruskan.', isError: true);
+      return;
+    }
+
     setState(() => _isProcessing = true);
-    await Future.delayed(const Duration(milliseconds: 1200));
 
-    if (!mounted) return;
-    setState(() => _isProcessing = false);
+    try {
+      final String customerName = (user.userMetadata?['full_name'] as String?) ??
+          (user.userMetadata?['name'] as String?) ??
+          (user.email?.split('@').first) ??
+          'Customer';
 
-    // Show Order Success Sheet
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(28),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E2228) : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 68,
-                height: 68,
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Center(
-                  child: Icon(Icons.check_circle_rounded, color: Colors.green, size: 40),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                'Order Placed Successfully!',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Your order with ${widget.shop['name'] ?? 'the store'} has been received. You will be notified when it is ready.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isDark ? Colors.white70 : Colors.black54,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      final orderData = {
+        'business_id': widget.shop['id'],
+        'owner_user_id': user.id,
+        'customer_name': customerName,
+        'total': _total,
+        'status': 'pending',
+        'source': _isPreOrder ? 'pre_order' : 'online',
+        'notes': _isPreOrder
+            ? ('[PRE-ORDER] ${_notesController.text.trim()}').trim()
+            : _notesController.text.trim(),
+      };
+
+      final orderRes = await Supabase.instance.client
+          .from('orders')
+          .insert(orderData)
+          .select('id')
+          .single();
+
+      final String orderId = orderRes['id'].toString();
+
+      if (_items.isNotEmpty) {
+        try {
+          final itemsData = _items.map((item) => {
+            'order_id': orderId,
+            'product_id': item.product.id,
+            'product_name': item.product.name,
+            'quantity': item.quantity,
+            'unit_price': item.product.price,
+            'subtotal': item.totalPrice,
+          }).toList();
+
+          await Supabase.instance.client.from('order_items').insert(itemsData);
+        } catch (itemErr) {
+          debugPrint('Notice: order_items insert error (order #$orderId still created): $itemErr');
+        }
+      }
+
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+
+      // Show Order Success Sheet
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (ctx) => Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E2228) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 68,
+                  height: 68,
+                  decoration: BoxDecoration(
+                    color: (_isPreOrder ? Colors.purpleAccent : Colors.green).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
                   ),
-                  onPressed: () {
-                    Navigator.pop(ctx); // Close modal
-                    widget.onClearCart?.call();
-                    Navigator.pop(context); // Return to store
-                  },
-                  child: const Text('Back to Store', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: Center(
+                    child: Icon(
+                      _isPreOrder ? Icons.schedule_rounded : Icons.check_circle_rounded,
+                      color: _isPreOrder ? Colors.purpleAccent : Colors.green,
+                      size: 40,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 18),
+                Text(
+                  _isPreOrder ? 'Pesanan Awal (Pre-Order) Diterima!' : 'Order Placed Successfully!',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _isPreOrder
+                      ? 'Pesanan awal anda untuk ${widget.shop['name'] ?? 'kedai'} telah berjaya dihantar. Pihak peniaga akan menyediakan pesanan ini sebaik sahaja kedai dibuka.'
+                      : 'Your order with ${widget.shop['name'] ?? 'the store'} has been received. You will be notified when it is ready.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDark ? Colors.white70 : Colors.black54,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isPreOrder ? Colors.deepPurpleAccent : Colors.blue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx); // Close modal
+                      widget.onClearCart?.call();
+                      Navigator.pop(context); // Return to store
+                    },
+                    child: const Text('Back to Store', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+      showGlassToast(context, 'Failed to place order: $e', isError: true);
+    }
   }
 
   @override
@@ -370,6 +436,11 @@ class _StoreCartViewState extends State<StoreCartView> {
                       physics: const BouncingScrollPhysics(),
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                       children: [
+                        if (!widget.isStoreOpen) ...[
+                          _buildClosedStoreBanner(isDark, textPrimary, textSecondary),
+                          const SizedBox(height: 16),
+                        ],
+
                         // Order Type Selector
                         Container(
                           padding: const EdgeInsets.all(4),
@@ -654,22 +725,30 @@ class _StoreCartViewState extends State<StoreCartView> {
                       Expanded(
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
+                            backgroundColor: !widget.isStoreOpen && !_isPreOrder
+                                ? Colors.grey.shade700
+                                : (_isPreOrder ? Colors.deepPurpleAccent : Colors.blue),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             elevation: 4,
                           ),
-                          onPressed: _isProcessing ? null : _handleCheckout,
+                          onPressed: _isProcessing
+                              ? null
+                              : (!widget.isStoreOpen && !_isPreOrder
+                                  ? () => showGlassToast(context, 'Kedai sedang tutup. Sila aktifkan pilihan Pesanan Awal (Pre-Order) di atas.', isError: true)
+                                  : _handleCheckout),
                           child: _isProcessing
                               ? const SizedBox(
                                   width: 22,
                                   height: 22,
                                   child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
                                 )
-                              : const Text(
-                                  'Checkout Now',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              : Text(
+                                  !widget.isStoreOpen && !_isPreOrder
+                                      ? 'Kedai Tutup · Aktifkan Pre-Order'
+                                      : (_isPreOrder ? 'Hantar Pre-Order' : 'Checkout Now'),
+                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                                 ),
                         ),
                       ),
@@ -679,6 +758,126 @@ class _StoreCartViewState extends State<StoreCartView> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildClosedStoreBanner(bool isDark, Color textPrimary, Color textSecondary) {
+    return _liquidGlassBox(
+      isDark: isDark,
+      radius: 18,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: (widget.isHoliday ? Colors.purpleAccent : Colors.orangeAccent).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: HugeIcon(
+                  icon: widget.isHoliday ? HugeIcons.strokeRoundedCalendar03 : HugeIcons.strokeRoundedTime02,
+                  color: widget.isHoliday ? Colors.purpleAccent : Colors.orangeAccent,
+                  size: 20,
+                  strokeWidth: 2.2,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.isHoliday ? 'Kedai Sedang Bercuti' : 'Kedai Sedang Ditutup',
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      widget.storeStatusText ?? 'Di luar waktu operasi rasmi',
+                      style: TextStyle(
+                        color: widget.isHoliday ? Colors.purpleAccent : Colors.orangeAccent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            widget.isHoliday
+                ? 'Pihak kedai sedang cuti hari ini. Anda boleh membuat Pesanan Awal (Pre-Order) di bawah supaya kedai memproses pesanan sebaik sahaja dibuka semula.'
+                : 'Kedai kini berada di luar waktu operasi. Anda boleh mengaktifkan mod Pesanan Awal (Pre-Order) untuk membolehkan kedai memproses pesanan sebaik sahaja dibuka.',
+            style: TextStyle(color: textSecondary, fontSize: 12, height: 1.4),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: _isPreOrder
+                    ? Colors.deepPurpleAccent.withValues(alpha: 0.5)
+                    : (isDark ? Colors.white12 : Colors.black12),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    HugeIcon(
+                      icon: HugeIcons.strokeRoundedCalendar02,
+                      color: _isPreOrder ? Colors.deepPurpleAccent : textSecondary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Pilihan Pesanan Awal (Pre-Order)',
+                          style: TextStyle(
+                            color: textPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          _isPreOrder ? 'Mod Pre-Order Aktif' : 'Tandakan untuk teruskan pesanan',
+                          style: TextStyle(
+                            color: _isPreOrder ? Colors.greenAccent : textSecondary,
+                            fontSize: 11,
+                            fontWeight: _isPreOrder ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                Switch(
+                  value: _isPreOrder,
+                  activeColor: Colors.deepPurpleAccent,
+                  onChanged: (val) {
+                    setState(() => _isPreOrder = val);
+                    if (val) {
+                      showGlassToast(context, 'Mod Pre-Order diaktifkan! Anda boleh membuat pesanan sekarang.');
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
