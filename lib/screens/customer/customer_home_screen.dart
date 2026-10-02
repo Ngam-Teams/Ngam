@@ -6,6 +6,7 @@ import '../explore/explore_view.dart';
 import '../explore/my_bookings_view.dart';
 import '../shared/chat_screen.dart';
 import '../shared/profile_screen.dart';
+import '../../services/app_update_service.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
   const CustomerHomeScreen({super.key});
@@ -26,6 +27,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     // Buang splash screen lepas frame pertama di-render
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FlutterNativeSplash.remove();
+      AppUpdateService.checkOnStartup(context);
     });
   }
 

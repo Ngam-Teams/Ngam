@@ -15,8 +15,8 @@ import 'account_details_screen.dart';
 import 'support_screens.dart';
 import 'about_screens.dart';
 import 'privacy_security_screen.dart';
-
 import 'wallet_screen.dart';
+import '../../services/app_update_service.dart';
 
 import 'package:easy_localization/easy_localization.dart';
 // ============================================================
@@ -378,6 +378,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     fullscreenDialog: true,
                                   ),
                                 ),
+                              ),
+                              _buildDivider(isDark),
+                              _buildSettingsTile(
+                                isDark,
+                                HugeIcons.strokeRoundedCloudDownload,
+                                'Semak Kemas Kini Aplikasi',
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'v${AppUpdateService.currentVersion}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: isDark ? Colors.white54 : Colors.black45,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    _buildArrow(),
+                                  ],
+                                ),
+                                onTap: () => AppUpdateService.checkManually(context),
                               ),
                             ],
                           ),
