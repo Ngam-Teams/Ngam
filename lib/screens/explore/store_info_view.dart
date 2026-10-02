@@ -144,11 +144,25 @@ class _StoreInfoViewState extends State<StoreInfoView> {
     final String desc = shop['description'] ??
         'Welcome to $shopName. We provide quality services and premium products crafted with dedication and authentic craftsmanship.';
 
-    final int openH = shop['openHour'] ?? 9;
-    final int openM = shop['openMinute'] ?? 0;
-    final int closeH = shop['closeHour'] ?? 22;
-    final int closeM = shop['closeMinute'] ?? 0;
-    final String fallbackDailyHours = '${_formatTime(openH, openM)} - ${_formatTime(closeH, closeM)}';
+    int effectiveOpenH = shop['openHour'] ?? 9;
+    int effectiveOpenM = shop['openMinute'] ?? 0;
+    int effectiveCloseH = shop['closeHour'] ?? 22;
+    int effectiveCloseM = shop['closeMinute'] ?? 0;
+
+    final String? liveOpenStr = _operatingHours?['open_time']?.toString();
+    final String? liveCloseStr = _operatingHours?['close_time']?.toString();
+    if (liveOpenStr != null && liveOpenStr.contains(':')) {
+      final p = liveOpenStr.split(':');
+      effectiveOpenH = int.tryParse(p[0]) ?? effectiveOpenH;
+      effectiveOpenM = p.length > 1 ? int.tryParse(p[1]) ?? effectiveOpenM : effectiveOpenM;
+    }
+    if (liveCloseStr != null && liveCloseStr.contains(':')) {
+      final p = liveCloseStr.split(':');
+      effectiveCloseH = int.tryParse(p[0]) ?? effectiveCloseH;
+      effectiveCloseM = p.length > 1 ? int.tryParse(p[1]) ?? effectiveCloseM : effectiveCloseM;
+    }
+
+    final String fallbackDailyHours = '${_formatTime(effectiveOpenH, effectiveOpenM)} - ${_formatTime(effectiveCloseH, effectiveCloseM)}';
 
     final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     final currentDayIndex = DateTime.now().weekday - 1; // 0 for Monday
@@ -228,10 +242,14 @@ class _StoreInfoViewState extends State<StoreInfoView> {
 
             // Main Content
             Expanded(
-              child: ListView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                children: [
+              child: RefreshIndicator(
+                onRefresh: _fetchLiveOperatingHours,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  children: [
                   // Store Hero Card
                   _liquidGlassBox(
                     isDark: isDark,
@@ -703,6 +721,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                 ],
               ),
             ),
+          ),
           ],
         ),
       ),
