@@ -4,7 +4,9 @@
 
 class ReviewModel {
   final String id;
-  final String gigId;
+  final String? gigId;
+  final String? businessId;
+  final String? serviceName;
   final String reviewerId;
   final int rating;
   final String comment;
@@ -15,7 +17,9 @@ class ReviewModel {
 
   ReviewModel({
     required this.id,
-    required this.gigId,
+    this.gigId,
+    this.businessId,
+    this.serviceName,
     required this.reviewerId,
     required this.rating,
     required this.comment,
@@ -27,11 +31,15 @@ class ReviewModel {
   factory ReviewModel.fromJson(Map<String, dynamic> json) {
     return ReviewModel(
       id: json['id'] as String,
-      gigId: json['gig_id'] as String,
-      reviewerId: json['reviewer_id'] as String,
+      gigId: json['gig_id'] as String?,
+      businessId: json['business_id'] as String?,
+      serviceName: json['service_name'] as String?,
+      reviewerId: json['reviewer_id'] as String? ?? '',
       rating: json['rating'] as int? ?? 0,
       comment: json['comment'] as String? ?? '',
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
       reviewerName: json['reviewer_name'] as String?,
     );
   }
@@ -40,7 +48,9 @@ class ReviewModel {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'gig_id': gigId,
+      if (gigId != null) 'gig_id': gigId,
+      if (businessId != null) 'business_id': businessId,
+      if (serviceName != null) 'service_name': serviceName,
       'reviewer_id': reviewerId,
       'rating': rating,
       'comment': comment,

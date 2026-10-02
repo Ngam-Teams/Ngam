@@ -87,7 +87,7 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     final currentUser = context.read<AuthProvider>().user;
     if (currentUser != null) {
-      _conversationsStream = ChatService.getConversationsStream(currentUser.id, isRunner: currentUser.role == 'runner');
+      _conversationsStream = ChatService.getConversationsStream(currentUser.id, isRunner: false);
       ChatService.trackPresence(currentUser.id);
       ChatService.onlineUsers.addListener(_onPresenceUpdate);
     } else {
@@ -958,38 +958,6 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                     _showTaskSelectorBottomSheet(isAttachMode: true);
                   },
                 ),
-              if (context.read<AuthProvider>().isRunner) ...[
-                const Divider(height: 1),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text('Runner Tools', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary, fontSize: 12)),
-                ),
-                ListTile(
-                  leading: const HugeIcon(icon: HugeIcons.strokeRoundedInvoice01, color: AppTheme.primary, size: 24),
-                  title: Text('chat.send_quote'.tr(), style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showCreateQuoteDialog();
-                  },
-                ),
-                if (_sharedGigs.isNotEmpty)
-                  ListTile(
-                    leading: const HugeIcon(icon: HugeIcons.strokeRoundedMoney04, color: AppTheme.primary, size: 24),
-                    title: Text('chat.counter_offer'.tr(), style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showCounterOfferDialog();
-                    },
-                  ),
-                ListTile(
-                  leading: const HugeIcon(icon: HugeIcons.strokeRoundedLocation01, color: AppTheme.primary, size: 24),
-                  title: Text('chat.request_location'.tr(), style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _sendRequestLocation();
-                  },
-                ),
-              ],
             ],
           ),
         ),
@@ -997,124 +965,6 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     ),
   ),
 );
-  }
-
-  void _sendRequestLocation() async {
-    final msgId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
-    final newMsg = MessageModel(
-      id: msgId,
-      conversationId: widget.conversation.id,
-      senderId: currentUserId,
-      content: '__REQUEST_LOC__',
-      isRead: false,
-      createdAt: DateTime.now(),
-      status: 'sending',
-    );
-    setState(() { _messages.insert(0, newMsg); });
-    await ChatService.sendMessage(newMsg, contextGigId: _linkedGig?.id);
-  }
-
-  void _showCreateQuoteDialog() {
-    final priceController = TextEditingController();
-    final detailsController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('chat.send_quote'.tr()),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: priceController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Price (RM)', prefixText: 'RM '),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: detailsController,
-                decoration: const InputDecoration(labelText: 'Description / Scope'),
-                maxLines: 3,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: Text('wallet.cancel'.tr())),
-            ElevatedButton(
-              onPressed: () async {
-                if (priceController.text.isEmpty) return;
-                Navigator.pop(context);
-                final price = priceController.text.trim();
-                final details = detailsController.text.trim();
-                
-                final msgId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
-                final newMsg = MessageModel(
-                  id: msgId,
-                  conversationId: widget.conversation.id,
-                  senderId: currentUserId,
-                  content: '__QUOTE__:$price|$details',
-                  isRead: false,
-                  createdAt: DateTime.now(),
-                  status: 'sending',
-                );
-                setState(() { _messages.insert(0, newMsg); });
-                await ChatService.sendMessage(newMsg, contextGigId: _linkedGig?.id);
-              },
-              child: Text('chat.send_quote'.tr()),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showCounterOfferDialog() {
-    if (_linkedGig == null) return;
-    final priceController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('chat.counter_offer'.tr()),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Original Bounty: ${_linkedGig!.formattedBounty}'),
-              const SizedBox(height: 12),
-              TextField(
-                controller: priceController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'New Price (RM)', prefixText: 'RM '),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: Text('wallet.cancel'.tr())),
-            ElevatedButton(
-              onPressed: () async {
-                if (priceController.text.isEmpty) return;
-                Navigator.pop(context);
-                final newPrice = priceController.text.trim();
-                
-                final msgId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
-                final newMsg = MessageModel(
-                  id: msgId,
-                  conversationId: widget.conversation.id,
-                  senderId: currentUserId,
-                  content: '__COUNTER__:${_linkedGig!.formattedBounty}|$newPrice|${_linkedGig!.id}',
-                  isRead: false,
-                  createdAt: DateTime.now(),
-                  status: 'sending',
-                );
-                setState(() { _messages.insert(0, newMsg); });
-                await ChatService.sendMessage(newMsg, contextGigId: _linkedGig?.id);
-              },
-              child: Text('chat.counter_offer_btn'.tr()),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   void _showTaskSelectorBottomSheet({required bool isAttachMode}) {
@@ -1788,18 +1638,11 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                     scrollDirection: Axis.horizontal,
                     physics: const BouncingScrollPhysics(),
                     children: [
-                      if (context.read<AuthProvider>().isRunner) ...[
-                        _buildQuickActionChip('I am available', isDark),
-                        _buildQuickActionChip('Please send a photo', isDark),
-                        _buildQuickActionChip('Can you share your location?', isDark),
-                        _buildQuickActionChip('I will arrive soon', isDark),
-                        _buildQuickActionChip('Let me check my schedule', isDark),
-                      ] else ...[
-                        _buildQuickActionChip('Can you help me with this?', isDark),
-                        _buildQuickActionChip('How much do you charge?', isDark),
-                        _buildQuickActionChip('When can you start?', isDark),
-                        _buildQuickActionChip('Here is a photo of the issue.', isDark),
-                      ],
+                      _buildQuickActionChip('Boleh saya bantu?', isDark),
+                      _buildQuickActionChip('Berapa anggaran harga?', isDark),
+                      _buildQuickActionChip('Bila waktu sesuai untuk temujanji?', isDark),
+                      _buildQuickActionChip('Boleh saya tempah sekarang?', isDark),
+                      _buildQuickActionChip('Terima kasih!', isDark),
                     ],
                   ),
                 ),

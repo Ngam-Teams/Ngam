@@ -44,6 +44,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
   int? _syncedCloseHour;
   int? _syncedCloseMinute;
   String? _syncedCoverUrl;
+  Map<String, dynamic>? _syncedOperatingHours;
 
   int get _openHour => _syncedOpenHour ?? widget.shop['openHour'] ?? 9;
   int get _openMinute => _syncedOpenMinute ?? widget.shop['openMinute'] ?? 0;
@@ -253,6 +254,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
 
       if (settings != null && settings['operating_hours'] is Map && mounted) {
         final op = settings['operating_hours'] as Map;
+        _syncedOperatingHours = Map<String, dynamic>.from(op);
         final openStr = op['open_time'] as String?;
         final closeStr = op['close_time'] as String?;
 
@@ -543,6 +545,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                                         'closeHour': _closeHour,
                                                         'closeMinute': _closeMinute,
                                                         'cover': _coverUrl,
+                                                        'operating_hours': _syncedOperatingHours ?? widget.shop['operating_hours'],
                                                       }),
                                                     ),
                                                   );
@@ -623,6 +626,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                           'closeHour': _closeHour,
                                           'closeMinute': _closeMinute,
                                           'cover': _coverUrl,
+                                          'operating_hours': _syncedOperatingHours ?? widget.shop['operating_hours'],
                                         }),
                                       ),
                                     );

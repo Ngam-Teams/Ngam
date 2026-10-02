@@ -174,6 +174,43 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
     }
   }
 
+  Future<void> _openDirections() async {
+    final query = Uri.encodeComponent(widget.shopName);
+    final mapUrl = Uri.parse('https://www.google.com/maps/search/?api=1&query=$query');
+    try {
+      if (await canLaunchUrl(mapUrl)) {
+        await launchUrl(mapUrl, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('Error opening maps: $e');
+    }
+  }
+
+  Future<void> _shareTicketToWhatsApp() async {
+    final text = '''
+*NGAM — RESIT TEMPAHAN DIGITAL*
+--------------------------------
+🧾 *No. Tempahan:* ${widget.bookingId}
+🏪 *Kedai:* ${widget.shopName}
+✂️ *Perkhidmatan:* ${widget.category}
+👤 *Staf/Pakar:* ${widget.providerName}
+📅 *Tarikh:* ${widget.date}
+⏰ *Masa:* ${widget.time}
+💰 *Jumlah:* RM ${widget.totalPrice}
+📌 *Status:* ${_currentStatus.toUpperCase()}
+
+Disahkan melalui aplikasi *Ngam*.
+''';
+    final url = Uri.parse('https://wa.me/?text=${Uri.encodeComponent(text)}');
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('Error launching WhatsApp: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -199,6 +236,17 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
           l10n.ticketOrderTitle,
           style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.bold),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Kongsi Resit',
+            icon: HugeIcon(
+              icon: HugeIcons.strokeRoundedShare01,
+              color: isDark ? Colors.white : Colors.black,
+              size: 22.0,
+            ),
+            onPressed: _shareTicketToWhatsApp,
+          ),
+        ],
       ),
       // 🟢 CHANGED: We now use a Column to separate the Scrollable Ticket from the Sticky Bottom Buttons
       body: Column(
@@ -369,7 +417,7 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: QrImageView(
-                                data: widget.bookingId,
+                                data: qrData,
                                 version: QrVersions.auto,
                                 size: 160.0,
                                 backgroundColor: Colors.white,
@@ -421,7 +469,7 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
                   Expanded(
                     flex: 1, // 🟢 Force 1 flex
                     child: ElevatedButton(
-                      onPressed: () {}, // Add map logic
+                      onPressed: _openDirections,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
                         foregroundColor: isDark ? Colors.white : Colors.black87,
@@ -437,9 +485,7 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
                   ),
                   const SizedBox(width: 8),
 
-                  // 🟢 ONLY show the big "Book Again" button if it was cancelled
                   if (widget.isCancelled) ...[
-                    const SizedBox(width: 8),
                     Expanded(
                       flex: 2,
                       child: ElevatedButton(
@@ -469,7 +515,67 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
                         child: const Text("Book Again", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                       ),
                     ),
-                  ]
+                  ] else if (_currentStatus == 'completed') ...[
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pushNamed(
+                            context,
+                            '/review',
+                            arguments: {
+                              'shop_id': widget.shopId,
+                              'shop_name': widget.shopName,
+                              'service_name': widget.category,
+                              'booking_id': widget.bookingId,
+                            },
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amber.shade700,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.star_rounded, size: 20),
+                            SizedBox(width: 6),
+                            Text("Beri Ulasan", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton.icon(
+                        onPressed: _shareTicketToWhatsApp,
+                        icon: const HugeIcon(
+                          icon: HugeIcons.strokeRoundedShare01,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        label: const Text(
+                          "Kongsi Resit",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF25D366),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

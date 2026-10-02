@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:provider/provider.dart';
-import '../../models/gig_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/review_service.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/glass_toast.dart';
 
 // ============================================================
-// Ngam App — Skrin Review
-// Customer bagi rating kat runner lepas task siap
+// Ngam App — Skrin Review Kedai & Perkhidmatan
+// Pelanggan beri penarafan & ulasan selepas urusan/tempahan siap
 // ============================================================
 
 class ReviewScreen extends StatefulWidget {
@@ -19,9 +20,20 @@ class ReviewScreen extends StatefulWidget {
 }
 
 class _ReviewScreenState extends State<ReviewScreen> {
-  int _rating = 0;
+  int _rating = 5;
   final _commentController = TextEditingController();
   bool _isSubmitting = false;
+
+  Map<String, dynamic>? _targetData;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map<String, dynamic>) {
+      _targetData = args;
+    }
+  }
 
   @override
   void dispose() {
@@ -32,32 +44,45 @@ class _ReviewScreenState extends State<ReviewScreen> {
   Future<void> _handleSubmit() async {
     if (_rating == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a rating')),
+        const SnackBar(content: Text('Sila pilih penarafan bintang')),
       );
       return;
     }
 
     setState(() => _isSubmitting = true);
 
-    final gig = ModalRoute.of(context)?.settings.arguments as GigModel;
-    final userId = context.read<AuthProvider>().user!.id;
+    final userId = context.read<AuthProvider>().user?.id ?? 'guest_user';
+    final businessId = _targetData?['business_id'] ??
+        _targetData?['shop_id'] ??
+        _targetData?['id']?.toString();
+    final serviceName = _targetData?['service_name'] ??
+        _targetData?['service'] ??
+        _targetData?['category'];
 
     try {
       await ReviewService.submitReview(
-        gigId: gig.id,
+        businessId: businessId?.toString(),
+        serviceName: serviceName?.toString(),
         reviewerId: userId,
         rating: _rating,
         comment: _commentController.text.trim(),
       );
 
       if (mounted) {
+        showGlassToast(
+          context,
+          'Terima kasih atas ulasan anda!',
+          customIcon: Icons.check_circle_rounded,
+        );
         Navigator.pop(context, true);
       }
     } catch (e) {
       setState(() => _isSubmitting = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to submit review')),
+        showGlassToast(
+          context,
+          'Gagal menghantar ulasan. Sila cuba lagi.',
+          isError: true,
         );
       }
     }
@@ -65,67 +90,129 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final storeName = _targetData?['name'] ??
+        _targetData?['shop_name'] ??
+        _targetData?['business_name'] ??
+        'Kedai & Perkhidmatan';
+    final serviceName = _targetData?['service_name'] ??
+        _targetData?['service'] ??
+        _targetData?['category'] ??
+        'Tempahan Selesai';
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Rate & Review',
+          'Ulasan & Penarafan',
           style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
         ),
+        elevation: 0,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
 
-            // ─── Avatar Runner ───────────────────────
+            // ─── Store / Service Header Card ───────────────────────
             Container(
-              width: 80,
-              height: 80,
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? Colors.white12 : Colors.grey.shade300,
+                ),
               ),
-              child: const Icon(
-                Icons.person,
-                size: 40,
-                color: AppTheme.primary,
+              child: Row(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Center(
+                      child: HugeIcon(
+                        icon: HugeIcons.strokeRoundedStore01,
+                        color: AppTheme.primary,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          storeName,
+                          style: GoogleFonts.outfit(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          serviceName,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark ? Colors.white70 : Colors.black54,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 28),
 
             Text(
-              'How was your experience?',
+              'Bagaimana pengalaman anda?',
               style: GoogleFonts.outfit(
-                fontSize: 22,
+                fontSize: 20,
                 fontWeight: FontWeight.w700,
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              'Your feedback helps improve the community',
+              'Maklum balas anda membantu perniagaan ini meningkatkan mutu perkhidmatan.',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 color: Colors.grey.shade500,
+                height: 1.4,
               ),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
 
             // ─── Rating Bintang ──────────────────────
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(5, (index) {
+                final starValue = index + 1;
                 return GestureDetector(
                   onTap: () {
-                    setState(() => _rating = index + 1);
+                    setState(() => _rating = starValue);
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(horizontal: 6),
                     child: Icon(
-                      index < _rating ? Icons.star_rounded : Icons.star_outline_rounded,
-                      size: 44,
-                      color: index < _rating
+                      starValue <= _rating
+                          ? Icons.star_rounded
+                          : Icons.star_outline_rounded,
+                      size: 46,
+                      color: starValue <= _rating
                           ? Colors.amber.shade600
                           : Colors.grey.shade300,
                     ),
@@ -133,21 +220,23 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 );
               }),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
               _rating == 0
-                  ? 'Tap to rate'
+                  ? 'Tekan bintang untuk pilih'
                   : _rating <= 2
-                      ? 'Could be better'
+                      ? 'Kurang Memuaskan 🙁'
                       : _rating <= 3
-                          ? 'Good'
+                          ? 'Sederhana Baik 🙂'
                           : _rating <= 4
-                              ? 'Great!'
-                              : 'Excellent! 🎉',
+                              ? 'Sangat Memuaskan! 👍'
+                              : 'Terbaik & Cemerlang! 🎉',
               style: TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: _rating > 0 ? Colors.amber.shade700 : Colors.grey.shade400,
+                fontWeight: FontWeight.w600,
+                color: _rating > 0
+                    ? Colors.amber.shade700
+                    : Colors.grey.shade400,
               ),
             ),
             const SizedBox(height: 32),
@@ -157,9 +246,13 @@ class _ReviewScreenState extends State<ReviewScreen> {
               controller: _commentController,
               maxLines: 4,
               decoration: InputDecoration(
-                labelText: 'Leave a comment (optional)',
-                hintText: 'Tell us about your experience...',
+                labelText: 'Tulis maklum balas (Pilihan)',
+                hintText:
+                    'Kongsikan kualiti layanan, ketepatan masa atau suasana kedai...',
                 alignLabelWithHint: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
             ),
             const SizedBox(height: 32),
@@ -167,19 +260,33 @@ class _ReviewScreenState extends State<ReviewScreen> {
             // ─── Butang Submit ───────────────────────
             SizedBox(
               width: double.infinity,
-              height: 54,
+              height: 52,
               child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 0,
+                ),
                 onPressed: _isSubmitting ? null : _handleSubmit,
                 child: _isSubmitting
                     ? const SizedBox(
-                        width: 24,
-                        height: 24,
+                        width: 22,
+                        height: 22,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
                           color: Colors.white,
                         ),
                       )
-                    : const Text('Submit Review'),
+                    : const Text(
+                        'Hantar Ulasan',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
           ],
