@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart' hide GlassCard;
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../utils/app_theme.dart';
@@ -308,7 +307,19 @@ class _LoginScreenState extends State<LoginScreen>
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const FaIcon(FontAwesomeIcons.google, size: 20),
+                                Container(
+                                  width: 22,
+                                  height: 22,
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    'G',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                      color: isDark ? Colors.white : const Color(0xFF4285F4),
+                                    ),
+                                  ),
+                                ),
                                 const SizedBox(width: 8),
                                 Flexible(
                                   child: FittedBox(
@@ -346,7 +357,7 @@ class _LoginScreenState extends State<LoginScreen>
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const FaIcon(FontAwesomeIcons.apple, size: 22),
+                                Icon(Icons.apple, size: 22, color: isDark ? Colors.white : Colors.black),
                                 const SizedBox(width: 8),
                                 Flexible(
                                   child: FittedBox(
