@@ -42,8 +42,10 @@ void main() async {
   // Setup Supabase
   await SupabaseService.initialize();
 
-  // Setup Push Notifications
-  await PushService.initialize();
+  // Setup Push Notifications asynchronously without delaying initial UI mount
+  PushService.initialize().catchError((e) {
+    debugPrint("PushService initialization error: $e");
+  });
 
   // Apply Screen Security kalau on
   try {

@@ -27,7 +27,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     // Buang splash screen lepas frame pertama di-render
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FlutterNativeSplash.remove();
-      AppUpdateService.checkOnStartup(context);
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted) {
+          AppUpdateService.checkOnStartup(context);
+        }
+      });
     });
   }
 
