@@ -21,6 +21,7 @@ import '../../widgets/glass_toast.dart';
 import '../../widgets/bottom_nav_customer.dart';
 import '../auth/login_screen.dart'; // Make sure this matches your auth screen file name
 import 'package:supabase_flutter/supabase_flutter.dart'; 
+import 'qr_scanner_screen.dart';
 
 enum ShopStatus { open, closingSoon, closed }
 
@@ -590,6 +591,81 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       _activeSearchQuery = null;
       _selectedShop = null;
     });
+  }
+
+  void _openQrScanner() async {
+    final scannedData = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const QRScannerScreen()),
+    );
+
+    if (scannedData == null || scannedData.isEmpty || !mounted) return;
+
+    _handleScannedStoreQr(scannedData);
+  }
+
+  void _handleScannedStoreQr(String rawData) async {
+    String storeQuery = rawData.trim();
+
+    final uri = Uri.tryParse(storeQuery);
+    if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https' || uri.scheme == 'ngam')) {
+      if (uri.pathSegments.isNotEmpty) {
+        storeQuery = uri.pathSegments.last;
+      } else if (uri.host.isNotEmpty) {
+        storeQuery = uri.host;
+      }
+    }
+
+    Map<String, dynamic>? matchedShop;
+    for (final shop in _realShops) {
+      final id = (shop['id'] ?? shop['business_id'] ?? '').toString();
+      final name = (shop['name'] ?? '').toString().toLowerCase();
+      if (id.toLowerCase() == storeQuery.toLowerCase() ||
+          name == storeQuery.toLowerCase().replaceAll('-', ' ')) {
+        matchedShop = shop;
+        break;
+      }
+    }
+
+    if (matchedShop == null) {
+      for (final shop in _nearbyShops) {
+        final id = (shop['id'] ?? shop['business_id'] ?? '').toString();
+        if (id.toLowerCase() == storeQuery.toLowerCase()) {
+          matchedShop = shop;
+          break;
+        }
+      }
+    }
+
+    if (matchedShop == null) {
+      try {
+        final res = await Supabase.instance.client
+            .from('businesses')
+            .select()
+            .or('id.eq.$storeQuery,name.ilike.%$storeQuery%')
+            .maybeSingle();
+
+        if (res != null) {
+          matchedShop = res;
+        }
+      } catch (e) {
+        debugPrint('Error searching scanned shop: $e');
+      }
+    }
+
+    if (!mounted) return;
+
+    if (matchedShop != null) {
+      final double? lat = matchedShop['latitude'] != null ? (matchedShop['latitude'] as num).toDouble() : null;
+      final double? lng = matchedShop['longitude'] != null ? (matchedShop['longitude'] as num).toDouble() : null;
+      if (lat != null && lng != null) {
+        _animatedMapMove(LatLng(lat, lng), 16.0);
+      }
+      _showBusinessProfile(context, matchedShop);
+      showGlassToast(context, 'Membuka ${matchedShop['name'] ?? 'Kedai'}');
+    } else {
+      showGlassToast(context, 'Kedai tidak dijumpai: $storeQuery', isError: true);
+    }
   }
 
   Future<void> _initLocationTracking() async {
@@ -1194,9 +1270,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           ),
           const SizedBox(width: 12),
           _AnimatedPressable(
-              onTap: () {
-                showGlassToast(context, 'Lagi (Akan Datang)');
-              },
+              onTap: _openQrScanner,
               child: GlassContainer(
                 useOwnLayer: true,
                 quality: GlassQuality.standard,
@@ -1220,7 +1294,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                     ],
                   ),
                   child: Center(
-                      child: HugeIcon(icon: HugeIcons.strokeRoundedMoreHorizontal,
+                      child: HugeIcon(icon: HugeIcons.strokeRoundedQrCode01,
                           color: isDark ? Colors.white70 : Colors.black87,
                           size: 22,
                           strokeWidth: 2.0)

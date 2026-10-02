@@ -160,6 +160,11 @@ class AuthService {
     await _client.auth.signOut();
   }
 
+  /// Send password reset email
+  static Future<void> resetPasswordForEmail(String email) async {
+    await _client.auth.resetPasswordForEmail(email.trim());
+  }
+
   /// Get current logged-in user profile
   static Future<UserModel?> getCurrentUser() async {
     final session = _client.auth.currentSession;

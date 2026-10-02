@@ -123,7 +123,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                   }).toList();
 
                   // Split into Upcoming vs History
-                  final upcomingList = formattedBookings.where((b) => b['status'] == 'pending' || b['status'] == 'confirmed').toList();
+                  final upcomingList = formattedBookings.where((b) => b['status'] != 'cancelled' && b['status'] != 'completed' && b['status'] != 'holding').toList();
                   final historyList = formattedBookings.where((b) => b['status'] == 'cancelled' || b['status'] == 'completed').toList();
 
                   return AnimatedSwitcher(
@@ -201,6 +201,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
 
   Widget _buildUpcomingTicket(BuildContext context, Map<String, dynamic> item, bool isDark) {
     final loc = AppLocalizations.of(context);
+    final String status = (item['status'] as String? ?? 'pending').toLowerCase();
 
     return Container(
       decoration: BoxDecoration(
@@ -227,22 +228,29 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(item['category'].toUpperCase(), style: const TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Text(item['category'].toUpperCase(), style: const TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold)),
+                          const Spacer(),
+                          _buildStatusBadge(status, isDark),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
                       Text(item['title'], maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
                       const SizedBox(height: 4),
                       Text("${item['date']} • ${item['time']}", style: TextStyle(color: isDark ? Colors.white54 : Colors.grey[600], fontSize: 12)),
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), shape: BoxShape.circle),
-                  child: const HugeIcon(icon: HugeIcons.strokeRoundedQrCode01, color: Colors.blue, size: 24),
-                )
               ],
             ),
           ),
+          // 🟢 Reactive Step Progress Tracker
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: _buildMiniProgressTracker(status, isDark),
+          ),
+          const SizedBox(height: 12),
           Divider(height: 1, color: isDark ? Colors.white10 : Colors.grey[200]),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -294,6 +302,8 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                             time: item['time'],
                             totalPrice: item['totalPrice'],
                             bookingId: item['id'],
+                            status: status,
+                            bookingDbId: item['db_id']?.toString(),
                           ),
                         ),
                       );
@@ -310,6 +320,127 @@ class _MyBookingsViewState extends State<MyBookingsView> {
             ),
           )
         ],
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(String status, bool isDark) {
+    Color color;
+    String label;
+    dynamic icon;
+
+    switch (status) {
+      case 'pending':
+        color = const Color(0xFFF59E0B);
+        label = 'Pending';
+        icon = HugeIcons.strokeRoundedTime02;
+        break;
+      case 'preparing':
+      case 'in_progress':
+        color = const Color(0xFF8B5CF6);
+        label = 'Diproses';
+        icon = HugeIcons.strokeRoundedHourglass;
+        break;
+      case 'ready':
+        color = const Color(0xFF10B981);
+        label = 'Sedia';
+        icon = HugeIcons.strokeRoundedShoppingBag01;
+        break;
+      case 'confirmed':
+      default:
+        color = const Color(0xFF3B82F6);
+        label = 'Disahkan';
+        icon = HugeIcons.strokeRoundedCheckmarkCircle02;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          HugeIcon(icon: icon, color: color, size: 12),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniProgressTracker(String status, bool isDark) {
+    int activeStep = 0;
+    if (status == 'confirmed' || status == 'preparing' || status == 'in_progress') {
+      activeStep = 1;
+    } else if (status == 'ready' || status == 'completed') {
+      activeStep = 2;
+    }
+
+    final steps = ['Diterima', 'Disahkan', 'Sedia'];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.grey[50],
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: List.generate(steps.length * 2 - 1, (index) {
+          if (index.isOdd) {
+            final lineIndex = index ~/ 2;
+            final isDone = lineIndex < activeStep;
+            return Expanded(
+              child: Container(
+                height: 2,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                color: isDone ? Colors.blue : (isDark ? Colors.white12 : Colors.grey[300]),
+              ),
+            );
+          }
+
+          final stepIdx = index ~/ 2;
+          final isDone = stepIdx < activeStep;
+          final isCurrent = stepIdx == activeStep;
+
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: (isDone || isCurrent) ? Colors.blue : (isDark ? Colors.white12 : Colors.grey[300]),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: isDone
+                      ? const Icon(Icons.check, size: 9, color: Colors.white)
+                      : isCurrent
+                          ? Container(width: 4, height: 4, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle))
+                          : null,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                steps[stepIdx],
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
+                  color: isCurrent
+                      ? (isDark ? Colors.white : Colors.black87)
+                      : (isDark ? Colors.white38 : Colors.grey[500]),
+                ),
+              ),
+            ],
+          );
+        }),
       ),
     );
   }
@@ -333,6 +464,8 @@ class _MyBookingsViewState extends State<MyBookingsView> {
               totalPrice: item['totalPrice'],
               bookingId: item['id'],
               isCancelled: isCancelled,
+              status: item['status'] ?? (isCancelled ? 'cancelled' : 'completed'),
+              bookingDbId: item['db_id']?.toString(),
             ),
           ),
         );

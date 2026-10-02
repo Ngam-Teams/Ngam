@@ -14,6 +14,7 @@ import 'l10n/generated/app_localizations.dart';
 // ─── Screens ─────────────────────────────────────────────────
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
+import 'screens/auth/forgot_password_screen.dart';
 import 'screens/customer/customer_home_screen.dart';
 import 'screens/customer/review_screen.dart';
 import 'screens/shared/profile_screen.dart';
@@ -112,6 +113,7 @@ class NgamApp extends StatelessWidget {
             routes: {
               '/login': (context) => const LoginScreen(),
               '/register': (context) => const RegisterScreen(),
+              '/forgot-password': (context) => const ForgotPasswordScreen(),
               '/customer-home': (context) => const CustomerHomeScreen(),
               '/review': (context) => const ReviewScreen(),
               '/profile': (context) => const ProfileScreen(),

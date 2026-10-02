@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ngam/l10n/generated/app_localizations.dart';
 import 'bookings_view.dart';
 
@@ -17,6 +18,8 @@ class BookingTicketScreen extends StatefulWidget {
   final String totalPrice;
   final String bookingId;
   final bool isCancelled;
+  final String status;
+  final String? bookingDbId;
 
   const BookingTicketScreen({
     super.key,
@@ -30,7 +33,8 @@ class BookingTicketScreen extends StatefulWidget {
     required this.totalPrice,
     required this.bookingId,
     this.isCancelled = false,
-
+    this.status = 'confirmed',
+    this.bookingDbId,
   });
 
   @override
@@ -42,13 +46,35 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
   Duration _timeLeft = Duration.zero;
   bool _isPast = false;
   late DateTime _targetDateTime;
+  late String _currentStatus;
+  StreamSubscription<List<Map<String, dynamic>>>? _statusSubscription;
 
   @override
   void initState() {
     super.initState();
 
+    _currentStatus = widget.isCancelled ? 'cancelled' : widget.status;
+
+    // 🟢 Realtime Supabase status sync with merchant
+    if (widget.bookingDbId != null && widget.bookingDbId!.isNotEmpty) {
+      _statusSubscription = Supabase.instance.client
+          .from('bookings')
+          .stream(primaryKey: ['id'])
+          .eq('id', widget.bookingDbId!)
+          .listen((rows) {
+        if (rows.isNotEmpty && mounted) {
+          final dbStatus = rows.first['status'] as String?;
+          if (dbStatus != null && dbStatus != _currentStatus) {
+            setState(() {
+              _currentStatus = dbStatus;
+            });
+          }
+        }
+      });
+    }
+
     // 🟢 ONLY run the timer if the booking is NOT cancelled!
-    if (!widget.isCancelled) {
+    if (!widget.isCancelled && _currentStatus != 'cancelled') {
       _targetDateTime = _parseBookingDateTime(widget.date, widget.time);
       _updateTimeLeft();
 
@@ -60,6 +86,7 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
 
   @override
   void dispose() {
+    _statusSubscription?.cancel();
     _timer?.cancel();
     super.dispose();
   }
@@ -184,7 +211,7 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
               physics: const BouncingScrollPhysics(),
               child: Column(
                 children: [
-                  if (widget.isCancelled)
+                  if (_currentStatus == 'cancelled')
                     Container(
                       margin: const EdgeInsets.only(bottom: 20),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -202,7 +229,11 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
                         ],
                       ),
                     )
-                  else
+                  else ...[
+                    // 🟢 LIVE STATUS STEP TRACKER CARD
+                    _buildLiveStatusTrackerCard(context, isDark),
+                    const SizedBox(height: 12),
+
                     Container(
                     margin: const EdgeInsets.only(bottom: 20),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -241,6 +272,7 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
                       ],
                     ),
                   ),
+                ],
 
                   // 🟢 REARRANGED CLEAN TICKET CARD
                   Container(
@@ -507,6 +539,228 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
               color: isDark ? const Color(0xFF13171B) : const Color(0xFFE5ECF1),
               borderRadius: const BorderRadius.horizontal(left: Radius.circular(20)),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLiveStatusTrackerCard(BuildContext context, bool isDark) {
+    Color statusColor;
+    dynamic statusIcon;
+    String statusTitle;
+    String statusSubtitle;
+    int currentStepIndex;
+
+    switch (_currentStatus.toLowerCase()) {
+      case 'pending':
+        statusColor = const Color(0xFFF59E0B);
+        statusIcon = HugeIcons.strokeRoundedTime02;
+        statusTitle = 'Menunggu Pengesahan Peniaga';
+        statusSubtitle = 'Peniaga sedang menyemak slot tempahan anda';
+        currentStepIndex = 0;
+        break;
+      case 'preparing':
+      case 'in_progress':
+        statusColor = const Color(0xFF8B5CF6);
+        statusIcon = HugeIcons.strokeRoundedHourglass;
+        statusTitle = 'Sedang Disediakan';
+        statusSubtitle = 'Peniaga sedang menyiapkan pesanan / slot anda';
+        currentStepIndex = 1;
+        break;
+      case 'ready':
+        statusColor = const Color(0xFF10B981);
+        statusIcon = HugeIcons.strokeRoundedShoppingBag01;
+        statusTitle = 'Sedia Untuk Diambil / Tiba';
+        statusSubtitle = 'Sila ke premis perniagaan sekarang!';
+        currentStepIndex = 2;
+        break;
+      case 'completed':
+        statusColor = const Color(0xFF10B981);
+        statusIcon = HugeIcons.strokeRoundedTickDouble01;
+        statusTitle = 'Tempahan Selesai';
+        statusSubtitle = 'Terima kasih atas kunjungan anda';
+        currentStepIndex = 2;
+        break;
+      case 'confirmed':
+      default:
+        statusColor = const Color(0xFF3B82F6);
+        statusIcon = HugeIcons.strokeRoundedCheckmarkCircle02;
+        statusTitle = 'Tempahan Telah Disahkan';
+        statusSubtitle = 'Peniaga telah mengesahkan slot tempahan anda';
+        currentStepIndex = 1;
+        break;
+    }
+
+    final steps = ['Diterima', 'Disahkan', 'Sedia'];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E242B) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: statusColor.withValues(alpha: 0.35),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: statusColor.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: HugeIcon(
+                  icon: statusIcon,
+                  color: statusColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      statusTitle,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      statusSubtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.white60 : Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: statusColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'LIVE',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.8,
+                        color: statusColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: List.generate(steps.length * 2 - 1, (index) {
+              if (index.isOdd) {
+                final lineIndex = index ~/ 2;
+                final isPassed = lineIndex < currentStepIndex;
+                return Expanded(
+                  child: Container(
+                    height: 2.5,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: isPassed
+                          ? statusColor
+                          : (isDark ? Colors.white12 : Colors.grey[300]),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                );
+              }
+
+              final stepIndex = index ~/ 2;
+              final isDone = stepIndex < currentStepIndex || (_currentStatus == 'completed' && stepIndex <= 2);
+              final isCurrent = stepIndex == currentStepIndex && _currentStatus != 'completed';
+
+              return Column(
+                children: [
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: isDone || isCurrent
+                          ? statusColor
+                          : (isDark ? Colors.white10 : Colors.grey[200]),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isCurrent
+                            ? statusColor.withValues(alpha: 0.4)
+                            : Colors.transparent,
+                        width: 3,
+                      ),
+                    ),
+                    child: Center(
+                      child: isDone
+                          ? const Icon(Icons.check, size: 12, color: Colors.white)
+                          : isCurrent
+                              ? Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                  ),
+                                )
+                              : Text(
+                                  '${stepIndex + 1}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? Colors.white38 : Colors.grey[500],
+                                  ),
+                                ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    steps[stepIndex],
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
+                      color: isCurrent
+                          ? (isDark ? Colors.white : Colors.black87)
+                          : (isDark ? Colors.white38 : Colors.grey[500]),
+                    ),
+                  ),
+                ],
+              );
+            }),
           ),
         ],
       ),

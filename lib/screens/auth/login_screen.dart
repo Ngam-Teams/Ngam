@@ -11,6 +11,7 @@ import '../../providers/theme_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/animated_background.dart';
 import '../../widgets/glass_card.dart';
+import 'forgot_password_screen.dart';
 
 // ============================================================
 // Ngam App — Skrin Login
@@ -187,7 +188,11 @@ class _LoginScreenState extends State<LoginScreen>
                           alignment: Alignment.centerRight,
                           child: TextButton(
                             onPressed: () {
-                              // TODO: Kena hantar pegi skrin forgot password nanti
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const ForgotPasswordScreen(),
+                                ),
+                              );
                             },
                             style: TextButton.styleFrom(
                               foregroundColor: AppTheme.primary,

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'dart:ui';
 
 class QRScannerScreen extends StatefulWidget {
   const QRScannerScreen({super.key});
@@ -11,6 +10,8 @@ class QRScannerScreen extends StatefulWidget {
 
 class _QRScannerScreenState extends State<QRScannerScreen> {
   final MobileScannerController controller = MobileScannerController();
+  bool _hasScanned = false;
+  bool _torchEnabled = false;
 
   @override
   void dispose() {
@@ -28,11 +29,13 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
           MobileScanner(
             controller: controller,
             onDetect: (capture) {
+              if (_hasScanned) return;
               final List<Barcode> barcodes = capture.barcodes;
               for (final barcode in barcodes) {
-                if (barcode.rawValue != null) {
-                  // Returns the scanned string back to ExploreView
+                if (barcode.rawValue != null && barcode.rawValue!.isNotEmpty) {
+                  _hasScanned = true;
                   Navigator.pop(context, barcode.rawValue);
+                  break;
                 }
               }
             },
@@ -41,13 +44,55 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
           // --- FUTURISTIC OVERLAY ---
           _buildScannerOverlay(context),
 
-          // Back Button
+          // Instructions Banner
+          Positioned(
+            bottom: 120,
+            left: 32,
+            right: 32,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white24),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.qr_code_scanner, color: Colors.blueAccent, size: 20),
+                  SizedBox(width: 10),
+                  Flexible(
+                    child: Text(
+                      'Halakan ke Kod QR kedai atau meja',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Top Action Bar
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white, size: 30),
-                onPressed: () => Navigator.pop(context),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  IconButton(
+                    icon: Icon(_torchEnabled ? Icons.flash_on : Icons.flash_off, color: _torchEnabled ? Colors.amber : Colors.white, size: 26),
+                    onPressed: () {
+                      controller.toggleTorch();
+                      setState(() => _torchEnabled = !_torchEnabled);
+                    },
+                  ),
+                ],
               ),
             ),
           ),
