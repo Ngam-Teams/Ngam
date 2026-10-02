@@ -16,8 +16,8 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 subprojects {
-    afterEvaluate {
-        tasks.matching { it.name.startsWith("lintVital") }.configureEach {
+    tasks.configureEach {
+        if (name.startsWith("lintVital")) {
             enabled = false
         }
     }
