@@ -78,75 +78,52 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
   }
 
   void _initStream() {
-    // HARDCODED FOR UI TESTING
-    Future.delayed(const Duration(milliseconds: 500), () {
-      final loaded = [
-        ProductModel(
-          id: '1',
-          shopId: '1',
-          name: 'Premium Haircut',
-          description:
-              'A stylish and clean premium haircut by professional barbers.',
-          price: 35.0,
-          category: 'Haircut',
-          imageUrl:
-              'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=300',
-          isActive: true,
-        ),
-        ProductModel(
-          id: '2',
-          shopId: '1',
-          name: 'Classic Shave',
-          description: 'Hot towel classic shave for a smooth finish.',
-          price: 25.0,
-          category: 'Shaving',
-          imageUrl:
-              'https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=300',
-          isActive: true,
-        ),
-        ProductModel(
-          id: '3',
-          shopId: '1',
-          name: 'Beard Trim',
-          description: 'Keep your beard looking sharp and well-groomed.',
-          price: 15.0,
-          category: 'Shaving',
-          imageUrl:
-              'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=400',
-          isActive: true,
-        ),
-        ProductModel(
-          id: '4',
-          shopId: '1',
-          name: 'Hair Coloring',
-          description: 'Full hair coloring using premium dyes.',
-          price: 80.0,
-          category: 'Coloring',
-          imageUrl:
-              'https://images.unsplash.com/photo-1619233543640-af09c173763b?q=80&w=400',
-          isActive: true,
-        ),
-        ProductModel(
-          id: '5',
-          shopId: '1',
-          name: 'Facial Treatment',
-          description: 'Refreshing facial to cleanse and rejuvenate your skin.',
-          price: 45.0,
-          category: 'Facial',
-          imageUrl:
-              'https://plus.unsplash.com/premium_photo-1661290481306-4841edd49719?q=80&w=1332',
-          isActive: true,
-        ),
-      ];
+    final shopId = widget.shopId;
+    if (shopId.isEmpty) {
       if (mounted) {
         setState(() {
-          _allProducts = loaded;
+          _allProducts = [];
           _filterProducts();
           _isLoading = false;
         });
         _fadeCtrl.forward();
       }
-    });
+      return;
+    }
+
+    _productSub?.cancel();
+    _productSub = _supabase
+        .from('business_products')
+        .stream(primaryKey: ['id'])
+        .eq('shop_id', shopId)
+        .order('created_at', ascending: false)
+        .listen(
+      (data) {
+        final activeProducts = data
+            .where((item) =>
+                item['is_active'] == true || item['is_active'] == null)
+            .map((json) => ProductModel.fromJson(json))
+            .toList();
+
+        if (mounted) {
+          setState(() {
+            _allProducts = activeProducts;
+            _filterProducts();
+            _isLoading = false;
+          });
+          _fadeCtrl.forward();
+        }
+      },
+      onError: (err) {
+        debugPrint('Error streaming products for shop $shopId: $err');
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+          _fadeCtrl.forward();
+        }
+      },
+    );
   }
 
   void _filterProducts() {

@@ -314,6 +314,12 @@ abstract class AppLocalizations {
   /// **'Rezrv Now'**
   String get rezrvNow;
 
+  /// No description provided for @bookNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Book Now'**
+  String get bookNow;
+
   /// Carousel title shown when search results are found
   ///
   /// In en, this message translates to:

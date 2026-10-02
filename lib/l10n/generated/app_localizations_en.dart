@@ -121,6 +121,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rezrvNow => 'Book Now';
 
   @override
+  String get bookNow => 'Book Now';
+
+  @override
   String resultsFor(String query) {
     return 'Results for \'$query\'';
   }
@@ -216,7 +219,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get generalCategory => 'General';
 
   @override
-  String get myBarbrTitle => 'My Barbr';
+  String get myBarbrTitle => 'My Bookings';
 
   @override
   String get tabUpcoming => 'Upcoming';
@@ -225,11 +228,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tabHistory => 'History';
 
   @override
-  String get noPastReservations => 'No past or cancelled reservations.';
+  String get noPastReservations => 'No past or cancelled bookings.';
 
   @override
   String get noUpcomingReservations =>
-      'No upcoming reservations yet.\nBook a service to see it here!';
+      'No upcoming bookings yet.\nBook a service to see it here!';
 
   @override
   String get cancelBtn => 'Cancel';
@@ -371,7 +374,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navExplore => 'Explore';
 
   @override
-  String get navMyBarbr => 'My Barbr';
+  String get navMyBarbr => 'Bookings';
 
   @override
   String get navSaved => 'Saved';

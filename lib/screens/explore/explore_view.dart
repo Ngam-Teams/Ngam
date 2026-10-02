@@ -18,6 +18,7 @@ import 'business_products_view.dart';
 import 'business_store_view.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import '../../widgets/glass_toast.dart';
+import '../../widgets/bottom_nav_customer.dart';
 import '../auth/login_screen.dart'; // Make sure this matches your auth screen file name
 import 'package:supabase_flutter/supabase_flutter.dart'; 
 
@@ -242,14 +243,51 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         .from('businesses')
         .stream(primaryKey: ['id'])
         .eq('status', 'active')
-        .listen((data) {
+        .listen((data) async {
+      if (!mounted) return;
+
+      // 🟢 SYNC OPENING HOURS FROM business_settings
+      Map<String, dynamic> settingsMap = {};
+      try {
+        final settingsList = await Supabase.instance.client
+            .from('business_settings')
+            .select('business_id, operating_hours');
+        for (var s in (settingsList as List)) {
+          final bId = s['business_id']?.toString();
+          if (bId != null) {
+            settingsMap[bId] = s['operating_hours'];
+          }
+        }
+      } catch (e) {
+        debugPrint('Error fetching business_settings: $e');
+      }
+
       if (!mounted) return;
 
       // Transform the raw DB data into your UI format
       List<Map<String, dynamic>> updatedShops = data.map<Map<String, dynamic>>((row) {
+        final bId = row['id']?.toString() ?? '';
+        final opHours = settingsMap[bId];
 
-        int parsedOpenHour = 9; int parsedOpenMin = 0;
-        int parsedCloseHour = 22; int parsedCloseMin = 0;
+        int parsedOpenHour = 9;
+        int parsedOpenMin = 0;
+        int parsedCloseHour = 22;
+        int parsedCloseMin = 0;
+
+        if (opHours is Map) {
+          final openStr = opHours['open_time'] as String?;
+          final closeStr = opHours['close_time'] as String?;
+          if (openStr != null && openStr.contains(':')) {
+            final parts = openStr.split(':');
+            parsedOpenHour = int.tryParse(parts[0]) ?? 9;
+            parsedOpenMin = int.tryParse(parts[1]) ?? 0;
+          }
+          if (closeStr != null && closeStr.contains(':')) {
+            final parts = closeStr.split(':');
+            parsedCloseHour = int.tryParse(parts[0]) ?? 22;
+            parsedCloseMin = int.tryParse(parts[1]) ?? 0;
+          }
+        }
 
         return {
           'id': row['id'],
@@ -260,12 +298,14 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
               (row['longitude'] as num?)?.toDouble() ?? 0.0
           ),
           'image': row['business_logo_url'] ?? "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=300",
+          'cover': row['business_cover_url'] ?? row['business_logo_url'] ?? '',
           'phone': row['business_phone'] ?? '',
           'address': row['address_line'] ?? row['address_city'] ?? '',
           'openHour': parsedOpenHour,
           'openMinute': parsedOpenMin,
           'closeHour': parsedCloseHour,
           'closeMinute': parsedCloseMin,
+          'operating_hours': opHours,
           'rating': (row['rating_average'] as num?)?.toDouble() ?? 4.8,
           'reviews': (row['total_reviews'] as num?)?.toInt() ?? 0,
           'services': ['General Services'],
@@ -311,6 +351,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
   @override
   void dispose() {
+    BottomNavCustomer.isVisible.value = true;
     _shopsSubscription?.cancel();
     _minuteTicker?.cancel();
     _snapBackTimer?.cancel();
@@ -751,6 +792,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
   void _showMessageOptions(BuildContext context, bool isDark) {
     final l10n = AppLocalizations.of(context)!; // 🟢 Fetch l10n
+    BottomNavCustomer.isVisible.value = false;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -785,7 +827,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           ],
         ),
       ),
-    );
+    ).then((_) {
+      BottomNavCustomer.isVisible.value = true;
+    });
   }
 
   Widget _buildMessageOption(String title, String urlString, bool isDark, dynamic icon) {
@@ -878,8 +922,8 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                   children: [
                     TileLayer(
                       urlTemplate: isDark
-                          ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-                          : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                          ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=cb1_470b_1_5dec1f354e103fb7efca8d68'
+                          : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=cb1_470b_1_5dec1f354e103fb7efca8d68',
                       userAgentPackageName: 'com.ngam.app',
 
                       // 🟢 PERFECT FIX: Has (context), but NO 'const' keyword!
@@ -2046,6 +2090,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     setState(() {
       _isProfileOpen = true;
     });
+    BottomNavCustomer.isVisible.value = false;
 
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final ShopStatus status = _getShopStatus(shop);
@@ -2368,7 +2413,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                       ),
                                     ),
                                     const SizedBox(width: 12),
-                                    // 🟢 BUTTON 2: Rezrv Now (WITH AUTH GUARD)
+                                    // 🟢 BUTTON 2: Book Now (WITH AUTH GUARD)
                                     Expanded(
                                       child: _AnimatedPressable(
                                         onTap: () {
@@ -2388,7 +2433,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                             // ❌ USER IS GUEST: Show Toast and Redirect to Login!
                                             showGlassToast(
                                                 context,
-                                                "Please sign in or register to make a reservation.",
+                                                "Please sign in or register to make a booking.",
                                                 isError: true
                                             );
 
@@ -2403,7 +2448,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                               borderRadius: BorderRadius.circular(18),
                                               boxShadow: [BoxShadow(color: Colors.blue.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))]),
                                           child: Center(
-                                              child: Text(AppLocalizations.of(context)!.rezrvNow, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))),
+                                              child: Text(AppLocalizations.of(context)!.bookNow, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))),
                                         ),
                                       ),
                                     ),
@@ -2419,6 +2464,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         });
       },
     ).closed.whenComplete(() {
+      BottomNavCustomer.isVisible.value = true;
       if (mounted) {
         setState(() {
           _isProfileOpen = false;
@@ -2549,7 +2595,14 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text("Today", style: TextStyle(color: isDark ? Colors.white : _lightModeGray, fontSize: 14, fontWeight: FontWeight.bold)),
-                            Text(defaultHours, style: TextStyle(color: isDark ? Colors.white : _lightModeGray, fontSize: 13, fontWeight: FontWeight.w600)),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerRight,
+                                child: Text(defaultHours, style: TextStyle(color: isDark ? Colors.white : _lightModeGray, fontSize: 13, fontWeight: FontWeight.w600)),
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 4),

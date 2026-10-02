@@ -194,7 +194,7 @@ class ShopDetailScreen extends StatelessWidget {
                     // ❌ USER IS GUEST: Block them and send to Auth Screen
                     showGlassToast(
                         context,
-                        "Please sign in or register to make a reservation.",
+                        "Please sign in or register to make a booking.",
                         isError: true
                     );
 

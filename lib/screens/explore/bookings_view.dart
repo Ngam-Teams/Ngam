@@ -3,13 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // 🟢 REQUIRED for TextInputFormatter
 import 'package:hugeicons/hugeicons.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'; // 🟢 REQUIRED for LiquidGlassSettings
-import '../../models/rezrv_data.dart';
+import '../../models/booking_data.dart';
 import 'booking_ticket_screen.dart';
 import '../../models/user_data.dart';
 import 'package:ngam/l10n/generated/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../models/user_data.dart';
-import '../../services/rezrv_notification_service.dart'; // 🟢 ADD THIS LINE
+import '../../services/booking_notification_service.dart'; // 🟢 ADD THIS LINE
 import '../../widgets/glass_toast.dart'; // 🟢 ADD THIS TO YOUR IMPORTS
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:math'; // 🟢 Required for generating the short ID
@@ -602,11 +601,11 @@ class _BookingsViewState extends State<BookingsView> {
                         'status': 'pending',
                         'booking_metadata': {
                           'short_ref': shortBookingId, // For your UI
-                          'booking_id': shortBookingId, // For the MyRezrvView sync
+                          'booking_id': shortBookingId, // For the MyBookingsView sync
                           'customer_auth_id': Supabase.instance.client.auth.currentUser!.id,
                           'provider_name': staff["name"],
                           'total_price': "RM$_totalPrice",
-                          // 🟢 Save Shop details so MyRezrvView can display them directly from the DB!
+                          // 🟢 Save Shop details so MyBookingsView can display them directly from the DB!
                           'shop_name': widget.shopName,
                           'shop_image': widget.shopImage,
                           'category': widget.category

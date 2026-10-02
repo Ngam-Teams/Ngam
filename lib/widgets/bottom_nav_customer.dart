@@ -8,6 +8,8 @@ import 'custom_bottom_nav.dart';
 // ============================================================
 
 class BottomNavCustomer extends StatelessWidget {
+  static final ValueNotifier<bool> isVisible = ValueNotifier<bool>(true);
+
   final int currentIndex;
   final ValueChanged<int> onTap;
 

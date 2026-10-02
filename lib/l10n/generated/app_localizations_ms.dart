@@ -121,6 +121,9 @@ class AppLocalizationsMs extends AppLocalizations {
   String get rezrvNow => 'Tempah Sekarang';
 
   @override
+  String get bookNow => 'Tempah Sekarang';
+
+  @override
   String resultsFor(String query) {
     return 'Hasil carian untuk \'$query\'';
   }
@@ -216,7 +219,7 @@ class AppLocalizationsMs extends AppLocalizations {
   String get generalCategory => 'Umum';
 
   @override
-  String get myBarbrTitle => 'Barbr Saya';
+  String get myBarbrTitle => 'Tempahan Saya';
 
   @override
   String get tabUpcoming => 'Akan Datang';
@@ -371,7 +374,7 @@ class AppLocalizationsMs extends AppLocalizations {
   String get navExplore => 'Teroka';
 
   @override
-  String get navMyBarbr => 'Barbr Saya';
+  String get navMyBarbr => 'Tempahan';
 
   @override
   String get navSaved => 'Disimpan';

@@ -4,6 +4,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/product_model.dart';
 import '../../widgets/glass_toast.dart';
 import 'business_products_view.dart';
@@ -38,6 +39,27 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
   bool _isLoading = true;
   String _selectedCategory = 'All items';
 
+  int? _syncedOpenHour;
+  int? _syncedOpenMinute;
+  int? _syncedCloseHour;
+  int? _syncedCloseMinute;
+  String? _syncedCoverUrl;
+
+  int get _openHour => _syncedOpenHour ?? widget.shop['openHour'] ?? 9;
+  int get _openMinute => _syncedOpenMinute ?? widget.shop['openMinute'] ?? 0;
+  int get _closeHour => _syncedCloseHour ?? widget.shop['closeHour'] ?? 22;
+  int get _closeMinute => _syncedCloseMinute ?? widget.shop['closeMinute'] ?? 0;
+  String get _coverUrl {
+    if (_syncedCoverUrl != null && _syncedCoverUrl!.isNotEmpty) {
+      return _syncedCoverUrl!;
+    }
+    final c = widget.shop['cover'] ?? widget.shop['business_cover_url'];
+    if (c != null && c.toString().isNotEmpty) {
+      return c.toString();
+    }
+    return widget.shop['image']?.toString() ?? '';
+  }
+
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
 
@@ -61,10 +83,10 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
   // ── Status Helpers ───────────────────────────────────────────
 
   _StoreStatus get _status {
-    final int openH = widget.shop['openHour'] ?? 9;
-    final int openM = widget.shop['openMinute'] ?? 0;
-    final int closeH = widget.shop['closeHour'] ?? 22;
-    final int closeM = widget.shop['closeMinute'] ?? 0;
+    final int openH = _openHour;
+    final int openM = _openMinute;
+    final int closeH = _closeHour;
+    final int closeM = _closeMinute;
 
     final now = DateTime.now();
     DateTime open = DateTime(now.year, now.month, now.day, openH, openM);
@@ -92,10 +114,8 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
 
   String get _statusText {
     final st = _status;
-    final closeStr =
-        _formatTime(widget.shop['closeHour'] ?? 22, widget.shop['closeMinute'] ?? 0);
-    final openStr =
-        _formatTime(widget.shop['openHour'] ?? 9, widget.shop['openMinute'] ?? 0);
+    final closeStr = _formatTime(_closeHour, _closeMinute);
+    final openStr = _formatTime(_openHour, _openMinute);
     switch (st) {
       case _StoreStatus.open:
         return 'Open Now · Closes $closeStr';
@@ -157,69 +177,100 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
   }
 
   void _initStream() {
-    // HARDCODED FOR UI TESTING
-    Future.delayed(const Duration(milliseconds: 500), () {
-      final loaded = [
-        ProductModel(
-          id: '1',
-          shopId: '1',
-          name: 'Premium Haircut',
-          description: 'A stylish and clean premium haircut by professional barbers.',
-          price: 35.0,
-          category: 'Haircut',
-          imageUrl: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=300',
-          isActive: true,
-        ),
-        ProductModel(
-          id: '2',
-          shopId: '1',
-          name: 'Classic Shave',
-          description: 'Hot towel classic shave for a smooth finish.',
-          price: 25.0,
-          category: 'Shaving',
-          imageUrl: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=400',
-          isActive: true,
-        ),
-        ProductModel(
-          id: '3',
-          shopId: '1',
-          name: 'Beard Trim',
-          description: 'Keep your beard looking sharp and well-groomed.',
-          price: 15.0,
-          category: 'Shaving',
-          imageUrl: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=400',
-          isActive: true,
-        ),
-        ProductModel(
-          id: '4',
-          shopId: '1',
-          name: 'Hair Coloring',
-          description: 'Full hair coloring using premium dyes.',
-          price: 80.0,
-          category: 'Coloring',
-          imageUrl: 'https://images.unsplash.com/photo-1619233543640-af09c173763b?q=80&w=1170',
-          isActive: true,
-        ),
-        ProductModel(
-          id: '5',
-          shopId: '1',
-          name: 'Facial Treatment',
-          description: 'Refreshing facial to cleanse and rejuvenate your skin.',
-          price: 45.0,
-          category: 'Facial',
-          imageUrl: 'https://plus.unsplash.com/premium_photo-1661290481306-4841edd49719?q=80&w=1332',
-          isActive: true,
-        ),
-      ];
+    final shopId = widget.shop['id']?.toString();
+    if (shopId == null || shopId.isEmpty) {
       if (mounted) {
         setState(() {
-          _allProducts = loaded;
+          _allProducts = [];
           _filterProducts();
           _isLoading = false;
         });
         _fadeCtrl.forward();
       }
-    });
+      return;
+    }
+
+    // 🟢 SYNC COVER & OPERATING HOURS FROM SUPABASE
+    _syncBusinessDetails(shopId);
+
+    _productSub?.cancel();
+    _productSub = Supabase.instance.client
+        .from('business_products')
+        .stream(primaryKey: ['id'])
+        .eq('shop_id', shopId)
+        .order('created_at', ascending: false)
+        .listen(
+      (data) {
+        final activeProducts = data
+            .where((item) =>
+                item['is_active'] == true || item['is_active'] == null)
+            .map((json) => ProductModel.fromJson(json))
+            .toList();
+
+        if (mounted) {
+          setState(() {
+            _allProducts = activeProducts;
+            _filterProducts();
+            _isLoading = false;
+          });
+          _fadeCtrl.forward();
+        }
+      },
+      onError: (err) {
+        debugPrint('Error streaming products for shop $shopId: $err');
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+          _fadeCtrl.forward();
+        }
+      },
+    );
+  }
+
+  Future<void> _syncBusinessDetails(String shopId) async {
+    try {
+      final biz = await Supabase.instance.client
+          .from('businesses')
+          .select('business_cover_url, business_logo_url')
+          .eq('id', shopId)
+          .maybeSingle();
+
+      if (biz != null && mounted) {
+        final cover = biz['business_cover_url'] as String?;
+        if (cover != null && cover.isNotEmpty) {
+          setState(() {
+            _syncedCoverUrl = cover;
+          });
+        }
+      }
+
+      final settings = await Supabase.instance.client
+          .from('business_settings')
+          .select('operating_hours')
+          .eq('business_id', shopId)
+          .maybeSingle();
+
+      if (settings != null && settings['operating_hours'] is Map && mounted) {
+        final op = settings['operating_hours'] as Map;
+        final openStr = op['open_time'] as String?;
+        final closeStr = op['close_time'] as String?;
+
+        if (openStr != null && openStr.contains(':')) {
+          final p = openStr.split(':');
+          _syncedOpenHour = int.tryParse(p[0]);
+          _syncedOpenMinute = int.tryParse(p[1]);
+        }
+        if (closeStr != null && closeStr.contains(':')) {
+          final p = closeStr.split(':');
+          _syncedCloseHour = int.tryParse(p[0]);
+          _syncedCloseMinute = int.tryParse(p[1]);
+        }
+        setState(() {});
+      }
+    } catch (e) {
+      debugPrint('Error syncing business details: $e');
+    }
   }
 
   void _filterProducts() {
@@ -353,79 +404,160 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
               CustomScrollView(
                 physics: const BouncingScrollPhysics(),
                 slivers: [
-                  // ── 1. HEADER ─────────────────────────────────────
+                  // ── 1. HEADER WITH BUSINESS COVER BANNER ───────────
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 80, 20, 0),
+                      padding: const EdgeInsets.fromLTRB(20, 75, 20, 0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Business Logo + Name + Status
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // Business logo – glassmorphic circle avatar
-                              _liquidGlassBox(
-                                isDark: isDark,
-                                radius: 100,
-                                child: SizedBox(
-                                  width: 68,
-                                  height: 68,
-                                  child: ClipOval(
-                                    child: widget.shop['image'] != null &&
-                                            widget.shop['image'].toString().isNotEmpty
+                          // 🟢 Hero Cover Card with Logo, Name & Status Badge
+                          Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                                  blurRadius: 18,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(24),
+                              child: Stack(
+                                children: [
+                                  // Background Cover Image
+                                  Positioned.fill(
+                                    child: _coverUrl.isNotEmpty
                                         ? Image.network(
-                                            widget.shop['image'],
+                                            _coverUrl,
                                             fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) => _logoFallback(isDark),
+                                            errorBuilder: (_, __, ___) => _buildCoverFallback(isDark),
                                           )
-                                        : _logoFallback(isDark),
+                                        : _buildCoverFallback(isDark),
                                   ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Welcome to',
-                                      style: TextStyle(
-                                        color: textSecondary,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
+
+                                  // Gradient & Frosted Overlay for optimal contrast
+                                  Positioned.fill(
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            Colors.black.withValues(alpha: 0.25),
+                                            Colors.black.withValues(alpha: 0.78),
+                                          ],
+                                        ),
+                                        border: Border.all(
+                                          color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.35),
+                                          width: 1.0,
+                                        ),
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      widget.shop['name'] ?? 'Business',
-                                      style: TextStyle(
-                                        color: textPrimary,
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: -0.3,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    GestureDetector(
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => StoreInfoView(shop: widget.shop),
+                                  ),
+
+                                  // Content: Logo + Info
+                                  Padding(
+                                    padding: const EdgeInsets.all(18),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      children: [
+                                        // Business Logo Avatar with crisp glass/white border
+                                        Container(
+                                          width: 70,
+                                          height: 70,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: Colors.white,
+                                              width: 2.5,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(alpha: 0.4),
+                                                blurRadius: 10,
+                                                offset: const Offset(0, 4),
+                                              ),
+                                            ],
                                           ),
-                                        );
-                                      },
-                                      child: _buildStatusBadge(isDark),
+                                          child: ClipOval(
+                                            child: widget.shop['image'] != null &&
+                                                    widget.shop['image'].toString().isNotEmpty
+                                                ? Image.network(
+                                                    widget.shop['image'],
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (_, __, ___) => _logoFallback(isDark),
+                                                  )
+                                                : _logoFallback(isDark),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 14),
+
+                                        // Business Name, Welcome & Status
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                'Welcome to',
+                                                style: TextStyle(
+                                                  color: Colors.white.withValues(alpha: 0.85),
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                  shadows: const [
+                                                    Shadow(color: Colors.black54, blurRadius: 4),
+                                                  ],
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                widget.shop['name'] ?? 'Business',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.w900,
+                                                  letterSpacing: -0.3,
+                                                  shadows: [
+                                                    Shadow(color: Colors.black54, blurRadius: 6),
+                                                  ],
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 8),
+                                              GestureDetector(
+                                                onTap: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (_) => StoreInfoView(shop: {
+                                                        ...widget.shop,
+                                                        'openHour': _openHour,
+                                                        'openMinute': _openMinute,
+                                                        'closeHour': _closeHour,
+                                                        'closeMinute': _closeMinute,
+                                                        'cover': _coverUrl,
+                                                      }),
+                                                    ),
+                                                  );
+                                                },
+                                                child: _buildStatusBadge(isDark),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
 
                           const SizedBox(height: 16),
@@ -452,18 +584,23 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                   child: _glassBox(
                                     isDark: isDark,
                                     radius: 16,
-                                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        const Icon(Icons.calendar_month_rounded, color: Colors.blue, size: 16),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          'Book Slot',
-                                          style: TextStyle(
-                                            color: textPrimary,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
+                                        const Icon(Icons.calendar_month_rounded, color: Colors.blue, size: 15),
+                                        const SizedBox(width: 4),
+                                        Flexible(
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Text(
+                                              'Book Slot',
+                                              style: TextStyle(
+                                                color: textPrimary,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 12,
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -479,25 +616,37 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (_) => StoreInfoView(shop: widget.shop),
+                                        builder: (_) => StoreInfoView(shop: {
+                                          ...widget.shop,
+                                          'openHour': _openHour,
+                                          'openMinute': _openMinute,
+                                          'closeHour': _closeHour,
+                                          'closeMinute': _closeMinute,
+                                          'cover': _coverUrl,
+                                        }),
                                       ),
                                     );
                                   },
                                   child: _glassBox(
                                     isDark: isDark,
                                     radius: 16,
-                                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        const Icon(Icons.info_outline_rounded, color: Colors.blue, size: 16),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          'Info & Hours',
-                                          style: TextStyle(
-                                            color: textPrimary,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
+                                        const Icon(Icons.info_outline_rounded, color: Colors.blue, size: 15),
+                                        const SizedBox(width: 4),
+                                        Flexible(
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Text(
+                                              'Info & Hours',
+                                              style: TextStyle(
+                                                color: textPrimary,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 12,
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -520,18 +669,23 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                   child: _glassBox(
                                     isDark: isDark,
                                     radius: 16,
-                                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
                                         const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
                                         const SizedBox(width: 4),
-                                        Text(
-                                          'Reviews',
-                                          style: TextStyle(
-                                            color: textPrimary,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
+                                        Flexible(
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Text(
+                                              'Reviews',
+                                              style: TextStyle(
+                                                color: textPrimary,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 12,
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -941,14 +1095,38 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
     );
   }
 
+  Widget _buildCoverFallback(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF1E242B), const Color(0xFF0F1216)]
+              : [const Color(0xFF2563EB), const Color(0xFF1E40AF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          Icons.storefront_rounded,
+          color: Colors.white.withValues(alpha: 0.15),
+          size: 64,
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatusBadge(bool isDark) {
-    return _glassBox(
-      isDark: isDark,
-      radius: 10,
-      blur: 12,
+    return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      overrideColor: _statusColor.withValues(alpha: 0.12),
-      overrideBorder: _statusColor.withValues(alpha: 0.35),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: _statusColor.withValues(alpha: 0.7),
+          width: 1.0,
+        ),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -962,18 +1140,19 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
           Flexible(
             child: Text(
               _statusText,
-              style: TextStyle(
-                color: _statusColor,
+              style: const TextStyle(
+                color: Colors.white,
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
               ),
               overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
           const SizedBox(width: 2),
-          Icon(
+          const Icon(
             Icons.chevron_right_rounded,
-            color: _statusColor,
+            color: Colors.white70,
             size: 14,
           ),
         ],

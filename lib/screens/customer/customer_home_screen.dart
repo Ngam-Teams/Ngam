@@ -3,7 +3,7 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 import '../../widgets/bottom_nav_customer.dart';
 import '../explore/explore_view.dart';
-import '../explore/my_rezrv_view.dart';
+import '../explore/my_bookings_view.dart';
 import '../shared/chat_screen.dart';
 import '../shared/profile_screen.dart';
 
@@ -30,6 +30,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   void _onTabTapped(int index) {
+    BottomNavCustomer.isVisible.value = true;
     setState(() {
       _currentIndex = index;
       _initializedPages[index] = true;
@@ -40,7 +41,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   Widget build(BuildContext context) {
     final List<Widget> pages = [
       _initializedPages[0] ? const ExploreView() : const SizedBox.shrink(),
-      _initializedPages[1] ? const MyRezrvView() : const SizedBox.shrink(),
+      _initializedPages[1] ? const MyBookingsView() : const SizedBox.shrink(),
       _initializedPages[2] ? const ChatScreen() : const SizedBox.shrink(),
       _initializedPages[3] ? const ProfileScreen() : const SizedBox.shrink(),
     ];
@@ -54,10 +55,25 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             index: _currentIndex,
             children: pages,
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
+          ValueListenableBuilder<bool>(
+            valueListenable: BottomNavCustomer.isVisible,
+            builder: (context, isVisible, child) {
+              return AnimatedPositioned(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                left: 0,
+                right: 0,
+                bottom: isVisible ? 0 : -120,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  opacity: isVisible ? 1.0 : 0.0,
+                  child: IgnorePointer(
+                    ignoring: !isVisible,
+                    child: child,
+                  ),
+                ),
+              );
+            },
             child: BottomNavCustomer(
               currentIndex: _currentIndex,
               onTap: _onTabTapped,

@@ -140,8 +140,8 @@ class _MapPickerState extends State<MapPicker> {
             children: [
               TileLayer(
                 urlTemplate: isDark
-                    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-                    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+                    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png?key=cb1_470b_1_5dec1f354e103fb7efca8d68'
+                    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=cb1_470b_1_5dec1f354e103fb7efca8d68',
                 userAgentPackageName: 'com.ngam.app',
                 errorTileCallback: (tile, error, stackTrace) {},
                 keepBuffer: 5,
