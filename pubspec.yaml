@@ -43,7 +43,6 @@ dependencies:
   liquid_glass_renderer: ^0.2.0-dev.4
   shimmer: ^3.0.0
   flutter_map_marker_cluster: ^8.2.2
-  font_awesome_flutter: ^10.9.1
   google_sign_in: ^7.2.0
   mobile_scanner: ^6.0.0
   qr_flutter: ^4.1.0
