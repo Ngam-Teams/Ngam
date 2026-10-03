@@ -5,8 +5,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 // ============================================================
 
 // ─── Kunci Supabase ──────────────────────────────────────────
-String get supabaseUrl => dotenv.env['SUPABASE_URL'] ?? '';
-String get supabaseAnonKey => dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+String get supabaseUrl => dotenv.env['SUPABASE_URL'] ?? 'https://rsueaoglsdxhzpupjljd.supabase.co';
+String get supabaseAnonKey => dotenv.env['SUPABASE_ANON_KEY'] ?? 'sb_publishable_qP4whY5B6wxIasWOVGoPCw_vrhOXj_J';
 
 // ─── Kategori Task ───────────────────────────────────────────
 class TaskCategory {

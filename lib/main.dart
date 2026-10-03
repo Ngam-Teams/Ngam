@@ -32,12 +32,13 @@ import 'widgets/app_lock_wrapper.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
-  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+  WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
   
   // Load environment variables dulu
-  await dotenv.load(fileName: ".env");
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (_) {}
 
   // Setup Supabase
   await SupabaseService.initialize();
@@ -46,6 +47,9 @@ void main() async {
   PushService.initialize().catchError((e) {
     debugPrint("PushService initialization error: $e");
   });
+
+  // Remove native splash immediately so UI paints frame 1 without delay
+  FlutterNativeSplash.remove();
 
   // Apply Screen Security kalau on
   try {
