@@ -309,6 +309,45 @@ CREATE POLICY "Order items insert"
   ON public.order_items FOR INSERT TO authenticated
   WITH CHECK (EXISTS (SELECT 1 FROM public.orders o WHERE o.id = order_items.order_id AND (o.owner_user_id = auth.uid() OR o.customer_id = auth.uid())));
 
+-- 4.3 Walk-In Queue Tickets Layer
+CREATE TABLE IF NOT EXISTS public.queue_tickets (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id      UUID NOT NULL REFERENCES public.businesses(id) ON DELETE CASCADE,
+  ticket_number    TEXT NOT NULL,
+  customer_name    TEXT NOT NULL,
+  phone_number     TEXT,
+  service_name     TEXT,
+  service_id       UUID REFERENCES public.business_products(id) ON DELETE SET NULL,
+  assigned_staff_id UUID REFERENCES public.team_members(id) ON DELETE SET NULL,
+  assigned_staff_name TEXT,
+  station_or_chair TEXT,
+  status           TEXT NOT NULL DEFAULT 'waiting' CHECK (status IN ('waiting', 'calling', 'serving', 'completed', 'cancelled', 'no_show')),
+  notes            TEXT,
+  estimated_wait_minutes INTEGER DEFAULT 15,
+  called_at        TIMESTAMPTZ,
+  serving_at       TIMESTAMPTZ,
+  completed_at     TIMESTAMPTZ,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.queue_tickets ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Queue tickets public select"
+  ON public.queue_tickets FOR SELECT
+  USING (true);
+
+CREATE POLICY "Queue tickets public insert"
+  ON public.queue_tickets FOR INSERT
+  WITH CHECK (true);
+
+CREATE POLICY "Queue tickets management"
+  ON public.queue_tickets FOR ALL TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = queue_tickets.business_id AND b.owner_user_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM public.team_members tm WHERE tm.business_id = queue_tickets.business_id AND tm.user_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
+  );
+
 
 -- =========================================================================================
 -- 5. TEAMS & STAFF MANAGEMENT LAYER (NGAM TEAMS BACKEND)
