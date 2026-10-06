@@ -17,6 +17,7 @@ import 'about_screens.dart';
 import 'privacy_security_screen.dart';
 import 'wallet_screen.dart';
 import 'my_stamp_cards_screen.dart';
+import 'my_queue_ticket_screen.dart';
 import '../../services/app_update_service.dart';
 
 import 'package:easy_localization/easy_localization.dart';
@@ -249,6 +250,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => const MyStampCardsScreen(),
+                                  ),
+                                ),
+                              ),
+                              _buildDivider(isDark),
+                              _buildSettingsTile(
+                                isDark,
+                                HugeIcons.strokeRoundedTicket01,
+                                "Tiket Giliran Walk-In (Live Queue)",
+                                trailing: _buildArrow(),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const MyQueueTicketScreen(),
                                   ),
                                 ),
                               ),
