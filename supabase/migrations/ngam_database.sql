@@ -468,6 +468,68 @@ CREATE POLICY "Announcements write"
   ON public.business_announcements FOR ALL TO authenticated
   USING (EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = business_announcements.business_id AND b.owner_user_id = auth.uid()));
 
+-- 5.2 Staff Compensation & Payroll Settings
+CREATE TABLE IF NOT EXISTS public.staff_payroll_settings (
+  id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id             UUID NOT NULL REFERENCES public.businesses(id) ON DELETE CASCADE,
+  staff_id                UUID NOT NULL REFERENCES public.team_members(id) ON DELETE CASCADE,
+  base_salary             NUMERIC(10, 2) NOT NULL DEFAULT 1800.00,
+  service_commission_rate NUMERIC(5, 2) NOT NULL DEFAULT 35.00,
+  product_commission_rate NUMERIC(5, 2) NOT NULL DEFAULT 10.00,
+  epf_enabled             BOOLEAN NOT NULL DEFAULT TRUE,
+  socso_enabled           BOOLEAN NOT NULL DEFAULT TRUE,
+  eis_enabled             BOOLEAN NOT NULL DEFAULT TRUE,
+  bank_name               TEXT,
+  bank_account_number     TEXT,
+  created_at              TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT uq_staff_payroll_setting UNIQUE (business_id, staff_id)
+);
+
+ALTER TABLE public.staff_payroll_settings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Staff payroll settings read"
+  ON public.staff_payroll_settings FOR SELECT TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = staff_payroll_settings.business_id AND b.owner_user_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM public.team_members tm WHERE tm.id = staff_payroll_settings.staff_id AND tm.user_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
+  );
+
+CREATE POLICY "Staff payroll settings write"
+  ON public.staff_payroll_settings FOR ALL TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = staff_payroll_settings.business_id AND b.owner_user_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
+  );
+
+-- 5.3 Monthly Payroll Runs & Digital Payslips
+CREATE TABLE IF NOT EXISTS public.monthly_payrolls (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id  UUID NOT NULL REFERENCES public.businesses(id) ON DELETE CASCADE,
+  month        INTEGER NOT NULL CHECK (month BETWEEN 1 AND 12),
+  year         INTEGER NOT NULL,
+  total_amount NUMERIC(10, 2) NOT NULL,
+  status       TEXT NOT NULL DEFAULT 'approved' CHECK (status IN ('draft', 'approved', 'paid')),
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.monthly_payrolls ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Monthly payrolls read"
+  ON public.monthly_payrolls FOR SELECT TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = monthly_payrolls.business_id AND b.owner_user_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM public.team_members tm WHERE tm.business_id = monthly_payrolls.business_id AND tm.user_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
+  );
+
+CREATE POLICY "Monthly payrolls write"
+  ON public.monthly_payrolls FOR ALL TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = monthly_payrolls.business_id AND b.owner_user_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
+  );
+
 
 -- =========================================================================================
 -- 6. RESERVATIONS & BOOKINGS LAYER (TEMPAHAN ENGINE)
