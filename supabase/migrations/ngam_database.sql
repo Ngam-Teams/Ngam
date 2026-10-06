@@ -116,6 +116,10 @@ CREATE TABLE IF NOT EXISTS public.businesses (
 
 ALTER TABLE public.businesses ENABLE ROW LEVEL SECURITY;
 
+-- Ensure an owner cannot accidentally create multiple businesses with the exact same name
+CREATE UNIQUE INDEX IF NOT EXISTS idx_businesses_owner_unique_name 
+  ON public.businesses (owner_user_id, LOWER(TRIM(business_name)));
+
 DO $$ BEGIN
   DROP POLICY IF EXISTS "Public can view active businesses" ON public.businesses;
   DROP POLICY IF EXISTS "Owners manage own business" ON public.businesses;
@@ -194,15 +198,57 @@ CREATE TABLE IF NOT EXISTS public.business_products (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   shop_id     UUID NOT NULL REFERENCES public.businesses(id) ON DELETE CASCADE,
   name        TEXT NOT NULL,
+  item_type   TEXT NOT NULL DEFAULT 'product' CHECK (item_type IN ('product', 'service')),
   price       NUMERIC(10, 2) NOT NULL CHECK (price >= 0),
+  compare_at_price NUMERIC(10, 2),
+  cost_price  NUMERIC(10, 2),
+  tax_rate    NUMERIC(5, 2) DEFAULT 0.00,
   category    TEXT DEFAULT 'General',
+  sub_category TEXT,
   description TEXT DEFAULT '',
   sku         TEXT,
+  barcode     TEXT,
   stock       INTEGER NOT NULL DEFAULT 0,
+  track_inventory BOOLEAN NOT NULL DEFAULT TRUE,
+  low_stock_threshold INTEGER DEFAULT 5,
+  unit        TEXT DEFAULT 'pcs',
+  tags        TEXT[] DEFAULT '{}',
   is_active   BOOLEAN NOT NULL DEFAULT TRUE,
+  is_featured BOOLEAN NOT NULL DEFAULT FALSE,
+  is_halal    BOOLEAN NOT NULL DEFAULT FALSE,
+  variants    JSONB DEFAULT '[]'::jsonb,
+  modifiers   JSONB DEFAULT '[]'::jsonb,
+  -- Service-specific attributes:
+  duration_minutes INTEGER DEFAULT 30,
+  buffer_minutes   INTEGER DEFAULT 0,
+  deposit_amount   NUMERIC(10, 2) DEFAULT 0.00,
+  service_location TEXT DEFAULT 'in_store' CHECK (service_location IN ('in_store', 'mobile_service', 'online')),
+  max_pax          INTEGER DEFAULT 1,
   image_url   TEXT,
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure all columns exist on existing databases
+ALTER TABLE public.business_products 
+  ADD COLUMN IF NOT EXISTS item_type TEXT NOT NULL DEFAULT 'product' CHECK (item_type IN ('product', 'service')),
+  ADD COLUMN IF NOT EXISTS compare_at_price NUMERIC(10, 2),
+  ADD COLUMN IF NOT EXISTS cost_price NUMERIC(10, 2),
+  ADD COLUMN IF NOT EXISTS tax_rate NUMERIC(5, 2) DEFAULT 0.00,
+  ADD COLUMN IF NOT EXISTS sub_category TEXT,
+  ADD COLUMN IF NOT EXISTS barcode TEXT,
+  ADD COLUMN IF NOT EXISTS track_inventory BOOLEAN NOT NULL DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS low_stock_threshold INTEGER DEFAULT 5,
+  ADD COLUMN IF NOT EXISTS unit TEXT DEFAULT 'pcs',
+  ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS is_featured BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS is_halal BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS variants JSONB DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS modifiers JSONB DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS duration_minutes INTEGER DEFAULT 30,
+  ADD COLUMN IF NOT EXISTS buffer_minutes INTEGER DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS deposit_amount NUMERIC(10, 2) DEFAULT 0.00,
+  ADD COLUMN IF NOT EXISTS service_location TEXT DEFAULT 'in_store' CHECK (service_location IN ('in_store', 'mobile_service', 'online')),
+  ADD COLUMN IF NOT EXISTS max_pax INTEGER DEFAULT 1;
 
 ALTER TABLE public.business_products ENABLE ROW LEVEL SECURITY;
 
@@ -229,12 +275,31 @@ SELECT
   id,
   shop_id,
   name,
+  item_type,
   price,
+  compare_at_price,
+  cost_price,
+  tax_rate,
   category,
+  sub_category,
   description,
   sku,
+  barcode,
   stock,
+  track_inventory,
+  low_stock_threshold,
+  unit,
+  tags,
   is_active AS is_available,
+  is_featured,
+  is_halal,
+  variants,
+  modifiers,
+  duration_minutes,
+  buffer_minutes,
+  deposit_amount,
+  service_location,
+  max_pax,
   image_url,
   created_at
 FROM public.business_products;
@@ -348,6 +413,58 @@ CREATE POLICY "Queue tickets management"
     EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
   );
 
+-- 4.6 Loyalty Programs & Stamp Cards
+CREATE TABLE IF NOT EXISTS public.loyalty_programs (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id           UUID NOT NULL REFERENCES public.businesses(id) ON DELETE CASCADE,
+  title                 TEXT NOT NULL DEFAULT 'Kad Cop Kesetiaan',
+  total_stamps          INT NOT NULL DEFAULT 5,
+  reward_title          TEXT NOT NULL DEFAULT 'Ganjaran Percuma',
+  min_spend_per_stamp   NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+  is_active             BOOLEAN NOT NULL DEFAULT true,
+  created_at            TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.loyalty_programs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Loyalty programs public read"
+  ON public.loyalty_programs FOR SELECT
+  USING (true);
+
+CREATE POLICY "Loyalty programs management"
+  ON public.loyalty_programs FOR ALL TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = loyalty_programs.business_id AND b.owner_user_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
+  );
+
+CREATE TABLE IF NOT EXISTS public.customer_loyalty_cards (
+  id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  program_id             UUID NOT NULL REFERENCES public.loyalty_programs(id) ON DELETE CASCADE,
+  business_id            UUID NOT NULL REFERENCES public.businesses(id) ON DELETE CASCADE,
+  customer_name          TEXT NOT NULL,
+  customer_phone         TEXT NOT NULL DEFAULT '',
+  current_stamps         INT NOT NULL DEFAULT 0,
+  total_stamps_required  INT NOT NULL DEFAULT 5,
+  total_rewards_redeemed INT NOT NULL DEFAULT 0,
+  last_stamped_at        TIMESTAMPTZ DEFAULT NOW(),
+  created_at             TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.customer_loyalty_cards ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Customer loyalty cards public read"
+  ON public.customer_loyalty_cards FOR SELECT
+  USING (true);
+
+CREATE POLICY "Customer loyalty cards management"
+  ON public.customer_loyalty_cards FOR ALL TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = customer_loyalty_cards.business_id AND b.owner_user_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM public.team_members tm WHERE tm.business_id = customer_loyalty_cards.business_id AND tm.user_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
+  );
+
 
 -- =========================================================================================
 -- 5. TEAMS & STAFF MANAGEMENT LAYER (NGAM TEAMS BACKEND)
@@ -374,20 +491,131 @@ CREATE TABLE IF NOT EXISTS public.team_members (
 
 ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
 
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Team members read" ON public.team_members;
+  DROP POLICY IF EXISTS "Team members write" ON public.team_members;
+  DROP POLICY IF EXISTS "Team members claim invite" ON public.team_members;
+  DROP POLICY IF EXISTS "Staff can update own details" ON public.team_members;
+EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
+-- 1. Read: Staff can read their own record, owners can read their business's staff
 CREATE POLICY "Team members read"
   ON public.team_members FOR SELECT TO authenticated
   USING (
     user_id = auth.uid() OR
+    LOWER(email) = LOWER(COALESCE(auth.jwt()->>'email', '')) OR
     EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = team_members.business_id AND b.owner_user_id = auth.uid()) OR
     EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
   );
 
+-- 2. Owner / Admin Full Management
 CREATE POLICY "Team members write"
   ON public.team_members FOR ALL TO authenticated
   USING (
     EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = team_members.business_id AND b.owner_user_id = auth.uid()) OR
     EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
   );
+
+-- 3. Staff Self-Update: Staff can update their own details safely
+CREATE POLICY "Staff can update own details"
+  ON public.team_members FOR UPDATE TO authenticated
+  USING (
+    user_id = auth.uid() OR
+    LOWER(email) = LOWER(COALESCE(auth.jwt()->>'email', ''))
+  )
+  WITH CHECK (
+    user_id = auth.uid() OR
+    LOWER(email) = LOWER(COALESCE(auth.jwt()->>'email', ''))
+  );
+
+-- 5.1.1 Automatic linking of staff members upon Supabase Auth signup
+CREATE OR REPLACE FUNCTION public.handle_staff_auth_signup()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- 1. Auto-link team_members row matching email
+  UPDATE public.team_members
+  SET user_id = NEW.id,
+      status = 'active'
+  WHERE LOWER(email) = LOWER(NEW.email)
+    AND (user_id IS NULL OR user_id = NEW.id);
+
+  -- 2. If matched, assign the 'staff' role in user_roles
+  IF FOUND THEN
+    INSERT INTO public.user_roles (user_id, role)
+    VALUES (NEW.id, 'staff')
+    ON CONFLICT (user_id) DO NOTHING;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_auto_link_staff_on_auth_signup ON auth.users;
+
+CREATE TRIGGER trg_auto_link_staff_on_auth_signup
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_staff_auth_signup();
+
+-- 5.1.2 Link staff member by Staff Code safely and atomically (bypasses RLS)
+CREATE OR REPLACE FUNCTION public.fn_link_staff_by_code(
+  p_staff_code TEXT,
+  p_user_id UUID,
+  p_user_email TEXT DEFAULT ''
+)
+RETURNS JSONB AS $$
+DECLARE
+  v_member RECORD;
+  v_biz RECORD;
+BEGIN
+  -- Look up member by staff_code (case-insensitive, trimmed)
+  SELECT * INTO v_member
+  FROM public.team_members
+  WHERE LOWER(TRIM(staff_code)) = LOWER(TRIM(p_staff_code))
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'success', false, 
+      'message', 'Staff code "' || p_staff_code || '" was not found. Please verify with your store owner.'
+    );
+  END IF;
+
+  -- Verify business exists
+  SELECT * INTO v_biz
+  FROM public.businesses
+  WHERE id = v_member.business_id;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'success', false, 
+      'message', 'Associated business not found.'
+    );
+  END IF;
+
+  -- Link user
+  UPDATE public.team_members
+  SET 
+    user_id = p_user_id,
+    email = COALESCE(NULLIF(TRIM(p_user_email), ''), email),
+    status = 'active'
+  WHERE id = v_member.id;
+
+  -- Assign staff role in user_roles
+  INSERT INTO public.user_roles (user_id, role)
+  VALUES (p_user_id, 'staff')
+  ON CONFLICT (user_id) DO NOTHING;
+
+  RETURN jsonb_build_object(
+    'success', true, 
+    'message', 'Successfully linked to ' || v_biz.business_name || '!',
+    'business_id', v_biz.id,
+    'business_name', v_biz.business_name
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION public.fn_link_staff_by_code(TEXT, UUID, TEXT) TO authenticated;
 
 -- 5.2 Staff Attendance Tracking
 CREATE TABLE IF NOT EXISTS public.staff_attendance (
@@ -1255,6 +1483,15 @@ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'notifications') THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'queue_tickets') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.queue_tickets;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'loyalty_programs') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.loyalty_programs;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'customer_loyalty_cards') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.customer_loyalty_cards;
   END IF;
 END $$;
 
