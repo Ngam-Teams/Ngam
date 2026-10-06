@@ -254,8 +254,14 @@ CREATE TABLE IF NOT EXISTS public.orders (
   source        TEXT NOT NULL DEFAULT 'pos' CHECK (source IN ('pos', 'online')),
   customer_name TEXT,
   notes         TEXT,
+  payment_method TEXT DEFAULT 'cash',
+  payment_splits JSONB DEFAULT '[]'::jsonb,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE public.orders 
+  ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'cash',
+  ADD COLUMN IF NOT EXISTS payment_splits JSONB DEFAULT '[]'::jsonb;
 
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 
