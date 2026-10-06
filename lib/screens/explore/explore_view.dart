@@ -19,9 +19,9 @@ import 'business_store_view.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import '../../widgets/glass_toast.dart';
 import '../../widgets/bottom_nav_customer.dart';
-import '../auth/login_screen.dart'; // Make sure this matches your auth screen file name
 import 'package:supabase_flutter/supabase_flutter.dart'; 
 import 'qr_scanner_screen.dart';
+import '../shared/my_queue_ticket_screen.dart';
 
 enum ShopStatus { open, closingSoon, closed }
 
@@ -606,6 +606,15 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
   void _handleScannedStoreQr(String rawData) async {
     String storeQuery = rawData.trim();
+
+    if (storeQuery.startsWith('NGAM_QUEUE:')) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const MyQueueTicketScreen()),
+      );
+      showGlassToast(context, 'Membuka Giliran Pintar Kedai...');
+      return;
+    }
 
     final uri = Uri.tryParse(storeQuery);
     if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https' || uri.scheme == 'ngam')) {

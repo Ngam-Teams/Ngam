@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../utils/glass_toast.dart';
+import '../explore/qr_scanner_screen.dart';
 
 // =============================================================================
 // MyQueueTicketScreen — Skrin Tiket & Status Giliran Walk-In Langsung (Customer)
@@ -227,6 +228,252 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
     }
   }
 
+  Future<void> _scanQueueQr() async {
+    final scanned = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const QRScannerScreen()),
+    );
+
+    if (scanned == null || scanned.isEmpty || !mounted) return;
+
+    String bizId = scanned.trim();
+    if (bizId.startsWith('NGAM_QUEUE:')) {
+      bizId = bizId.replaceFirst('NGAM_QUEUE:', '').trim();
+    } else {
+      final uri = Uri.tryParse(bizId);
+      if (uri != null && uri.pathSegments.isNotEmpty) {
+        bizId = uri.pathSegments.last;
+      }
+    }
+
+    _showJoinQueueSheet(bizId);
+  }
+
+  void _showJoinQueueSheet(String bizId) async {
+    final user = Provider.of<AuthProvider>(context, listen: false).user;
+    final nameCtrl = TextEditingController(text: user?.userName ?? '');
+    final phoneCtrl = TextEditingController(text: user?.userPhone ?? '');
+    String selectedService = 'Gunting Rambut & Grooming';
+    final services = [
+      'Gunting Rambut & Grooming',
+      'Cuci, Rawatan & Styling',
+      'Konsultasi Perkhidmatan',
+      'Servis Pantas / Touch-up',
+    ];
+
+    String shopName = 'Kedai Pilihan';
+    try {
+      final res = await Supabase.instance.client
+          .from('businesses')
+          .select('business_name')
+          .eq('id', bizId)
+          .maybeSingle();
+      if (res != null && res['business_name'] != null) {
+        shopName = res['business_name'] as String;
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    final scaffoldCtx = context;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF141424),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (modalCtx, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 24,
+                bottom: MediaQuery.of(modalCtx).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF42A5F5).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF42A5F5), size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Sertai Giliran Walk-In',
+                              style: GoogleFonts.outfit(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              shopName,
+                              style: const TextStyle(color: Colors.white70, fontSize: 13),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Customer Name
+                  const Text('Nama Pelanggan', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: nameCtrl,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: const Color(0xFF1E1E34),
+                      hintText: 'Masukkan nama anda',
+                      hintStyle: const TextStyle(color: Colors.white38),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Phone Number
+                  const Text('Nombor Telefon (WhatsApp)', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: phoneCtrl,
+                    keyboardType: TextInputType.phone,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: const Color(0xFF1E1E34),
+                      hintText: 'e.g. 012-3456789',
+                      hintStyle: const TextStyle(color: Colors.white38),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Service selection
+                  const Text('Pilih Perkhidmatan', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: services.map((s) {
+                      final isSel = s == selectedService;
+                      return ChoiceChip(
+                        label: Text(s),
+                        selected: isSel,
+                        selectedColor: const Color(0xFF42A5F5),
+                        backgroundColor: const Color(0xFF1E1E34),
+                        labelStyle: TextStyle(
+                          color: isSel ? Colors.white : Colors.white70,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        onSelected: (val) {
+                          if (val) setModalState(() => selectedService = s);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Confirm button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF42A5F5),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: () async {
+                        final name = nameCtrl.text.trim();
+                        final phone = phoneCtrl.text.trim();
+                        if (name.isEmpty) {
+                          showGlassToast(modalCtx, 'Sila masukkan nama anda', isError: true);
+                          return;
+                        }
+
+                        Navigator.pop(modalCtx);
+
+                        final randNum = 100 + (DateTime.now().millisecond % 899);
+                        final ticketNum = 'A$randNum';
+
+                        Map<String, dynamic> newTicket = {
+                          'id': 'tk-${DateTime.now().millisecondsSinceEpoch}',
+                          'business_id': bizId,
+                          'ticket_number': ticketNum,
+                          'customer_name': name,
+                          'phone_number': phone,
+                          'service_name': selectedService,
+                          'status': 'waiting',
+                          'estimated_wait_minutes': 15,
+                          'business_name': shopName,
+                          'created_at': DateTime.now().toIso8601String(),
+                        };
+
+                        try {
+                          final res = await Supabase.instance.client
+                              .from('queue_tickets')
+                              .insert({
+                                'business_id': bizId,
+                                'ticket_number': ticketNum,
+                                'customer_name': name,
+                                'phone_number': phone,
+                                'service_name': selectedService,
+                                'status': 'waiting',
+                                'estimated_wait_minutes': 15,
+                              })
+                              .select()
+                              .maybeSingle();
+                          if (res != null) {
+                            newTicket = Map<String, dynamic>.from(res);
+                            newTicket['business_name'] = shopName;
+                          }
+                        } catch (_) {}
+
+                        if (mounted) {
+                          setState(() {
+                            _activeTicket = newTicket;
+                            _peopleAhead = 1;
+                            _isLoading = false;
+                          });
+                          _setupRealtimeSubscription(newTicket['id'] as String);
+                          if (!scaffoldCtx.mounted) return;
+                          showGlassToast(scaffoldCtx, 'Berjaya sertai giliran! Nombor anda: $ticketNum');
+                        }
+                      },
+                      child: const Text('Sahkan & Ambil Tiket Giliran', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -250,6 +497,11 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF42A5F5)),
+            onPressed: _scanQueueQr,
+            tooltip: 'Imbas QR Giliran',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: Color(0xFF42A5F5)),
             onPressed: () => _loadCustomerTicket(),
@@ -313,11 +565,26 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
+                onPressed: _scanQueueQr,
+                icon: const Icon(Icons.qr_code_scanner_rounded, size: 20),
+                label: const Text('Imbas Kod QR Kedai untuk Ambil Giliran', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: isDark ? Colors.white70 : Colors.black87,
+                  side: BorderSide(color: isDark ? Colors.white24 : Colors.black26),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
                 onPressed: () {
                   Navigator.pop(context);
                 },
                 icon: const Icon(Icons.explore_rounded, size: 18),
-                label: const Text('Cari Barbershop Berdekatan', style: TextStyle(fontWeight: FontWeight.bold)),
+                label: const Text('Cari Barbershop / Kedai Berdekatan', style: TextStyle(fontWeight: FontWeight.w600)),
               ),
             ),
           ],
