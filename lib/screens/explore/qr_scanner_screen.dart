@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 class QRScannerScreen extends StatefulWidget {
@@ -12,11 +13,74 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
   final MobileScannerController controller = MobileScannerController();
   bool _hasScanned = false;
   bool _torchEnabled = false;
+  bool _isProcessingImage = false;
 
   @override
   void dispose() {
     controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickFromGallery() async {
+    if (_isProcessingImage || _hasScanned) return;
+
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      if (image == null || !mounted) return;
+
+      setState(() => _isProcessingImage = true);
+
+      final BarcodeCapture? capture = await controller.analyzeImage(image.path);
+      if (capture != null && capture.barcodes.isNotEmpty) {
+        for (final barcode in capture.barcodes) {
+          if (barcode.rawValue != null && barcode.rawValue!.isNotEmpty) {
+            _hasScanned = true;
+            if (mounted) {
+              Navigator.pop(context, barcode.rawValue);
+            }
+            return;
+          }
+        }
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.white, size: 20),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Tiada kod QR dikesan dalam gambar ini. Sila pilih gambar yang lebih jelas.',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ralat memproses gambar: $e'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessingImage = false);
+      }
+    }
   }
 
   @override
@@ -46,7 +110,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
 
           // Instructions Banner
           Positioned(
-            bottom: 120,
+            bottom: 110,
             left: 32,
             right: 32,
             child: Container(
@@ -74,6 +138,30 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
             ),
           ),
 
+          // Bottom Gallery Picker Shortcut Button
+          Positioned(
+            bottom: 44,
+            left: 32,
+            right: 32,
+            child: Center(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.black.withValues(alpha: 0.65),
+                  side: const BorderSide(color: Colors.white30),
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                ),
+                onPressed: _pickFromGallery,
+                icon: const Icon(Icons.photo_library_rounded, size: 18, color: Color(0xFF42A5F5)),
+                label: const Text(
+                  'Pilih dari Galeri Foto',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+              ),
+            ),
+          ),
+
           // Top Action Bar
           SafeArea(
             child: Padding(
@@ -85,17 +173,46 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                     icon: const Icon(Icons.close, color: Colors.white, size: 28),
                     onPressed: () => Navigator.pop(context),
                   ),
-                  IconButton(
-                    icon: Icon(_torchEnabled ? Icons.flash_on : Icons.flash_off, color: _torchEnabled ? Colors.amber : Colors.white, size: 26),
-                    onPressed: () {
-                      controller.toggleTorch();
-                      setState(() => _torchEnabled = !_torchEnabled);
-                    },
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.photo_library_outlined, color: Colors.white, size: 24),
+                        tooltip: 'Pilih dari Galeri',
+                        onPressed: _pickFromGallery,
+                      ),
+                      IconButton(
+                        icon: Icon(_torchEnabled ? Icons.flash_on : Icons.flash_off, color: _torchEnabled ? Colors.amber : Colors.white, size: 26),
+                        tooltip: 'Lampu Kilat',
+                        onPressed: () {
+                          controller.toggleTorch();
+                          setState(() => _torchEnabled = !_torchEnabled);
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
           ),
+
+          // Loading Overlay when analyzing image from gallery
+          if (_isProcessingImage)
+            Container(
+              color: Colors.black54,
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: Color(0xFF42A5F5)),
+                    SizedBox(height: 16),
+                    Text(
+                      'Menganalisis kod QR dari gambar...',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );

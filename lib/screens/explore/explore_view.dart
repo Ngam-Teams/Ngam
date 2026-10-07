@@ -1,9 +1,8 @@
 import 'dart:async';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -13,8 +12,6 @@ import 'dart:math';
 import 'package:ngam/l10n/generated/app_localizations.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'shop_detail_screen.dart';
-import 'business_products_view.dart';
 import 'business_store_view.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import '../../widgets/glass_toast.dart';
@@ -607,6 +604,94 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   void _handleScannedStoreQr(String rawData) async {
     String storeQuery = rawData.trim();
 
+    // 1. Check for WiFi Auto-Connect QR format: WIFI:T:WPA;S:SSID;P:PASSWORD;;
+    if (storeQuery.startsWith('WIFI:')) {
+      String ssid = 'WiFi Tetamu';
+      String pass = '';
+      final parts = storeQuery.replaceFirst('WIFI:', '').split(';');
+      for (final part in parts) {
+        if (part.startsWith('S:')) ssid = part.substring(2);
+        if (part.startsWith('P:')) pass = part.substring(2);
+      }
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF141424),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Colors.white12)),
+          title: const Row(
+            children: [
+              Icon(Icons.wifi_rounded, color: Color(0xFF42A5F5), size: 22),
+              SizedBox(width: 10),
+              Text('WiFi Tetamu Kedai', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Maklumat sambungan WiFi dikesan daripada imbasan:', style: TextStyle(color: Colors.white54, fontSize: 12)),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.router_rounded, color: Colors.white70, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text('SSID: $ssid', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.key_rounded, color: Color(0xFF42A5F5), size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text('Kata Laluan: $pass', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Tutup', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF42A5F5),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: pass));
+                Navigator.pop(ctx);
+                showGlassToast(context, 'Kata laluan WiFi disalin ke papan klip!');
+              },
+              icon: const Icon(Icons.copy_rounded, size: 16),
+              label: const Text('Salin Kata Laluan'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // 2. Check for Smart Queue QR format
     if (storeQuery.startsWith('NGAM_QUEUE:')) {
       Navigator.push(
         context,
@@ -616,8 +701,13 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       return;
     }
 
+    // 3. Check for URL / Storefront QR format
     final uri = Uri.tryParse(storeQuery);
+    String? tableParam;
+    String? promoParam;
     if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https' || uri.scheme == 'ngam')) {
+      tableParam = uri.queryParameters['table'];
+      promoParam = uri.queryParameters['promo'];
       if (uri.pathSegments.isNotEmpty) {
         storeQuery = uri.pathSegments.last;
       } else if (uri.host.isNotEmpty) {
@@ -671,7 +761,15 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         _animatedMapMove(LatLng(lat, lng), 16.0);
       }
       _showBusinessProfile(context, matchedShop);
-      showGlassToast(context, 'Membuka ${matchedShop['name'] ?? 'Kedai'}');
+
+      String extraMsg = '';
+      if (tableParam != null && tableParam.isNotEmpty) {
+        extraMsg += ' • Meja #$tableParam';
+      }
+      if (promoParam != null && promoParam.isNotEmpty) {
+        extraMsg += ' • Baucar "$promoParam" Aktif!';
+      }
+      showGlassToast(context, 'Membuka ${matchedShop['name'] ?? 'Kedai'}$extraMsg');
     } else {
       showGlassToast(context, 'Kedai tidak dijumpai: $storeQuery', isError: true);
     }
