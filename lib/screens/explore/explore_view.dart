@@ -692,7 +692,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     }
 
     // 2. Check for Smart Queue QR format
-    if (storeQuery.startsWith('NGAM_QUEUE:')) {
+    if (storeQuery.startsWith('NGAM_QUEUE:') || storeQuery.contains('/queue/')) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const MyQueueTicketScreen()),
