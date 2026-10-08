@@ -882,23 +882,10 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 }
 
                 try {
-                  // Try panggil RPC withdrawal kalau wujud, kalau takde kita update dummy je untuk demo
-                  try {
-                    await SupabaseService.client.rpc('withdraw_wallet', params: {
-                      'p_user_id': authProvider.user!.id,
-                      'p_amount': amount,
-                    });
-                  } catch (e) {
-                    // Lakonan (simulation) kalau RPC withdraw_wallet takde lagi kat DB
-                    final newBalance = currentBalance - amount;
-                    await SupabaseService.client.from('users').update({'user_balance': newBalance}).eq('id', authProvider.user!.id);
-                    await SupabaseService.client.from('wallet_transactions').insert({
-                      'user_id': authProvider.user!.id,
-                      'type': 'withdrawal',
-                      'amount': -amount,
-                      'description': 'Bank Transfer Withdrawal',
-                    });
-                  }
+                  await SupabaseService.client.rpc('withdraw_wallet', params: {
+                    'p_user_id': authProvider.user!.id,
+                    'p_amount': amount,
+                  });
                   
                   await authProvider.refreshBalance();
                   await _loadTransactions();
