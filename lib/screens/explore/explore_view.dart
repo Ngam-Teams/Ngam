@@ -10,7 +10,7 @@ import 'package:geolocator/geolocator.dart';
 import 'bookings_view.dart';
 import 'dart:math';
 import 'package:ngam/l10n/generated/app_localizations.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import '../../widgets/glass_box.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'business_store_view.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';

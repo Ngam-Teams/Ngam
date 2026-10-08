@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'glass_box.dart';
 
 class NavItem {
   final String title;
@@ -30,17 +30,6 @@ class CustomBottomNav extends StatefulWidget {
 
 class _CustomBottomNavState extends State<CustomBottomNav> {
   @override
-  void initState() {
-    super.initState();
-    // Paksa render balik (rebuild) lepas frame pertama nak elak masalah shader GlassContainer bersepah
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        setState(() {});
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     final double keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
     final bool isKeyboardOpen = keyboardHeight > 100;
@@ -64,38 +53,23 @@ class _CustomBottomNavState extends State<CustomBottomNav> {
               constraints: const BoxConstraints(maxWidth: 600),
               child: Padding(
                 padding: EdgeInsets.only(left: 14, right: 14, bottom: adjustedBottomPadding, top: 10),
-                child: GlassContainer(
-                  useOwnLayer: true,
-                  quality: GlassQuality.standard,
-                  shape: LiquidRoundedSuperellipse(borderRadius: 50.0),
-                  settings: LiquidGlassSettings(
-                    thickness: 0.1,
-                    blur: 2.0, // Kasi rupa jernih gila
-                    refractiveIndex: 1.0,
-                    glassColor: Colors.transparent,
-                    lightAngle: 45.0,
-                    lightIntensity: isDark ? 0.1 : 0.2,
-                    ambientStrength: 1.0,
-                    saturation: 1.0,
-                    chromaticAberration: 0.0,
+                child: GlassBox(
+                  borderRadius: 50.0,
+                  blur: 16.0,
+                  color: isDark ? const Color(0xFF141424).withValues(alpha: 0.75) : Colors.white.withValues(alpha: 0.8),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
+                    width: 1.0,
                   ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(50),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
-                        width: 1.0,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
                     ),
-                    child: LayoutBuilder(
+                  ],
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  child: LayoutBuilder(
                       builder: (context, constraints) {
                         final double totalWidth = constraints.maxWidth;
                         const int inactiveFlex = 2;
@@ -200,7 +174,6 @@ class _CustomBottomNavState extends State<CustomBottomNav> {
                   ),
                 ),
               ),
-            ),
-    );
+            );
   }
 }

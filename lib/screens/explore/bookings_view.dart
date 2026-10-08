@@ -2,7 +2,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // 🟢 REQUIRED for TextInputFormatter
 import 'package:hugeicons/hugeicons.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'; // 🟢 REQUIRED for LiquidGlassSettings
+import 'package:ngam/widgets/glass_box.dart'; // 🟢 REQUIRED for LiquidGlassSettings
 import '../../models/booking_data.dart';
 import 'booking_ticket_screen.dart';
 import '../../models/user_data.dart';
