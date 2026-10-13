@@ -48,6 +48,9 @@ jobs:
       - name: Deploy to Cloudflare Pages via Wrangler
         run: |
           npm install -g wrangler
+          wrangler pages project create ngam-c8k --production-branch=main || true
+          wrangler pages project create ngam --production-branch=main || true
+          wrangler pages deploy build/web --project-name=ngam-c8k --branch=main --commit-dirty=true || \
           wrangler pages deploy build/web --project-name=ngam --branch=main --commit-dirty=true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
