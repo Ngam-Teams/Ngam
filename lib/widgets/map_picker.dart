@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'ngam_maps_dialog.dart';
 
 class MapPicker extends StatefulWidget {
   final LatLng initialCenter;
@@ -74,13 +74,11 @@ class _MapPickerState extends State<MapPicker> {
       Position? pos = await Geolocator.getLastKnownPosition();
 
       // If no last known position, try to get current position with low accuracy
-      if (pos == null) {
-        pos = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
-        ).timeout(const Duration(seconds: 5), onTimeout: () {
-          throw 'Location timeout';
-        });
-      }
+      pos ??= await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
+      ).timeout(const Duration(seconds: 5), onTimeout: () {
+        throw 'Location timeout';
+      });
       
       final latLng = LatLng(pos.latitude, pos.longitude);
       if (mounted) {
@@ -104,44 +102,86 @@ class _MapPickerState extends State<MapPicker> {
   }
 
   Future<List<Map<String, dynamic>>> _searchPhoton(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return [];
+    final results = <Map<String, dynamic>>[];
+
+    // 1. Enjin Utama: Nominatim (Rasmi OpenStreetMap Malaysia)
     try {
       final client = HttpClient();
-      final uri = Uri.parse(
-        'https://photon.komoot.io/api/?q=${Uri.encodeComponent(query.trim())}&limit=5&lat=${widget.initialCenter.latitude}&lon=${widget.initialCenter.longitude}',
+      final nomUri = Uri.parse(
+        'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(trimmed)}&format=json&addressdetails=1&limit=5&countrycodes=my',
       );
-      final request = await client.getUrl(uri);
-      final response = await request.close();
+      final request = await client.getUrl(nomUri);
+      request.headers.set('User-Agent', 'NgamApp/1.0 (contact@ngam.my)');
+      final response = await request.close().timeout(const Duration(seconds: 3));
       if (response.statusCode == 200) {
         final body = await response.transform(utf8.decoder).join();
-        final data = jsonDecode(body) as Map<String, dynamic>;
-        final features = data['features'] as List? ?? [];
-        final results = <Map<String, dynamic>>[];
-        for (final f in features) {
-          final props = f['properties'] as Map<String, dynamic>? ?? {};
-          final geom = f['geometry'] as Map<String, dynamic>? ?? {};
-          final coords = geom['coordinates'] as List? ?? [];
-          if (coords.length >= 2) {
-            final lon = (coords[0] as num).toDouble();
-            final lat = (coords[1] as num).toDouble();
-            final name = props['name'] ?? props['street'] ?? '';
-            final parts = [
-              props['street'],
-              props['city'] ?? props['county'],
-              props['state'],
-            ].where((p) => p != null && p.toString().isNotEmpty && p != name).join(', ');
+        final list = jsonDecode(body) as List? ?? [];
+        for (final item in list) {
+          final lat = double.tryParse(item['lat']?.toString() ?? '') ?? 0.0;
+          final lon = double.tryParse(item['lon']?.toString() ?? '') ?? 0.0;
+          final name = item['name']?.toString() ?? '';
+          final displayName = item['display_name']?.toString() ?? '';
+          final addr = item['address'] as Map<String, dynamic>? ?? {};
+          final subtitle = [
+            addr['road'] ?? addr['suburb'],
+            addr['city'] ?? addr['town'] ?? addr['county'],
+            addr['state'],
+          ].where((p) => p != null && p.toString().isNotEmpty).join(', ');
 
+          if (lat != 0.0 && lon != 0.0) {
             results.add({
-              'title': name.isNotEmpty ? name : (parts.isNotEmpty ? parts : 'Lokasi'),
-              'subtitle': parts,
+              'title': name.isNotEmpty ? name : (subtitle.isNotEmpty ? subtitle : displayName),
+              'subtitle': subtitle.isNotEmpty ? subtitle : displayName,
               'lat': lat,
               'lng': lon,
             });
           }
         }
-        return results;
       }
     } catch (_) {}
-    return [];
+
+    // 2. Sandaran (Fallback): Photon Komoot
+    if (results.isEmpty) {
+      try {
+        final client = HttpClient();
+        final uri = Uri.parse(
+          'https://photon.komoot.io/api/?q=${Uri.encodeComponent(trimmed)}&limit=5&lat=${widget.initialCenter.latitude}&lon=${widget.initialCenter.longitude}',
+        );
+        final request = await client.getUrl(uri);
+        final response = await request.close().timeout(const Duration(seconds: 3));
+        if (response.statusCode == 200) {
+          final body = await response.transform(utf8.decoder).join();
+          final data = jsonDecode(body) as Map<String, dynamic>;
+          final features = data['features'] as List? ?? [];
+          for (final f in features) {
+            final props = f['properties'] as Map<String, dynamic>? ?? {};
+            final geom = f['geometry'] as Map<String, dynamic>? ?? {};
+            final coords = geom['coordinates'] as List? ?? [];
+            if (coords.length >= 2) {
+              final lon = (coords[0] as num).toDouble();
+              final lat = (coords[1] as num).toDouble();
+              final name = props['name'] ?? props['street'] ?? '';
+              final parts = [
+                props['street'],
+                props['city'] ?? props['county'],
+                props['state'],
+              ].where((p) => p != null && p.toString().isNotEmpty && p != name).join(', ');
+
+              results.add({
+                'title': name.isNotEmpty ? name : (parts.isNotEmpty ? parts : 'Lokasi'),
+                'subtitle': parts,
+                'lat': lat,
+                'lng': lon,
+              });
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    return results;
   }
 
   void _openSearchSheet() {
@@ -305,28 +345,64 @@ class _MapPickerState extends State<MapPicker> {
                 panBuffer: 3,
                 maxNativeZoom: 19,
               ),
-              if (_selectedLocation != null)
+              if (_selectedLocation != null) ...[
+                CircleLayer(
+                  circles: [
+                    CircleMarker(
+                      point: _selectedLocation!,
+                      color: const Color(0xFF42A5F5).withValues(alpha: 0.15),
+                      borderColor: const Color(0xFF42A5F5).withValues(alpha: 0.4),
+                      borderStrokeWidth: 1.5,
+                      radius: 80,
+                      useRadiusInMeter: true,
+                    ),
+                  ],
+                ),
                 MarkerLayer(
                   markers: [
                     Marker(
                       point: _selectedLocation!,
-                      width: 40,
-                      height: 40,
-                      child: const HugeIcon(
-                        icon: HugeIcons.strokeRoundedPinLocation02,
-                        color: Colors.red,
-                        size: 40,
+                      width: 44,
+                      height: 48,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          const Icon(
+                            Icons.location_on_rounded,
+                            size: 44,
+                            color: Color(0xFFE53935),
+                          ),
+                          Positioned(
+                            top: 12,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
+              ],
             ],
           ),
           
+          // NgamMaps Attribution Badge (Belah Kiri Bawah - Gaya Grab)
+          Positioned(
+            left: 10,
+            bottom: 10,
+            child: NgamMapsAttributionBadge(isDark: isDark),
+          ),
+
           // Control untuk Map (Belah Kanan)
           Positioned(
             right: 12,
-            bottom: 24,
+            bottom: 10,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

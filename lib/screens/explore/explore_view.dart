@@ -19,6 +19,7 @@ import '../../widgets/bottom_nav_customer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; 
 import 'qr_scanner_screen.dart';
 import '../shared/my_queue_ticket_screen.dart';
+import '../../widgets/ngam_maps_dialog.dart';
 
 enum ShopStatus { open, closingSoon, closed }
 
@@ -1225,6 +1226,13 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                       duration: const Duration(milliseconds: 300),
                       opacity: isSearchActive ? 1.0 : 0.0,
                       child: isSearchActive ? _buildResultsGlass(isDark) : const SizedBox.shrink())),
+              // ── NgamMaps Attribution Badge (Gaya Grab) ───────
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 300),
+                bottom: hideBottomPanel ? 120 : (_selectedShop != null ? 360 : 255),
+                left: 16,
+                child: NgamMapsAttributionBadge(isDark: isDark),
+              ),
               AnimatedPositioned(
                   duration: const Duration(milliseconds: 400),
                   curve: Curves.easeInOutBack,
