@@ -294,7 +294,7 @@ class _LoginScreenState extends State<LoginScreen>
                             onPressed: () async {
                               final authProvider = context.read<AuthProvider>();
                               final success = await authProvider.signInWithGoogle();
-                              if (success && mounted) {
+                              if (success && context.mounted) {
                                 Navigator.pushReplacementNamed(context, '/customer-home');
                               }
                             },
@@ -340,7 +340,7 @@ class _LoginScreenState extends State<LoginScreen>
                             onPressed: () async {
                               final authProvider = context.read<AuthProvider>();
                               final success = await authProvider.signInWithApple();
-                              if (success && mounted) {
+                              if (success && context.mounted) {
                                 Navigator.pushReplacementNamed(context, '/customer-home');
                               }
                             },

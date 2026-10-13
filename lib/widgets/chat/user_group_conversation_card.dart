@@ -153,9 +153,13 @@ class _UserGroupConversationCardState extends State<UserGroupConversationCard> {
         final status = gig.status.toUpperCase();
         if (status == 'OPEN') {
           openCount++;
-        } else if (status == 'IN-PROGRESS') inProgressCount++;
-        else if (status == 'COMPLETED') completedCount++;
-        else if (status == 'LOCKED') lockedCount++;
+        } else if (status == 'IN-PROGRESS') {
+          inProgressCount++;
+        } else if (status == 'COMPLETED') {
+          completedCount++;
+        } else if (status == 'LOCKED') {
+          lockedCount++;
+        }
       }
     }
 

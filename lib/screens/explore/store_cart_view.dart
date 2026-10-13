@@ -23,6 +23,8 @@ class CartItem {
 class StoreCartView extends StatefulWidget {
   final Map<String, dynamic> shop;
   final List<CartItem> cartItems;
+  final String? tableNumber;
+  final String? promoCode;
   final bool isStoreOpen;
   final String? storeStatusText;
   final bool isHoliday;
@@ -33,6 +35,8 @@ class StoreCartView extends StatefulWidget {
     super.key,
     required this.shop,
     required this.cartItems,
+    this.tableNumber,
+    this.promoCode,
     this.isStoreOpen = true,
     this.storeStatusText,
     this.isHoliday = false,
@@ -60,6 +64,13 @@ class _StoreCartViewState extends State<StoreCartView> {
   void initState() {
     super.initState();
     _items = List.from(widget.cartItems);
+    if (widget.tableNumber != null && widget.tableNumber!.isNotEmpty) {
+      _orderTypeIndex = 0; // Dine-in
+    }
+    if (widget.promoCode != null && widget.promoCode!.isNotEmpty) {
+      _voucherController.text = widget.promoCode!;
+      _applyVoucher();
+    }
   }
 
   @override
@@ -157,14 +168,26 @@ class _StoreCartViewState extends State<StoreCartView> {
   void _handleCheckout() async {
     if (_items.isEmpty) return;
 
-    final user = Supabase.instance.client.auth.currentUser;
+    var user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
-      showGlassToast(context, 'Please sign in or register to place your order.', isError: true);
+      // Try anonymous sign-in for seamless table dine-in ordering
+      try {
+        final authRes = await Supabase.instance.client.auth.signInAnonymously();
+        user = authRes.user;
+      } catch (anonErr) {
+        debugPrint('Anonymous sign-in unavailable: $anonErr');
+      }
+    }
+
+    if (user == null) {
+      if (!mounted) return;
+      showGlassToast(context, 'Sila log masuk untuk menghantar pesanan.', isError: true);
       Navigator.pushNamed(context, '/login');
       return;
     }
 
     if (!widget.isStoreOpen && !_isPreOrder) {
+      if (!mounted) return;
       showGlassToast(context, 'Kedai sedang tutup. Sila aktifkan pilihan Pesanan Awal (Pre-Order) untuk teruskan.', isError: true);
       return;
     }
@@ -172,10 +195,24 @@ class _StoreCartViewState extends State<StoreCartView> {
     setState(() => _isProcessing = true);
 
     try {
-      final String customerName = (user.userMetadata?['full_name'] as String?) ??
+      final String rawName = (user.userMetadata?['full_name'] as String?) ??
           (user.userMetadata?['name'] as String?) ??
           (user.email?.split('@').first) ??
-          'Customer';
+          '';
+
+      final String customerName = rawName.isNotEmpty
+          ? rawName
+          : ((widget.tableNumber != null && widget.tableNumber!.isNotEmpty)
+              ? 'Pelanggan Meja #${widget.tableNumber}'
+              : 'Pelanggan Walk-In');
+
+      final String tablePrefix = (widget.tableNumber != null && widget.tableNumber!.isNotEmpty)
+          ? '[Meja #${widget.tableNumber}] '
+          : '';
+
+      final String source = (widget.tableNumber != null && widget.tableNumber!.isNotEmpty)
+          ? 'table'
+          : (_isPreOrder ? 'pre_order' : 'online');
 
       final orderData = {
         'business_id': widget.shop['id'],
@@ -183,10 +220,8 @@ class _StoreCartViewState extends State<StoreCartView> {
         'customer_name': customerName,
         'total': _total,
         'status': 'pending',
-        'source': _isPreOrder ? 'pre_order' : 'online',
-        'notes': _isPreOrder
-            ? ('[PRE-ORDER] ${_notesController.text.trim()}').trim()
-            : _notesController.text.trim(),
+        'source': source,
+        'notes': (tablePrefix + (_isPreOrder ? '[PRE-ORDER] ' : '') + _notesController.text.trim()).trim(),
       };
 
       final orderRes = await Supabase.instance.client
@@ -438,6 +473,52 @@ class _StoreCartViewState extends State<StoreCartView> {
                       children: [
                         if (!widget.isStoreOpen) ...[
                           _buildClosedStoreBanner(isDark, textPrimary, textSecondary),
+                          const SizedBox(height: 16),
+                        ],
+
+                        if (widget.tableNumber != null && widget.tableNumber!.isNotEmpty) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color(0xFF00E676).withValues(alpha: 0.18),
+                                  const Color(0xFF00B0FF).withValues(alpha: 0.12),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.45)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.table_restaurant_rounded, color: Color(0xFF00E676), size: 24),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Pesanan Dine-In: Meja #${widget.tableNumber}',
+                                        style: TextStyle(
+                                          color: textPrimary,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Makanan akan dihantar terus ke meja anda.',
+                                        style: TextStyle(
+                                          color: textSecondary,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                           const SizedBox(height: 16),
                         ],
 

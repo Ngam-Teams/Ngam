@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'bookings_view.dart'; // 🟢 Make sure this points to your Bookings checkout screen!
 import '../../widgets/glass_toast.dart';
-import '../auth/login_screen.dart'; // Make sure this matches your Auth Screen file name!
+// Make sure this matches your Auth Screen file name!
 
 class ShopDetailScreen extends StatelessWidget {
   final Map<String, dynamic> shop;

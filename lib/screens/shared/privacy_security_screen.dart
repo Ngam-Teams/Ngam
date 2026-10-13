@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../utils/glass_toast.dart';
 import 'package:easy_localization/easy_localization.dart';
+import '../auth/login_screen.dart';
 
 class SecurityData {
   static final appLockEnabled = ValueNotifier<bool>(false);
@@ -341,6 +343,15 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                     "privacy.clear_cache".tr(),
                     trailing: Text(_cacheSize, style: const TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold)),
                     onTap: () => _showClearCacheConfirmation(context),
+                  ),
+                  _buildDivider(isDark),
+                  _buildSettingsTile(
+                    isDark,
+                    HugeIcons.strokeRoundedUserRemove02,
+                    "Padam Akaun",
+                    subtitle: "Padam akaun dan semua data peribadi anda",
+                    trailing: const HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, color: Colors.redAccent, size: 14),
+                    onTap: () => _showDeleteAccountConfirmation(context),
                   ),
                 ],
               ),
@@ -958,6 +969,135 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                               color: Colors.blueAccent,
                               fontWeight: FontWeight.w700,
                               fontFamily: 'Inter'
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteAccountConfirmation(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.5),
+      builder: (dialogCtx) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.black.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3), width: 1.5),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const HugeIcon(
+                    icon: HugeIcons.strokeRoundedUserRemove02,
+                    color: Colors.redAccent,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  "Padam Akaun Secara Kekal?",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    fontFamily: 'Inter',
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  "Tindakan ini adalah kekal dan tidak boleh diundur. Semua profil, data tempahan perkhidmatan, dan kad ganjaran anda akan dipadamkan dari pelayan kami.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.5,
+                    color: isDark ? Colors.white70 : Colors.black54,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          backgroundColor: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+                        ),
+                        onPressed: () => Navigator.pop(dialogCtx),
+                        child: Text(
+                          "Batal",
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black87,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: Colors.redAccent,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () async {
+                          Navigator.pop(dialogCtx);
+                          HapticFeedback.heavyImpact();
+                          try {
+                            final user = Supabase.instance.client.auth.currentUser;
+                            if (user != null) {
+                              await Supabase.instance.client.from('users').delete().eq('id', user.id);
+                              await Supabase.instance.client.auth.signOut();
+                            }
+                          } catch (_) {
+                            try {
+                              await Supabase.instance.client.auth.signOut();
+                            } catch (_) {}
+                          }
+
+                          if (context.mounted) {
+                            showGlassToast(context, "Akaun anda telah berjaya dipadamkan.");
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(builder: (_) => const LoginScreen()),
+                              (route) => false,
+                            );
+                          }
+                        },
+                        child: const Text(
+                          "Padam",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Inter',
                           ),
                         ),
                       ),

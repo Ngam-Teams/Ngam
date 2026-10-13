@@ -57,13 +57,6 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     return _baseLatitudeOffset * pow(2, 14.0 - currentZoom);
   }
 
-  String _formatTime(int hour, int minute) {
-    final String period = hour >= 12 ? "PM" : "AM";
-    int h = hour % 12;
-    if (h == 0) h = 12;
-    return "${h.toString().padLeft(2, '0')}:${minute.toString().padLeft(
-        2, '0')} $period";
-  }
 
   // --- 1. CONTROLLERS & TIMERS ---
   late PageController _pageController;
@@ -76,17 +69,14 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   bool _followUser = true;
   bool _isSearching = false;
   bool _isProfileOpen = false;
-  bool _isSheetAnimating = false;
 
   Map<String, dynamic>? _selectedShop;
-  int _currentCarouselIndex = 0;
   List<Map<String, dynamic>> _nearbyShops = [];
   List<Map<String, dynamic>> _displayedShops = []; // 🟢 Added this back!
-  bool _pendingSheetPop = false;
   String? _activeSearchQuery;
 
   // --- NEW: ADVANCED SEARCH STATE ---
-  Set<String> _expandedCategories = {};
+  final Set<String> _expandedCategories = {};
   List<Map<String, dynamic>> _searchMatchedCategories = [];
   List<Map<String, dynamic>> _searchMatchedShops = [];
 
@@ -428,7 +418,6 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
     if (_pageController.page?.round() == index) {
       setState(() {
-        _currentCarouselIndex = index;
         _selectedShop = _displayedShops[index]; // Change here
         _followUser = false;
       });
@@ -452,7 +441,6 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
     setState(() {
       _selectedShop = shop;
-      _currentCarouselIndex = index;
       _followUser = false;
       _isProfileOpen = true;
     });
@@ -498,7 +486,6 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       _searchMatchedShops = [];
       _isSearching = false;
       _selectedShop = results.isNotEmpty ? results.first : null;
-      _currentCarouselIndex = 0; // Fixes carousel sync
     });
 
     if (results.isNotEmpty) {
@@ -785,7 +772,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       permission = await Geolocator.requestPermission();
       // Added check for deniedForever to prevent infinite hanging
       if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) return;
+          permission == LocationPermission.deniedForever) {
+        return;
+      }
     }
 
     // --- FIX: 1. Force an immediate GPS grab for a fast first load ---
@@ -793,15 +782,13 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       // Tries to get the location quickly. If it takes more than 4 seconds, it fails gracefully.
       Position? initialPos = await Geolocator.getLastKnownPosition();
       
-      if (initialPos == null) {
-        initialPos = await Geolocator.getCurrentPosition(
+      initialPos ??= await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
         ).timeout(const Duration(seconds: 4));
-      }
 
-      if (mounted && initialPos != null) {
+      if (mounted) {
         setState(() {
-          _currentLocation = LatLng(initialPos!.latitude, initialPos!.longitude);
+          _currentLocation = LatLng(initialPos!.latitude, initialPos.longitude);
         });
 
         if (_followUser) {
@@ -811,7 +798,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           } catch (_) {}
           double adaptiveOffset = _baseLatitudeOffset * pow(2, 14.0 - zoom);
           LatLng offsetLocation = LatLng(
-              initialPos!.latitude + adaptiveOffset, initialPos!.longitude);
+              initialPos.latitude + adaptiveOffset, initialPos.longitude);
 
           // Jump immediately to the real location
           if (_isMapReady) {
@@ -849,17 +836,6 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     });
   }
 
-  bool _isShopOpen(Map<String, dynamic> shop) {
-    // Assuming you add 'openHour' (e.g., 9) and 'closeHour' (e.g., 22) to shop_data.dart.
-    // If they aren't there yet, this defaults to 9 AM - 10 PM.
-    final int openHour = shop['openHour'] ?? 9;
-    final int closeHour = shop['closeHour'] ?? 22;
-    final int currentHour = DateTime
-        .now()
-        .hour;
-
-    return currentHour >= openHour && currentHour < closeHour;
-  }
 
   String _getDistanceString(LatLng shopLocation) {
     double m = Geolocator.distanceBetween(
@@ -1253,52 +1229,6 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
   // --- 4. UI BUILDERS ---
 
-  Widget _buildGlassBox({
-    required bool isDark,
-    required double radius,
-    required Widget child,
-    double? height,
-    double? width,
-    EdgeInsets? padding,
-  }) {
-    return Container(
-      height: height,
-      width: width,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radius),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-          // Classic smooth blur
-          child: Container(
-            padding: padding,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 
-                  0.08) // Dark mode: faint white tint
-                  : Colors.white.withValues(alpha: 0.6),
-              // Light mode: milky white tint
-              borderRadius: BorderRadius.circular(radius),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.6),
-                width: 1.0,
-              ),
-            ),
-            child: child,
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildSearchRow(bool isDark) =>
       Padding(
@@ -1507,7 +1437,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                     _hideKeyboardOnly();
                                     _executeCategorySearch(sub['id'], sub['label'], isGroup: false);
                                   }
-                              )).toList(),
+                              )),
                             ]
                         ),
                       ),
@@ -1555,14 +1485,15 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                     _activeSearchQuery = shop['name'];
                     _isSearching = false;
                     _selectedShop = shop;
-                    _currentCarouselIndex = 0;
                   });
 
                   LatLng offsetLocation = _getDynamicCenterOffset(shop, 15.0);
                   _animatedMapMove(offsetLocation, 15.0);
 
                   Future.delayed(const Duration(milliseconds: 150), () {
-                    _showBusinessProfile(context, shop);
+                    if (mounted) {
+                      _showBusinessProfile(context, shop);
+                    }
                   });
                 },
               );
@@ -1635,7 +1566,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                 _hideKeyboardOnly();
                                 _executeCategorySearch(sub['id'], sub['label'], isGroup: false);
                               }
-                          )).toList(),
+                          )),
                         ]
                     ),
                   ),
@@ -1752,63 +1683,6 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
             SizedBox(height: 95, child: PageView.builder(controller: _pageController, onPageChanged: _onCarouselPageChanged, physics: const ClampingScrollPhysics(), itemCount: _displayedShops.length, itemBuilder: (context, i) => _AnimatedPressable(onTap: () => _onMapPinTapped(_displayedShops[i], i), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: _buildCarouselCard(isDark, _displayedShops[i]))))),
           ]);
 
-  Widget _buildEmptyState(bool isDark) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black
-            .withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.2), shape: BoxShape.circle),
-            child: const HugeIcon(icon: HugeIcons.strokeRoundedSearchRemove,
-                color: Colors.grey,
-                size: 28,
-                strokeWidth: 2.5),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(AppLocalizations.of(context)!.noMatchesFound,
-                    style: TextStyle(
-                        color: isDark ? Colors.white : Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16)),
-                const SizedBox(height: 4),
-                Text(AppLocalizations.of(context)!.trySearchingDifferent,
-                    style: TextStyle(
-                        color: isDark ? Colors.white54 : Colors.black54,
-                        fontSize: 12,
-                        height: 1.3)),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          _AnimatedPressable(
-            onTap: _clearSearch,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                  color: Colors.blue, borderRadius: BorderRadius.circular(16)),
-              child: Text(AppLocalizations.of(context)!.clear,
-                  style: const TextStyle(color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13)),),
-          )
-        ],
-      ),
-    );
-  }
 
   Widget _buildStatusLabel(BuildContext context, Map<String, dynamic> shop) {
     final status = _getShopStatus(shop);
@@ -2312,12 +2186,8 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         break;
     }
 
-    final double topSafeArea = MediaQuery.of(context).padding.top;
     final double bottomSafeArea = MediaQuery.of(context).padding.bottom;
     final double screenHeight = MediaQuery.of(context).size.height;
-
-    // 🟢 DEFINE THE HOURS STATE HERE! It lives locally inside the bottom sheet.
-    bool localIsHoursExpanded = false;
 
     _scaffoldKey.currentState!.showBottomSheet(
       backgroundColor: Colors.transparent,
@@ -2340,7 +2210,6 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           double baseHeight = numLines > 1 ? 430.0 : 400;
           double adaptiveInitialSize = (baseHeight + bottomSafeArea) / screenHeight;
           adaptiveInitialSize = adaptiveInitialSize.clamp(0.40, 0.85);
-          double sheetExtent = adaptiveInitialSize;
 
           return DraggableScrollableSheet(
             controller: _sheetController,
@@ -2350,7 +2219,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
             snap: true,
             snapSizes: [0.0, adaptiveInitialSize],
             expand: false,
-            builder: (context, scrollController) {
+            builder: (modalContext, scrollController) {
               return NotificationListener<DraggableScrollableNotification>(
                 onNotification: (notification) {
                   // Auto-close when dragged below 25% of screen
@@ -2361,8 +2230,8 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                             duration: const Duration(milliseconds: 200),
                             curve: Curves.easeOut)
                         .then((_) {
-                      if (mounted) {
-                        Navigator.of(context).pop();
+                      if (modalContext.mounted) {
+                        Navigator.of(modalContext).pop();
                       }
                     });
                   }
@@ -2705,217 +2574,6 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     );
   }
 
-  Widget _buildSectionTitle(String title, bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(title, style: TextStyle(
-          color: isDark ? Colors.white : _lightModeGray,
-          fontSize: 16,
-          fontWeight: FontWeight.bold)),
-    );
-  }
-
-  Widget _buildHoursSection(Map<String, dynamic> shop, ShopStatus status, bool isDark, StateSetter setSheetState, bool isExpanded, VoidCallback onToggle) {
-    final List<String> days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-    final DateTime now = DateTime.now();
-    final int currentDayIndex = now.weekday - 1;
-
-    final int openHour = shop['openHour'] ?? 9;
-    final int openMin = shop['openMinute'] ?? 0;
-    final String openStr = _formatTime(openHour, openMin);
-    final String closeStr = _formatTime(shop['closeHour'] ?? 22, shop['closeMinute'] ?? 0);
-    final String defaultHours = "$openStr - $closeStr";
-
-    DateTime nextOpenTime = DateTime(now.year, now.month, now.day, openHour, openMin);
-    if (nextOpenTime.isBefore(now) && status == ShopStatus.closed) {
-      nextOpenTime = nextOpenTime.add(const Duration(days: 1));
-    }
-    if (status == ShopStatus.closingSoon) {
-      nextOpenTime = nextOpenTime.add(const Duration(days: 1));
-    }
-    String nextOpenDayWord = (nextOpenTime.day == now.day) ? "today" : "tomorrow";
-
-    dynamic statusIcon;
-    Color statusColor;
-    String subtitleText;
-
-    switch (status) {
-      case ShopStatus.open:
-        statusIcon = HugeIcons.strokeRoundedStore01;
-        statusColor = Colors.blue;
-        subtitleText = "Open Now";
-        break;
-      case ShopStatus.closingSoon:
-        statusIcon = HugeIcons.strokeRoundedTime02;
-        statusColor = Colors.orange;
-        subtitleText = "Closing Soon • Closes at $closeStr";
-        break;
-      case ShopStatus.closed:
-        statusIcon = HugeIcons.strokeRoundedUnavailable;
-        statusColor = Colors.red;
-        subtitleText = "Closed • Opens $nextOpenDayWord at $openStr";
-        break;
-    }
-
-    return GestureDetector(
-      onTap: onToggle, // 🟢 FIRES THE TOGGLE FUNCTION PASSED FROM THE BUILDER
-      child: AnimatedSize(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        alignment: Alignment.topCenter,
-        clipBehavior: Clip.hardEdge,
-        child: _buildInnerGlassCard(
-          isDark: isDark,
-          radius: 16.0,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  HugeIcon(icon: statusIcon, color: statusColor, size: 22, strokeWidth: 2.5),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text("Today", style: TextStyle(color: isDark ? Colors.white : _lightModeGray, fontSize: 14, fontWeight: FontWeight.bold)),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: Alignment.centerRight,
-                                child: Text(defaultHours, style: TextStyle(color: isDark ? Colors.white : _lightModeGray, fontSize: 13, fontWeight: FontWeight.w600)),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(subtitleText, style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  TweenAnimationBuilder<double>(
-                    tween: Tween<double>(begin: 0.0, end: isExpanded ? 0.5 : 0.0), // 🟢 USES PASSED LOCAL STATE
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOutBack,
-                    builder: (context, turns, child) {
-                      return Transform.rotate(angle: turns * 2 * math.pi, child: child);
-                    },
-                    child: HugeIcon(icon: HugeIcons.strokeRoundedArrowDown01, color: isDark ? Colors.white54 : _lightModeGray.withValues(alpha: 0.5), size: 20, strokeWidth: 2.0),
-                  )
-                ],
-              ),
-              if (isExpanded) ...[ // 🟢 USES PASSED LOCAL STATE
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12.0),
-                  child: Divider(color: isDark ? Colors.white12 : Colors.black12, height: 1),
-                ),
-                Column(
-                  children: List.generate(7, (i) {
-                    int chronologicalIndex = (currentDayIndex + i) % 7;
-                    bool isToday = (i == 0);
-                    Color rowColor = isToday ? (isDark ? Colors.white : _lightModeGray) : (isDark ? Colors.white60 : _lightModeGray.withValues(alpha: 0.6));
-                    FontWeight rowWeight = isToday ? FontWeight.bold : FontWeight.normal;
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12.0),
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 38),
-                          Expanded(child: Text(days[chronologicalIndex], style: TextStyle(color: rowColor, fontSize: 13, fontWeight: rowWeight))),
-                          Text(defaultHours, style: TextStyle(color: rowColor, fontSize: 13, fontWeight: rowWeight)),
-                          const SizedBox(width: 36),
-                        ],
-                      ),
-                    );
-                  }),
-                ),
-              ]
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildServicesSection(Map<String, dynamic> shop, bool isDark) {
-    List<String> services = List<String>.from(
-        shop['services'] ?? [AppLocalizations.of(context)!.generalService]);
-    return Wrap(
-      spacing: 8, runSpacing: 8,
-      children: services.map((s) =>
-      // Wrapped in Glass Card
-      _buildInnerGlassCard(
-        isDark: isDark,
-        radius: 20.0,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        overrideColor: Colors.blue.withValues(alpha: isDark ? 0.1 : 0.15),
-        overrideBorder: Colors.blue.withValues(alpha: 0.3),
-        child: Text(s, style: const TextStyle(
-            color: Colors.blue, fontSize: 12, fontWeight: FontWeight.w600)),
-      )).toList(),
-    );
-  }
-
-  Widget _buildReviewsSection(Map<String, dynamic> shop, bool isDark) {
-    final List<dynamic> rawReviews = shop['recentReviews'] ?? [];
-    final List<Map<String, dynamic>> reviews = rawReviews.cast<
-        Map<String, dynamic>>();
-
-    if (reviews.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(16),
-        child: Text(AppLocalizations.of(context)!.noReviewsYet,
-            style: TextStyle(
-                color: isDark ? Colors.white.withValues(alpha: 0.5) : _lightModeGray
-                    .withValues(alpha: 0.5))),
-      );
-    }
-
-    return Column(
-      children: reviews.map((review) =>
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            // Wrapped in Glass Card
-            child: _buildInnerGlassCard(
-              isDark: isDark,
-              radius: 16.0,
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(review['userName'] ??
-                          AppLocalizations.of(context)!.user, style: TextStyle(
-                          color: isDark ? Colors.white : _lightModeGray,
-                          fontWeight: FontWeight.bold)),
-                      Row(children: List.generate(5, (index) =>
-                          Icon(index <
-                              ((review['rating'] as num?)?.toInt() ?? 0) ? Icons
-                              .star : Icons.star_border, color: Colors.amber,
-                              size: 14))),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(review['comment'] ?? '', style: TextStyle(color: isDark
-                      ? Colors.white.withValues(alpha: 0.7)
-                      : _lightModeGray.withValues(alpha: 0.8),
-                      fontSize: 12,
-                      height: 1.4)),
-                ],
-              ),
-            ),
-          )).toList(),
-    );
-  }
 
   Widget _buildStatItem(dynamic icon, String value, String label,
       bool isDark) =>

@@ -21,6 +21,9 @@ import 'screens/shared/profile_screen.dart';
 import 'screens/shared/privacy_security_screen.dart';
 import 'package:flutter/services.dart';
 
+import 'screens/explore/store_route_loader.dart';
+import 'screens/shared/my_queue_ticket_screen.dart';
+
 import 'widgets/app_lock_wrapper.dart';
 
 // ============================================================
@@ -101,28 +104,65 @@ class NgamApp extends StatelessWidget {
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.themeMode,
 
-            // ─── Initial Route ─────────────────────
-            home: Consumer<AuthProvider>(
-              builder: (context, auth, _) {
-                if (auth.isInitializing) {
-                  return const Scaffold(body: Center(child: CircularProgressIndicator()));
-                }
-                if (!auth.isLoggedIn) {
-                  return const LoginScreen();
-                }
+            // ─── Dynamic Route Resolution (PWA & Deep Links) ───
+            onGenerateRoute: (settings) {
+              final uri = Uri.tryParse(settings.name ?? '') ?? Uri();
+              final segments = uri.pathSegments;
 
-                return const CustomerHomeScreen();
-              },
-            ),
+              // 1. /store/:businessId?table=X&promo=Y
+              if (segments.isNotEmpty && segments.first == 'store') {
+                final businessId = segments.length > 1 ? segments[1] : '';
+                final tableNumber = uri.queryParameters['table'];
+                final promoCode = uri.queryParameters['promo'];
+                return MaterialPageRoute(
+                  settings: settings,
+                  builder: (_) => StoreRouteLoader(
+                    businessId: businessId,
+                    tableNumber: tableNumber,
+                    promoCode: promoCode,
+                  ),
+                );
+              }
 
-            // ─── Named Routes ──────────────────────
-            routes: {
-              '/login': (context) => const LoginScreen(),
-              '/register': (context) => const RegisterScreen(),
-              '/forgot-password': (context) => const ForgotPasswordScreen(),
-              '/customer-home': (context) => const CustomerHomeScreen(),
-              '/review': (context) => const ReviewScreen(),
-              '/profile': (context) => const ProfileScreen(),
+              // 2. /queue/:businessId
+              if (segments.isNotEmpty && segments.first == 'queue') {
+                return MaterialPageRoute(
+                  settings: settings,
+                  builder: (_) => const MyQueueTicketScreen(),
+                );
+              }
+
+              // 3. Named Static Routes
+              switch (uri.path) {
+                case '/login':
+                  return MaterialPageRoute(settings: settings, builder: (_) => const LoginScreen());
+                case '/register':
+                  return MaterialPageRoute(settings: settings, builder: (_) => const RegisterScreen());
+                case '/forgot-password':
+                  return MaterialPageRoute(settings: settings, builder: (_) => const ForgotPasswordScreen());
+                case '/customer-home':
+                  return MaterialPageRoute(settings: settings, builder: (_) => const CustomerHomeScreen());
+                case '/review':
+                  return MaterialPageRoute(settings: settings, builder: (_) => const ReviewScreen());
+                case '/profile':
+                  return MaterialPageRoute(settings: settings, builder: (_) => const ProfileScreen());
+              }
+
+              // 4. Default / Home Fallback
+              return MaterialPageRoute(
+                settings: settings,
+                builder: (_) => Consumer<AuthProvider>(
+                  builder: (context, auth, _) {
+                    if (auth.isInitializing) {
+                      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                    }
+                    if (!auth.isLoggedIn) {
+                      return const LoginScreen();
+                    }
+                    return const CustomerHomeScreen();
+                  },
+                ),
+              );
             },
           );
         },

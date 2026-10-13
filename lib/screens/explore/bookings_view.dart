@@ -2,8 +2,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // 🟢 REQUIRED for TextInputFormatter
 import 'package:hugeicons/hugeicons.dart';
-import 'package:ngam/widgets/glass_box.dart'; // 🟢 REQUIRED for LiquidGlassSettings
-import '../../models/booking_data.dart';
+// 🟢 REQUIRED for LiquidGlassSettings
 import 'booking_ticket_screen.dart';
 import '../../models/user_data.dart';
 import 'package:ngam/l10n/generated/app_localizations.dart';
@@ -570,7 +569,9 @@ class _BookingsViewState extends State<BookingsView> {
                       _holdingRecordId = holdResponse['id'].toString();
                       setState(() => _currentStep++);
                     } catch (e) {
-                      showGlassToast(context, "Slot just got taken by someone else! Try another.", isError: true);
+                      if (mounted) {
+                        showGlassToast(context, "Slot just got taken by someone else! Try another.", isError: true);
+                      }
                     }
 
                   } else if (_currentStep == 1) {
@@ -626,7 +627,9 @@ class _BookingsViewState extends State<BookingsView> {
                       });
 
                     } catch (e) {
-                      showGlassToast(context, "Failed to confirm payment. Try again.", isError: true);
+                      if (mounted) {
+                        showGlassToast(context, "Failed to confirm payment. Try again.", isError: true);
+                      }
                     }
                   }
                 },
@@ -765,112 +768,6 @@ class _BookingsViewState extends State<BookingsView> {
     );
   }
 
-  void _showAddBankSheet(BuildContext context, bool isDark) {
-    final accountController = TextEditingController();
-    final nameController = TextEditingController();
-    String selectedBank = _banksList.first;
-    final formKey = GlobalKey<FormState>();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-            builder: (context, setSheetState) {
-              return Padding(
-                padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                  child: BackdropFilter(
-                    filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                    child: Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1E242B).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8),
-                        border: Border(top: BorderSide(color: Colors.white.withValues(alpha: isDark ? 0.1 : 0.4), width: 1.5)),
-                      ),
-                      child: SingleChildScrollView(
-                        child: Form(
-                          key: formKey,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(10)))),
-                              const SizedBox(height: 16),
-                              Text("Link Bank Account", style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 18, fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 16),
-
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text("SELECT BANK", style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
-                                  const SizedBox(height: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                    decoration: BoxDecoration(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03), borderRadius: BorderRadius.circular(14)),
-                                    child: DropdownButtonHideUnderline(
-                                      child: DropdownButton<String>(
-                                        value: selectedBank,
-                                        isExpanded: true,
-                                        dropdownColor: isDark ? const Color(0xFF262626) : Colors.white,
-                                        icon: Icon(Icons.keyboard_arrow_down_rounded, color: isDark ? Colors.white54 : Colors.black54),
-                                        items: _banksList.map((String bank) {
-                                          return DropdownMenuItem<String>(
-                                              value: bank,
-                                              child: Text(bank, style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.w600, fontSize: 14))
-                                          );
-                                        }).toList(),
-                                        onChanged: (String? newValue) { setSheetState(() => selectedBank = newValue!); },
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-
-                              _buildPremiumInput(isDark: isDark, label: "Account Number", hint: "Enter bank account number", icon: HugeIcons.strokeRoundedTaskEdit01, controller: accountController, keyboardType: TextInputType.number, formatters: [FilteringTextInputFormatter.digitsOnly], validator: (value) { if (value == null || value.length < 8) return "Invalid account number"; return null; }),
-                              const SizedBox(height: 12),
-
-                              _buildPremiumInput(isDark: isDark, label: "Account Holder Name", hint: "AS REGISTERED WITH BANK", icon: HugeIcons.strokeRoundedUser, controller: nameController, keyboardType: TextInputType.name, textCapitalization: TextCapitalization.characters, formatters: [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')), _UpperCaseTextFormatter()], validator: (value) { if (value == null || value.trim().isEmpty) return "Cannot be empty"; return null; }),
-
-                              const SizedBox(height: 24),
-
-                              _AnimatedPressable(
-                                onTap: () {
-                                  if (formKey.currentState!.validate()) {
-                                    String accRaw = accountController.text;
-                                    String masked = "•••• ${accRaw.substring(accRaw.length - 4)}";
-
-                                    UserData.addPaymentMethod({
-                                      "id": DateTime.now().millisecondsSinceEpoch.toString(),
-                                      "type": "bank",
-                                      "name": selectedBank,
-                                      "number": masked,
-                                      "holder": nameController.text.toUpperCase(),
-                                      "expiry": null,
-                                      "isPrimary": false,
-                                    });
-                                    Navigator.pop(context);
-                                  }
-                                },
-                                child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 16), decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.green.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))]), child: const Center(child: Text("Link Account", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)))),
-                              ),
-                              const SizedBox(height: 12),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }
-        );
-      },
-    );
-  }
 
   Widget _buildPremiumInput({required bool isDark, required String label, required String hint, required dynamic icon, required TextEditingController controller, TextInputType? keyboardType, List<TextInputFormatter>? formatters, TextCapitalization? textCapitalization, String? Function(String?)? validator}) {
     return Column(
@@ -1104,23 +1001,6 @@ class _BookingsViewState extends State<BookingsView> {
     );
   }
 
-  // 🟢 REDESIGNED WIDE TIME CHIP
-  Widget _buildTimeChip(String time, bool isSelected, bool isDark, int index) {
-    return GestureDetector(
-      onTap: () => setState(() => _selectedTimeIndex = index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14), // Gives the pill shape
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.blue : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.4)),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isSelected ? Colors.blueAccent : Colors.white.withValues(alpha: isDark ? 0.1 : 0.6), width: 1.5),
-          boxShadow: isSelected ? [BoxShadow(color: Colors.blue.withValues(alpha: 0.4), blurRadius: 10, spreadRadius: 0)] : [],
-        ),
-        child: Text(time, style: TextStyle(fontSize: 14, fontWeight: isSelected ? FontWeight.bold : FontWeight.w600, color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87))),
-      ),
-    );
-  }
 
   // 🟢 NEW HELPER: Designed for the Horizontal Scroll layout
   Widget _buildScrollTimeChip(String time, bool isSelected, bool isDark, int index) {
@@ -1213,8 +1093,8 @@ class _BookingsViewState extends State<BookingsView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ..._selectedServices.map((i) => _buildReceiptRow(_servicesList[i]["name"]!, _servicesList[i]["price"]!, isDark)).toList(),
-                ..._selectedAddons.map((i) => _buildReceiptRow(_addonsList[i]["name"]!, _addonsList[i]["price"]!.replaceAll('+', ''), isDark)).toList(),
+                ..._selectedServices.map((i) => _buildReceiptRow(_servicesList[i]["name"]!, _servicesList[i]["price"]!, isDark)),
+                ..._selectedAddons.map((i) => _buildReceiptRow(_addonsList[i]["name"]!, _addonsList[i]["price"]!.replaceAll('+', ''), isDark)),
 
                 Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1427,81 +1307,6 @@ class _BookingsViewState extends State<BookingsView> {
     );
   }
 
-  // 🟢 NEW HELPER: Renders the payment cards
-  Widget _buildSavedCardWidget(Map<String, dynamic> method, bool isDark, bool isPrimary, bool isSelected) {
-    if (isPrimary) {
-      return Container(
-        height: 160,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [Color(0xFF42A5F5), Color(0xFF1976D2)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-          borderRadius: BorderRadius.circular(24),
-          border: isSelected ? Border.all(color: Colors.white, width: 2) : null,
-          boxShadow: isSelected ? [BoxShadow(color: Colors.blue.withValues(alpha: 0.4), blurRadius: 15, offset: const Offset(0, 8))] : [],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const HugeIcon(icon: HugeIcons.strokeRoundedBitcoinSquare, color: Colors.white70, size: 24),
-                Text(method["name"], style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 16, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic)),
-              ],
-            ),
-            Text(method["number"], style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600, letterSpacing: 2.0)),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text("Card Holder", style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 10)), Text(method["holder"], style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))]),
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text("Expires", style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 10)), Text(method["expiry"], style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))]),
-              ],
-            )
-          ],
-        ),
-      );
-    } else {
-      bool isBank = method["type"] == "bank";
-      return Container(
-        height: 160,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF262626) : Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: isSelected ? Border.all(color: Colors.blue, width: 2) : Border.all(color: isDark ? Colors.white12 : Colors.black12),
-          boxShadow: isSelected ? [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))] : [],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: (isBank ? Colors.green : Colors.orange).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16)),
-                  child: HugeIcon(icon: isBank ? HugeIcons.strokeRoundedBank : HugeIcons.strokeRoundedCreditCard, color: isBank ? Colors.green : Colors.orange, size: 28),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(method["name"], style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Text(method["number"], style: TextStyle(color: isDark ? Colors.white60 : Colors.black54, fontSize: 14)),
-                    ],
-                  ),
-                ),
-                if (isSelected) const Icon(Icons.check_circle_rounded, color: Colors.blue, size: 28)
-              ],
-            )
-          ],
-        ),
-      );
-    }
-  }
 
   Widget _buildReceiptRow(String title, String price, bool isDark) {
     return Padding(
@@ -1610,48 +1415,6 @@ class _BookingsViewState extends State<BookingsView> {
     );
   }
 
-  Widget _buildDateChip(String day, String date, String month, bool isSelected, bool isDark, int index) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedDateIndex = index;
-
-          // 🟢 If the currently selected time is invalid for this new day, auto-select the first valid one
-          if (_selectedTimeIndex == -1 || !_isTimeValid(_times[_selectedTimeIndex], index)) {
-            _selectedTimeIndex = -1;
-            _selectedTime = '';
-            for (int t = 0; t < _times.length; t++) {
-              if (_isTimeValid(_times[t], index)) {
-                _selectedTimeIndex = t;
-                _selectedTime = _times[t];
-                break;
-              }
-            }
-          }
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        margin: const EdgeInsets.only(right: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.blue : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.4)),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isSelected ? Colors.blueAccent : Colors.white.withValues(alpha: isDark ? 0.1 : 0.6), width: 1.5),
-          boxShadow: isSelected ? [BoxShadow(color: Colors.blue.withValues(alpha: 0.4), blurRadius: 10, spreadRadius: 0)] : [],
-        ),
-        child: Column(
-          children: [
-            Text(month.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isSelected ? Colors.white70 : Colors.blue)), // 🟢 Added Month
-            const SizedBox(height: 2),
-            Text(date, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: isSelected ? Colors.white : (isDark ? Colors.white : Colors.black))),
-            const SizedBox(height: 2),
-            Text(day, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: isSelected ? Colors.white70 : (isDark ? Colors.white54 : Colors.black87))),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildSelectionTile(Map<String, String> item, int index, bool isDark, Set<int> stateSet, bool isMultiSelect) {
     bool isSelected = stateSet.contains(index);
@@ -1659,7 +1422,11 @@ class _BookingsViewState extends State<BookingsView> {
       onTap: () {
         setState(() {
           if (isMultiSelect) {
-            if (isSelected) stateSet.remove(index); else stateSet.add(index);
+            if (isSelected) {
+              stateSet.remove(index);
+            } else {
+              stateSet.add(index);
+            }
           } else {
             stateSet.clear(); stateSet.add(index);
           }

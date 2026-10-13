@@ -87,7 +87,7 @@ class _AppLockWrapperState extends State<AppLockWrapper> with WidgetsBindingObse
         });
       }
     } catch (e) {
-      print("Auth error: $e");
+      debugPrint("Auth error: $e");
     } finally {
       _isAuthenticating = false;
     }

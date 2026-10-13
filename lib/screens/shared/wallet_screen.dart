@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:ngam/widgets/glass_box.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -243,7 +242,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 300),
                           child: isNgamPayActive 
-                              ? _buildNgamPayActions(isDark, currentMethod)
+                              ? _buildNgamPayActions(context, isDark, currentMethod)
                               : _buildCreditCardActions(isDark, currentMethod),
                         ),
                       ],
@@ -416,8 +415,11 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     List<Color> cardColors;
     if (method["name"] == "MASTERCARD") {
       cardColors = [const Color(0xFF141E30), const Color(0xFF243B55)];
-    } else if (method["name"] == "AMEX") cardColors = [const Color(0xFF004D40), const Color(0xFF00838F)];
-    else cardColors = [const Color(0xFF1A1F3B), const Color(0xFF2B3A67)]; // Default untuk Visa
+    } else if (method["name"] == "AMEX") {
+      cardColors = [const Color(0xFF004D40), const Color(0xFF00838F)];
+    } else {
+      cardColors = [const Color(0xFF1A1F3B), const Color(0xFF2B3A67)]; // Default untuk Visa
+    }
 
     return Container(
       height: cardHeight,
@@ -755,7 +757,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildNgamPayActions(bool isDark, Map<String, dynamic> method) {
+  Widget _buildNgamPayActions(BuildContext context, bool isDark, Map<String, dynamic> method) {
     return Padding(
       key: const ValueKey('ngam_pay_actions'),
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -770,6 +772,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 final registeredCards = _savedMethods.value.where((m) => m['type'] == 'card').toList();
                 final amount = await _showAmountDialog(context, 'Top Up Amount', 'Top Up', cards: registeredCards);
                 if (amount != null && amount > 0) {
+                  if (!context.mounted) return;
                   final authProvider = context.read<AuthProvider>();
                   try {
                     await SupabaseService.client.rpc('top_up_wallet', params: {
@@ -787,7 +790,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                         final isDark = Theme.of(context).brightness == Brightness.dark;
                         final proceed = await showDialog<bool>(
                           context: context,
-                          builder: (context) {
+                          builder: (dialogCtx) {
                             return Dialog(
                               backgroundColor: Colors.transparent,
                               elevation: 0,
@@ -818,11 +821,11 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                         children: [
                                           TextButton(
-                                            onPressed: () => Navigator.pop(context, false),
+                                            onPressed: () => Navigator.pop(dialogCtx, false),
                                             child: const Text('Nanti Dulu', style: TextStyle(color: Colors.grey)),
                                           ),
                                           ElevatedButton(
-                                            onPressed: () => Navigator.pop(context, true),
+                                            onPressed: () => Navigator.pop(dialogCtx, true),
                                             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white),
                                             child: const Text('Teruskan'),
                                           ),
@@ -836,7 +839,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                           },
                         );
 
-                        if (proceed == true && mounted) {
+                        if (proceed == true && context.mounted) {
                           Navigator.pop(context, true);
                         }
                       }
@@ -869,6 +872,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
               }
               final amount = await _showAmountDialog(context, 'Withdraw Amount', 'Withdraw', isWithdrawal: true);
               if (amount != null && amount > 0) {
+                if (!context.mounted) return;
                 final authProvider = context.read<AuthProvider>();
                 final currentBalance = authProvider.user?.userBalance ?? 0.0;
                 
@@ -1149,9 +1153,9 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
+      builder: (sheetCtx) {
         return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          padding: EdgeInsets.only(bottom: MediaQuery.of(sheetCtx).viewInsets.bottom),
           child: ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             child: BackdropFilter(
@@ -1221,7 +1225,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                                 "color": 0,
                               });
                               await _loadMethods();
-                              if (mounted) Navigator.pop(context);
+                              if (sheetCtx.mounted) Navigator.pop(sheetCtx);
                             }
                           },
                           child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 16), decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.blue.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))]), child: Center(child: Text("wallet.save_card".tr(), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)))),
@@ -1249,11 +1253,11 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
+      builder: (sheetCtx) {
         return StatefulBuilder(
-            builder: (context, setSheetState) {
+            builder: (innerCtx, setSheetState) {
               return Padding(
-                padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+                padding: EdgeInsets.only(bottom: MediaQuery.of(innerCtx).viewInsets.bottom),
                 child: ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                   child: BackdropFilter(
@@ -1327,7 +1331,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                                       "color": 0,
                                     });
                                     await _loadMethods();
-                                    if (mounted) Navigator.pop(context);
+                                    if (innerCtx.mounted) Navigator.pop(innerCtx);
                                   }
                                 },
                                 child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 16), decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.green.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))]), child: Center(child: Text("wallet.link_account".tr(), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)))),

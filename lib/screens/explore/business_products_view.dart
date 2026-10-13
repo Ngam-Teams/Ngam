@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -155,47 +154,6 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
     );
   }
 
-  Widget _glassBox({
-    required bool isDark,
-    required Widget child,
-    double radius = 20,
-    EdgeInsetsGeometry? padding,
-    Color? overrideColor,
-    Color? overrideBorder,
-    double blur = 16,
-  }) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            color:
-                overrideColor ??
-                (isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.white.withValues(alpha: 0.6)),
-            borderRadius: BorderRadius.circular(radius),
-            border: Border.all(
-              color:
-                  overrideBorder ??
-                  Colors.white.withValues(alpha: isDark ? 0.15 : 0.5),
-              width: 1.0,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.05),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
 
   Widget _liquidGlassBox({
     required bool isDark,

@@ -23,8 +23,15 @@ enum _StoreStatus { open, closingSoon, closed, holiday }
 
 class BusinessStoreView extends StatefulWidget {
   final Map<String, dynamic> shop;
+  final String? tableNumber;
+  final String? promoCode;
 
-  const BusinessStoreView({super.key, required this.shop});
+  const BusinessStoreView({
+    super.key,
+    required this.shop,
+    this.tableNumber,
+    this.promoCode,
+  });
 
   @override
   State<BusinessStoreView> createState() => _BusinessStoreViewState();
@@ -644,6 +651,35 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                               ),
+                                              if (widget.tableNumber != null && widget.tableNumber!.isNotEmpty) ...[
+                                                const SizedBox(height: 6),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFF00E676).withValues(alpha: 0.25),
+                                                    borderRadius: BorderRadius.circular(20),
+                                                    border: Border.all(
+                                                      color: const Color(0xFF00E676),
+                                                      width: 1.2,
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      const Icon(Icons.table_restaurant_rounded, color: Color(0xFF00E676), size: 14),
+                                                      const SizedBox(width: 5),
+                                                      Text(
+                                                        'Meja #${widget.tableNumber} (Dine-In)',
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontWeight: FontWeight.bold,
+                                                          fontSize: 11,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
                                               const SizedBox(height: 8),
                                               GestureDetector(
                                                 onTap: () {
@@ -1128,6 +1164,8 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                               builder: (_) => StoreCartView(
                                 shop: widget.shop,
                                 cartItems: _cart,
+                                tableNumber: widget.tableNumber,
+                                promoCode: widget.promoCode,
                                 isStoreOpen: _status == _StoreStatus.open || _status == _StoreStatus.closingSoon,
                                 storeStatusText: _statusText,
                                 isHoliday: _status == _StoreStatus.holiday,
