@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'ngam_maps_dialog.dart';
+import 'glass_toast.dart';
 
 class MapPicker extends StatefulWidget {
   final LatLng initialCenter;
@@ -41,8 +42,10 @@ class _MapPickerState extends State<MapPicker> {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Sila aktifkan servis lokasi (GPS).')),
+          showGlassToast(
+            context,
+            'Sila aktifkan servis lokasi (GPS).',
+            isError: true,
           );
         }
         return;
@@ -53,8 +56,10 @@ class _MapPickerState extends State<MapPicker> {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Keizinan lokasi ditolak.')),
+            showGlassToast(
+              context,
+              'Keizinan lokasi ditolak.',
+              isError: true,
             );
           }
           return;
@@ -63,8 +68,10 @@ class _MapPickerState extends State<MapPicker> {
 
       if (permission == LocationPermission.deniedForever) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Keizinan lokasi ditolak secara kekal. Sila tukar di tetapan peranti.')),
+          showGlassToast(
+            context,
+            'Keizinan lokasi ditolak secara kekal. Sila tukar di tetapan peranti.',
+            isError: true,
           );
         }
         return;
@@ -90,8 +97,10 @@ class _MapPickerState extends State<MapPicker> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal mendapatkan lokasi semasa. Sila set lokasi anda di emulator.')),
+        showGlassToast(
+          context,
+          'Gagal mendapatkan lokasi semasa. Sila set lokasi anda di peranti.',
+          isError: true,
         );
       }
     } finally {

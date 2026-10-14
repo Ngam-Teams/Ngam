@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import '../../utils/app_theme.dart';
 import '../../services/chat_service.dart';
 import '../../widgets/chat/user_group_conversation_card.dart';
+import '../../widgets/glass_toast.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../models/chat_model.dart';
 import '../../providers/auth_provider.dart';
@@ -421,8 +422,10 @@ class _ChatScreenState extends State<ChatScreen> {
                 await ChatService.deleteConversation(c.id);
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to delete chat: $e')),
+                  showGlassToast(
+                    context,
+                    'Gagal memadam perbualan: $e',
+                    isError: true,
                   );
                 }
               }
@@ -840,9 +843,13 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
           final index = _messages.indexWhere((m) => m.id == pendingMsg.id);
           if (index != -1) _messages[index] = pendingMsg.copyWith(status: 'failed');
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send: $e')),
-        );
+        if (mounted) {
+          showGlassToast(
+            context,
+            'Gagal menghantar mesej: $e',
+            isError: true,
+          );
+        }
       }
     }
   }
@@ -883,8 +890,10 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
             final index = _messages.indexWhere((m) => m.id == pendingMsg.id);
             if (index != -1) _messages[index] = pendingMsg.copyWith(status: 'failed');
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to send image: $e')),
+          showGlassToast(
+            context,
+            'Gagal menghantar gambar: $e',
+            isError: true,
           );
         }
       } finally {
@@ -969,7 +978,11 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
 
   void _showTaskSelectorBottomSheet({required bool isAttachMode}) {
     if (_sharedGigs.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No active tasks between you two.')));
+      showGlassToast(
+        context,
+        'Tiada tugasan aktif di antara anda.',
+        type: GlassToastType.info,
+      );
       return;
     }
     
@@ -1155,9 +1168,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
               final index = _messages.indexWhere((m) => m.id == pendingMsg.id);
               if (index != -1) _messages[index] = pendingMsg.copyWith(status: 'failed');
             });
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Failed to send file: $e')),
-            );
+            showGlassToast(context, 'Failed to send file: $e', isError: true);
           }
         } finally {
           if (mounted) setState(() => _isUploadingImage = false);
@@ -1165,7 +1176,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to pick file: $e')));
+        showGlassToast(context, 'Failed to pick file: $e', isError: true);
       }
     }
   }
@@ -2014,14 +2025,14 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                               children: [
                                 GestureDetector(
                                   behavior: HitTestBehavior.opaque,
-                                  onTap: () async {
+                                   onTap: () async {
                                     final Uri url = Uri.parse('tel:$phone');
                                     try {
                                       if (!await launchUrl(url)) {
-                                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch dialer')));
+                                        if (context.mounted) showGlassToast(context, 'Could not launch dialer', isError: true);
                                       }
                                     } catch (e) {
-                                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch dialer')));
+                                      if (context.mounted) showGlassToast(context, 'Could not launch dialer', isError: true);
                                     }
                                   },
                                   child: const Padding(
@@ -2044,11 +2055,11 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                                       if (!await launchUrl(appUrl, mode: LaunchMode.externalApplication)) {
                                         final Uri webUrl = Uri.parse('https://wa.me/$cleanPhone');
                                         if (!await launchUrl(webUrl, mode: LaunchMode.externalApplication)) {
-                                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch WhatsApp')));
+                                          if (context.mounted) showGlassToast(context, 'Could not launch WhatsApp', isError: true);
                                         }
                                       }
                                     } catch (e) {
-                                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch WhatsApp')));
+                                      if (context.mounted) showGlassToast(context, 'Could not launch WhatsApp', isError: true);
                                     }
                                   },
                                   child: const Padding(
@@ -2079,9 +2090,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                 height: 70,
                 child: GestureDetector(
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Gig details feature removed')),
-                    );
+                    showGlassToast(context, 'Gig details feature removed', type: GlassToastType.info);
                   },
                   child: GlassContainer(
                     useOwnLayer: true,
@@ -2223,11 +2232,11 @@ class _MessageBubbleState extends State<_MessageBubble> {
 
       final result = await OpenFilex.open(filePath);
       if (result.type != ResultType.done && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open file: ${result.message}')));
+        showGlassToast(context, 'Could not open file: ${result.message}', isError: true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        showGlassToast(context, 'Error: $e', isError: true);
       }
     } finally {
       if (mounted) {

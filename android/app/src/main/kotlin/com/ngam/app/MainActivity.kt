@@ -1,4 +1,4 @@
-package com.ngam
+package com.ngam.app
 
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterFragmentActivity
@@ -20,9 +20,7 @@ class MainActivity : FlutterFragmentActivity() {
                     window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
                     result.success(null)
                 }
-                else -> {
-                    result.notImplemented()
-                }
+                else -> result.notImplemented()
             }
         }
     }

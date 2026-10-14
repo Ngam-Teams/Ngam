@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// GrabMaps-inspired Dialog popup that showcases NgamMaps and provides
@@ -161,36 +162,55 @@ class NgamMapsAttributionBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap ?? () => NgamMapsDialog.show(context),
-        borderRadius: BorderRadius.circular(12),
+    return GestureDetector(
+      onTap: onTap ?? () => NgamMapsDialog.show(context),
+      behavior: HitTestBehavior.opaque,
+      child: GlassContainer(
+        useOwnLayer: true,
+        quality: GlassQuality.standard,
+        shape: const LiquidRoundedSuperellipse(borderRadius: 12.0),
+        settings: LiquidGlassSettings(
+          thickness: 0.1,
+          blur: 2.0,
+          refractiveIndex: 1.0,
+          glassColor: Colors.transparent,
+          lightAngle: 45.0,
+          lightIntensity: isDark ? 0.1 : 0.2,
+          ambientStrength: 1.0,
+          saturation: 1.0,
+          chromaticAberration: 0.0,
+        ),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
           decoration: BoxDecoration(
-            color: (isDark ? Colors.black54 : Colors.white70),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: (isDark ? Colors.white24 : Colors.black12),
-              width: 0.8,
+              color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
+              width: 1.0,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 Icons.info_outline_rounded,
-                size: 13,
-                color: isDark ? Colors.white70 : const Color(0xFF4A4A4A),
+                size: 11,
+                color: isDark ? Colors.white70 : const Color(0xFF6B7280),
               ),
               const SizedBox(width: 4),
               Text(
                 'NgamMaps',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white70 : const Color(0xFF2C2C2E),
+                  color: isDark ? Colors.white : const Color(0xFF374151),
                   letterSpacing: -0.2,
                 ),
               ),

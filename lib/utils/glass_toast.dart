@@ -5,10 +5,6 @@ import 'package:hugeicons/hugeicons.dart';
 // ============================================================
 // Ngam App — Glass Toast / Snackbar (Alert Cantik)
 // Popup alert kaca yang boleh custom letak ikon, warna dengan ayat
-// Cara guna:
-//   showGlassToast(context, 'Berjaya!');
-//   showGlassToast(context, 'Ralat', isError: true);
-//   showGlassToast(context, 'Info', color: Colors.blue, icon: HugeIcons.strokeRoundedInformationCircle);
 // ============================================================
 
 enum GlassToastType { success, error, warning, info }
@@ -19,21 +15,24 @@ void showGlassToast(
   bool isError = false,
   GlassToastType? type,
   Color? color,
-  dynamic icon, // Nak guna HugeIcons atau IconData biasa pun boleh
+  Color? customColor,
+  dynamic icon,
+  dynamic customIcon,
+  bool showIcon = true,
   Duration duration = const Duration(seconds: 4),
 }) {
   final isDark = Theme.of(context).brightness == Brightness.dark;
 
-  // Resolve jenis toast — kalau letak 'type' dia amik tu dulu, kalau tak dia check 'isError'
+  // Resolve jenis toast
   final resolvedType = type ?? (isError ? GlassToastType.error : GlassToastType.success);
 
   // Cari warna yang sesuai
-  final resolvedColor = color ?? _colorForType(resolvedType);
+  final resolvedColor = customColor ?? color ?? _colorForType(resolvedType);
 
   // Cari icon yang sesuai
-  final resolvedIcon = icon ?? _iconForType(resolvedType);
+  final resolvedIcon = customIcon ?? icon ?? _iconForType(resolvedType);
 
-  // Bersihkan mesej error jangan kasi nampak code sangat
+  // Bersihkan mesej error
   final displayMessage = resolvedType == GlassToastType.error
       ? _cleanErrorMessage(message)
       : message;
@@ -46,7 +45,7 @@ void showGlassToast(
       behavior: SnackBarBehavior.floating,
       backgroundColor: Colors.transparent,
       duration: duration,
-      margin: const EdgeInsets.fromLTRB(24, 0, 24, 28),
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 24),
       content: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
@@ -55,8 +54,8 @@ void showGlassToast(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
             decoration: BoxDecoration(
               color: isDark
-                  ? resolvedColor.withValues(alpha: 0.15)
-                  : resolvedColor.withValues(alpha: 0.08),
+                  ? resolvedColor.withValues(alpha: 0.18)
+                  : resolvedColor.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: resolvedColor.withValues(alpha: 0.35),
@@ -75,9 +74,10 @@ void showGlassToast(
               onTap: () => scaffoldMessenger.hideCurrentSnackBar(),
               child: Row(
                 children: [
-                  // Icon — dia support dua-dua tau, HugeIcon dengan Icon biasa
-                  _ToastIcon(icon: resolvedIcon, color: resolvedColor),
-                  const SizedBox(width: 12),
+                  if (showIcon) ...[
+                    _ToastIcon(icon: resolvedIcon, color: resolvedColor),
+                    const SizedBox(width: 12),
+                  ],
                   Expanded(
                     child: Text(
                       displayMessage,
@@ -99,7 +99,6 @@ void showGlassToast(
   );
 }
 
-// ─── Widget Ikon (Boleh belasah HugeIcon & IconData) ─────────
 class _ToastIcon extends StatelessWidget {
   final dynamic icon;
   final Color color;
@@ -111,7 +110,6 @@ class _ToastIcon extends StatelessWidget {
     if (icon is IconData) {
       return Icon(icon as IconData, color: color, size: 20);
     }
-    // Kita anggap ni path data HugeIcons
     try {
       return HugeIcon(icon: icon, color: color, size: 20);
     } catch (_) {
@@ -120,7 +118,6 @@ class _ToastIcon extends StatelessWidget {
   }
 }
 
-// ─── Warna ikut jenis alert ───────────────────────────────────
 Color _colorForType(GlassToastType type) {
   switch (type) {
     case GlassToastType.success:
@@ -134,70 +131,31 @@ Color _colorForType(GlassToastType type) {
   }
 }
 
-// ─── Ikon ikut jenis alert ────────────────────────────────────
 dynamic _iconForType(GlassToastType type) {
   switch (type) {
     case GlassToastType.success:
-      return HugeIcons.strokeRoundedTick01;
+      return HugeIcons.strokeRoundedCheckmarkCircle02;
     case GlassToastType.error:
-      return HugeIcons.strokeRoundedCancel01;
+      return HugeIcons.strokeRoundedAlertCircle;
     case GlassToastType.warning:
-      return HugeIcons.strokeRoundedAlert01;
+      return HugeIcons.strokeRoundedAlert02;
     case GlassToastType.info:
       return HugeIcons.strokeRoundedInformationCircle;
   }
 }
 
-// ─── Tukang sapu/bersih Mesej Error ───────────────────────────
-String _cleanErrorMessage(String rawMessage) {
-  String msg = rawMessage
-      .replaceAll(
-        RegExp(
-          r'^(Ralat|Exception|AuthException|PostgrestException|Ralat daftar|Ralat masuk sebagai tetamu):',
-          caseSensitive: false,
-        ),
-        '',
-      )
-      .trim();
-
-  final lowMsg = msg.toLowerCase();
-
-  if (lowMsg.contains('invalid login credentials')) {
-    return 'E-mel atau kata laluan salah. Sila cuba lagi.';
+String _cleanErrorMessage(String raw) {
+  if (raw.contains('Invalid login credentials')) {
+    return 'E-mel atau kata laluan tidak sah.';
   }
-  if (lowMsg.contains('email not confirmed')) {
-    return 'E-mel anda belum disahkan. Sila semak peti masuk anda.';
+  if (raw.contains('User already registered')) {
+    return 'E-mel ini sudah berdaftar. Sila log masuk.';
   }
-  if (lowMsg.contains('user already registered') || lowMsg.contains('already exists')) {
-    return 'Akaun sudah wujud. Sila log masuk atau gunakan e-mel lain.';
+  if (raw.contains('Network request failed') || raw.contains('SocketException')) {
+    return 'Masalah sambungan internet. Sila cuba lagi.';
   }
-  if (lowMsg.contains('failed host lookup') ||
-      lowMsg.contains('network_error') ||
-      lowMsg.contains('socketexception') ||
-      lowMsg.contains('connection failed')) {
-    return 'Tiada sambungan internet. Sila periksa rangkaian anda.';
+  if (raw.contains('Password should be')) {
+    return 'Kata laluan terlalu lemah (minimum 6 aksara).';
   }
-  if (lowMsg.contains('weak password')) {
-    return 'Kata laluan terlalu lemah. Gunakan sekurang-kurangnya 6 aksara.';
-  }
-  if (lowMsg.contains('user not found')) {
-    return 'Pengguna tidak ditemui. Sila daftar akaun baru.';
-  }
-  if (lowMsg.contains('invalid email')) {
-    return 'Format e-mel tidak sah.';
-  }
-  if (lowMsg.contains('timeout')) {
-    return 'Sambungan terputus (Timeout). Sila cuba sebentar lagi.';
-  }
-  if (lowMsg.contains('rate limit')) {
-    return 'Terlalu banyak percubaan. Sila tunggu sebentar.';
-  }
-  if (lowMsg.contains('unexpected end of stream')) {
-    return 'Masalah rangkaian. Sila cuba lagi.';
-  }
-
-  if (msg.isNotEmpty) {
-    return msg[0].toUpperCase() + msg.substring(1);
-  }
-  return 'Berlaku ralat. Sila cuba lagi.';
+  return raw.replaceAll(RegExp(r'^Exception:\s*'), '').trim();
 }

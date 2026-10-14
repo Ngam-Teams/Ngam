@@ -30,8 +30,12 @@ class BottomNavCustomer extends StatelessWidget {
           title: 'Home',
         ),
         NavItem(
-          icon: HugeIcons.strokeRoundedTicket01,
-          title: 'Bookings',
+          icon: HugeIcons.strokeRoundedMaps,
+          title: 'Discover',
+        ),
+        NavItem(
+          icon: HugeIcons.strokeRoundedPlayCircle02,
+          title: 'Feed',
         ),
         NavItem(
           icon: HugeIcons.strokeRoundedMessage02,

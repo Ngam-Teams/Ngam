@@ -20,6 +20,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'qr_scanner_screen.dart';
 import '../shared/my_queue_ticket_screen.dart';
 import '../../widgets/ngam_maps_dialog.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum ShopStatus { open, closingSoon, closed }
 
@@ -214,10 +215,13 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     // 🟢 2. Attach the listener for the search bar focus
     _searchFocus.addListener(_onSearchFocusChanged);
 
-    // 🟢 3. Start GPS tracking
+    // 🟢 3. Load cached location immediately for instant startup
+    _loadCachedLocation();
+
+    // 🟢 4. Start GPS tracking
     _initLocationTracking();
 
-    // 🟢 4. Fetch the data (using the correct method name)
+    // 🟢 5. Fetch the data (using the correct method name)
     _fetchShopsFromDatabase();
   }
 
@@ -301,28 +305,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         };
       }).toList();
 
-      // 🟢 3. THE SORTING ENGINE: Nearest to Farthest
-      updatedShops.sort((a, b) {
-        double distanceA = Geolocator.distanceBetween(
-            _currentLocation.latitude, _currentLocation.longitude,
-            a['location'].latitude, a['location'].longitude
-        );
-        double distanceB = Geolocator.distanceBetween(
-            _currentLocation.latitude, _currentLocation.longitude,
-            b['location'].latitude, b['location'].longitude
-        );
-        return distanceA.compareTo(distanceB);
-      });
-
-      // 4. Push to UI instantly
       setState(() {
         _realShops = updatedShops;
-        _nearbyShops = List.from(_realShops);
-
-        // Only override if they aren't actively searching
-        if (_searchController.text.isEmpty) {
-          _displayedShops = List.from(_realShops);
-        }
+        _sortShopsByDistance();
       });
     }, onError: (error) {
       debugPrint('Supabase Stream Error: $error');
@@ -763,6 +748,131 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     }
   }
 
+  Future<void> _loadCachedLocation() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final double? lat = prefs.getDouble('cached_user_lat');
+      final double? lng = prefs.getDouble('cached_user_lng');
+      if (lat != null && lng != null && lat != 0.0 && lng != 0.0) {
+        if (mounted) {
+          _updateUserLocation(LatLng(lat, lng), moveMap: true);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading cached location: $e');
+    }
+  }
+
+  Future<void> _cacheUserLocation(double lat, double lng) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('cached_user_lat', lat);
+      await prefs.setDouble('cached_user_lng', lng);
+    } catch (_) {}
+  }
+
+  void _updateUserLocation(LatLng newLocation, {bool moveMap = false}) {
+    if (!mounted) return;
+    _currentLocation = newLocation;
+    _cacheUserLocation(newLocation.latitude, newLocation.longitude);
+    _sortShopsByDistance();
+    setState(() {});
+
+    if (moveMap && _isMapReady && _followUser) {
+      _recenterMapOnUser();
+    }
+  }
+
+  void _sortShopsByDistance() {
+    if (_realShops.isEmpty) return;
+
+    _realShops.sort((a, b) {
+      final locA = a['location'] is LatLng ? a['location'] as LatLng : const LatLng(0, 0);
+      final locB = b['location'] is LatLng ? b['location'] as LatLng : const LatLng(0, 0);
+      double distA = Geolocator.distanceBetween(
+        _currentLocation.latitude, _currentLocation.longitude,
+        locA.latitude, locA.longitude,
+      );
+      double distB = Geolocator.distanceBetween(
+        _currentLocation.latitude, _currentLocation.longitude,
+        locB.latitude, locB.longitude,
+      );
+      return distA.compareTo(distB);
+    });
+
+    _nearbyShops = List.from(_realShops);
+
+    if (_searchController.text.isEmpty && _activeSearchQuery == null) {
+      _displayedShops = List.from(_realShops);
+    }
+  }
+
+  void _recenterMapOnUser({bool animated = true}) {
+    if (!_isMapReady) return;
+    double zoom = 14.0;
+    try {
+      zoom = _mapController.camera.zoom;
+    } catch (_) {}
+    double adaptiveOffset = _baseLatitudeOffset * pow(2, 14.0 - zoom);
+    LatLng offsetLocation = LatLng(
+      _currentLocation.latitude + adaptiveOffset,
+      _currentLocation.longitude,
+    );
+    if (animated) {
+      _animatedMapMove(offsetLocation, zoom);
+    } else {
+      _mapController.move(offsetLocation, zoom);
+    }
+  }
+
+  Future<void> _onGpsButtonPressed() async {
+    setState(() => _followUser = true);
+    _recenterMapOnUser(animated: true);
+
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          showGlassToast(
+            context,
+            'Sila hidupkan perkhidmatan GPS / Lokasi pada telefon anda.',
+            type: GlassToastType.warning,
+          );
+        }
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever) {
+          if (mounted) {
+            showGlassToast(
+              context,
+              'Kebenaran lokasi diperlukan untuk mencari kedai berdekatan.',
+              type: GlassToastType.warning,
+            );
+          }
+          return;
+        }
+      }
+
+      Position freshPos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 8),
+        ),
+      );
+      if (mounted) {
+        _updateUserLocation(LatLng(freshPos.latitude, freshPos.longitude), moveMap: true);
+        showGlassToast(context, 'Lokasi anda telah dikemas kini.', type: GlassToastType.success);
+      }
+    } catch (e) {
+      debugPrint('GPS button position fetch error: $e');
+    }
+  }
+
   Future<void> _initLocationTracking() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return;
@@ -770,69 +880,45 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      // Added check for deniedForever to prevent infinite hanging
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
         return;
       }
     }
 
-    // --- FIX: 1. Force an immediate GPS grab for a fast first load ---
+    // 1. Try last known position immediately
     try {
-      // Tries to get the location quickly. If it takes more than 4 seconds, it fails gracefully.
-      Position? initialPos = await Geolocator.getLastKnownPosition();
-      
-      initialPos ??= await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
-        ).timeout(const Duration(seconds: 4));
+      Position? lastPos = await Geolocator.getLastKnownPosition();
+      if (lastPos != null && mounted) {
+        _updateUserLocation(LatLng(lastPos.latitude, lastPos.longitude), moveMap: true);
+      }
+    } catch (_) {}
 
+    // 2. Fetch fresh position with 12s timeout for cold starts
+    try {
+      Position curPos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 12),
+        ),
+      );
       if (mounted) {
-        setState(() {
-          _currentLocation = LatLng(initialPos!.latitude, initialPos.longitude);
-        });
-
-        if (_followUser) {
-          double zoom = 14.0;
-          try {
-            zoom = _mapController.camera.zoom;
-          } catch (_) {}
-          double adaptiveOffset = _baseLatitudeOffset * pow(2, 14.0 - zoom);
-          LatLng offsetLocation = LatLng(
-              initialPos.latitude + adaptiveOffset, initialPos.longitude);
-
-          // Jump immediately to the real location
-          if (_isMapReady) {
-            _mapController.move(offsetLocation, zoom);
-          }
-        }
+        _updateUserLocation(LatLng(curPos.latitude, curPos.longitude), moveMap: true);
       }
     } catch (e) {
-      debugPrint("Quick location grab timed out or failed: $e");
+      debugPrint("Initial GPS position grab error/timeout: $e");
     }
 
-    // --- 2. THEN start the stream to track them as they walk/drive ---
+    // 3. Listen to live position stream
     _positionStream?.cancel();
     _positionStream = Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.best,
-            distanceFilter: 1 // Only updates if they move 1+ meters (responsive real-time)
-        )
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 3,
+      ),
     ).listen((Position pos) {
       if (!mounted) return;
-      setState(() {
-        _currentLocation = LatLng(pos.latitude, pos.longitude);
-      });
-
-      if (_followUser) {
-        double zoom = 14.0;
-        try {
-          zoom = _mapController.camera.zoom;
-        } catch (_) {}
-        double adaptiveOffset = _baseLatitudeOffset * pow(2, 14.0 - zoom);
-        LatLng offsetLocation = LatLng(
-            pos.latitude + adaptiveOffset, pos.longitude);
-        _animatedMapMove(offsetLocation, zoom);
-      }
+      _updateUserLocation(LatLng(pos.latitude, pos.longitude), moveMap: _followUser);
     });
   }
 
@@ -1059,7 +1145,12 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                     interactionOptions: const InteractionOptions(
                         flags: InteractiveFlag.all & ~InteractiveFlag.rotate),
                     onMapReady: () {
-                      if (mounted) setState(() => _isMapReady = true);
+                      if (mounted) {
+                        setState(() => _isMapReady = true);
+                        if (_followUser) {
+                          _recenterMapOnUser(animated: false);
+                        }
+                      }
                     },
                     onTap: (tapPosition, latLng) {
                       // FIX: Drops the keyboard and safely clears the advanced search state!
@@ -1202,13 +1293,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                       duration: const Duration(milliseconds: 300),
                       opacity: isSearchActive ? 1.0 : 0.0,
                       child: isSearchActive ? _buildResultsGlass(isDark) : const SizedBox.shrink())),
-              // ── NgamMaps Attribution Badge (Gaya Grab) ───────
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 300),
-                bottom: hideBottomPanel ? 120 : (_selectedShop != null ? 360 : 255),
-                left: 16,
-                child: NgamMapsAttributionBadge(isDark: isDark),
-              ),
+
               AnimatedPositioned(
                   duration: const Duration(milliseconds: 400),
                   curve: Curves.easeInOutBack,
@@ -1624,58 +1709,52 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold)
                         ),
-                        _AnimatedPressable(
-                            onTap: () {
-                              setState(() => _followUser = true);
-                              double zoom = 14.0;
-                              try {
-                                zoom = _mapController.camera.zoom;
-                              } catch (_) {}
-                              double adaptiveOffset = _baseLatitudeOffset *
-                                  pow(2, 14.0 - zoom);
-                              LatLng offsetLocation = LatLng(
-                                  _currentLocation.latitude + adaptiveOffset,
-                                  _currentLocation.longitude);
-                              _animatedMapMove(offsetLocation, zoom);
-                            },
-                            child: GlassContainer(
-                              useOwnLayer: true,
-                              quality: GlassQuality.standard,
-                              shape: LiquidRoundedSuperellipse(borderRadius: 100.0),
-                              settings: _getGlassSettings(isDark),
-                              child: Container(
-                                  height: 48,
-                                  width: 48,
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            _AnimatedPressable(
+                              onTap: _onGpsButtonPressed,
+                              child: GlassContainer(
+                                useOwnLayer: true,
+                                quality: GlassQuality.standard,
+                                shape: const LiquidRoundedSuperellipse(borderRadius: 100.0),
+                                settings: _getGlassSettings(isDark),
+                                child: Container(
+                                  height: 44,
+                                  width: 44,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(100),
                                     border: Border.all(
-                                      color: Colors.white.withValues(alpha: 
-                                          isDark ? 0.15 : 0.4),
+                                      color: Colors.white.withValues(
+                                          alpha: isDark ? 0.15 : 0.4),
                                       width: 1.0,
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 
-                                            isDark ? 0.2 : 0.05),
+                                        color: Colors.black.withValues(
+                                            alpha: isDark ? 0.2 : 0.05),
                                         blurRadius: 12,
                                         offset: const Offset(0, 4),
                                       ),
                                     ],
                                   ),
                                   child: Center(
-                                      child: HugeIcon(
-                                          icon: HugeIcons
-                                              .strokeRoundedLocationShare02,
-                                          // --- APPLIED GRAY ICON ---
-                                          color: _followUser ? Colors.blue : (isDark
-                                              ? Colors.white70
-                                              : _lightModeGray),
-                                          size: 22,
-                                          strokeWidth: 2.0
-                                      )
-                                  )
+                                    child: HugeIcon(
+                                      icon: HugeIcons.strokeRoundedLocationShare02,
+                                      color: _followUser
+                                          ? Colors.blue
+                                          : (isDark ? Colors.white70 : _lightModeGray),
+                                      size: 20,
+                                      strokeWidth: 2.0,
+                                    ),
+                                  ),
+                                ),
                               ),
-                            )
+                            ),
+                            const SizedBox(height: 5),
+                            NgamMapsAttributionBadge(isDark: isDark),
+                          ],
                         )
                     ]
                 )
@@ -1793,12 +1872,17 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                     horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white
-                      .withValues(alpha: 0.1),
                   border: Border.all(
                     color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
                     width: 1.0,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -1999,8 +2083,6 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         width: 285,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white
-              .withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
@@ -2061,17 +2143,49 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                             )
                         ),
                         const SizedBox(height: 4),
-                        // Category
-                        Text(
-                            (shop['category'] ?? '').toString().toUpperCase(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.blue,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.8,
-                            )
+                        // Category & Rating
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                (shop['category'] ?? '').toString().toUpperCase(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 10.5,
+                                  color: Colors.blue,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                            ),
+                            if (shop['rating'] != null) ...[
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                child: Text(
+                                  '•',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: isDark ? Colors.white38 : Colors.black26,
+                                  ),
+                                ),
+                              ),
+                              const Icon(
+                                Icons.star_rounded,
+                                size: 13,
+                                color: Color(0xFFFFB800),
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                '${shop['rating']}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? Colors.white : const Color(0xFF374151),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                         const SizedBox(height: 6),
                         // Status badge + distance
@@ -2114,15 +2228,15 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                   )
               ),
               const SizedBox(width: 8),
-              // Share button
+              // Action button (view profile)
               GlassContainer(
                 useOwnLayer: true,
                 quality: GlassQuality.standard,
-                shape: LiquidRoundedSuperellipse(borderRadius: 100.0),
+                shape: const LiquidRoundedSuperellipse(borderRadius: 100.0),
                 settings: _getGlassSettings(isDark),
                 child: Container(
-                  height: 38,
-                  width: 38,
+                  height: 36,
+                  width: 36,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(100),
                     border: Border.all(
@@ -2132,10 +2246,10 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                   ),
                   child: Center(
                     child: HugeIcon(
-                      icon: HugeIcons.strokeRoundedShare01,
+                      icon: HugeIcons.strokeRoundedArrowRight01,
                       color: isDark ? Colors.white70 : _lightModeGray,
                       size: 16,
-                      strokeWidth: 2.0,
+                      strokeWidth: 2.2,
                     ),
                   ),
                 ),

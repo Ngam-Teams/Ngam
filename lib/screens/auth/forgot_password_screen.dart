@@ -7,6 +7,7 @@ import '../../providers/auth_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/animated_background.dart';
 import '../../widgets/glass_card.dart';
+import '../../widgets/glass_toast.dart';
 
 // ============================================================
 // Ngam App — Skrin Lupa Kata Laluan (Forgot Password)
@@ -62,13 +63,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
       });
     } else {
       final error = authProvider.error ?? 'Ralat menghantar emel pemulihan.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
+      showGlassToast(
+        context,
+        error,
+        isError: true,
       );
     }
   }

@@ -1,80 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+export 'package:liquid_glass_widgets/liquid_glass_widgets.dart' hide GlassCard, GlassToastType;
 export 'glass_card.dart';
 
-enum GlassQuality { standard, high }
-
-class LiquidRoundedSuperellipse {
-  final double borderRadius;
-  const LiquidRoundedSuperellipse({required this.borderRadius});
-}
-
-class LiquidGlassSettings {
-  final double thickness;
-  final double blur;
-  final double refractiveIndex;
-  final Color glassColor;
-  final double lightAngle;
-  final double lightIntensity;
-  final double ambientStrength;
-  final double saturation;
-  final double chromaticAberration;
-
-  const LiquidGlassSettings({
-    this.thickness = 0.1,
-    this.blur = 16.0,
-    this.refractiveIndex = 1.0,
-    this.glassColor = Colors.transparent,
-    this.lightAngle = 45.0,
-    this.lightIntensity = 0.2,
-    this.ambientStrength = 1.0,
-    this.saturation = 1.0,
-    this.chromaticAberration = 0.0,
-  });
-}
-
-/// Native, high-performance frosted glass container that works flawlessly
-/// across Mobile (Android/iOS) and Web without requiring unstable fragment shaders.
-class GlassContainer extends StatelessWidget {
-  final Widget child;
-  final dynamic shape;
-  final LiquidGlassSettings? settings;
-  final GlassQuality? quality;
-  final bool? useOwnLayer;
-  final double borderRadius;
-
-  const GlassContainer({
-    super.key,
-    required this.child,
-    this.shape,
-    this.settings,
-    this.quality,
-    this.useOwnLayer,
-    this.borderRadius = 24.0,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    double radius = borderRadius;
-    if (shape is LiquidRoundedSuperellipse) {
-      radius = (shape as LiquidRoundedSuperellipse).borderRadius;
-    }
-
-    final double blurAmount = (settings?.blur != null && settings!.blur > 0)
-        ? (settings!.blur < 6 ? 14.0 : settings!.blur)
-        : 14.0;
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blurAmount, sigmaY: blurAmount),
-        child: child,
-      ),
-    );
-  }
-}
-
-/// Direct container with frosted backdrop styling
+/// Direct container with frosted backdrop styling (maintained for legacy compatibility)
 class GlassBox extends StatelessWidget {
   final Widget child;
   final double borderRadius;

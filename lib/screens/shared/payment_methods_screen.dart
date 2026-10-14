@@ -8,6 +8,7 @@ import 'package:ngam/widgets/glass_box.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/glass_toast.dart';
 
 // Data dummy untuk cara pembayaran
 class PaymentData {
@@ -572,8 +573,10 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                           _AnimatedPressable(
                             onTap: () {
                               if (pickedQr == null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text("wallet.upload_qr_first".tr())),
+                                showGlassToast(
+                                  context,
+                                  "wallet.upload_qr_first".tr(),
+                                  isError: true,
                                 );
                                 return;
                               }

@@ -12,6 +12,7 @@ import '../../providers/auth_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../services/payment_service.dart';
 import '../../services/supabase_service.dart';
+import '../../widgets/glass_toast.dart';
 
 
 class WalletScreen extends StatefulWidget {
@@ -782,8 +783,10 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                     await authProvider.refreshBalance();
                     await _loadTransactions();
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('RM ${amount.toStringAsFixed(2)} added to your wallet!')),
+                      showGlassToast(
+                        context,
+                        'RM ${amount.toStringAsFixed(2)} berjaya ditambah ke dompet anda!',
+                        type: GlassToastType.success,
                       );
                       
                       if (widget.requiredAmountForPendingTask != null && authProvider.user!.userBalance >= widget.requiredAmountForPendingTask!) {
@@ -846,8 +849,10 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                     }
                   } catch (e) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Failed to top up')),
+                      showGlassToast(
+                        context,
+                        'Gagal menambah nilai dompet.',
+                        isError: true,
                       );
                     }
                   }
@@ -864,8 +869,10 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
               final bankMethods = _savedMethods.value.where((m) => m["type"] == "bank").toList();
               if (bankMethods.isEmpty) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Sila tambah akaun bank terlebih dahulu.')),
+                  showGlassToast(
+                    context,
+                    'Sila tambah akaun bank terlebih dahulu.',
+                    isError: true,
                   );
                 }
                 return;
@@ -878,8 +885,10 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 
                 if (amount > currentBalance) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Insufficient balance')),
+                    showGlassToast(
+                      context,
+                      'Baki dompet anda tidak mencukupi.',
+                      isError: true,
                     );
                   }
                   return;
@@ -894,14 +903,18 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                   await authProvider.refreshBalance();
                   await _loadTransactions();
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('RM ${amount.toStringAsFixed(2)} withdrawn to bank account successfully!')),
+                    showGlassToast(
+                      context,
+                      'RM ${amount.toStringAsFixed(2)} berjaya dipindahkan ke akaun bank anda!',
+                      type: GlassToastType.success,
                     );
                   }
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Failed to withdraw')),
+                    showGlassToast(
+                      context,
+                      'Gagal melakukan pengeluaran wang.',
+                      isError: true,
                     );
                   }
                 }

@@ -34,177 +34,203 @@ class _MyBookingsViewState extends State<MyBookingsView> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final loc = AppLocalizations.of(context);
 
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 24),
-            Text(
-                loc?.myBarbrTitle ?? "My Bookings",
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  color: isDark ? Colors.white : Colors.black,
-                )
-            ),
-            const SizedBox(height: 16),
+    return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8F9FA),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: HugeIcon(
+                  icon: HugeIcons.strokeRoundedArrowLeft01,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  size: 22,
+                ),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
+        title: Text(
+          loc?.myBarbrTitle ?? "My Bookings",
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+          ),
+        ),
+        centerTitle: false,
+      ),
+      body: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 8),
 
-            // --- WALK-IN QUEUE TICKET QUICK ACCESS ---
-            GestureDetector(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const MyQueueTicketScreen()),
-              ),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF2563EB).withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+              // --- WALK-IN QUEUE TICKET QUICK ACCESS ---
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MyQueueTicketScreen()),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ],
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF2196F3).withValues(alpha: 0.35),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(9),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.people_alt_rounded, color: Colors.white, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Giliran Walk-In Langsung (Queue)',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13.5,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Semak nombor giliran live anda di kedai',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 14),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // --- TAB BAR ---
+              Container(
+                height: 48,
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(25),
+                  border: Border.all(
+                    color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.people_alt_rounded, color: Colors.white, size: 20),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Giliran Walk-In Langsung (Queue)',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          ),
-                          Text(
-                            'Semak nombor giliran live anda di kedai',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 14),
+                    _buildTabButton(loc?.tabUpcoming ?? "Upcoming", 0, isDark),
+                    _buildTabButton(loc?.tabHistory ?? "History", 1, isDark),
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
-            // --- TAB BAR ---
-            Container(
-              height: 50,
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[200],
-                borderRadius: BorderRadius.circular(25),
-              ),
-              child: Row(
-                children: [
-                  _buildTabButton(loc?.tabUpcoming ?? "Upcoming", 0, isDark),
-                  _buildTabButton(loc?.tabHistory ?? "History", 1, isDark),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // --- DYNAMIC DATABASE STREAM AREA ---
-            Expanded(
-              child: StreamBuilder<List<Map<String, dynamic>>>(
-                // 🟢 3. Use the permanent stream that never disconnects!
-                stream: _bookingsStream,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator(color: Colors.blue));
-                  }
-
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return _buildListView([], isDark, isHistory: _selectedTab == 1);
-                  }
-
-                  final myUid = Supabase.instance.client.auth.currentUser?.id;
-
-                  // 🟢 Filter bookings that belong only to the logged-in user
-                  final myBookings = snapshot.data!.where((b) {
-                    final meta = b['booking_metadata'] as Map<String, dynamic>?;
-                    final belongsToUser = b['customer_id'] == myUid || meta?['customer_auth_id'] == myUid;
-                    return belongsToUser && b['status'] != 'holding';
-                  }).toList();
-
-                  // Map Database Format back to UI Format so your tickets look perfect
-                  final formattedBookings = myBookings.map((dbItem) {
-                    final meta = dbItem['booking_metadata'] as Map<String, dynamic>? ?? {};
-
-                    String displayDate = dbItem['booking_date'] ?? '';
-                    if (displayDate.isNotEmpty) {
-                      try {
-                        DateTime parsed = DateTime.parse(displayDate);
-                        const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-                        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-                        displayDate = "${weekdays[parsed.weekday - 1]}, ${parsed.day} ${months[parsed.month - 1]}";
-                      } catch (_) {}
+              // --- DYNAMIC DATABASE STREAM AREA ---
+              Expanded(
+                child: StreamBuilder<List<Map<String, dynamic>>>(
+                  // 🟢 3. Use the permanent stream that never disconnects!
+                  stream: _bookingsStream,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator(color: Color(0xFF2196F3)));
                     }
 
-                    String displayPrice = meta['total_price']?.toString() ?? 'RM0';
-                    if (!displayPrice.startsWith('RM')) displayPrice = 'RM$displayPrice';
+                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return _buildListView([], isDark, isHistory: _selectedTab == 1);
+                    }
 
-                    return {
-                      'db_id': dbItem['id'],
-                      'shopId': dbItem['business_id'] ?? '', // 🟢 Shop ID
-                      'id': meta['booking_id'] ?? meta['short_ref'] ?? 'BK-0000',
-                      'title': meta['shop_name'] ?? 'Shop',
-                      'category': meta['category'] ?? 'Service',
-                      'img': meta['shop_image'] ?? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400',
-                      'providerName': meta['provider_name'] ?? 'Staff',
-                      'date': displayDate,
-                      'time': dbItem['booking_time'] ?? '',
-                      'totalPrice': displayPrice,
-                      'status': dbItem['status'],
-                    };
-                  }).toList();
+                    final myUid = Supabase.instance.client.auth.currentUser?.id;
 
-                  // Split into Upcoming vs History
-                  final upcomingList = formattedBookings.where((b) => b['status'] != 'cancelled' && b['status'] != 'completed' && b['status'] != 'holding').toList();
-                  final historyList = formattedBookings.where((b) => b['status'] == 'cancelled' || b['status'] == 'completed').toList();
+                    // 🟢 Filter bookings that belong only to the logged-in user
+                    final myBookings = snapshot.data!.where((b) {
+                      final meta = b['booking_metadata'] as Map<String, dynamic>?;
+                      final belongsToUser = b['customer_id'] == myUid || meta?['customer_auth_id'] == myUid;
+                      return belongsToUser && b['status'] != 'holding';
+                    }).toList();
 
-                  return AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: _selectedTab == 0
-                        ? _buildListView(upcomingList, isDark, isHistory: false)
-                        : _buildListView(historyList, isDark, isHistory: true),
-                  );
-                },
+                    // Map Database Format back to UI Format so your tickets look perfect
+                    final formattedBookings = myBookings.map((dbItem) {
+                      final meta = dbItem['booking_metadata'] as Map<String, dynamic>? ?? {};
+
+                      String displayDate = dbItem['booking_date'] ?? '';
+                      if (displayDate.isNotEmpty) {
+                        try {
+                          DateTime parsed = DateTime.parse(displayDate);
+                          const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+                          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                          displayDate = "${weekdays[parsed.weekday - 1]}, ${parsed.day} ${months[parsed.month - 1]}";
+                        } catch (_) {}
+                      }
+
+                      String displayPrice = meta['total_price']?.toString() ?? 'RM0';
+                      if (!displayPrice.startsWith('RM')) displayPrice = 'RM$displayPrice';
+
+                      return {
+                        'db_id': dbItem['id'],
+                        'shopId': dbItem['business_id'] ?? '', // 🟢 Shop ID
+                        'id': meta['booking_id'] ?? meta['short_ref'] ?? 'BK-0000',
+                        'title': meta['shop_name'] ?? 'Shop',
+                        'category': meta['category'] ?? 'Service',
+                        'img': meta['shop_image'] ?? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400',
+                        'providerName': meta['provider_name'] ?? 'Staff',
+                        'date': displayDate,
+                        'time': dbItem['booking_time'] ?? '',
+                        'totalPrice': displayPrice,
+                        'status': dbItem['status'],
+                      };
+                    }).toList();
+
+                    // Split into Upcoming vs History
+                    final upcomingList = formattedBookings.where((b) => b['status'] != 'cancelled' && b['status'] != 'completed' && b['status'] != 'holding').toList();
+                    final historyList = formattedBookings.where((b) => b['status'] == 'cancelled' || b['status'] == 'completed').toList();
+
+                    return AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: _selectedTab == 0
+                          ? _buildListView(upcomingList, isDark, isHistory: false)
+                          : _buildListView(historyList, isDark, isHistory: true),
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildTabButton(String title, int index, bool isDark) {
-    bool isSelected = _selectedTab == index;
+    final bool isSelected = _selectedTab == index;
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _selectedTab = index),
@@ -212,16 +238,29 @@ class _MyBookingsViewState extends State<MyBookingsView> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
-            color: isSelected ? (isDark ? Colors.white.withValues(alpha: 0.15) : Colors.white) : Colors.transparent,
+            color: isSelected
+                ? (isDark ? Colors.white.withValues(alpha: 0.15) : Colors.white)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
-            boxShadow: isSelected && !isDark ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))] : [],
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : [],
           ),
           child: Center(
             child: Text(
               title,
               style: TextStyle(
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? (isDark ? Colors.white : Colors.black) : (isDark ? Colors.white54 : Colors.black54),
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected
+                    ? (isDark ? Colors.white : const Color(0xFF0F172A))
+                    : (isDark ? Colors.white54 : Colors.grey.shade600),
               ),
             ),
           ),
@@ -237,10 +276,36 @@ class _MyBookingsViewState extends State<MyBookingsView> {
           ? (loc?.noPastReservations ?? "No past or cancelled bookings.")
           : (loc?.noUpcomingReservations ?? "No upcoming bookings yet.\nBook a service to see it here!");
       return Center(
-        child: Text(
-          emptyText,
-          textAlign: TextAlign.center,
-          style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, height: 1.5, fontSize: 15),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
+                  shape: BoxShape.circle,
+                ),
+                child: HugeIcon(
+                  icon: isHistory ? HugeIcons.strokeRoundedClock01 : HugeIcons.strokeRoundedCalendar03,
+                  color: isDark ? Colors.white38 : Colors.grey.shade400,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                emptyText,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDark ? Colors.white54 : Colors.grey.shade600,
+                  height: 1.5,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }

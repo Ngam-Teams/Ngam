@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 import '../../widgets/bottom_nav_customer.dart';
+import 'customer_home_feed_view.dart';
+import 'customer_feed_screen.dart';
 import '../explore/explore_view.dart';
-import '../explore/my_bookings_view.dart';
 import '../shared/chat_screen.dart';
 import '../shared/profile_screen.dart';
 import '../../services/app_update_service.dart';
@@ -18,8 +19,8 @@ class CustomerHomeScreen extends StatefulWidget {
 class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   int _currentIndex = 0;
   
-  // Array untuk menyimpan status pemuatan setiap tab
-  final List<bool> _initializedPages = [true, false, false, false];
+  // Array untuk menyimpan status pemuatan setiap tab (5 tabs)
+  final List<bool> _initializedPages = [true, false, false, false, false];
 
   @override
   void initState() {
@@ -46,10 +47,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final List<Widget> pages = [
-      _initializedPages[0] ? const ExploreView() : const SizedBox.shrink(),
-      _initializedPages[1] ? const MyBookingsView() : const SizedBox.shrink(),
-      _initializedPages[2] ? const ChatScreen() : const SizedBox.shrink(),
-      _initializedPages[3] ? const ProfileScreen() : const SizedBox.shrink(),
+      _initializedPages[0] ? CustomerHomeFeedView(onSwitchTab: _onTabTapped) : const SizedBox.shrink(),
+      _initializedPages[1] ? const ExploreView() : const SizedBox.shrink(),
+      _initializedPages[2] ? CustomerFeedScreen(onSwitchTab: _onTabTapped) : const SizedBox.shrink(),
+      _initializedPages[3] ? const ChatScreen() : const SizedBox.shrink(),
+      _initializedPages[4] ? const ProfileScreen() : const SizedBox.shrink(),
     ];
 
     return Scaffold(

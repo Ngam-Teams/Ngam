@@ -43,8 +43,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   Future<void> _handleSubmit() async {
     if (_rating == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sila pilih penarafan bintang')),
+      showGlassToast(
+        context,
+        'Sila pilih penarafan bintang',
+        isError: true,
       );
       return;
     }
