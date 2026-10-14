@@ -43,35 +43,35 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
       'title': 'Flash RM10',
       'subtitle': 'Potong Rambut',
       'icon': HugeIcons.strokeRoundedScissor,
-      'gradient': [Color(0xFFFF5E3A), Color(0xFFFF9500)],
+      'gradient': [Color(0xFF2196F3), Color(0xFF64B5F6)],
       'badge': 'Terhad',
     },
     {
       'title': 'Port Viral',
       'subtitle': 'Kopi & Roti',
       'icon': HugeIcons.strokeRoundedCoffee02,
-      'gradient': [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
+      'gradient': [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
       'badge': 'Trending',
     },
     {
       'title': 'Nano Detailing',
       'subtitle': 'Diskaun 30%',
       'icon': HugeIcons.strokeRoundedCar01,
-      'gradient': [Color(0xFF00C6FF), Color(0xFF0072FF)],
+      'gradient': [Color(0xFF00ACC1), Color(0xFF0077B6)],
       'badge': 'Jimat',
     },
     {
       'title': 'Daily Promo',
       'subtitle': 'Kupon RM5',
       'icon': HugeIcons.strokeRoundedTicket01,
-      'gradient': [Color(0xFF11998E), Color(0xFF38EF7D)],
+      'gradient': [Color(0xFF0284C7), Color(0xFF38BDF8)],
       'badge': 'Hari Ini',
     },
     {
       'title': 'Spa & Relaks',
       'subtitle': 'Slot Petang',
       'icon': HugeIcons.strokeRoundedSparkles,
-      'gradient': [Color(0xFFFF416C), Color(0xFFFF4B2B)],
+      'gradient': [Color(0xFF6366F1), Color(0xFF4F46E5)],
       'badge': 'Hot',
     },
   ];
@@ -81,42 +81,42 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
       'title': 'Gunting Rambut',
       'categoryKey': 'barber',
       'icon': HugeIcons.strokeRoundedScissor,
-      'color': Color(0xFFFF6D00),
+      'color': Color(0xFF2196F3),
       'count': '12 Port',
     },
     {
       'title': 'Cuci Kereta',
       'categoryKey': 'carwash',
       'icon': HugeIcons.strokeRoundedCar01,
-      'color': Color(0xFF00E5FF),
+      'color': Color(0xFF0288D1),
       'count': '8 Port',
     },
     {
       'title': 'Kafe & Port Chill',
       'categoryKey': 'cafe',
       'icon': HugeIcons.strokeRoundedCoffee02,
-      'color': Color(0xFFFFB300),
+      'color': Color(0xFF3B82F6),
       'count': '15 Port',
     },
     {
       'title': 'Bengkel & Servis',
       'categoryKey': 'workshop',
       'icon': HugeIcons.strokeRoundedWrench01,
-      'color': Color(0xFF00C853),
+      'color': Color(0xFF0EA5E9),
       'count': '6 Port',
     },
     {
       'title': 'Salun & Spa',
       'categoryKey': 'salon',
       'icon': HugeIcons.strokeRoundedSparkles,
-      'color': Color(0xFFAA00FF),
+      'color': Color(0xFF6366F1),
       'count': '9 Port',
     },
     {
       'title': 'Klinik & Kesihatan',
       'categoryKey': 'health',
       'icon': HugeIcons.strokeRoundedFirstAidKit,
-      'color': Color(0xFFFF1744),
+      'color': Color(0xFF2563EB),
       'count': '5 Port',
     },
   ];
@@ -658,7 +658,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
   // --- WIDGET 3: STORIES SECTION ---
   Widget _buildStoriesSection(bool isDark) {
     return SizedBox(
-      height: 98,
+      height: 88,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
@@ -685,8 +685,8 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                   children: [
                     // Outer glowing animated border ring
                     Container(
-                      width: 64,
-                      height: 64,
+                      width: 56,
+                      height: 56,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: LinearGradient(
@@ -696,26 +696,26 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: gradientColors[0].withValues(alpha: 0.4),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
+                            color: gradientColors[0].withValues(alpha: 0.25),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
-                      padding: const EdgeInsets.all(2.5),
+                      padding: const EdgeInsets.all(2.0),
                       child: Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: isDark ? const Color(0xFF13171B) : Colors.white,
+                          color: isDark ? const Color(0xFF161624) : Colors.white,
                         ),
-                        padding: const EdgeInsets.all(3),
+                        padding: const EdgeInsets.all(2.5),
                         child: Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             gradient: LinearGradient(
                               colors: [
-                                gradientColors[0].withValues(alpha: isDark ? 0.35 : 0.2),
-                                gradientColors[1].withValues(alpha: isDark ? 0.15 : 0.05),
+                                gradientColors[0].withValues(alpha: isDark ? 0.25 : 0.15),
+                                gradientColors[1].withValues(alpha: isDark ? 0.08 : 0.04),
                               ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
@@ -725,7 +725,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                             child: HugeIcon(
                               icon: story['icon'],
                               color: gradientColors[0],
-                              size: 22,
+                              size: 19,
                             ),
                           ),
                         ),
@@ -733,16 +733,16 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                     ),
                     // Small floating badge
                     Positioned(
-                      bottom: -3,
+                      bottom: -2.5,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        padding: const EdgeInsets.symmetric(horizontal: 5.5, vertical: 1.5),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(colors: gradientColors),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(8),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: 4,
+                              blurRadius: 3,
                             ),
                           ],
                         ),
@@ -750,8 +750,8 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                           story['badge'],
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 8.5,
-                            fontWeight: FontWeight.w900,
+                            fontSize: 8.0,
+                            fontWeight: FontWeight.w800,
                             letterSpacing: 0.2,
                           ),
                         ),
@@ -759,12 +759,12 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 9),
+                const SizedBox(height: 7),
                 Text(
                   story['title'],
                   style: TextStyle(
                     color: isDark ? Colors.white : Colors.black87,
-                    fontSize: 11,
+                    fontSize: 10.5,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -776,7 +776,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
     );
   }
 
-  // --- WIDGET 4: QUICK INTENT GRID (KATEGORI PANTAS) ---
+  // --- WIDGET 4: KATEGORI PILIHAN GRID ---
   Widget _buildQuickIntentGrid(bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -785,7 +785,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Servis Pilihan (Quick Intent)',
+              'Kategori Pilihan',
               style: TextStyle(
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
                 fontSize: 16,
@@ -795,9 +795,9 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
             ),
             GestureDetector(
               onTap: () => widget.onSwitchTab?.call(1),
-              child: Text(
+              child: const Text(
                 'Semua Kategori',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Color(0xFF2196F3),
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -815,7 +815,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
             crossAxisCount: 3,
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
-            childAspectRatio: 1.1,
+            childAspectRatio: 1.22,
           ),
           itemBuilder: (context, index) {
             final cat = _quickIntents[index];
@@ -829,7 +829,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
               child: GlassContainer(
                 useOwnLayer: true,
                 quality: GlassQuality.standard,
-                shape: const LiquidRoundedSuperellipse(borderRadius: 20.0),
+                shape: const LiquidRoundedSuperellipse(borderRadius: 18.0),
                 settings: LiquidGlassSettings(
                   thickness: 0.1,
                   blur: 2.0,
@@ -837,18 +837,22 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                   glassColor: Colors.transparent,
                 ),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.8),
+                    borderRadius: BorderRadius.circular(18),
+                    color: isDark
+                        ? const Color(0xFF161624).withValues(alpha: 0.85)
+                        : Colors.white.withValues(alpha: 0.85),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.6),
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.06),
                     ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
@@ -856,48 +860,39 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        width: 44,
-                        height: 44,
+                        width: 38,
+                        height: 38,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [
-                              catColor.withValues(alpha: isDark ? 0.28 : 0.20),
-                              catColor.withValues(alpha: isDark ? 0.08 : 0.04),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+                          color: catColor.withValues(alpha: isDark ? 0.18 : 0.12),
                           border: Border.all(
-                            color: catColor.withValues(alpha: isDark ? 0.45 : 0.35),
-                            width: 1.2,
+                            color: catColor.withValues(alpha: isDark ? 0.35 : 0.25),
+                            width: 1.0,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: catColor.withValues(alpha: isDark ? 0.28 : 0.15),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
                         ),
                         child: Center(
                           child: HugeIcon(
                             icon: cat['icon'],
                             color: catColor,
-                            size: 22,
+                            size: 19,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 7),
-                      Text(
-                        cat['title'],
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: isDark ? Colors.white : Colors.black87,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
+                      const SizedBox(height: 6),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            cat['title'],
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            style: TextStyle(
+                              color: isDark ? Colors.white : Colors.black87,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -905,7 +900,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                         cat['count'],
                         style: TextStyle(
                           color: isDark ? Colors.white38 : Colors.grey.shade500,
-                          fontSize: 9.5,
+                          fontSize: 9.0,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -964,7 +959,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: const Color(0xFFFFB300),
+                      color: const Color(0xFF2196F3),
                       width: 1.5,
                     ),
                     image: const DecorationImage(
@@ -995,14 +990,14 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                             width: 6,
                             height: 6,
                             decoration: const BoxDecoration(
-                              color: Color(0xFFFFB300),
+                              color: Color(0xFF2196F3),
                               shape: BoxShape.circle,
                             ),
                           ),
                           const SizedBox(width: 5),
                           Flexible(
                             child: Text(
-                              'Kad Setem Loyalti • 4/5 Bintang',
+                              'Kad Setem • 4/5 Bintang',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -1017,41 +1012,37 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                     ],
                   ),
                 ),
-                // Elegant Frosted Reward Ribbon (Gold Amber)
+                const SizedBox(width: 8),
+                // Elegant Frosted Reward Ribbon (Ngam Blue)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFB300).withValues(alpha: isDark ? 0.18 : 0.14),
-                    borderRadius: BorderRadius.circular(14),
+                    color: const Color(0xFF2196F3).withValues(alpha: isDark ? 0.16 : 0.10),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0xFFFFB300).withValues(alpha: 0.45),
+                      color: const Color(0xFF2196F3).withValues(alpha: 0.35),
                     ),
                   ),
-                  child: const Column(
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '1 LAGI SETEM',
+                        '1 Lagi Setem',
                         style: TextStyle(
-                          color: Color(0xFFFFB300),
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      Text(
-                        'FREE CUT! 🎁',
-                        style: TextStyle(
-                          color: Color(0xFFFFB300),
+                          color: Color(0xFF2196F3),
                           fontSize: 10,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
+                      SizedBox(width: 3),
+                      Text('🎁', style: TextStyle(fontSize: 10)),
                     ],
                   ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
             // Stamp circles row (Expanded to guarantee 0 overflow on any screen)
             Row(
@@ -1066,58 +1057,50 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                       right: i == 4 ? 0 : 3.5,
                     ),
                     child: Container(
-                      height: 48,
+                      height: 44,
                       decoration: BoxDecoration(
                         color: isFilled
-                            ? const Color(0xFFFFB300).withValues(alpha: isDark ? 0.22 : 0.16)
+                            ? const Color(0xFF2196F3).withValues(alpha: isDark ? 0.20 : 0.12)
                             : (isTarget
-                                ? const Color(0xFF00E676).withValues(alpha: isDark ? 0.16 : 0.12)
+                                ? const Color(0xFF00E5FF).withValues(alpha: isDark ? 0.18 : 0.10)
                                 : (isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03))),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isFilled
-                              ? const Color(0xFFFFB300).withValues(alpha: 0.6)
+                              ? const Color(0xFF2196F3).withValues(alpha: 0.5)
                               : (isTarget
-                                  ? const Color(0xFF00E676).withValues(alpha: 0.65)
+                                  ? const Color(0xFF00E5FF).withValues(alpha: 0.55)
                                   : (isDark ? Colors.white12 : Colors.black12)),
-                          width: isTarget ? 1.5 : 1.2,
+                          width: isTarget ? 1.3 : 1.0,
                         ),
                         boxShadow: isFilled
                             ? [
                                 BoxShadow(
-                                  color: const Color(0xFFFFB300).withValues(alpha: 0.3),
-                                  blurRadius: 8,
+                                  color: const Color(0xFF2196F3).withValues(alpha: 0.2),
+                                  blurRadius: 6,
                                   offset: const Offset(0, 2),
                                 ),
                               ]
-                            : (isTarget
-                                ? [
-                                    BoxShadow(
-                                      color: const Color(0xFF00E676).withValues(alpha: 0.3),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ]
-                                : null),
+                            : null,
                       ),
                       child: Center(
                         child: isFilled
                             ? const Icon(
                                 Icons.star_rounded,
-                                color: Color(0xFFFFB300),
-                                size: 26,
+                                color: Color(0xFF2196F3),
+                                size: 24,
                               )
                             : (isTarget
                                 ? const Icon(
                                     Icons.card_giftcard_rounded,
-                                    color: Color(0xFF00E676),
-                                    size: 22,
+                                    color: Color(0xFF00E5FF),
+                                    size: 20,
                                   )
                                 : Text(
                                     '${i + 1}',
                                     style: TextStyle(
                                       color: isDark ? Colors.white38 : Colors.grey.shade400,
-                                      fontSize: 15,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.w800,
                                     ),
                                   )),
@@ -1128,7 +1111,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
               }),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
             // Action Buttons: Semak Tiket Giliran & Tempahan
             Row(
@@ -1142,13 +1125,17 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                       );
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10.5),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2196F3).withValues(alpha: isDark ? 0.18 : 0.12),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: const Color(0xFF2196F3).withValues(alpha: 0.35),
-                        ),
+                        color: const Color(0xFF2196F3),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF2196F3).withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                       ),
                       child: const Center(
                         child: Row(
@@ -1156,7 +1143,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                           children: [
                             HugeIcon(
                               icon: HugeIcons.strokeRoundedTicket01,
-                              color: Color(0xFF2196F3),
+                              color: Colors.white,
                               size: 16,
                             ),
                             SizedBox(width: 6),
@@ -1166,7 +1153,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: Color(0xFF2196F3),
+                                  color: Colors.white,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w800,
                                 ),
@@ -1187,12 +1174,12 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                     );
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     decoration: BoxDecoration(
                       color: isDark
-                          ? Colors.white.withValues(alpha: 0.05)
+                          ? Colors.white.withValues(alpha: 0.06)
                           : Colors.black.withValues(alpha: 0.04),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isDark ? Colors.white12 : Colors.black12,
                       ),
@@ -1201,7 +1188,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                       'Sejarah',
                       style: TextStyle(
                         color: isDark ? Colors.white70 : const Color(0xFF475569),
-                        fontSize: 12.5,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
