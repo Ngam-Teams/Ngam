@@ -80,7 +80,7 @@ jobs:
 
       - name: Verify Signing Keystore Exists
         run: |
-          ls -la android/app/upload.jks
+          ls -la android/app/ngam-release.jks
         shell: bash
 
       - name: Build Release APK

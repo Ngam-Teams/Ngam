@@ -13,3 +13,4 @@ key.properties
 **/*.keystore
 **/*.jks
 !app/upload.jks
+!app/ngam-release.jks
