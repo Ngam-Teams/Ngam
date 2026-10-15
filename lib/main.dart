@@ -13,8 +13,6 @@ import 'l10n/generated/app_localizations.dart';
 
 // ─── Screens ─────────────────────────────────────────────────
 import 'screens/auth/login_screen.dart';
-import 'screens/auth/register_screen.dart';
-import 'screens/auth/forgot_password_screen.dart';
 import 'screens/customer/customer_home_screen.dart';
 import 'screens/customer/review_screen.dart';
 import 'screens/shared/profile_screen.dart';
@@ -139,7 +137,7 @@ class NgamApp extends StatelessWidget {
                     settings: settings,
                     transitionDuration: const Duration(milliseconds: 200),
                     reverseTransitionDuration: const Duration(milliseconds: 180),
-                    pageBuilder: (_, __, ___) => const LoginScreen(),
+                    pageBuilder: (_, __, ___) => const LoginScreen(initialMode: AuthScreenMode.login),
                     transitionsBuilder: (_, animation, __, child) =>
                         FadeTransition(opacity: animation, child: child),
                   );
@@ -148,7 +146,7 @@ class NgamApp extends StatelessWidget {
                     settings: settings,
                     transitionDuration: const Duration(milliseconds: 200),
                     reverseTransitionDuration: const Duration(milliseconds: 180),
-                    pageBuilder: (_, __, ___) => const RegisterScreen(),
+                    pageBuilder: (_, __, ___) => const LoginScreen(initialMode: AuthScreenMode.register),
                     transitionsBuilder: (_, animation, __, child) =>
                         FadeTransition(opacity: animation, child: child),
                   );
@@ -157,7 +155,7 @@ class NgamApp extends StatelessWidget {
                     settings: settings,
                     transitionDuration: const Duration(milliseconds: 200),
                     reverseTransitionDuration: const Duration(milliseconds: 180),
-                    pageBuilder: (_, __, ___) => const ForgotPasswordScreen(),
+                    pageBuilder: (_, __, ___) => const LoginScreen(initialMode: AuthScreenMode.forgotPassword),
                     transitionsBuilder: (_, animation, __, child) =>
                         FadeTransition(opacity: animation, child: child),
                   );
