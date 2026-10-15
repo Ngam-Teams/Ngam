@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart' as g_sign_in;
 import 'dart:convert';
@@ -107,7 +108,9 @@ class AuthService {
     // Setup benda-benda nak Google Sign In
     await g_sign_in.GoogleSignIn.instance.initialize(
       serverClientId: webClientId.isNotEmpty ? webClientId : null,
-      clientId: iosClientId.isNotEmpty ? iosClientId : null,
+      clientId: kIsWeb
+          ? (webClientId.isNotEmpty ? webClientId : null)
+          : (iosClientId.isNotEmpty ? iosClientId : null),
     );
 
     final googleUser = await g_sign_in.GoogleSignIn.instance.authenticate();

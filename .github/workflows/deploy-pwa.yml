@@ -31,6 +31,7 @@ jobs:
           elif [ ! -f .env ]; then
             echo "SUPABASE_URL=https://rsueaoglsdxhzpupjljd.supabase.co" > .env
             echo "SUPABASE_ANON_KEY=sb_publishable_qP4whY5B6wxIasWOVGoPCw_vrhOXj_J" >> .env
+            echo "GOOGLE_WEB_CLIENT_ID=465252435780-kjcjvctogj5f2r014c4ggq2gpc5u28d2.apps.googleusercontent.com" >> .env
           fi
         shell: bash
 
