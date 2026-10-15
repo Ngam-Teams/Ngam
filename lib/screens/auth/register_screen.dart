@@ -26,10 +26,8 @@ class _RegisterScreenState extends State<RegisterScreen>
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
 
   bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -67,7 +65,6 @@ class _RegisterScreenState extends State<RegisterScreen>
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
     _fadeController.dispose();
     super.dispose();
   }
@@ -623,41 +620,6 @@ class _RegisterScreenState extends State<RegisterScreen>
                     }
                     if (value.length < 6) {
                       return 'Kata laluan sekurang-kurangnya 6 aksara';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 14),
-
-                // ─── Field 4: Confirm Password ───
-                Text(
-                  'CONFIRM PASSWORD',
-                  style: GoogleFonts.inter(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.0,
-                    color: textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                TextFormField(
-                  controller: _confirmPasswordController,
-                  obscureText: _obscureConfirmPassword,
-                  style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
-                  decoration: _inputDecoration(
-                    hintText: '••••••••',
-                    icon: Icons.lock_outline,
-                    isPassword: true,
-                    obscure: _obscureConfirmPassword,
-                    onToggle: () {
-                      setState(() {
-                        _obscureConfirmPassword = !_obscureConfirmPassword;
-                      });
-                    },
-                  ),
-                  validator: (value) {
-                    if (value != _passwordController.text) {
-                      return 'Kata laluan tidak sepadan';
                     }
                     return null;
                   },

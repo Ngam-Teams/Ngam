@@ -132,14 +132,35 @@ class NgamApp extends StatelessWidget {
                 );
               }
 
-              // 3. Named Static Routes
+              // 3. Named Static Routes (Seamless Dark Fade for Auth routes)
               switch (uri.path) {
                 case '/login':
-                  return MaterialPageRoute(settings: settings, builder: (_) => const LoginScreen());
+                  return PageRouteBuilder(
+                    settings: settings,
+                    transitionDuration: const Duration(milliseconds: 200),
+                    reverseTransitionDuration: const Duration(milliseconds: 180),
+                    pageBuilder: (_, __, ___) => const LoginScreen(),
+                    transitionsBuilder: (_, animation, __, child) =>
+                        FadeTransition(opacity: animation, child: child),
+                  );
                 case '/register':
-                  return MaterialPageRoute(settings: settings, builder: (_) => const RegisterScreen());
+                  return PageRouteBuilder(
+                    settings: settings,
+                    transitionDuration: const Duration(milliseconds: 200),
+                    reverseTransitionDuration: const Duration(milliseconds: 180),
+                    pageBuilder: (_, __, ___) => const RegisterScreen(),
+                    transitionsBuilder: (_, animation, __, child) =>
+                        FadeTransition(opacity: animation, child: child),
+                  );
                 case '/forgot-password':
-                  return MaterialPageRoute(settings: settings, builder: (_) => const ForgotPasswordScreen());
+                  return PageRouteBuilder(
+                    settings: settings,
+                    transitionDuration: const Duration(milliseconds: 200),
+                    reverseTransitionDuration: const Duration(milliseconds: 180),
+                    pageBuilder: (_, __, ___) => const ForgotPasswordScreen(),
+                    transitionsBuilder: (_, animation, __, child) =>
+                        FadeTransition(opacity: animation, child: child),
+                  );
                 case '/customer-home':
                   return MaterialPageRoute(settings: settings, builder: (_) => const CustomerHomeScreen());
                 case '/review':
@@ -154,7 +175,15 @@ class NgamApp extends StatelessWidget {
                 builder: (_) => Consumer<AuthProvider>(
                   builder: (context, auth, _) {
                     if (auth.isInitializing) {
-                      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                      return const Scaffold(
+                        backgroundColor: Color(0xFF0A0A0A),
+                        body: Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF2196F3),
+                            strokeWidth: 2.5,
+                          ),
+                        ),
+                      );
                     }
                     if (!auth.isLoggedIn) {
                       return const LoginScreen();
