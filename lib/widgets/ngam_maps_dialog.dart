@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import 'liquid_glass_compat.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// GrabMaps-inspired Dialog popup that showcases NgamMaps and provides

@@ -50,3 +50,6 @@ app.*.map.json
 
 # Ignore Java Heap Dumps
 *.hprof
+
+# Cloudflare Wrangler
+.wrangler/

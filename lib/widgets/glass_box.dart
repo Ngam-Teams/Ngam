@@ -1,6 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-export 'package:liquid_glass_widgets/liquid_glass_widgets.dart' hide GlassCard, GlassToastType;
+export 'liquid_glass_compat.dart';
 export 'glass_card.dart';
 
 /// Direct container with frosted backdrop styling (maintained for legacy compatibility)
