@@ -65,6 +65,7 @@ flutter:
     - .env
     - assets/translations/
     - assets/app.png
+    - assets/admin_hero_bg.png
 
 flutter_launcher_icons:
   android: true
