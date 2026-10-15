@@ -22,6 +22,13 @@
   <meta name="theme-color" content="#2196F3">
   <meta name="google-signin-client_id" content="465252435780-kjcjvctogj5f2r014c4ggq2gpc5u28d2.apps.googleusercontent.com">
 
+  <!-- Auto-redirect from .pages.dev to official ngam.dev -->
+  <script>
+    if (window.location.hostname.endsWith('pages.dev')) {
+      window.location.replace('https://ngam.dev' + window.location.pathname + window.location.search);
+    }
+  </script>
+
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
