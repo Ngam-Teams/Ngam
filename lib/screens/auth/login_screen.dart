@@ -688,7 +688,7 @@ class _LoginScreenState extends State<LoginScreen>
                     onPressed: () async {
                       final authProvider = context.read<AuthProvider>();
                       final success = await authProvider.signInWithGoogle();
-                      if (success && context.mounted) {
+                      if (success && authProvider.user != null && context.mounted) {
                         Navigator.pushReplacementNamed(context, '/customer-home');
                       }
                     },

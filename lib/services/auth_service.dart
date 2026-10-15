@@ -101,16 +101,23 @@ class AuthService {
   }
 
   /// Sign in with Google
-  static Future<UserModel> signInWithGoogle() async {
+  static Future<UserModel?> signInWithGoogle() async {
+    if (kIsWeb) {
+      final redirectUrl = Uri.base.origin;
+      await _client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: redirectUrl,
+      );
+      return null;
+    }
+
     final webClientId = dotenv.env['GOOGLE_WEB_CLIENT_ID'] ?? '';
     final iosClientId = dotenv.env['GOOGLE_IOS_CLIENT_ID'] ?? '';
 
     // Setup benda-benda nak Google Sign In
     await g_sign_in.GoogleSignIn.instance.initialize(
       serverClientId: webClientId.isNotEmpty ? webClientId : null,
-      clientId: kIsWeb
-          ? (webClientId.isNotEmpty ? webClientId : null)
-          : (iosClientId.isNotEmpty ? iosClientId : null),
+      clientId: iosClientId.isNotEmpty ? iosClientId : null,
     );
 
     final googleUser = await g_sign_in.GoogleSignIn.instance.authenticate();
@@ -148,7 +155,7 @@ class AuthService {
         'user_email': authResponse.user!.email,
         'user_phone': '',
         'role': 'customer', // Bagi role default untuk OAuth (social login)
-          'created_at': DateTime.now().toIso8601String(),
+        'created_at': DateTime.now().toIso8601String(),
         'user_avatar_url': authResponse.user!.userMetadata?['avatar_url'],
       };
       await _client.from(DbTable.users).insert(userData);
@@ -179,7 +186,24 @@ class AuthService {
           .from(DbTable.users)
           .select()
           .eq('id', userId)
-          .single();
+          .maybeSingle();
+
+      if (response == null) {
+        final user = session.user;
+        final newProfile = {
+          'id': userId,
+          'user_name': user.userMetadata?['full_name'] ?? user.email?.split('@').first ?? 'Google User',
+          'user_email': user.email ?? 'N/A',
+          'user_phone': 'N/A',
+          'role': 'customer',
+          'user_balance': 0.0,
+          'created_at': DateTime.now().toIso8601String(),
+          'user_avatar_url': user.userMetadata?['avatar_url'],
+        };
+        await _client.from(DbTable.users).insert(newProfile);
+        return UserModel.fromJson(newProfile);
+      }
+
       return UserModel.fromJson(response);
     } catch (e) {
       return null;
