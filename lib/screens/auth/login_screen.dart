@@ -32,8 +32,9 @@ class _LoginScreenState extends State<LoginScreen>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  // Gold luxury color palette from reference
-  static const Color accentGold = Color(0xFFD4AF37);
+  // Ngam Signature Blue palette
+  static const Color accentBlue = Color(0xFF2196F3);
+  static const Color accentBlueGlow = Color(0xFF42A5F5);
   static const Color textPrimary = Color(0xFFFFFFFF);
   static const Color textSecondary = Color(0xFFB3B3B3);
   static const Color bgDark = Color(0xFF0A0A0A);
@@ -479,7 +480,7 @@ class _LoginScreenState extends State<LoginScreen>
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(
-                        color: accentGold,
+                        color: accentBlue,
                         width: 1.5,
                       ),
                     ),
@@ -522,7 +523,7 @@ class _LoginScreenState extends State<LoginScreen>
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: accentGold,
+                          color: accentBlueGlow,
                         ),
                       ),
                     ),
@@ -577,7 +578,7 @@ class _LoginScreenState extends State<LoginScreen>
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(
-                        color: accentGold,
+                        color: accentBlue,
                         width: 1.5,
                       ),
                     ),
@@ -612,7 +613,7 @@ class _LoginScreenState extends State<LoginScreen>
                   },
                 ),
 
-                // ─── Platinum Gold Button (.btn-platinum) ───
+                // ─── Ngam Blue Button (.btn-primary) ───
                 Consumer<AuthProvider>(
                   builder: (context, auth, _) {
                     return SizedBox(
@@ -620,10 +621,10 @@ class _LoginScreenState extends State<LoginScreen>
                       child: ElevatedButton(
                         onPressed: auth.isLoading ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: accentGold,
-                          foregroundColor: bgDark,
+                          backgroundColor: accentBlue,
+                          foregroundColor: Colors.white,
                           elevation: 8,
-                          shadowColor: accentGold.withValues(alpha: 0.35),
+                          shadowColor: accentBlue.withValues(alpha: 0.4),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
                           ),
@@ -634,16 +635,16 @@ class _LoginScreenState extends State<LoginScreen>
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2.2,
-                                  color: bgDark,
+                                  color: Colors.white,
                                 ),
                               )
                             : Text(
-                                'ENTER PORTAL',
+                                'SIGN IN',
                                 style: GoogleFonts.outfit(
-                                  fontSize: 13,
+                                  fontSize: 13.5,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 2.0,
-                                  color: bgDark,
+                                  color: Colors.white,
                                 ),
                               ),
                       ),
@@ -683,7 +684,7 @@ class _LoginScreenState extends State<LoginScreen>
 
                 // ─── Google Sign-In Button (Dark Glass Pill) ───
                 SizedBox(
-                  height: 44,
+                  height: 46,
                   child: OutlinedButton(
                     onPressed: () async {
                       final authProvider = context.read<AuthProvider>();
@@ -693,6 +694,7 @@ class _LoginScreenState extends State<LoginScreen>
                       }
                     },
                     style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       backgroundColor: Colors.white.withValues(alpha: 0.04),
                       side: BorderSide(
                         color: Colors.white.withValues(alpha: 0.15),
@@ -703,17 +705,26 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Image.asset(
-                          'assets/google_logo.png',
+                        SizedBox(
                           width: 18,
                           height: 18,
+                          child: Center(
+                            child: Image.asset(
+                              'assets/google_logo.png',
+                              width: 18,
+                              height: 18,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 10),
                         Text(
                           'Continue with Google',
                           style: GoogleFonts.inter(
-                            fontSize: 12,
+                            fontSize: 12.5,
                             fontWeight: FontWeight.w600,
                             color: textPrimary,
                           ),
@@ -722,30 +733,30 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
 
                 // ─── Switch Auth Link (.switch-auth) ───
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'New to Ngam?',
+                      "Don't have an account?",
                       style: GoogleFonts.inter(
-                        fontSize: 12,
+                        fontSize: 12.5,
                         color: textSecondary,
                       ),
                     ),
-                    const SizedBox(width: 5),
+                    const SizedBox(width: 6),
                     GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/register');
                       },
                       child: Text(
-                        'Request Access',
+                        'Sign Up',
                         style: GoogleFonts.inter(
-                          fontSize: 12,
+                          fontSize: 12.5,
                           fontWeight: FontWeight.w700,
-                          color: accentGold,
+                          color: accentBlue,
                         ),
                       ),
                     ),
