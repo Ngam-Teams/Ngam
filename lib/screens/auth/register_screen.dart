@@ -10,7 +10,7 @@ import '../../providers/theme_provider.dart';
 import '../../utils/constants.dart';
 
 // ============================================================
-// Ngam App — Skrin Register (Aligned with Modern Ngam Glass)
+// Ngam App — Skrin Register (Split Desktop & Right Auth Card)
 // ============================================================
 
 class RegisterScreen extends StatefulWidget {
@@ -25,7 +25,6 @@ class _RegisterScreenState extends State<RegisterScreen>
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
@@ -67,7 +66,6 @@ class _RegisterScreenState extends State<RegisterScreen>
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
-    _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _fadeController.dispose();
@@ -82,7 +80,7 @@ class _RegisterScreenState extends State<RegisterScreen>
       email: _emailController.text.trim(),
       password: _passwordController.text,
       name: _nameController.text.trim(),
-      phone: _phoneController.text.trim(),
+      phone: 'N/A', // Nombor telefon pilihan, boleh dikemaskini dalam profil kemudian
       role: UserRole.customer,
     );
 
@@ -101,11 +99,11 @@ class _RegisterScreenState extends State<RegisterScreen>
     return InputDecoration(
       hintText: hintText,
       hintStyle: GoogleFonts.inter(
-        color: textSecondary.withValues(alpha: 0.6),
+        color: textSecondary.withValues(alpha: 0.5),
         fontSize: 13,
       ),
       filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.04),
+      fillColor: Colors.white.withValues(alpha: 0.05),
       prefixIcon: Icon(icon, color: textSecondary, size: 18),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       suffixIcon: isPassword
@@ -147,6 +145,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     final themeProvider = context.watch<ThemeProvider>();
     final isDark = themeProvider.isDarkMode;
     final size = MediaQuery.of(context).size;
+    final isDesktop = size.width >= 960;
 
     return Scaffold(
       backgroundColor: bgDark,
@@ -180,7 +179,20 @@ class _RegisterScreenState extends State<RegisterScreen>
               ),
             ),
 
-            // ─── 2. Top-Left Back Button ───
+            // ─── 2. Main Portal Split / Mobile Layout ───
+            Positioned.fill(
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: isDesktop
+                      ? _buildDesktopLayout(context)
+                      : _buildMobileLayout(context),
+                ),
+              ),
+            ),
+
+            // ─── 3. Top-Left Back Button ───
             Positioned(
               top: 24,
               left: 24,
@@ -210,7 +222,7 @@ class _RegisterScreenState extends State<RegisterScreen>
               ),
             ),
 
-            // ─── 3. Top-Right Language & Theme Control ───
+            // ─── 4. Top-Right Language & Theme Control ───
             Positioned(
               top: 24,
               right: 28,
@@ -272,382 +284,549 @@ class _RegisterScreenState extends State<RegisterScreen>
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
 
-            // ─── 4. Main Scrollable Form Card ───
-            Positioned.fill(
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: SlideTransition(
-                  position: _slideAnimation,
-                  child: Center(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 76),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 440),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.45),
-                                borderRadius: BorderRadius.circular(24),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.12),
-                                  width: 1,
-                                ),
+  // ───────────────────────────────────────────────────────────────────────────
+  // DESKTOP LAYOUT (Split: Left Branding Banner + Right Auth Card)
+  // ───────────────────────────────────────────────────────────────────────────
+  Widget _buildDesktopLayout(BuildContext context) {
+    return Row(
+      children: [
+        // Left Branding Section (flex: 12)
+        Expanded(
+          flex: 12,
+          child: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 56, vertical: 48),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  border: Border(
+                    right: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Top Logo Group
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 40),
+                        // Circular Silver Logo Badge
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(alpha: 0.06),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.3),
+                              width: 1.2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.35),
+                                blurRadius: 30,
+                                offset: const Offset(0, 10),
                               ),
-                              child: Form(
-                                key: _formKey,
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    // Mini Logo Badge
-                                    Container(
-                                      width: 52,
-                                      height: 52,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.white.withValues(alpha: 0.08),
-                                        border: Border.all(
-                                          color: Colors.white.withValues(alpha: 0.3),
-                                          width: 1,
-                                        ),
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        'Ngam',
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w800,
-                                          color: textPrimary,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'CREATE ACCOUNT',
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 3.0,
-                                        color: accentBlue,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Daftar akaun komuniti Ngam anda',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12.5,
-                                        color: textSecondary,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 20),
-
-                                    // ─── Nama Penuh ───
-                                    TextFormField(
-                                      controller: _nameController,
-                                      style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
-                                      textCapitalization: TextCapitalization.words,
-                                      decoration: _inputDecoration(
-                                        hintText: 'Nama Penuh',
-                                        icon: Icons.person_outline,
-                                      ),
-                                      validator: (value) {
-                                        if (value == null || value.trim().isEmpty) {
-                                          return 'Sila masukkan nama penuh';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                    const SizedBox(height: 12),
-
-                                    // ─── Email ───
-                                    TextFormField(
-                                      controller: _emailController,
-                                      style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
-                                      keyboardType: TextInputType.emailAddress,
-                                      decoration: _inputDecoration(
-                                        hintText: 'Alamat Emel',
-                                        icon: Icons.email_outlined,
-                                      ),
-                                      validator: (value) {
-                                        if (value == null || value.trim().isEmpty) {
-                                          return 'Sila masukkan alamat emel';
-                                        }
-                                        if (!value.contains('@')) {
-                                          return 'Emel tidak sah';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                    const SizedBox(height: 12),
-
-                                    // ─── Nombor Telefon ───
-                                    TextFormField(
-                                      controller: _phoneController,
-                                      style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
-                                      keyboardType: TextInputType.phone,
-                                      decoration: _inputDecoration(
-                                        hintText: 'Nombor Telefon (cth: 0123456789)',
-                                        icon: Icons.phone_outlined,
-                                      ),
-                                      validator: (value) {
-                                        if (value == null || value.trim().isEmpty) {
-                                          return 'Sila masukkan nombor telefon';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                    const SizedBox(height: 12),
-
-                                    // ─── Password ───
-                                    TextFormField(
-                                      controller: _passwordController,
-                                      obscureText: _obscurePassword,
-                                      style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
-                                      decoration: _inputDecoration(
-                                        hintText: 'Kata Laluan (min 6 aksara)',
-                                        icon: Icons.lock_outline,
-                                        isPassword: true,
-                                        obscure: _obscurePassword,
-                                        onToggle: () {
-                                          setState(() {
-                                            _obscurePassword = !_obscurePassword;
-                                          });
-                                        },
-                                      ),
-                                      validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return 'Sila masukkan kata laluan';
-                                        }
-                                        if (value.length < 6) {
-                                          return 'Kata laluan sekurang-kurangnya 6 aksara';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                    const SizedBox(height: 12),
-
-                                    // ─── Sahkan Password ───
-                                    TextFormField(
-                                      controller: _confirmPasswordController,
-                                      obscureText: _obscureConfirmPassword,
-                                      style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
-                                      decoration: _inputDecoration(
-                                        hintText: 'Sahkan Kata Laluan',
-                                        icon: Icons.lock_outline,
-                                        isPassword: true,
-                                        obscure: _obscureConfirmPassword,
-                                        onToggle: () {
-                                          setState(() {
-                                            _obscureConfirmPassword = !_obscureConfirmPassword;
-                                          });
-                                        },
-                                      ),
-                                      validator: (value) {
-                                        if (value != _passwordController.text) {
-                                          return 'Kata laluan tidak sepadan';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                    const SizedBox(height: 14),
-
-                                    // ─── Error Message Display ───
-                                    Consumer<AuthProvider>(
-                                      builder: (context, auth, _) {
-                                        if (auth.error != null) {
-                                          return Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                            margin: const EdgeInsets.only(bottom: 12),
-                                            decoration: BoxDecoration(
-                                              color: Colors.red.withValues(alpha: 0.15),
-                                              borderRadius: BorderRadius.circular(10),
-                                              border: Border.all(
-                                                color: Colors.red.withValues(alpha: 0.3),
-                                              ),
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                const Icon(
-                                                  Icons.error_outline,
-                                                  color: Colors.redAccent,
-                                                  size: 16,
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Text(
-                                                    auth.error!,
-                                                    style: GoogleFonts.inter(
-                                                      color: Colors.redAccent,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                        }
-                                        return const SizedBox.shrink();
-                                      },
-                                    ),
-
-                                    // ─── Butang Sign Up ───
-                                    Consumer<AuthProvider>(
-                                      builder: (context, auth, _) {
-                                        return SizedBox(
-                                          height: 48,
-                                          width: double.infinity,
-                                          child: ElevatedButton(
-                                            onPressed: auth.isLoading ? null : _handleRegister,
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: accentBlue,
-                                              foregroundColor: Colors.white,
-                                              elevation: 0,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(14),
-                                              ),
-                                            ),
-                                            child: auth.isLoading
-                                                ? const SizedBox(
-                                                    width: 22,
-                                                    height: 22,
-                                                    child: CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                      color: Colors.white,
-                                                    ),
-                                                  )
-                                                : Text(
-                                                    'CREATE ACCOUNT',
-                                                    style: GoogleFonts.outfit(
-                                                      fontSize: 13.5,
-                                                      fontWeight: FontWeight.w800,
-                                                      letterSpacing: 2.0,
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    const SizedBox(height: 14),
-
-                                    // ─── Divider ───
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Container(
-                                            height: 1,
-                                            color: Colors.white.withValues(alpha: 0.1),
-                                          ),
-                                        ),
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                                          child: Text(
-                                            'or',
-                                            style: GoogleFonts.inter(
-                                              color: textSecondary.withValues(alpha: 0.6),
-                                              fontSize: 11,
-                                            ),
-                                          ),
-                                        ),
-                                        Expanded(
-                                          child: Container(
-                                            height: 1,
-                                            color: Colors.white.withValues(alpha: 0.1),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-
-                                    // ─── Google Sign-In Button (Dark Glass Pill) ───
-                                    SizedBox(
-                                      height: 46,
-                                      width: double.infinity,
-                                      child: OutlinedButton(
-                                        onPressed: () async {
-                                          final authProvider = context.read<AuthProvider>();
-                                          final success = await authProvider.signInWithGoogle();
-                                          if (success && authProvider.user != null && context.mounted) {
-                                            Navigator.pushReplacementNamed(context, '/customer-home');
-                                          }
-                                        },
-                                        style: OutlinedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                                          backgroundColor: Colors.white.withValues(alpha: 0.04),
-                                          side: BorderSide(
-                                            color: Colors.white.withValues(alpha: 0.15),
-                                            width: 1,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          crossAxisAlignment: CrossAxisAlignment.center,
-                                          children: [
-                                            Image.asset(
-                                              'assets/google_logo.png',
-                                              width: 18,
-                                              height: 18,
-                                            ),
-                                            const SizedBox(width: 10),
-                                            Text(
-                                              'Continue with Google',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 13.5,
-                                                fontWeight: FontWeight.w600,
-                                                color: textPrimary,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 20),
-
-                                    // ─── Link Balik ke Login ───
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          'Already have an account? ',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 12.5,
-                                            color: textSecondary,
-                                          ),
-                                        ),
-                                        GestureDetector(
-                                          onTap: () => Navigator.pop(context),
-                                          child: Text(
-                                            'Sign In',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 12.5,
-                                              fontWeight: FontWeight.w700,
-                                              color: accentBlue,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
+                            ],
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Ngam',
+                            style: GoogleFonts.outfit(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: textPrimary,
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'JOIN NGAM',
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 8.0,
+                            color: textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Sertai komuniti pintar Ngam hari ini.\nNikmati kemudahan pesanan, tempahan, dan servis harian tanpa batasan.',
+                          style: GoogleFonts.inter(
+                            fontSize: 13.5,
+                            height: 1.6,
+                            color: textSecondary.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ],
                     ),
+
+                    // Bottom Branding Footer
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '© 2026 Ngam Community System\nSmart Community & Service Platform',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            height: 1.6,
+                            letterSpacing: 0.8,
+                            color: Colors.white.withValues(alpha: 0.4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        // Right Auth Section (flex: 11)
+        Expanded(
+          flex: 11,
+          child: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.32),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+                child: SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 480),
+                    child: _buildAuthCard(context),
                   ),
                 ),
               ),
             ),
-          ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // MOBILE LAYOUT (Compact Centered with Scrollable View)
+  // ───────────────────────────────────────────────────────────────────────────
+  Widget _buildMobileLayout(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 76),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Mini Logo Badge
+              Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.08),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'Ngam',
+                  style: GoogleFonts.outfit(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'NGAM PORTAL',
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 6.0,
+                  color: textSecondary,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // The Auth Card
+              _buildAuthCard(context),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // THE AUTH CARD (Glass Card for Registration)
+  // ───────────────────────────────────────────────────────────────────────────
+  Widget _buildAuthCard(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(30),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 35, sigmaY: 35),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.2),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.6),
+                blurRadius: 70,
+                offset: const Offset(0, 25),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 26),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Title
+                Text(
+                  'CREATE ACCOUNT',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.5,
+                    color: textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+
+                // Subtitle
+                Text(
+                  'Join the Ngam community and start exploring services.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 12.5,
+                    color: textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // ─── Field 1: Nama Penuh ───
+                Text(
+                  'FULL NAME',
+                  style: GoogleFonts.inter(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
+                    color: textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _nameController,
+                  style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
+                  textCapitalization: TextCapitalization.words,
+                  decoration: _inputDecoration(
+                    hintText: 'Ahmad Faiz',
+                    icon: Icons.person_outline,
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Sila masukkan nama penuh anda';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 14),
+
+                // ─── Field 2: Email Address ───
+                Text(
+                  'EMAIL ADDRESS',
+                  style: GoogleFonts.inter(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
+                    color: textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _emailController,
+                  style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: _inputDecoration(
+                    hintText: 'nama@domain.com',
+                    icon: Icons.email_outlined,
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Sila masukkan alamat emel';
+                    }
+                    if (!value.contains('@')) {
+                      return 'Alamat emel tidak sah';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 14),
+
+                // ─── Field 3: Password ───
+                Text(
+                  'PASSWORD',
+                  style: GoogleFonts.inter(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
+                    color: textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
+                  decoration: _inputDecoration(
+                    hintText: '••••••••',
+                    icon: Icons.lock_outline,
+                    isPassword: true,
+                    obscure: _obscurePassword,
+                    onToggle: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Sila masukkan kata laluan';
+                    }
+                    if (value.length < 6) {
+                      return 'Kata laluan sekurang-kurangnya 6 aksara';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 14),
+
+                // ─── Field 4: Confirm Password ───
+                Text(
+                  'CONFIRM PASSWORD',
+                  style: GoogleFonts.inter(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
+                    color: textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  obscureText: _obscureConfirmPassword,
+                  style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
+                  decoration: _inputDecoration(
+                    hintText: '••••••••',
+                    icon: Icons.lock_outline,
+                    isPassword: true,
+                    obscure: _obscureConfirmPassword,
+                    onToggle: () {
+                      setState(() {
+                        _obscureConfirmPassword = !_obscureConfirmPassword;
+                      });
+                    },
+                  ),
+                  validator: (value) {
+                    if (value != _passwordController.text) {
+                      return 'Kata laluan tidak sepadan';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+
+                // ─── Error Message Display ───
+                Consumer<AuthProvider>(
+                  builder: (context, auth, _) {
+                    if (auth.error != null) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Text(
+                          auth.error!,
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFFFF5252),
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+
+                // ─── Butang Sign Up (.btn-primary) ───
+                Consumer<AuthProvider>(
+                  builder: (context, auth, _) {
+                    return SizedBox(
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: auth.isLoading ? null : _handleRegister,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: accentBlue,
+                          foregroundColor: Colors.white,
+                          elevation: 8,
+                          shadowColor: accentBlue.withValues(alpha: 0.4),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                        child: auth.isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                'CREATE ACCOUNT',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 2.0,
+                                  color: Colors.white,
+                                ),
+                              ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // ─── Divider ───
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: 1,
+                        color: Colors.white.withValues(alpha: 0.1),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Text(
+                        'or',
+                        style: GoogleFonts.inter(
+                          color: textSecondary.withValues(alpha: 0.6),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Container(
+                        height: 1,
+                        color: Colors.white.withValues(alpha: 0.1),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // ─── Google Sign-In Button (Dark Glass Pill) ───
+                SizedBox(
+                  height: 46,
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      final authProvider = context.read<AuthProvider>();
+                      final success = await authProvider.signInWithGoogle();
+                      if (success && authProvider.user != null && context.mounted) {
+                        Navigator.pushReplacementNamed(context, '/customer-home');
+                      }
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      backgroundColor: Colors.white.withValues(alpha: 0.04),
+                      side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        width: 1,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Image.asset(
+                          'assets/google_logo.png',
+                          width: 18,
+                          height: 18,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Continue with Google',
+                          style: GoogleFonts.inter(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // ─── Footer Link: Sign In ───
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Already have an account? ',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        color: textSecondary,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Text(
+                        'Sign In',
+                        style: GoogleFonts.inter(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: accentBlue,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

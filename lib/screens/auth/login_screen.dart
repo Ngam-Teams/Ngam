@@ -590,7 +590,7 @@ class _LoginScreenState extends State<LoginScreen>
                     return null;
                   },
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 24),
 
                 // ─── Error Message Display ───
                 Consumer<AuthProvider>(
