@@ -41,9 +41,11 @@ jobs:
       - name: Build Web Release
         run: flutter build web --release --no-tree-shake-icons
 
-      - name: Copy Cloudflare Redirects
+      - name: Copy Cloudflare Redirects & Well-Known Assets
         run: |
           cp web/_redirects build/web/_redirects || true
+          mkdir -p build/web/.well-known || true
+          cp -r web/.well-known/* build/web/.well-known/ || true
         shell: bash
 
       - name: Deploy to Cloudflare Pages via Wrangler
