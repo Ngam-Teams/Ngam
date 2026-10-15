@@ -704,15 +704,12 @@ class _LoginScreenState extends State<LoginScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          'G',
-                          style: GoogleFonts.outfit(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900,
-                            color: const Color(0xFF4285F4),
-                          ),
+                        Image.asset(
+                          'assets/google_logo.png',
+                          width: 18,
+                          height: 18,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                         Text(
                           'Continue with Google',
                           style: GoogleFonts.inter(
