@@ -49,12 +49,38 @@ class _StoreRouteLoaderState extends State<StoreRouteLoader> {
     }
 
     try {
-      // 1. Query businesses table by UUID id or business_name
-      final res = await Supabase.instance.client
+      // 1. Query businesses table by handle, UUID id, or business_name
+      final cleanHandle = rawId.replaceAll('@', '').trim().toLowerCase();
+
+      // First try matching business_handle directly
+      Map<String, dynamic>? res = await Supabase.instance.client
           .from('businesses')
           .select()
-          .or('id.eq.$rawId,business_name.ilike.%$rawId%')
+          .eq('business_handle', cleanHandle)
           .maybeSingle();
+
+      // If not found and rawId matches UUID format, search by id
+      if (res == null) {
+        final isUuid = RegExp(
+          r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+        ).hasMatch(rawId);
+        if (isUuid) {
+          res = await Supabase.instance.client
+              .from('businesses')
+              .select()
+              .eq('id', rawId)
+              .maybeSingle();
+        }
+      }
+
+      // If still not found, try fallback by business_name ilike
+      if (res == null) {
+        res = await Supabase.instance.client
+            .from('businesses')
+            .select()
+            .ilike('business_name', '%$cleanHandle%')
+            .maybeSingle();
+      }
 
       if (res == null) {
         if (mounted) {
