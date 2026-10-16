@@ -520,7 +520,10 @@ class _LoginScreenState extends State<LoginScreen>
                 controller: _emailController,
                 style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
                 keyboardType: TextInputType.emailAddress,
-                decoration: _inputDecoration(hintText: 'alex.rivera@company.com'),
+                decoration: _inputDecoration(
+                  hintText: 'alex.rivera@company.com',
+                  prefixIcon: Icons.email_outlined,
+                ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) return 'Sila masukkan emel';
                   if (!value.contains('@')) return 'Emel tidak sah';
@@ -566,6 +569,7 @@ class _LoginScreenState extends State<LoginScreen>
                 style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
                 decoration: _inputDecoration(
                   hintText: '••••••••',
+                  prefixIcon: Icons.lock_outline,
                   isPassword: true,
                   obscure: _obscurePassword,
                   onToggle: () => setState(() => _obscurePassword = !_obscurePassword),
