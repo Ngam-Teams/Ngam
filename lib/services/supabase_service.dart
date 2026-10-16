@@ -32,6 +32,18 @@ class SupabaseService {
     }
   }
 
+  /// Update password semasa recovery flow (tanpa perlukan kata laluan lama)
+  static Future<String?> updateRecoveryPassword({
+    required String newPassword,
+  }) async {
+    try {
+      await client.auth.updateUser(UserAttributes(password: newPassword));
+      return null;
+    } catch (e) {
+      return e.toString().replaceAll('Exception: ', '');
+    }
+  }
+
   /// Update nama display dengan nombor fon kat table profiles
   static Future<String?> updateProfile({
     required String userId,

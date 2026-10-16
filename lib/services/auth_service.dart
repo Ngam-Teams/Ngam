@@ -172,7 +172,13 @@ class AuthService {
 
   /// Send password reset email
   static Future<void> resetPasswordForEmail(String email) async {
-    await _client.auth.resetPasswordForEmail(email.trim());
+    final redirectUrl = kIsWeb
+        ? '${Uri.base.origin}/reset-password'
+        : 'https://ngam.dev/reset-password';
+    await _client.auth.resetPasswordForEmail(
+      email.trim(),
+      redirectTo: redirectUrl,
+    );
   }
 
   /// Get current logged-in user profile

@@ -13,11 +13,13 @@ import 'l10n/generated/app_localizations.dart';
 
 // ─── Screens ─────────────────────────────────────────────────
 import 'screens/auth/login_screen.dart';
+import 'screens/auth/reset_password_screen.dart';
 import 'screens/customer/customer_home_screen.dart';
 import 'screens/customer/review_screen.dart';
 import 'screens/shared/profile_screen.dart';
 import 'screens/shared/privacy_security_screen.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'screens/explore/store_route_loader.dart';
 import 'screens/shared/my_queue_ticket_screen.dart';
@@ -43,6 +45,15 @@ void main() async {
 
   // Setup Supabase
   await SupabaseService.initialize();
+
+  // Listen for Supabase password recovery event (bila user tekan link reset emel)
+  SupabaseService.client.auth.onAuthStateChange.listen((data) {
+    if (data.event == AuthChangeEvent.passwordRecovery) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        navigatorKey.currentState?.pushNamed('/reset-password');
+      });
+    }
+  });
 
   // Setup Push Notifications asynchronously without delaying initial UI mount
   PushService.initialize().catchError((e) {
@@ -159,12 +170,33 @@ class NgamApp extends StatelessWidget {
                     transitionsBuilder: (_, animation, __, child) =>
                         FadeTransition(opacity: animation, child: child),
                   );
+                case '/reset-password':
+                  return PageRouteBuilder(
+                    settings: settings,
+                    transitionDuration: const Duration(milliseconds: 200),
+                    reverseTransitionDuration: const Duration(milliseconds: 180),
+                    pageBuilder: (_, __, ___) => const ResetPasswordScreen(),
+                    transitionsBuilder: (_, animation, __, child) =>
+                        FadeTransition(opacity: animation, child: child),
+                  );
                 case '/customer-home':
                   return MaterialPageRoute(settings: settings, builder: (_) => const CustomerHomeScreen());
                 case '/review':
                   return MaterialPageRoute(settings: settings, builder: (_) => const ReviewScreen());
                 case '/profile':
                   return MaterialPageRoute(settings: settings, builder: (_) => const ProfileScreen());
+              }
+
+              // Deep Link Custom Scheme: ngam://reset-password
+              if (uri.scheme == 'ngam' && uri.host == 'reset-password') {
+                return PageRouteBuilder(
+                  settings: settings,
+                  transitionDuration: const Duration(milliseconds: 200),
+                  reverseTransitionDuration: const Duration(milliseconds: 180),
+                  pageBuilder: (_, __, ___) => const ResetPasswordScreen(),
+                  transitionsBuilder: (_, animation, __, child) =>
+                      FadeTransition(opacity: animation, child: child),
+                );
               }
 
               // 4. Default / Home Fallback
