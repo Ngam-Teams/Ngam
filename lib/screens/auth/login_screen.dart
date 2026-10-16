@@ -1213,6 +1213,7 @@ class _LoginScreenState extends State<LoginScreen>
           }
         },
         style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           backgroundColor: Colors.white.withValues(alpha: 0.04),
           side: BorderSide(
