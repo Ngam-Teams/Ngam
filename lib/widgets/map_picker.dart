@@ -346,7 +346,8 @@ class _MapPickerState extends State<MapPicker> {
             children: [
               TileLayer(
                 urlTemplate:
-                    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=cb1_470b_1_5dec1f354e103fb7efca8d68',
+                    'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+                subdomains: const ['0', '1', '2', '3'],
                 userAgentPackageName: 'com.ngam.app',
                 errorTileCallback: (tile, error, stackTrace) {},
                 keepBuffer: 5,
@@ -356,9 +357,10 @@ class _MapPickerState extends State<MapPicker> {
                   if (!isDark) return tileWidget;
                   return ColorFiltered(
                     colorFilter: const ColorFilter.matrix([
-                       0.574, -1.430, -0.144, 0.0, 265.0,
-                      -0.426, -0.430, -0.144, 0.0, 265.0,
-                      -0.426, -1.430,  0.856, 0.0, 270.0,
+                      // Google Maps Official Dark Mode Color Matrix:
+                       0.674, -1.406, -0.142, 0.0, 240.0,
+                      -0.419, -0.314, -0.142, 0.0, 245.0,
+                      -0.419, -1.406,  0.951, 0.0, 255.0,
                        0.0,    0.0,    0.0,   1.0,   0.0,
                     ]),
                     child: tileWidget,

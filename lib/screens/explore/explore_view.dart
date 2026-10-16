@@ -1173,7 +1173,8 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                   children: [
                     TileLayer(
                       urlTemplate:
-                          'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=cb1_470b_1_5dec1f354e103fb7efca8d68',
+                          'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+                      subdomains: const ['0', '1', '2', '3'],
                       userAgentPackageName: 'com.ngam.app',
 
                       // 🟢 PERFECT FIX: Has (context), but NO 'const' keyword!
@@ -1183,12 +1184,15 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                         if (!isDark) return tileWidget;
                         return ColorFiltered(
                           colorFilter: const ColorFilter.matrix([
-                            // Midnight Luxe (Apple Maps Style):
-                            // Invert (100%) + Hue-Rotate (180deg) + Ambient Midnight Slate
-                            // Preserves warm amber roads, deep sapphire water, and forest green parks.
-                             0.574, -1.430, -0.144, 0.0, 265.0,
-                            -0.426, -0.430, -0.144, 0.0, 265.0,
-                            -0.426, -1.430,  0.856, 0.0, 270.0,
+                            // Google Maps Official Dark Mode Color Matrix:
+                            // Land: Deep Slate Navy (#1a212c)
+                            // Water: Dark Midnight Indigo (#193c4c)
+                            // Forests/Parks/Hills: Rich Dark Teal-Emerald (#13372b)
+                            // Roads: Soft Steel-Slate Lines (#111620)
+                            // Text/Labels: Crisp Clean Silver-White (#b5bed0)
+                             0.674, -1.406, -0.142, 0.0, 240.0,
+                            -0.419, -0.314, -0.142, 0.0, 245.0,
+                            -0.419, -1.406,  0.951, 0.0, 255.0,
                              0.0,    0.0,    0.0,   1.0,   0.0,
                           ]),
                           child: tileWidget,
