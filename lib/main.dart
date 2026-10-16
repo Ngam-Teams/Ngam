@@ -118,7 +118,22 @@ class NgamApp extends StatelessWidget {
               final uri = Uri.tryParse(settings.name ?? '') ?? Uri();
               final segments = uri.pathSegments;
 
-              // 1. /store/:businessId?table=X&promo=Y
+              // 1. /@:handle or /@:handle?table=X&promo=Y (e.g. /@pisangkrispy?table=1)
+              if (segments.isNotEmpty && Uri.decodeComponent(segments.first).startsWith('@')) {
+                final rawHandle = Uri.decodeComponent(segments.first).substring(1);
+                final tableNumber = uri.queryParameters['table'];
+                final promoCode = uri.queryParameters['promo'];
+                return MaterialPageRoute(
+                  settings: settings,
+                  builder: (_) => StoreRouteLoader(
+                    businessId: rawHandle,
+                    tableNumber: tableNumber,
+                    promoCode: promoCode,
+                  ),
+                );
+              }
+
+              // 2. /store/:businessId?table=X&promo=Y (legacy / fallback)
               if (segments.isNotEmpty && segments.first == 'store') {
                 final businessId = segments.length > 1 ? segments[1] : '';
                 final tableNumber = uri.queryParameters['table'];
@@ -133,7 +148,7 @@ class NgamApp extends StatelessWidget {
                 );
               }
 
-              // 2. /queue/:businessId
+              // 3. /queue/:businessId
               if (segments.isNotEmpty && segments.first == 'queue') {
                 return MaterialPageRoute(
                   settings: settings,
