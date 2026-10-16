@@ -1172,9 +1172,8 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                   ),
                   children: [
                     TileLayer(
-                      urlTemplate: isDark
-                          ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=cb1_470b_1_5dec1f354e103fb7efca8d68'
-                          : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=cb1_470b_1_5dec1f354e103fb7efca8d68',
+                      urlTemplate:
+                          'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=cb1_470b_1_5dec1f354e103fb7efca8d68',
                       userAgentPackageName: 'com.ngam.app',
 
                       // 🟢 PERFECT FIX: Has (context), but NO 'const' keyword!
@@ -1184,10 +1183,13 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                         if (!isDark) return tileWidget;
                         return ColorFiltered(
                           colorFilter: const ColorFilter.matrix([
-                            0.85, 0, 0, 0, 8,
-                            0, 0.85, 0, 0, 10,
-                            0, 0, 1.0, 0, 15,
-                            0, 0, 0, 1, 0,
+                            // Midnight Luxe (Apple Maps Style):
+                            // Invert (100%) + Hue-Rotate (180deg) + Ambient Midnight Slate
+                            // Preserves warm amber roads, deep sapphire water, and forest green parks.
+                             0.574, -1.430, -0.144, 0.0, 265.0,
+                            -0.426, -0.430, -0.144, 0.0, 265.0,
+                            -0.426, -1.430,  0.856, 0.0, 270.0,
+                             0.0,    0.0,    0.0,   1.0,   0.0,
                           ]),
                           child: tileWidget,
                         );
