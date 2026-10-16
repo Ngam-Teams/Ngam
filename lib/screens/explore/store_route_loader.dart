@@ -74,13 +74,11 @@ class _StoreRouteLoaderState extends State<StoreRouteLoader> {
       }
 
       // If still not found, try fallback by business_name ilike
-      if (res == null) {
-        res = await Supabase.instance.client
-            .from('businesses')
-            .select()
-            .ilike('business_name', '%$cleanHandle%')
-            .maybeSingle();
-      }
+      res ??= await Supabase.instance.client
+          .from('businesses')
+          .select()
+          .ilike('business_name', '%$cleanHandle%')
+          .maybeSingle();
 
       if (res == null) {
         if (mounted) {
