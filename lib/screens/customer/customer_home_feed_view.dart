@@ -12,7 +12,9 @@ import '../../widgets/glass_toast.dart';
 import '../explore/business_store_view.dart';
 import '../explore/my_bookings_view.dart';
 import '../explore/qr_scanner_screen.dart';
+import '../explore/store_route_loader.dart';
 import '../shared/my_queue_ticket_screen.dart';
+import 'package:flutter/services.dart';
 
 // =============================================================================
 // CustomerHomeFeedView — Laman Utama (Home) Pelanggan Serba Baru & Ultra Modern
@@ -399,6 +401,152 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
     );
   }
 
+  void _openQrScanner() async {
+    final scannedData = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const QRScannerScreen()),
+    );
+
+    if (scannedData == null || scannedData.isEmpty || !mounted) return;
+    _handleScannedQr(scannedData);
+  }
+
+  void _handleScannedQr(String rawData) {
+    final query = rawData.trim();
+
+    // 1. WiFi QR format
+    if (query.startsWith('WIFI:')) {
+      String ssid = 'WiFi Tetamu';
+      String pass = '';
+      final parts = query.replaceFirst('WIFI:', '').split(';');
+      for (final part in parts) {
+        if (part.startsWith('S:')) ssid = part.substring(2);
+        if (part.startsWith('P:')) pass = part.substring(2);
+      }
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF141424),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: Colors.white12),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.wifi_rounded, color: Color(0xFF42A5F5), size: 22),
+              SizedBox(width: 10),
+              Text(
+                'WiFi Tetamu Kedai',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Maklumat WiFi dikesan daripada imbasan:',
+                style: TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'SSID: $ssid',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Kata Laluan: $pass',
+                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Tutup', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF42A5F5),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: pass));
+                Navigator.pop(ctx);
+                showGlassToast(context, 'Kata laluan WiFi disalin ke papan klip!');
+              },
+              icon: const Icon(Icons.copy_rounded, size: 16),
+              label: const Text('Salin Kata Laluan'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // 2. Smart Queue format
+    if (query.startsWith('NGAM_QUEUE:') || query.contains('/queue/')) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const MyQueueTicketScreen()),
+      );
+      showGlassToast(context, 'Membuka Giliran Pintar Kedai...');
+      return;
+    }
+
+    // 3. Storefront / Table / Promo format
+    final uri = Uri.tryParse(query);
+    String identifier = query;
+    String? table;
+    String? promo;
+
+    if (uri != null &&
+        (uri.scheme == 'http' || uri.scheme == 'https' || uri.scheme == 'ngam')) {
+      table = uri.queryParameters['table'];
+      promo = uri.queryParameters['promo'];
+      if (uri.pathSegments.isNotEmpty) {
+        identifier = uri.pathSegments.last;
+      }
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StoreRouteLoader(
+          businessId: identifier,
+          tableNumber: table,
+          promoCode: promo,
+        ),
+      ),
+    );
+  }
+
   // --- WIDGET 1: TOP HEADER ---
   Widget _buildTopHeader(bool isDark) {
     return Row(
@@ -503,12 +651,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
               children: [
                 // QR Button
                 GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const QRScannerScreen()),
-                    );
-                  },
+                  onTap: _openQrScanner,
                   behavior: HitTestBehavior.opaque,
                   child: Container(
                     padding: const EdgeInsets.all(9),
