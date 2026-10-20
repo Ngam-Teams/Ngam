@@ -23,8 +23,10 @@ class ForgotPasswordScreen extends StatefulWidget {
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _inputController = TextEditingController();
   bool _emailSent = false;
+  String _recoveryMode = 'email'; // 'email' or 'phone'
+  String? _recoveredMaskedEmail;
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -59,7 +61,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _inputController.dispose();
     _fadeController.dispose();
     super.dispose();
   }
@@ -68,21 +70,38 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     if (!_formKey.currentState!.validate()) return;
 
     final authProvider = context.read<AuthProvider>();
-    final success = await authProvider.resetPassword(_emailController.text.trim());
+    final input = _inputController.text.trim();
 
-    if (!mounted) return;
+    if (_recoveryMode == 'phone') {
+      final res = await authProvider.lookupAccountByPhone(input);
+      if (!mounted) return;
 
-    if (success) {
-      setState(() {
-        _emailSent = true;
-      });
+      if (res['success'] == true) {
+        final targetEmail = res['email']?.toString() ?? '';
+        _recoveredMaskedEmail = res['masked_email']?.toString() ?? targetEmail;
+        final success = await authProvider.resetPassword(targetEmail);
+        if (mounted && success) {
+          setState(() {
+            _emailSent = true;
+          });
+        }
+      } else {
+        final error = res['message']?.toString() ?? 'Tiada akaun dijumpai untuk nombor telefon ini.';
+        showGlassToast(context, error, isError: true);
+      }
     } else {
-      final error = authProvider.error ?? 'Ralat menghantar emel pemulihan.';
-      showGlassToast(
-        context,
-        error,
-        isError: true,
-      );
+      _recoveredMaskedEmail = input;
+      final success = await authProvider.resetPassword(input);
+      if (!mounted) return;
+
+      if (success) {
+        setState(() {
+          _emailSent = true;
+        });
+      } else {
+        final error = authProvider.error ?? 'Ralat menghantar emel pemulihan.';
+        showGlassToast(context, error, isError: true);
+      }
     }
   }
 
@@ -265,13 +284,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // ─── Glowing Icon Badge ───
+          // ─── Ikon Kunci Moden ───
           Container(
             width: 58,
             height: 58,
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
               color: accentBlue.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
               border: Border.all(
                 color: accentBlue.withValues(alpha: 0.35),
                 width: 1,
@@ -296,7 +315,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
 
           // ─── Tajuk ───
           Text(
-            'RESET PASSWORD',
+            'PULIHKAN AKAUN',
             style: GoogleFonts.outfit(
               fontSize: 13,
               fontWeight: FontWeight.w700,
@@ -306,16 +325,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
           ),
           const SizedBox(height: 6),
           Text(
-            'Lupa Kata Laluan?',
+            'Lupa Emel atau Kata Laluan?',
             style: GoogleFonts.outfit(
-              fontSize: 22,
+              fontSize: 21,
               fontWeight: FontWeight.w800,
               color: textPrimary,
             ),
           ),
           const SizedBox(height: 6),
           Text(
-            'Masukkan alamat emel berdaftar anda untuk menerima pautan penetapan semula kata laluan.',
+            'Masukkan alamat emel atau nombor telefon berdaftar anda untuk menerima pautan penetapan semula kata laluan.',
             style: GoogleFonts.inter(
               fontSize: 12.5,
               color: textSecondary,
@@ -323,22 +342,91 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 18),
 
-          // ─── Input Email ───
+          // ─── Mode Switcher: Emel vs No Telefon ───
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _recoveryMode = 'email';
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _recoveryMode == 'email' ? accentBlue : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '✉️ Guna Emel',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          fontWeight: _recoveryMode == 'email' ? FontWeight.w700 : FontWeight.w500,
+                          color: _recoveryMode == 'email' ? Colors.white : textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _recoveryMode = 'phone';
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _recoveryMode == 'phone' ? const Color(0xFF10B981) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '📱 No. Telefon (Lupa Emel)',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          fontWeight: _recoveryMode == 'phone' ? FontWeight.w700 : FontWeight.w500,
+                          color: _recoveryMode == 'phone' ? Colors.white : textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ─── Input Field ───
           TextFormField(
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
+            controller: _inputController,
+            keyboardType: _recoveryMode == 'phone' ? TextInputType.phone : TextInputType.emailAddress,
             style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
             decoration: InputDecoration(
-              hintText: 'Alamat Emel Anda',
+              hintText: _recoveryMode == 'phone' ? '0123456789 atau +6012...' : 'Alamat Emel Anda',
               hintStyle: GoogleFonts.inter(
                 color: textSecondary.withValues(alpha: 0.6),
                 fontSize: 13,
               ),
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.04),
-              prefixIcon: const Icon(Icons.email_outlined, color: textSecondary, size: 18),
+              prefixIcon: Icon(
+                _recoveryMode == 'phone' ? Icons.phone_iphone_outlined : Icons.email_outlined,
+                color: textSecondary,
+                size: 18,
+              ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -354,22 +442,38 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: accentBlue,
+                borderSide: BorderSide(
+                  color: _recoveryMode == 'phone' ? const Color(0xFF10B981) : accentBlue,
                   width: 1.5,
                 ),
               ),
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'Sila masukkan alamat emel';
+                return _recoveryMode == 'phone' ? 'Sila masukkan nombor telefon' : 'Sila masukkan alamat emel';
               }
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value.trim())) {
+              if (_recoveryMode == 'email' && !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value.trim())) {
                 return 'Format emel tidak sah';
+              }
+              if (_recoveryMode == 'phone' && value.replaceAll(RegExp(r'[^0-9]'), '').length < 8) {
+                return 'Nombor telefon tidak sah';
               }
               return null;
             },
           ),
+          if (_recoveryMode == 'phone')
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                '💡 Kami akan mencari emel akaun anda dan menghantar pautan reset kata laluan secara percuma ke emel tersebut.',
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  color: const Color(0xFF10B981),
+                  height: 1.35,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
           const SizedBox(height: 20),
 
           // ─── Butang Hantar ───
@@ -381,7 +485,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                 child: ElevatedButton(
                   onPressed: auth.isLoading ? null : _handleReset,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: accentBlue,
+                    backgroundColor: _recoveryMode == 'phone' ? const Color(0xFF10B981) : accentBlue,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -398,9 +502,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                           ),
                         )
                       : Text(
-                          'SEND RESET LINK',
+                          _recoveryMode == 'phone' ? 'CARI AKAUN & RESET' : 'SEND RESET LINK',
                           style: GoogleFonts.outfit(
-                            fontSize: 13.5,
+                            fontSize: 13,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 2.0,
                             color: Colors.white,
@@ -469,7 +573,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
         ),
         const SizedBox(height: 18),
         Text(
-          'Pautan Telah Dihantar!',
+          _recoveryMode == 'phone' ? 'Akaun Dijumpai!' : 'Pautan Telah Dihantar!',
           style: GoogleFonts.outfit(
             fontSize: 20,
             fontWeight: FontWeight.w800,
@@ -477,9 +581,40 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF44CF6C).withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFF44CF6C).withValues(alpha: 0.25)),
+          ),
+          child: Column(
+            children: [
+              Text(
+                'EMEL BERDAFTAR ANDA',
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.0,
+                  color: const Color(0xFF44CF6C),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _recoveredMaskedEmail ?? _inputController.text.trim(),
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
         Text(
-          'Sila semak peti masuk emel ${_emailController.text.trim()} untuk arahan penetapan semula kata laluan anda.',
+          'Pautan penetapan semula kata laluan telah dihantar ke alamat emel di atas secara percuma. Sila buka peti masuk anda sekarang.',
           style: GoogleFonts.inter(
             fontSize: 12.5,
             color: textSecondary,

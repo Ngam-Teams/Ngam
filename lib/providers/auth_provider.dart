@@ -198,6 +198,25 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Lookup account email by phone number (Forgot Email recovery)
+  Future<Map<String, dynamic>> lookupAccountByPhone(String phone) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final res = await AuthService.lookupAccountByPhone(phone);
+      _isLoading = false;
+      notifyListeners();
+      return res;
+    } catch (e) {
+      _error = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return {'success': false, 'message': _error};
+    }
+  }
+
   /// Switch user role between customer and runner
   Future<void> switchRole() async {
     if (_user == null) return;
