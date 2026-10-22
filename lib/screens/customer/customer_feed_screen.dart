@@ -479,6 +479,10 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     final int likes = post['likes'] ?? 0;
     final int comments = post['comments'] ?? 0;
 
+    final double screenHeight = MediaQuery.sizeOf(context).height;
+    final bool isShortPhone = screenHeight < 720;
+    final double actionSpacing = isShortPhone ? 10 : 14;
+
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -555,7 +559,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           ),
         ),
 
-        // 2. RIGHT-SIDE FLOATING ACTION BAR (TIKTOK STYLE)
+        // 2. RIGHT-SIDE FLOATING ACTION BAR (TIKTOK STYLE - ADAPTIVE FOR PHONES)
         Positioned(
           right: 12,
           bottom: bottomOffset + 6,
@@ -570,8 +574,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                   alignment: Alignment.center,
                   children: [
                     Container(
-                      width: 48,
-                      height: 48,
+                      width: isShortPhone ? 42 : 48,
+                      height: isShortPhone ? 42 : 48,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
@@ -591,13 +595,13 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                       ),
                     ),
                     Positioned(
-                      bottom: -8,
+                      bottom: -7,
                       child: GestureDetector(
                         onTap: () => _toggleFollow(post),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
-                          width: 20,
-                          height: 20,
+                          width: isShortPhone ? 18 : 20,
+                          height: isShortPhone ? 18 : 20,
                           decoration: BoxDecoration(
                             color: isFollowed
                                 ? const Color(0xFF10B981)
@@ -617,7 +621,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                             isFollowed
                                 ? Icons.check_rounded
                                 : Icons.add_rounded,
-                            size: 14,
+                            size: isShortPhone ? 12 : 14,
                             color: Colors.black,
                           ),
                         ),
@@ -627,7 +631,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                 ),
               ),
 
-              const SizedBox(height: 18),
+              SizedBox(height: isShortPhone ? 12 : 16),
 
               // Like (Hati) Action
               _buildRightActionButton(
@@ -637,19 +641,21 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                 iconColor:
                     isLiked ? const Color(0xFFFF2B54) : Colors.white,
                 label: '$likes',
+                isCompact: isShortPhone,
                 onTap: () => _toggleLike(post),
               ),
 
-              const SizedBox(height: 14),
+              SizedBox(height: actionSpacing),
 
               // Comment Action
               _buildRightActionButton(
                 hugeIcon: HugeIcons.strokeRoundedComment01,
                 label: '$comments',
+                isCompact: isShortPhone,
                 onTap: () => _showCommentsModal(context, post),
               ),
 
-              const SizedBox(height: 14),
+              SizedBox(height: actionSpacing),
 
               // Save / Bookmark Action
               _buildRightActionButton(
@@ -659,19 +665,21 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                 iconColor:
                     isSaved ? const Color(0xFFFBBF24) : Colors.white,
                 label: 'Simpan',
+                isCompact: isShortPhone,
                 onTap: () => _toggleSave(post),
               ),
 
-              const SizedBox(height: 14),
+              SizedBox(height: actionSpacing),
 
               // Share Action
               _buildRightActionButton(
                 hugeIcon: HugeIcons.strokeRoundedShare01,
                 label: 'Kongsi',
+                isCompact: isShortPhone,
                 onTap: () => _sharePost(post),
               ),
 
-              const SizedBox(height: 14),
+              SizedBox(height: actionSpacing),
 
               // Rotating Merchant Vinyl Disc
               GestureDetector(
@@ -679,9 +687,9 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                 child: RotationTransition(
                   turns: _discAnimController,
                   child: Container(
-                    width: 40,
-                    height: 40,
-                    padding: const EdgeInsets.all(8),
+                    width: isShortPhone ? 34 : 40,
+                    height: isShortPhone ? 34 : 40,
+                    padding: EdgeInsets.all(isShortPhone ? 6 : 8),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: const RadialGradient(
@@ -714,7 +722,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         // 3. BOTTOM CONTENT OVERLAY (Positioned safely ABOVE Floating Navbar)
         Positioned(
           left: 16,
-          right: 78, // Space for right action bar
+          right: 76, // Space for right action bar
           bottom: bottomOffset,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -749,13 +757,17 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                         size: 16,
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        post['ctaText'] ?? 'AMBIL GILIRAN',
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.3,
+                      Flexible(
+                        child: Text(
+                          post['ctaText'] ?? 'AMBIL GILIRAN',
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.3,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -797,12 +809,16 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                       size: 16,
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      '· ${post['location']}',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                    Flexible(
+                      child: Text(
+                        '· ${post['location']}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -868,15 +884,17 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     dynamic hugeIcon,
     Color iconColor = Colors.white,
     required String label,
+    bool isCompact = false,
     required VoidCallback onTap,
   }) {
+    final double buttonSize = isCompact ? 38 : 44;
     return GestureDetector(
       onTap: onTap,
       child: Column(
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: buttonSize,
+            height: buttonSize,
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.35),
               shape: BoxShape.circle,
@@ -890,18 +908,18 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             ),
             child: Center(
               child: icon != null
-                  ? Icon(icon, color: iconColor, size: 26)
-                  : HugeIcon(icon: hugeIcon, color: iconColor, size: 22),
+                  ? Icon(icon, color: iconColor, size: isCompact ? 22 : 26)
+                  : HugeIcon(icon: hugeIcon, color: iconColor, size: isCompact ? 19 : 22),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 11,
+              fontSize: isCompact ? 10 : 11,
               fontWeight: FontWeight.w700,
-              shadows: [
+              shadows: const [
                 Shadow(color: Colors.black, blurRadius: 6),
               ],
             ),
