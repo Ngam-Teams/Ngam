@@ -248,7 +248,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
               id,
               business_name,
               business_handle,
-              logo_url,
+              business_logo_url,
               business_industry,
               business_city,
               state
@@ -274,7 +274,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                   : '@${handleRaw.trim()}')
               : '@${shopName.toLowerCase().replaceAll(RegExp(r'\s+'), '')}';
 
-          final logoUrl = biz['logo_url']?.toString();
+          final logoUrl = biz['business_logo_url']?.toString() ??
+              biz['logo_url']?.toString();
           final shopAvatar = (logoUrl != null && logoUrl.trim().isNotEmpty)
               ? logoUrl.trim()
               : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200';
