@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../widgets/glass_toast.dart';
 import '../explore/business_store_view.dart';
 
@@ -30,8 +31,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   // Double-tap heart animation items
   final List<_FloatingHeart> _hearts = [];
 
-  // Feed posts dataset
-  final List<Map<String, dynamic>> _posts = [
+  // Feed posts dataset fallback (Demo)
+  static final List<Map<String, dynamic>> _demoPosts = [
     {
       'id': '1',
       'shopName': 'Barber Danial',
@@ -196,14 +197,20 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     },
   ];
 
+  // Active Feed Posts (Live from Supabase or fallback)
+  List<Map<String, dynamic>> _posts = [];
+  bool _isLoading = false;
+
   @override
   void initState() {
     super.initState();
+    _posts = List.from(_demoPosts);
     _pageController = PageController();
     _discAnimController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 5),
     )..repeat();
+    _fetchLivePosts();
   }
 
   @override
@@ -213,10 +220,161 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     super.dispose();
   }
 
+  /// Tarik pos suapan langsung dari jadual 'feed_posts' (bersama maklumat kedai)
+  Future<void> _fetchLivePosts() async {
+    setState(() => _isLoading = true);
+    try {
+      final res = await Supabase.instance.client
+          .from('feed_posts')
+          .select('''
+            id,
+            business_id,
+            title,
+            caption,
+            media_url,
+            media_type,
+            category,
+            service_tag,
+            cta_type,
+            cta_text,
+            status,
+            is_pinned,
+            likes_count,
+            comments_count,
+            shares_count,
+            views_count,
+            created_at,
+            businesses (
+              id,
+              business_name,
+              business_handle,
+              logo_url,
+              business_industry,
+              business_city,
+              state
+            )
+          ''')
+          .eq('status', 'published')
+          .order('is_pinned', ascending: false)
+          .order('created_at', ascending: false);
+
+      if (res.isNotEmpty) {
+        final List<Map<String, dynamic>> loaded = [];
+        for (final item in res) {
+          final row = Map<String, dynamic>.from(item as Map);
+          final biz = row['businesses'] != null
+              ? Map<String, dynamic>.from(row['businesses'] as Map)
+              : <String, dynamic>{};
+
+          final shopName = biz['business_name']?.toString() ?? 'Kedai Ngam';
+          final handleRaw = biz['business_handle']?.toString();
+          final shopHandle = (handleRaw != null && handleRaw.trim().isNotEmpty)
+              ? (handleRaw.trim().startsWith('@')
+                  ? handleRaw.trim()
+                  : '@${handleRaw.trim()}')
+              : '@${shopName.toLowerCase().replaceAll(RegExp(r'\s+'), '')}';
+
+          final logoUrl = biz['logo_url']?.toString();
+          final shopAvatar = (logoUrl != null && logoUrl.trim().isNotEmpty)
+              ? logoUrl.trim()
+              : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200';
+
+          final locParts = [biz['business_city'], biz['state']]
+              .where((s) => s != null && s.toString().trim().isNotEmpty)
+              .map((s) => s.toString().trim())
+              .toList();
+          final location =
+              locParts.isNotEmpty ? locParts.join(', ') : 'Malaysia';
+
+          // Format masa
+          final createdAt =
+              DateTime.tryParse(row['created_at']?.toString() ?? '') ??
+                  DateTime.now();
+          final diff = DateTime.now().difference(createdAt);
+          String timeAgo;
+          if (diff.inMinutes < 60) {
+            final m = diff.inMinutes;
+            timeAgo = '${m > 0 ? m : 1} min lepas';
+          } else if (diff.inHours < 24) {
+            timeAgo = '${diff.inHours} jam lepas';
+          } else if (diff.inDays < 7) {
+            timeAgo = '${diff.inDays} hari lepas';
+          } else {
+            timeAgo = '${createdAt.day}/${createdAt.month}/${createdAt.year}';
+          }
+
+          final mediaUrl = row['media_url']?.toString() ?? '';
+          final ctaType = row['cta_type']?.toString() ?? 'queue';
+          final ctaText = row['cta_text']?.toString() ?? '⚡ AMBIL GILIRAN';
+          final serviceTag =
+              row['service_tag']?.toString() ?? '⚡ Servis Pantas Ngam';
+
+          loaded.add({
+            'id': row['id'].toString(),
+            'businessId': row['business_id']?.toString(),
+            'shopName': shopName,
+            'shopHandle': shopHandle,
+            'shopAvatar': shopAvatar,
+            'category': row['category'] ?? biz['business_industry'] ?? 'general',
+            'timeAgo': timeAgo,
+            'location': location,
+            'image': mediaUrl.isNotEmpty
+                ? mediaUrl
+                : 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=800',
+            'mediaType': row['media_type'] ?? 'image',
+            'title': row['title'] ?? '',
+            'caption': row['caption'] ?? '',
+            'serviceTag': serviceTag,
+            'ctaType': ctaType,
+            'ctaText': ctaText,
+            'likes': (row['likes_count'] as num?)?.toInt() ?? 0,
+            'isLiked': false,
+            'isSaved': false,
+            'isFollowed': false,
+            'comments': (row['comments_count'] as num?)?.toInt() ?? 0,
+            'commentList': <Map<String, dynamic>>[],
+            'shopData': {
+              'id': biz['id'] ?? row['business_id'],
+              'name': shopName,
+              'business_name': shopName,
+              'business_handle': shopHandle,
+              'logo_url': shopAvatar,
+              'image': shopAvatar,
+              'category':
+                  biz['business_industry'] ?? row['category'] ?? 'general',
+              'rating': 4.9,
+              'reviews': 50,
+            },
+          });
+        }
+
+        if (mounted) {
+          setState(() {
+            _posts = loaded;
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+    } catch (e) {
+      debugPrint('[CustomerFeedScreen] Live posts fetch fallback to demo: $e');
+    }
+
+    if (mounted) {
+      setState(() {
+        if (_posts.isEmpty) {
+          _posts = List.from(_demoPosts);
+        }
+        _isLoading = false;
+      });
+    }
+  }
+
   // Double-tap handler for heart animation
   void _handleDoubleTap(Offset position, Map<String, dynamic> post) {
+    final bool wasLiked = post['isLiked'] == true;
     setState(() {
-      if (!post['isLiked']) {
+      if (!wasLiked) {
         post['isLiked'] = true;
         post['likes'] = (post['likes'] as int) + 1;
       }
@@ -232,6 +390,18 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         },
       ));
     });
+
+    if (!wasLiked) {
+      final postId = post['id']?.toString();
+      if (postId != null && postId.length > 20) {
+        Supabase.instance.client.rpc('toggle_feed_post_like', params: {
+          'p_post_id': postId,
+          'p_increment': true,
+        }).catchError((e) {
+          debugPrint('[CustomerFeedScreen] Double-tap like RPC failed: $e');
+        });
+      }
+    }
   }
 
   void _toggleLike(Map<String, dynamic> post) {
@@ -240,6 +410,51 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       post['isLiked'] = !isLiked;
       post['likes'] = (post['likes'] as int) + (isLiked ? -1 : 1);
     });
+
+    final postId = post['id']?.toString();
+    if (postId != null && postId.length > 20) {
+      Supabase.instance.client.rpc('toggle_feed_post_like', params: {
+        'p_post_id': postId,
+        'p_increment': post['isLiked'] == true,
+      }).catchError((e) {
+        debugPrint('[CustomerFeedScreen] Like RPC failed: $e');
+      });
+    }
+  }
+
+  void _onPageChanged(int index) {
+    if (index >= 0 && index < _posts.length) {
+      final post = _posts[index];
+      final postId = post['id']?.toString();
+      if (postId != null && postId.length > 20) {
+        Supabase.instance.client.rpc('increment_feed_post_views', params: {
+          'p_post_id': postId,
+        }).catchError((e) {
+          debugPrint('[CustomerFeedScreen] View count RPC failed: $e');
+        });
+      }
+    }
+  }
+
+  void _handleCtaAction(Map<String, dynamic> post) {
+    final ctaType = post['ctaType']?.toString() ?? 'queue';
+    if (ctaType == 'queue') {
+      _openStore(post);
+      showGlassToast(
+        context,
+        'Membuka giliran untuk ${post['shopName']} ⚡',
+        icon: HugeIcons.strokeRoundedFlash,
+      );
+    } else if (ctaType == 'booking') {
+      _openStore(post);
+      showGlassToast(
+        context,
+        'Membuka tempahan untuk ${post['shopName']} 📅',
+        icon: HugeIcons.strokeRoundedCalendar03,
+      );
+    } else {
+      _openStore(post);
+    }
   }
 
   void _toggleFollow(Map<String, dynamic> post) {
@@ -302,15 +517,79 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       body: Stack(
         children: [
           // 1. VERTICAL FULL SCREEN PAGEVIEW (TIKTOK STYLE)
-          PageView.builder(
-            controller: _pageController,
-            scrollDirection: Axis.vertical,
-            physics: const BouncingScrollPhysics(),
-            itemCount: _posts.length,
-            itemBuilder: (context, index) {
-              final post = _posts[index];
-              return _buildFeedItem(post, bottomOffset);
-            },
+          RefreshIndicator(
+            color: const Color(0xFF00E5FF),
+            backgroundColor: const Color(0xFF141920),
+            onRefresh: _fetchLivePosts,
+            child: _posts.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.7,
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (_isLoading) ...[
+                                const CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: Color(0xFF00E5FF),
+                                ),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'Memuatkan suapan Ngam...',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ] else ...[
+                                const Icon(
+                                  Icons.movie_filter_rounded,
+                                  size: 48,
+                                  color: Colors.white24,
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Tiada pos suapan ditemui.',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                TextButton.icon(
+                                  onPressed: _fetchLivePosts,
+                                  icon: const Icon(Icons.refresh_rounded,
+                                      color: Color(0xFF00E5FF)),
+                                  label: const Text(
+                                    'Muat Semula',
+                                    style: TextStyle(color: Color(0xFF00E5FF)),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : PageView.builder(
+                    controller: _pageController,
+                    scrollDirection: Axis.vertical,
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
+                    onPageChanged: _onPageChanged,
+                    itemCount: _posts.length,
+                    itemBuilder: (context, index) {
+                      final post = _posts[index];
+                      return _buildFeedItem(post, bottomOffset);
+                    },
+                  ),
           ),
 
           // 2. DOUBLE-TAP POPPING HEARTS OVERLAY
@@ -325,39 +604,49 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
-                  // Logo Badge
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2.5),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF00E5FF), Color(0xFF0284C7)],
+                  // Logo Badge (Tap to refresh feed)
+                  GestureDetector(
+                    onTap: () {
+                      _fetchLivePosts();
+                      showGlassToast(
+                        context,
+                        'Memuat semula suapan Ngam... 🔄',
+                        icon: HugeIcons.strokeRoundedRefresh,
+                      );
+                    },
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2.5),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF00E5FF), Color(0xFF0284C7)],
+                            ),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          borderRadius: BorderRadius.circular(8),
+                          child: const Text(
+                            'NGAM',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
                         ),
-                        child: const Text(
-                          'NGAM',
+                        const SizedBox(width: 4),
+                        const Text(
+                          'FEED',
                           style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.5,
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Text(
-                        'FEED',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
 
                   const Spacer(),
@@ -730,7 +1019,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             children: [
               // EXCLUSIVE NGAM DIRECT CTA BUTTON
               GestureDetector(
-                onTap: () => _openStore(post),
+                onTap: () => _handleCtaAction(post),
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 10),
                   padding:
