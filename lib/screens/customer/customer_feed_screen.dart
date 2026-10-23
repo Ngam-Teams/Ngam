@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:video_player/video_player.dart';
 import '../../widgets/glass_toast.dart';
 import '../explore/business_store_view.dart';
 
@@ -27,6 +28,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   late AnimationController _discAnimController;
 
   int _activeTopTab = 1; // 0: 'Berhampiran', 1: 'Untuk Anda'
+  int _currentPage = 0;
+  bool _isMuted = false;
 
   // Double-tap heart animation items
   final List<_FloatingHeart> _hearts = [];
@@ -424,6 +427,9 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   }
 
   void _onPageChanged(int index) {
+    setState(() {
+      _currentPage = index;
+    });
     if (index >= 0 && index < _posts.length) {
       final post = _posts[index];
       final postId = post['id']?.toString();
@@ -435,6 +441,19 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         });
       }
     }
+  }
+
+  void _toggleMute() {
+    setState(() {
+      _isMuted = !_isMuted;
+    });
+    showGlassToast(
+      context,
+      _isMuted ? 'Audio Dimatikan 🔇' : 'Audio Dihidupkan 🔊',
+      icon: _isMuted
+          ? Icons.volume_off_rounded
+          : Icons.volume_up_rounded,
+    );
   }
 
   void _handleCtaAction(Map<String, dynamic> post) {
@@ -588,7 +607,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                     itemCount: _posts.length,
                     itemBuilder: (context, index) {
                       final post = _posts[index];
-                      return _buildFeedItem(post, bottomOffset);
+                      return _buildFeedItem(post, bottomOffset, index);
                     },
                   ),
           ),
@@ -762,7 +781,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   }
 
   // --- SINGLE FEED POST ITEM ---
-  Widget _buildFeedItem(Map<String, dynamic> post, double bottomOffset) {
+  Widget _buildFeedItem(
+      Map<String, dynamic> post, double bottomOffset, int index) {
     final bool isLiked = post['isLiked'] ?? false;
     final bool isSaved = post['isSaved'] ?? false;
     final bool isFollowed = post['isFollowed'] ?? false;
@@ -784,25 +804,35 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           child: Stack(
             fit: StackFit.expand,
             children: [
-              CachedNetworkImage(
-                imageUrl: post['image'],
-                fit: BoxFit.cover,
-                placeholder: (_, __) => Container(
-                  color: const Color(0xFF11171E),
-                  child: const Center(
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Color(0xFF00E5FF),
+              (post['mediaType'] == 'video' &&
+                      post['image'] != null &&
+                      (post['image'] as String).isNotEmpty)
+                  ? _FeedVideoPlayerItem(
+                      videoUrl: post['image'],
+                      isCurrentPage: index == _currentPage,
+                      isMuted: _isMuted,
+                      onToggleMute: _toggleMute,
+                    )
+                  : CachedNetworkImage(
+                      imageUrl: post['image'],
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => Container(
+                        color: const Color(0xFF11171E),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFF00E5FF),
+                          ),
+                        ),
+                      ),
+                      errorWidget: (_, __, ___) => Container(
+                        color: const Color(0xFF11171E),
+                        child: const Center(
+                          child: Icon(Icons.broken_image_rounded,
+                              color: Colors.white38),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                errorWidget: (_, __, ___) => Container(
-                  color: const Color(0xFF11171E),
-                  child: const Center(
-                    child: Icon(Icons.broken_image_rounded, color: Colors.white30),
-                  ),
-                ),
-              ),
 
               // Top dark shadow gradient for top bar readability
               Positioned(
@@ -970,6 +1000,21 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
               ),
 
               SizedBox(height: actionSpacing),
+
+              // Audio Mute/Unmute Action for Video
+              if (post['mediaType'] == 'video') ...[
+                _buildRightActionButton(
+                  icon: _isMuted
+                      ? Icons.volume_off_rounded
+                      : Icons.volume_up_rounded,
+                  iconColor:
+                      _isMuted ? Colors.white54 : const Color(0xFF00E5FF),
+                  label: _isMuted ? 'Bisu' : 'Audio',
+                  isCompact: isShortPhone,
+                  onTap: _toggleMute,
+                ),
+                SizedBox(height: actionSpacing),
+              ],
 
               // Rotating Merchant Vinyl Disc
               GestureDetector(
@@ -1547,6 +1592,188 @@ class _FloatingHeartState extends State<_FloatingHeart>
             Shadow(color: Colors.black54, blurRadius: 18),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// Helper: Pemain Video Skrin Penuh Gaya TikTok / Reels (Auto-loop & Vertical Fit)
+// =============================================================================
+class _FeedVideoPlayerItem extends StatefulWidget {
+  final String videoUrl;
+  final bool isCurrentPage;
+  final bool isMuted;
+  final VoidCallback onToggleMute;
+
+  const _FeedVideoPlayerItem({
+    required this.videoUrl,
+    required this.isCurrentPage,
+    required this.isMuted,
+    required this.onToggleMute,
+  });
+
+  @override
+  State<_FeedVideoPlayerItem> createState() => _FeedVideoPlayerItemState();
+}
+
+class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
+  late VideoPlayerController _controller;
+  bool _isInitialized = false;
+  bool _hasError = false;
+  bool _isUserPaused = false;
+  bool _showPlayStateIndicator = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeController();
+  }
+
+  void _initializeController() {
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
+      ..initialize().then((_) {
+        if (mounted) {
+          setState(() {
+            _isInitialized = true;
+          });
+          _controller.setLooping(true);
+          _controller.setVolume(widget.isMuted ? 0.0 : 1.0);
+          if (widget.isCurrentPage && !_isUserPaused) {
+            _controller.play();
+          }
+        }
+      }).catchError((e) {
+        debugPrint('[FeedVideoPlayer] Error loading video: $e');
+        if (mounted) {
+          setState(() {
+            _hasError = true;
+          });
+        }
+      });
+  }
+
+  @override
+  void didUpdateWidget(covariant _FeedVideoPlayerItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_isInitialized) {
+      if (widget.isCurrentPage != oldWidget.isCurrentPage) {
+        if (widget.isCurrentPage && !_isUserPaused) {
+          _controller.play();
+        } else {
+          _controller.pause();
+        }
+      }
+      if (widget.isMuted != oldWidget.isMuted) {
+        _controller.setVolume(widget.isMuted ? 0.0 : 1.0);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _togglePlayPause() {
+    if (!_isInitialized) return;
+    setState(() {
+      if (_controller.value.isPlaying) {
+        _controller.pause();
+        _isUserPaused = true;
+      } else {
+        _controller.play();
+        _isUserPaused = false;
+      }
+      _showPlayStateIndicator = true;
+    });
+
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) {
+        setState(() => _showPlayStateIndicator = false);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_hasError) {
+      return Container(
+        color: const Color(0xFF11171E),
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.videocam_off_rounded, color: Colors.white38, size: 42),
+              SizedBox(height: 8),
+              Text(
+                'Gagal memuatkan video',
+                style: TextStyle(color: Colors.white38, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (!_isInitialized) {
+      return Container(
+        color: const Color(0xFF11171E),
+        child: const Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Color(0xFF00E5FF),
+          ),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: _togglePlayPause,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Full Screen Cover Video (TikTok Style Vertical Fit)
+          FittedBox(
+            fit: BoxFit.cover,
+            clipBehavior: Clip.hardEdge,
+            child: SizedBox(
+              width: _controller.value.size.width > 0
+                  ? _controller.value.size.width
+                  : 720,
+              height: _controller.value.size.height > 0
+                  ? _controller.value.size.height
+                  : 1280,
+              child: VideoPlayer(_controller),
+            ),
+          ),
+
+          // Temporary Animated Play / Pause Icon Feedback
+          if (_showPlayStateIndicator || !_controller.value.isPlaying)
+            Center(
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 250),
+                opacity: _showPlayStateIndicator || !_controller.value.isPlaying
+                    ? 0.85
+                    : 0.0,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _controller.value.isPlaying
+                        ? Icons.play_arrow_rounded
+                        : Icons.pause_rounded,
+                    color: Colors.white,
+                    size: 48,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -80,6 +80,24 @@ class _StoreRouteLoaderState extends State<StoreRouteLoader> {
           .ilike('business_name', '%$cleanHandle%')
           .maybeSingle();
 
+      // If still not found, check if rawId is a voucher code
+      if (res == null) {
+        try {
+          final vRes = await Supabase.instance.client
+              .from('vouchers')
+              .select('business_id, code')
+              .ilike('code', cleanHandle)
+              .maybeSingle();
+          if (vRes != null && vRes['business_id'] != null) {
+            res = await Supabase.instance.client
+                .from('businesses')
+                .select()
+                .eq('id', vRes['business_id'])
+                .maybeSingle();
+          }
+        } catch (_) {}
+      }
+
       if (res == null) {
         if (mounted) {
           setState(() {

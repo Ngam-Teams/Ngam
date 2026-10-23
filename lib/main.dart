@@ -23,6 +23,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'screens/explore/store_route_loader.dart';
 import 'screens/shared/my_queue_ticket_screen.dart';
+import 'core/router/url_strategy.dart';
 
 import 'widgets/app_lock_wrapper.dart';
 
@@ -35,6 +36,7 @@ import 'widgets/app_lock_wrapper.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
+  setCleanUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
   
@@ -118,45 +120,7 @@ class NgamApp extends StatelessWidget {
               final uri = Uri.tryParse(settings.name ?? '') ?? Uri();
               final segments = uri.pathSegments;
 
-              // 1. /@:handle or /@:handle?table=X&promo=Y (e.g. /@pisangkrispy?table=1)
-              if (segments.isNotEmpty && Uri.decodeComponent(segments.first).startsWith('@')) {
-                final rawHandle = Uri.decodeComponent(segments.first).substring(1);
-                final tableNumber = uri.queryParameters['table'];
-                final promoCode = uri.queryParameters['promo'];
-                return MaterialPageRoute(
-                  settings: settings,
-                  builder: (_) => StoreRouteLoader(
-                    businessId: rawHandle,
-                    tableNumber: tableNumber,
-                    promoCode: promoCode,
-                  ),
-                );
-              }
-
-              // 2. /store/:businessId?table=X&promo=Y (legacy / fallback)
-              if (segments.isNotEmpty && segments.first == 'store') {
-                final businessId = segments.length > 1 ? segments[1] : '';
-                final tableNumber = uri.queryParameters['table'];
-                final promoCode = uri.queryParameters['promo'];
-                return MaterialPageRoute(
-                  settings: settings,
-                  builder: (_) => StoreRouteLoader(
-                    businessId: businessId,
-                    tableNumber: tableNumber,
-                    promoCode: promoCode,
-                  ),
-                );
-              }
-
-              // 3. /queue/:businessId
-              if (segments.isNotEmpty && segments.first == 'queue') {
-                return MaterialPageRoute(
-                  settings: settings,
-                  builder: (_) => const MyQueueTicketScreen(),
-                );
-              }
-
-              // 3. Named Static Routes (Seamless Dark Fade for Auth routes)
+              // 0. Named Static Routes (Seamless Dark Fade for Auth routes)
               switch (uri.path) {
                 case '/login':
                   return PageRouteBuilder(
@@ -211,6 +175,86 @@ class NgamApp extends StatelessWidget {
                   pageBuilder: (_, __, ___) => const ResetPasswordScreen(),
                   transitionsBuilder: (_, animation, __, child) =>
                       FadeTransition(opacity: animation, child: child),
+                );
+              }
+
+              final tableNumber = uri.queryParameters['table'];
+              final promoCode = uri.queryParameters['promo'] ?? uri.queryParameters['voucher'];
+
+              // 1. /@:handle or /@:handle?table=X&promo=Y (e.g. /@pisangkrispy?table=1)
+              if (segments.isNotEmpty && Uri.decodeComponent(segments.first).startsWith('@')) {
+                final rawHandle = Uri.decodeComponent(segments.first).substring(1);
+                return MaterialPageRoute(
+                  settings: settings,
+                  builder: (_) => StoreRouteLoader(
+                    businessId: rawHandle,
+                    tableNumber: tableNumber,
+                    promoCode: promoCode,
+                  ),
+                );
+              }
+
+              // 2. /c/:handle or /store/:id or /shop/:id (e.g. /c/pisangkrispy?table=1)
+              if (segments.isNotEmpty && (segments.first == 'c' || segments.first == 'store' || segments.first == 'shop')) {
+                final businessId = segments.length > 1 ? segments[1] : '';
+                return MaterialPageRoute(
+                  settings: settings,
+                  builder: (_) => StoreRouteLoader(
+                    businessId: businessId,
+                    tableNumber: tableNumber,
+                    promoCode: promoCode,
+                  ),
+                );
+              }
+
+              // 3. /queue/:businessId (e.g. /queue/@pisangkrispy or /queue/uuid)
+              if (segments.isNotEmpty && segments.first == 'queue') {
+                final businessId = segments.length > 1 ? segments[1] : '';
+                if (businessId.isNotEmpty) {
+                  return MaterialPageRoute(
+                    settings: settings,
+                    builder: (_) => StoreRouteLoader(
+                      businessId: businessId.replaceFirst('@', ''),
+                      tableNumber: tableNumber,
+                      promoCode: promoCode,
+                    ),
+                  );
+                }
+                return MaterialPageRoute(
+                  settings: settings,
+                  builder: (_) => const MyQueueTicketScreen(),
+                );
+              }
+
+              // 4. /voucher/:code or /promo/:code
+              if (segments.isNotEmpty && (segments.first == 'voucher' || segments.first == 'promo')) {
+                final code = segments.length > 1 ? segments[1] : '';
+                final store = uri.queryParameters['store'] ?? uri.queryParameters['shop'] ?? '';
+                return MaterialPageRoute(
+                  settings: settings,
+                  builder: (_) => StoreRouteLoader(
+                    businessId: store.isNotEmpty ? store : code,
+                    promoCode: code,
+                  ),
+                );
+              }
+
+              // 5. Clean handle fallback (e.g. /pisangkrispy?table=1) where first segment is NOT reserved
+              const reservedRoutes = {
+                'login', 'register', 'forgot-password', 'reset-password',
+                'customer-home', 'review', 'profile', 'explore', 'bookings',
+                'cart', 'chat', 'wallet', 'orders', 'notifications', 'search',
+                'privacy', 'terms', 'support', 'about', 'feed', 'api', 'assets'
+              };
+              if (segments.isNotEmpty && !reservedRoutes.contains(segments.first.toLowerCase())) {
+                final rawHandle = Uri.decodeComponent(segments.first);
+                return MaterialPageRoute(
+                  settings: settings,
+                  builder: (_) => StoreRouteLoader(
+                    businessId: rawHandle,
+                    tableNumber: tableNumber,
+                    promoCode: promoCode,
+                  ),
                 );
               }
 

@@ -13,6 +13,7 @@ import 'package:ngam/l10n/generated/app_localizations.dart';
 import '../../widgets/glass_box.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'business_store_view.dart';
+import 'store_route_loader.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import '../../widgets/glass_toast.dart';
 import '../../widgets/bottom_nav_customer.dart';
@@ -680,7 +681,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     String? promoParam;
     if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https' || uri.scheme == 'ngam')) {
       tableParam = uri.queryParameters['table'];
-      promoParam = uri.queryParameters['promo'];
+      promoParam = uri.queryParameters['promo'] ?? uri.queryParameters['voucher'];
       if (uri.pathSegments.isNotEmpty) {
         storeQuery = uri.pathSegments.last;
       } else if (uri.host.isNotEmpty) {
@@ -688,64 +689,16 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       }
     }
 
-    Map<String, dynamic>? matchedShop;
-    for (final shop in _realShops) {
-      final id = (shop['id'] ?? shop['business_id'] ?? '').toString();
-      final name = (shop['name'] ?? '').toString().toLowerCase();
-      if (id.toLowerCase() == storeQuery.toLowerCase() ||
-          name == storeQuery.toLowerCase().replaceAll('-', ' ')) {
-        matchedShop = shop;
-        break;
-      }
-    }
-
-    if (matchedShop == null) {
-      for (final shop in _nearbyShops) {
-        final id = (shop['id'] ?? shop['business_id'] ?? '').toString();
-        if (id.toLowerCase() == storeQuery.toLowerCase()) {
-          matchedShop = shop;
-          break;
-        }
-      }
-    }
-
-    if (matchedShop == null) {
-      try {
-        final res = await Supabase.instance.client
-            .from('businesses')
-            .select()
-            .or('id.eq.$storeQuery,name.ilike.%$storeQuery%')
-            .maybeSingle();
-
-        if (res != null) {
-          matchedShop = res;
-        }
-      } catch (e) {
-        debugPrint('Error searching scanned shop: $e');
-      }
-    }
-
-    if (!mounted) return;
-
-    if (matchedShop != null) {
-      final double? lat = matchedShop['latitude'] != null ? (matchedShop['latitude'] as num).toDouble() : null;
-      final double? lng = matchedShop['longitude'] != null ? (matchedShop['longitude'] as num).toDouble() : null;
-      if (lat != null && lng != null) {
-        _animatedMapMove(LatLng(lat, lng), 16.0);
-      }
-      _showBusinessProfile(context, matchedShop);
-
-      String extraMsg = '';
-      if (tableParam != null && tableParam.isNotEmpty) {
-        extraMsg += ' • Meja #$tableParam';
-      }
-      if (promoParam != null && promoParam.isNotEmpty) {
-        extraMsg += ' • Baucar "$promoParam" Aktif!';
-      }
-      showGlassToast(context, 'Membuka ${matchedShop['name'] ?? 'Kedai'}$extraMsg');
-    } else {
-      showGlassToast(context, 'Kedai tidak dijumpai: $storeQuery', isError: true);
-    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StoreRouteLoader(
+          businessId: storeQuery,
+          tableNumber: tableParam,
+          promoCode: promoParam,
+        ),
+      ),
+    );
   }
 
   Future<void> _loadCachedLocation() async {

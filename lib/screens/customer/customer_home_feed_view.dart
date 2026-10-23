@@ -529,7 +529,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
     if (uri != null &&
         (uri.scheme == 'http' || uri.scheme == 'https' || uri.scheme == 'ngam')) {
       table = uri.queryParameters['table'];
-      promo = uri.queryParameters['promo'];
+      promo = uri.queryParameters['promo'] ?? uri.queryParameters['voucher'];
       if (uri.pathSegments.isNotEmpty) {
         identifier = uri.pathSegments.last;
       }
