@@ -1,5 +1,5 @@
 import 'dart:ui';
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -36,7 +36,28 @@ class PrivacySecurityScreen extends StatefulWidget {
 class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
   bool _isTimeoutExpanded = false;
   String _cacheSize = "0.0 MB";
-  final String _deviceName = "Samsung Device";
+  String get _deviceName {
+    if (kIsWeb) {
+      if (defaultTargetPlatform == TargetPlatform.android) return "Android (Web)";
+      if (defaultTargetPlatform == TargetPlatform.iOS) return "iPhone (Web)";
+      if (defaultTargetPlatform == TargetPlatform.macOS) return "Mac (Web)";
+      if (defaultTargetPlatform == TargetPlatform.windows) return "Windows PC (Web)";
+      return "Web Browser";
+    }
+    if (defaultTargetPlatform == TargetPlatform.android) return "Android Device";
+    if (defaultTargetPlatform == TargetPlatform.iOS) return "iPhone";
+    return "This Device";
+  }
+
+  dynamic get _deviceIcon {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return HugeIcons.strokeRoundedAndroid;
+    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return HugeIcons.strokeRoundedApple;
+    } else {
+      return HugeIcons.strokeRoundedLaptop;
+    }
+  }
   final LocalAuthentication _auth = LocalAuthentication();
   
   @override
@@ -611,7 +632,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
             Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04), borderRadius: BorderRadius.circular(12)),
-                child: HugeIcon(icon: Platform.isAndroid ? HugeIcons.strokeRoundedAndroid : HugeIcons.strokeRoundedApple, color: isDark ? Colors.white : Colors.black87, size: 20)
+                child: HugeIcon(icon: _deviceIcon, color: isDark ? Colors.white : Colors.black87, size: 20)
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -677,7 +698,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: HugeIcon(
-                      icon: Platform.isAndroid ? HugeIcons.strokeRoundedAndroid : HugeIcons.strokeRoundedApple,
+                      icon: _deviceIcon,
                       color: Colors.blueAccent,
                       size: 32
                   ),
