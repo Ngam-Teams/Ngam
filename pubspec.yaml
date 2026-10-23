@@ -19,6 +19,8 @@ dependencies:
   hugeicons: ^1.1.7
   flutter_localizations:
     sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
   easy_localization: ^3.0.8
   image_picker: ^1.2.1
   cached_network_image: ^3.4.1
