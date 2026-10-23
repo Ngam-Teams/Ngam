@@ -122,7 +122,7 @@ class _MapPickerState extends State<MapPicker> {
         'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(trimmed)}&format=json&addressdetails=1&limit=5&countrycodes=my',
       );
       final request = await client.getUrl(nomUri);
-      request.headers.set('User-Agent', 'NgamApp/1.0 (contact@ngam.my)');
+      request.headers.set('User-Agent', 'NgamApp/1.0 (contact@ngam.dev)');
       final response = await request.close().timeout(const Duration(seconds: 3));
       if (response.statusCode == 200) {
         final body = await response.transform(utf8.decoder).join();

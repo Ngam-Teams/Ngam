@@ -200,7 +200,7 @@ class ContactUsScreen extends StatelessWidget {
 
               _contactCard(isDark, HugeIcons.strokeRoundedBubbleChat, "support.chat_support".tr(), "support.chat_subtitle".tr(), "support.start_chat".tr()),
               const SizedBox(height: 16),
-              _contactCard(isDark, HugeIcons.strokeRoundedMail01, "support.email_us".tr(), "support.email_subtitle".tr(), 'support@ngam.my'),
+              _contactCard(isDark, HugeIcons.strokeRoundedMail01, "support.email_us".tr(), "support.email_subtitle".tr(), 'support@ngam.dev'),
               const SizedBox(height: 16),
               _contactCard(isDark, HugeIcons.strokeRoundedCall02, "support.call_us".tr(), "support.call_subtitle".tr(), '+60 12-345 6789'),
               const SizedBox(height: 32),
