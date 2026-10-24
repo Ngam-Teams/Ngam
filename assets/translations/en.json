@@ -105,7 +105,7 @@
     "assigned": "Assigned",
     "err_chat": "Error opening chat: {}",
     "rate_review": "Rate & Review Runner",
-    "review_submitted": "Review submitted ✓"
+    "review_submitted": "Review submitted"
   },
   "runner": {
     "find_gigs": "Find Gigs",
@@ -126,13 +126,13 @@
     "confirm": "Confirm",
     "runner_view": "Runner View",
     "active_job": "Active Job:",
-    "in_progress": "⚡ IN-PROGRESS",
+    "in_progress": "IN-PROGRESS",
     "upload_proof": "Upload Proof (optional)",
     "photo_upload_soon": "Photo upload coming soon!",
     "tap_upload": "Tap to upload photo",
     "notes_requester": "Notes for Requester",
     "notes_hint": "Any message for the customer...",
-    "task_completed": "Task Completed! 🎉",
+    "task_completed": "Task Completed!",
     "requester_notified": "Requester will be notified instantly.",
     "done": "Done",
     "my_jobs_title": "Jobs",
@@ -169,7 +169,7 @@
     "privacy": "Privacy Policy",
     "rate_app": "Rate App",
     "logout": "Log Out",
-    "made_with_love": "Made with ❤️ in Malaysia",
+    "made_with_love": "Made with pride in Malaysia",
     "logout_success": "Successfully logged out!",
     "language_changed": "Language changed to {}",
     "ngam_rank": "Ngam Rank (Runner)",
@@ -301,7 +301,7 @@
   "support": {
     "done": "Done",
     "help_center": "Help Center",
-    "greeting": "Hi 👋\nHow can we help?",
+    "greeting": "Hi\nHow can we help?",
     "search_hint": "Search questions...",
     "faq_title": "FAQ",
     "no_results": "No questions found for \"{}\"",
@@ -351,7 +351,7 @@
     "rate_subtitle": "Give us stars to help us grow.",
     "feedback_hint": "Share your thoughts about Ngam...",
     "submit_feedback": "Submit Feedback",
-    "thank_you": "Thank you for your feedback! 😊"
+    "thank_you": "Thank you for your feedback!"
   },
   "account": {
     "title": "Account Details",
@@ -388,7 +388,7 @@
     "upload_selfie": "Upload Selfie with IC",
     "submit": "Submit Verification",
     "pending": "Verification Pending",
-    "approved": "Verified Runner ✓"
+    "approved": "Verified Runner"
   },
   "stats": {
     "title": "Stats & Earnings",

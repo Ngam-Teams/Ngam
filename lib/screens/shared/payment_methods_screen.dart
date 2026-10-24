@@ -237,7 +237,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
             Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: color.withValues(alpha: 0.15), shape: BoxShape.circle), child: HugeIcon(icon: icon, color: color, size: 22)),
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)), const SizedBox(height: 2), Text(subtitle, style: TextStyle(fontSize: 11, color: isDark ? Colors.white54 : Colors.black54))])),
-            Icon(Icons.arrow_forward_ios_rounded, color: isDark ? Colors.white30 : Colors.black26, size: 14)
+            HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, color: isDark ? Colors.white30 : Colors.black26, size: 14)
           ],
         ),
       ),
@@ -392,7 +392,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                         value: selectedBank,
                                         isExpanded: true,
                                         dropdownColor: isDark ? const Color(0xFF262626) : Colors.white,
-                                        icon: Icon(Icons.keyboard_arrow_down_rounded, color: isDark ? Colors.white54 : Colors.black54),
+                                        icon: HugeIcon(icon: HugeIcons.strokeRoundedArrowDown01, color: isDark ? Colors.white54 : Colors.black54, size: 20),
                                         items: _malaysianBanks.map((String bank) {
                                           return DropdownMenuItem<String>(
                                               value: bank,
@@ -535,7 +535,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                 : Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.upload_rounded, size: 36, color: Colors.grey.shade400),
+                                      HugeIcon(icon: HugeIcons.strokeRoundedUpload01, size: 36, color: Colors.grey.shade400),
                                       const SizedBox(height: 8),
                                       Text("wallet.tap_upload_qr".tr(), style: TextStyle(color: Colors.grey.shade500, fontSize: 13, fontWeight: FontWeight.w500)),
                                       const SizedBox(height: 4),
@@ -556,7 +556,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.auto_fix_high_rounded, color: Color(0xFF00A86B), size: 16),
+                                const HugeIcon(icon: HugeIcons.strokeRoundedMagicWand01, color: Color(0xFF00A86B), size: 16),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
@@ -871,7 +871,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                               // ðŸ’Ž 2. Watermark bentuk bumi (jangan terang sangat)
                               Positioned(
                                 right: -20, bottom: -20,
-                                child: Icon(Icons.public, size: 160, color: Colors.white.withValues(alpha: 0.04)),
+                                child: HugeIcon(icon: HugeIcons.strokeRoundedGlobal, size: 160, color: Colors.white.withValues(alpha: 0.04)),
                               ),
 
                               // ðŸ’Ž 3. Isi dalam kad
@@ -912,7 +912,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                       children: [
                                         _buildRealisticChip(),
                                         const SizedBox(width: 12),
-                                        const Icon(Icons.contactless_outlined, color: Colors.white70, size: 28),
+                                        const HugeIcon(icon: HugeIcons.strokeRoundedNfc, color: Colors.white70, size: 28),
                                       ],
                                     ),
 
@@ -1019,7 +1019,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
           _buildBankLogo(bank["name"], size: 42),
           const SizedBox(width: 16),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(bank["name"], style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)), const SizedBox(height: 2), Text(bank["number"], style: TextStyle(fontSize: 13, color: isDark ? Colors.white54 : Colors.black54, letterSpacing: 1.5))])),
-          IconButton(icon: Icon(Icons.delete_outline_rounded, color: Colors.redAccent.withValues(alpha: 0.8), size: 22), onPressed: () => PaymentData.removePaymentMethod(bank["id"]))
+          IconButton(icon: HugeIcon(icon: HugeIcons.strokeRoundedDelete02, color: Colors.redAccent.withValues(alpha: 0.8), size: 22), onPressed: () => PaymentData.removePaymentMethod(bank["id"]))
         ],
       ),
     );
@@ -1096,7 +1096,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                       fit: BoxFit.contain,
                       errorBuilder: (_, __, ___) => const SizedBox(
                         height: 160,
-                        child: Center(child: Icon(Icons.broken_image_outlined, color: Colors.grey, size: 40)),
+                        child: Center(child: HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.grey, size: 40)),
                       ),
                     ),
                   ),
@@ -1129,7 +1129,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  icon: Icon(Icons.delete_outline_rounded, color: Colors.redAccent.withValues(alpha: 0.8), size: 20),
+                  icon: HugeIcon(icon: HugeIcons.strokeRoundedDelete02, color: Colors.redAccent.withValues(alpha: 0.8), size: 20),
                   onPressed: () => PaymentData.removePaymentMethod(qr["id"]),
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.redAccent.withValues(alpha: 0.08),

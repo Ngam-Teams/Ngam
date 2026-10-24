@@ -434,7 +434,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
           ),
           title: const Row(
             children: [
-              Icon(Icons.wifi_rounded, color: Color(0xFF42A5F5), size: 22),
+              HugeIcon(icon: HugeIcons.strokeRoundedWifi01, color: Color(0xFF42A5F5), size: 22),
               SizedBox(width: 10),
               Text(
                 'WiFi Tetamu Kedai',
@@ -501,7 +501,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                 Navigator.pop(ctx);
                 showGlassToast(context, 'Kata laluan WiFi disalin ke papan klip!');
               },
-              icon: const Icon(Icons.copy_rounded, size: 16),
+              icon: const HugeIcon(icon: HugeIcons.strokeRoundedCopy01, color: Colors.blue, size: 16),
               label: const Text('Salin Kata Laluan'),
             ),
           ],
@@ -560,7 +560,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Hai, $_userName 👋',
+                'Hai, $_userName',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -1178,7 +1178,11 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                         ),
                       ),
                       SizedBox(width: 3),
-                      Text('🎁', style: TextStyle(fontSize: 10)),
+                      HugeIcon(
+                        icon: HugeIcons.strokeRoundedGift,
+                        size: 12,
+                        color: Color(0xFF2196F3),
+                      ),
                     ],
                   ),
                 ),
@@ -1228,14 +1232,14 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                       ),
                       child: Center(
                         child: isFilled
-                            ? const Icon(
-                                Icons.star_rounded,
+                            ? const HugeIcon(
+                                icon: HugeIcons.strokeRoundedStar,
                                 color: Color(0xFF2196F3),
                                 size: 24,
                               )
                             : (isTarget
-                                ? const Icon(
-                                    Icons.card_giftcard_rounded,
+                                ? const HugeIcon(
+                                    icon: HugeIcons.strokeRoundedGift,
                                     color: Color(0xFF00E5FF),
                                     size: 20,
                                   )
@@ -1431,7 +1435,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                             ),
                             errorWidget: (_, __, ___) => Container(
                               color: isDark ? Colors.grey.shade900 : Colors.grey.shade300,
-                              child: const Icon(Icons.storefront, color: Colors.grey),
+                              child: const HugeIcon(icon: HugeIcons.strokeRoundedStore01, color: Colors.grey, size: 22),
                             ),
                           ),
                         ),
@@ -1468,7 +1472,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                             ),
                             child: const Row(
                               children: [
-                                Icon(Icons.bolt_rounded, size: 12, color: Colors.white),
+                                HugeIcon(icon: HugeIcons.strokeRoundedFlash, size: 12, color: Colors.white),
                                 SizedBox(width: 2),
                                 Text(
                                   'Line Clear (0 Queue)',
@@ -1494,7 +1498,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                             ),
                             child: Row(
                               children: [
-                                const HugeIcon(
+                                HugeIcon(
                                   icon: HugeIcons.strokeRoundedLocation01,
                                   color: Colors.white,
                                   size: 11,
@@ -1535,7 +1539,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                               ),
                               Row(
                                 children: [
-                                  const Icon(Icons.star_rounded, color: Color(0xFFFFB300), size: 14),
+                                  HugeIcon(icon: HugeIcons.strokeRoundedStar, color: Color(0xFFFFB300), size: 14),
                                   const SizedBox(width: 2),
                                   Text(
                                     rating,

@@ -338,16 +338,16 @@ class MessageStatusIndicator extends StatelessWidget {
     if (!isMe) return const SizedBox.shrink();
 
     if (isRead) {
-      return const Icon(Icons.done_all, size: 14, color: AppTheme.primary);
+      return const HugeIcon(icon: HugeIcons.strokeRoundedTick01, size: 14, color: AppTheme.primary);
     }
     
     switch (status) {
       case 'sending':
-        return Icon(Icons.access_time, size: 12, color: defaultColor);
+        return HugeIcon(icon: HugeIcons.strokeRoundedTime02, size: 12, color: defaultColor);
       case 'failed':
-        return const Icon(Icons.error_outline, size: 14, color: Colors.red);
+        return const HugeIcon(icon: HugeIcons.strokeRoundedAlert02, size: 14, color: Colors.red);
       default:
-        return Icon(Icons.check, size: 14, color: defaultColor);
+        return HugeIcon(icon: HugeIcons.strokeRoundedTick01, size: 14, color: defaultColor);
     }
   }
 }

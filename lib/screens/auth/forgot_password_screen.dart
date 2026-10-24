@@ -368,7 +368,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        '✉️ Guna Emel',
+                        'Guna Emel',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.inter(
                           fontSize: 11.5,
@@ -393,7 +393,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        '📱 No. Telefon (Lupa Emel)',
+                        'No. Telefon (Lupa Emel)',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.inter(
                           fontSize: 11.5,
@@ -422,8 +422,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
               ),
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.04),
-              prefixIcon: Icon(
-                _recoveryMode == 'phone' ? Icons.phone_iphone_outlined : Icons.email_outlined,
+              prefixIcon: HugeIcon(
+                icon: _recoveryMode == 'phone' ? HugeIcons.strokeRoundedSmartPhone01 : HugeIcons.strokeRoundedMail01,
                 color: textSecondary,
                 size: 18,
               ),
@@ -465,7 +465,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                '💡 Kami akan mencari emel akaun anda dan menghantar pautan reset kata laluan secara percuma ke emel tersebut.',
+                'Kami akan mencari emel akaun anda dan menghantar pautan reset kata laluan secara percuma ke emel tersebut.',
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   color: const Color(0xFF10B981),
@@ -522,7 +522,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.arrow_back, size: 14, color: textSecondary),
+                const HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, size: 14, color: textSecondary),
                 const SizedBox(width: 6),
                 Text(
                   'Back to Sign In',

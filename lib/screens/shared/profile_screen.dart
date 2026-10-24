@@ -230,7 +230,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               _buildDivider(isDark),
                               _buildSettingsTile(
                                 isDark,
-                                Icons.wallet_rounded,
+                                HugeIcons.strokeRoundedCreditCard,
                                 "wallet.title".tr(),
                                 trailing: _buildArrow(),
                                 onTap: () => Navigator.push(
@@ -769,7 +769,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             inactiveThumbColor: Colors.white,
             inactiveTrackColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
             trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
-            thumbIcon: WidgetStateProperty.all(const Icon(Icons.circle, color: Colors.transparent)),
+            thumbIcon: WidgetStateProperty.resolveWith<Icon?>((states) => null),
             onChanged: (_) => themeProvider.toggleTheme(),
           ),
         ],

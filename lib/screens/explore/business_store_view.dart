@@ -296,7 +296,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
       return;
     }
 
-    // 🟢 SYNC COVER & OPERATING HOURS FROM SUPABASE
+    //  SYNC COVER & OPERATING HOURS FROM SUPABASE
     _syncBusinessDetails(shopId);
 
     _productSub?.cancel();
@@ -532,7 +532,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // 🟢 Hero Cover Card with Logo, Name & Status Badge
+                          //  Hero Cover Card with Logo, Name & Status Badge
                           Container(
                             width: double.infinity,
                             decoration: BoxDecoration(
@@ -666,7 +666,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                                   child: Row(
                                                     mainAxisSize: MainAxisSize.min,
                                                     children: [
-                                                      const Icon(Icons.table_restaurant_rounded, color: Color(0xFF00E676), size: 14),
+                                                      const HugeIcon(icon: HugeIcons.strokeRoundedDesk01, color: Color(0xFF00E676), size: 14),
                                                       const SizedBox(width: 5),
                                                       Text(
                                                         'Meja #${widget.tableNumber} (Dine-In)',
@@ -739,7 +739,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        const Icon(Icons.calendar_month_rounded, color: Colors.blue, size: 15),
+                                        const HugeIcon(icon: HugeIcons.strokeRoundedCalendar03, color: Colors.blue, size: 15),
                                         const SizedBox(width: 4),
                                         Flexible(
                                           child: FittedBox(
@@ -786,7 +786,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        const Icon(Icons.info_outline_rounded, color: Colors.blue, size: 15),
+                                        const HugeIcon(icon: HugeIcons.strokeRoundedInformationCircle, color: Colors.blue, size: 15),
                                         const SizedBox(width: 4),
                                         Flexible(
                                           child: FittedBox(
@@ -825,7 +825,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                                        const HugeIcon(icon: HugeIcons.strokeRoundedStar, color: Colors.amber, size: 16),
                                         const SizedBox(width: 4),
                                         Flexible(
                                           child: FittedBox(
@@ -1144,12 +1144,12 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                             child: AnimatedSwitcher(
                               duration: const Duration(milliseconds: 300),
                               transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-                              child: Icon(
-                                _isLiked ? Icons.favorite : Icons.favorite_border_rounded,
-                                key: ValueKey(_isLiked),
-                                color: _isLiked ? Colors.red : (isDark ? Colors.white : const Color(0xFF1C1C1E)),
-                                size: 22,
-                              ),
+                              child: HugeIcon(
+                                  icon: HugeIcons.strokeRoundedFavourite,
+                                  key: ValueKey(_isLiked),
+                                  color: _isLiked ? Colors.red : (isDark ? Colors.white : const Color(0xFF1C1C1E)),
+                                  size: 22,
+                                ),
                             ),
                           ),
                         ),
@@ -1264,8 +1264,8 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
         ),
       ),
       child: Center(
-        child: Icon(
-          Icons.storefront_rounded,
+        child: HugeIcon(
+          icon: HugeIcons.strokeRoundedStore01,
           color: Colors.white.withValues(alpha: 0.15),
           size: 64,
         ),
@@ -1307,8 +1307,8 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
             ),
           ),
           const SizedBox(width: 2),
-          const Icon(
-            Icons.chevron_right_rounded,
+          const HugeIcon(
+            icon: HugeIcons.strokeRoundedArrowRight01,
             color: Colors.white70,
             size: 14,
           ),
@@ -1523,7 +1523,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                                   ? Colors.white.withValues(alpha: 0.05)
                                                   : Colors.blue.withValues(alpha: 0.08),
                                               child: const Center(
-                                                child: Icon(Icons.image, size: 50, color: Colors.grey),
+                                                child: HugeIcon(icon: HugeIcons.strokeRoundedImage01, size: 50, color: Colors.grey),
                                               ),
                                             ),
                                           )
@@ -1533,7 +1533,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                                 ? Colors.white.withValues(alpha: 0.05)
                                                 : Colors.blue.withValues(alpha: 0.08),
                                             child: const Center(
-                                              child: Icon(Icons.image, size: 50, color: Colors.grey),
+                                              child: HugeIcon(icon: HugeIcons.strokeRoundedImage01, size: 50, color: Colors.grey),
                                             ),
                                           ),
                                   ),
@@ -1618,12 +1618,12 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                           child: AnimatedSwitcher(
                                             duration: const Duration(milliseconds: 300),
                                             transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-                                            child: Icon(
-                                              isProductLiked ? Icons.favorite : Icons.favorite_border_rounded,
-                                              key: ValueKey(isProductLiked),
-                                              color: isProductLiked ? Colors.red : (isDark ? Colors.white : Colors.black87),
-                                              size: 24,
-                                            ),
+                                            child: HugeIcon(
+                                                icon: HugeIcons.strokeRoundedFavourite,
+                                                key: ValueKey(isProductLiked),
+                                                color: isProductLiked ? Colors.red : (isDark ? Colors.white : Colors.black87),
+                                                size: 24,
+                                              ),
                                           ),
                                         ),
                                       ),
@@ -1688,7 +1688,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                          child: Row(
                                            mainAxisAlignment: MainAxisAlignment.center,
                                            children: [
-                                             Icon(Icons.calendar_today_rounded, color: isDark ? Colors.white : Colors.black87, size: 18),
+                                             HugeIcon(icon: HugeIcons.strokeRoundedCalendar01, color: isDark ? Colors.white : Colors.black87, size: 18),
                                              const SizedBox(width: 8),
                                              Text(
                                                'Book Appointment / Slot',

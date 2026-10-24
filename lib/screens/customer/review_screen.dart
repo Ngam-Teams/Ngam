@@ -74,7 +74,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         showGlassToast(
           context,
           'Terima kasih atas ulasan anda!',
-          customIcon: Icons.check_circle_rounded,
+          customIcon: HugeIcons.strokeRoundedCheckmarkCircle02,
         );
         Navigator.pop(context, true);
       }
@@ -209,11 +209,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: Icon(
-                      starValue <= _rating
-                          ? Icons.star_rounded
-                          : Icons.star_outline_rounded,
-                      size: 46,
+                    child: HugeIcon(
+                      icon: HugeIcons.strokeRoundedStar,
+                      size: 44,
                       color: starValue <= _rating
                           ? Colors.amber.shade600
                           : Colors.grey.shade300,
@@ -227,12 +225,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
               _rating == 0
                   ? 'Tekan bintang untuk pilih'
                   : _rating <= 2
-                      ? 'Kurang Memuaskan 🙁'
+                      ? 'Kurang Memuaskan'
                       : _rating <= 3
-                          ? 'Sederhana Baik 🙂'
+                          ? 'Sederhana Baik'
                           : _rating <= 4
-                              ? 'Sangat Memuaskan! 👍'
-                              : 'Terbaik & Cemerlang! 🎉',
+                              ? 'Sangat Memuaskan!'
+                              : 'Terbaik & Cemerlang!',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,

@@ -2,7 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'bookings_view.dart'; // 🟢 Make sure this points to your Bookings checkout screen!
+import 'bookings_view.dart'; //  Make sure this points to your Bookings checkout screen!
 import '../../widgets/glass_toast.dart';
 // Make sure this matches your Auth Screen file name!
 
@@ -63,12 +63,12 @@ class ShopDetailScreen extends StatelessWidget {
                   elevation: 0,
                   leading: Padding(
                     padding: const EdgeInsets.only(left: 16.0),
-                    child: _buildGlassIconButton(Icons.arrow_back_ios_new_rounded, context, isDark),
+                    child: _buildGlassIconButton(HugeIcons.strokeRoundedArrowLeft01, context, isDark),
                   ),
                   actions: [
                     Padding(
                       padding: const EdgeInsets.only(right: 16.0),
-                      child: _buildGlassIconButton(Icons.favorite_border_rounded, context, isDark),
+                      child: _buildGlassIconButton(HugeIcons.strokeRoundedFavourite, context, isDark),
                     ),
                   ],
                 ),
@@ -81,7 +81,7 @@ class ShopDetailScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 🟢 MAIN INFO GLASS CARD
+                        //  MAIN INFO GLASS CARD
                         _buildGlassCard(
                           isDark: isDark,
                           padding: const EdgeInsets.all(24),
@@ -94,7 +94,7 @@ class ShopDetailScreen extends StatelessWidget {
                                   Text(category, style: const TextStyle(color: Colors.blue, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
                                   Row(
                                     children: [
-                                      const Icon(Icons.star, color: Colors.amber, size: 16),
+                                      const HugeIcon(icon: HugeIcons.strokeRoundedStar, color: Colors.amber, size: 16),
                                       const SizedBox(width: 4),
                                       Text(rating, style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 14, fontWeight: FontWeight.bold)),
                                       Text(" ($reviews)", style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 12)),
@@ -136,7 +136,7 @@ class ShopDetailScreen extends StatelessWidget {
                         Text("Services Available", style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 12),
 
-                        // 🟢 SERVICES TAGS
+                        //  SERVICES TAGS
                         if (serviceList != null)
                           Wrap(
                             spacing: 10,
@@ -176,9 +176,9 @@ class ShopDetailScreen extends StatelessWidget {
               ),
               child: GestureDetector(
                 onTap: () {
-                  // 🟢 THE AUTH GUARD LOGIC
+                  //  THE AUTH GUARD LOGIC
                   if (Supabase.instance.client.auth.currentUser != null) {
-                    // ✅ USER IS LOGGED IN: Proceed to checkout!
+                    //  USER IS LOGGED IN: Proceed to checkout!
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -191,7 +191,7 @@ class ShopDetailScreen extends StatelessWidget {
                       ),
                     );
                   } else {
-                    // ❌ USER IS GUEST: Block them and send to Auth Screen
+                    //  USER IS GUEST: Block them and send to Auth Screen
                     showGlassToast(
                         context,
                         "Please sign in or register to make a booking.",
@@ -225,7 +225,7 @@ class ShopDetailScreen extends StatelessWidget {
 
   // --- UI HELPERS ---
 
-  Widget _buildGlassIconButton(IconData icon, BuildContext context, bool isDark) {
+  Widget _buildGlassIconButton(dynamic icon, BuildContext context, bool isDark) {
     return GestureDetector(
       onTap: () => Navigator.pop(context),
       child: ClipRRect(
@@ -238,7 +238,7 @@ class ShopDetailScreen extends StatelessWidget {
               color: isDark ? Colors.black.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.5),
               border: Border.all(color: Colors.white.withValues(alpha: isDark ? 0.1 : 0.5), width: 1.5),
             ),
-            child: Icon(icon, color: isDark ? Colors.white : Colors.black87, size: 20),
+            child: HugeIcon(icon: icon, color: isDark ? Colors.white : Colors.black87, size: 20),
           ),
         ),
       ),

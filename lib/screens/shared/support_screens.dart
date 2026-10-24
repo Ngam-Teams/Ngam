@@ -144,7 +144,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                           Row(
                             children: [
                               Expanded(child: Text(filteredFaqs[index]['q']!, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87))),
-                              Icon(isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, color: Colors.grey),
+                              HugeIcon(icon: isExpanded ? HugeIcons.strokeRoundedArrowUp01 : HugeIcons.strokeRoundedArrowDown01, color: Colors.grey, size: 20),
                             ],
                           ),
                           if (isExpanded) ...[

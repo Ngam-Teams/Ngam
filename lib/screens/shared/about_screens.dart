@@ -154,10 +154,10 @@ class _RateAppScreenState extends State<RateAppScreen> {
                       onTap: () => setState(() => _rating = index + 1),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Icon(
-                          index < _rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedStar,
                           color: index < _rating ? Colors.orangeAccent : Colors.grey.withValues(alpha: 0.4),
-                          size: 44,
+                          size: 40,
                         ),
                       ),
                     );

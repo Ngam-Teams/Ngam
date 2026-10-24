@@ -276,8 +276,8 @@ class _StoreCartViewState extends State<StoreCartView> {
                     shape: BoxShape.circle,
                   ),
                   child: Center(
-                    child: Icon(
-                      _isPreOrder ? Icons.schedule_rounded : Icons.check_circle_rounded,
+                    child: HugeIcon(
+                      icon: _isPreOrder ? HugeIcons.strokeRoundedClock01 : HugeIcons.strokeRoundedCheckmarkCircle02,
                       color: _isPreOrder ? Colors.purpleAccent : Colors.green,
                       size: 40,
                     ),
@@ -409,7 +409,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                           width: 44,
                           height: 44,
                           child: Center(
-                            child: Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 22),
+                            child: HugeIcon(icon: HugeIcons.strokeRoundedDelete02, color: Colors.redAccent, size: 22),
                           ),
                         ),
                       ),
@@ -461,7 +461,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             ),
                             onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.storefront_rounded, size: 18),
+                            icon: const HugeIcon(icon: HugeIcons.strokeRoundedStore01, size: 18),
                             label: const Text('Browse Products', style: TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ],
@@ -491,7 +491,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.table_restaurant_rounded, color: Color(0xFF00E676), size: 24),
+                                const HugeIcon(icon: HugeIcons.strokeRoundedDesk01, color: Color(0xFF00E676), size: 24),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
@@ -586,12 +586,12 @@ class _StoreCartViewState extends State<StoreCartView> {
                                                 fit: BoxFit.cover,
                                                 errorBuilder: (_, __, ___) => Container(
                                                   color: Colors.blue.withValues(alpha: 0.1),
-                                                  child: const Icon(Icons.shopping_bag_outlined, color: Colors.blue),
+                                                  child: const HugeIcon(icon: HugeIcons.strokeRoundedShoppingBag01, color: Colors.blue),
                                                 ),
                                               )
                                             : Container(
                                                 color: Colors.blue.withValues(alpha: 0.1),
-                                                child: const Icon(Icons.shopping_bag_outlined, color: Colors.blue),
+                                                child: const HugeIcon(icon: HugeIcons.strokeRoundedShoppingBag01, color: Colors.blue),
                                               ),
                                       ),
                                     ),
@@ -635,7 +635,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                                               shape: BoxShape.circle,
                                             ),
                                             child: Center(
-                                              child: Icon(Icons.remove, size: 16, color: textPrimary),
+                                              child: HugeIcon(icon: HugeIcons.strokeRoundedMinusSign, size: 16, color: textPrimary),
                                             ),
                                           ),
                                         ),
@@ -660,7 +660,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                                               shape: BoxShape.circle,
                                             ),
                                             child: const Center(
-                                              child: Icon(Icons.add, size: 16, color: Colors.white),
+                                              child: HugeIcon(icon: HugeIcons.strokeRoundedAdd01, size: 16, color: Colors.white),
                                             ),
                                           ),
                                         ),
@@ -685,7 +685,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                               hintText: 'Add notes for store (e.g. less ice, door code)...',
                               hintStyle: TextStyle(color: textSecondary, fontSize: 13),
                               border: InputBorder.none,
-                              prefixIcon: Icon(Icons.edit_note_rounded, color: textSecondary, size: 20),
+                              prefixIcon: HugeIcon(icon: HugeIcons.strokeRoundedTaskEdit01, color: textSecondary, size: 20),
                             ),
                           ),
                         ),
@@ -708,7 +708,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                                     hintText: 'Promo Code (e.g. NGAM10)',
                                     hintStyle: TextStyle(color: textSecondary, fontSize: 13, fontWeight: FontWeight.normal),
                                     border: InputBorder.none,
-                                    prefixIcon: Icon(Icons.local_offer_outlined, color: textSecondary, size: 18),
+                                    prefixIcon: HugeIcon(icon: HugeIcons.strokeRoundedDiscount01, color: textSecondary, size: 18),
                                   ),
                                 ),
                               ),

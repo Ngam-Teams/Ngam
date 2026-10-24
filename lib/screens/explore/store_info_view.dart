@@ -173,12 +173,12 @@ class _StoreInfoViewState extends State<StoreInfoView> {
     final List? specialHolidays = _operatingHours?['special_holidays'] as List?;
 
     final amenities = [
-      {'icon': Icons.mosque_outlined, 'label': 'Surau Available'},
-      {'icon': Icons.wifi_rounded, 'label': 'High-Speed Wi-Fi'},
-      {'icon': Icons.local_parking_rounded, 'label': 'Dedicated Parking'},
-      {'icon': Icons.ac_unit_rounded, 'label': 'Air Conditioned'},
-      {'icon': Icons.verified_rounded, 'label': 'Halal Certified'},
-      {'icon': Icons.qr_code_rounded, 'label': 'Cashless & DuitNow'},
+      {'icon': HugeIcons.strokeRoundedMosque01, 'label': 'Surau Available'},
+      {'icon': HugeIcons.strokeRoundedWifi01, 'label': 'High-Speed Wi-Fi'},
+      {'icon': HugeIcons.strokeRoundedCarParking01, 'label': 'Dedicated Parking'},
+      {'icon': HugeIcons.strokeRoundedSnow, 'label': 'Air Conditioned'},
+      {'icon': HugeIcons.strokeRoundedHalal, 'label': 'Halal Certified'},
+      {'icon': HugeIcons.strokeRoundedQrCode, 'label': 'Cashless & DuitNow'},
     ];
 
     return Scaffold(
@@ -328,7 +328,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.call_rounded, color: Colors.blue, size: 18),
+                                const HugeIcon(icon: HugeIcons.strokeRoundedCall02, color: Colors.blue, size: 18),
                                 const SizedBox(width: 8),
                                 Text('Call Store', style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 13)),
                               ],
@@ -350,7 +350,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.chat_bubble_outline_rounded, color: Colors.green, size: 18),
+                                const HugeIcon(icon: HugeIcons.strokeRoundedComment01, color: Colors.green, size: 18),
                                 const SizedBox(width: 8),
                                 Text('WhatsApp', style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 13)),
                               ],
@@ -375,7 +375,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                       ),
                       child: const Row(
                         children: [
-                          Icon(Icons.pause_circle_filled_rounded, color: Colors.redAccent, size: 22),
+                          HugeIcon(icon: HugeIcons.strokeRoundedPauseCircle, color: Colors.redAccent, size: 22),
                           SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -542,7 +542,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.check_circle_outline, color: Colors.green, size: 18),
+                                const HugeIcon(icon: HugeIcons.strokeRoundedCheckmarkCircle02, color: Colors.green, size: 18),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
@@ -577,7 +577,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                                       color: Colors.amber.withValues(alpha: 0.15),
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(Icons.celebration_rounded, color: Colors.amber, size: 18),
+                                    child: const HugeIcon(icon: HugeIcons.strokeRoundedParty, color: Colors.amber, size: 18),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
@@ -651,7 +651,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                               final query = Uri.encodeComponent('$shopName $address');
                               _launchUrlHelper(context, 'https://www.google.com/maps/search/?api=1&query=$query');
                             },
-                            icon: const Icon(Icons.directions_rounded, size: 18),
+                            icon: const HugeIcon(icon: HugeIcons.strokeRoundedDirections01, size: 18),
                             label: const Text('Get Directions in Maps', style: TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ),
@@ -698,7 +698,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(item['icon'] as IconData, color: Colors.blue, size: 16),
+                                  HugeIcon(icon: item['icon'] as List<List<dynamic>>, color: Colors.blue, size: 16),
                                   const SizedBox(width: 8),
                                   Text(
                                     item['label'] as String,
@@ -732,7 +732,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
     return Container(
       color: Colors.blue.withValues(alpha: 0.1),
       child: const Center(
-        child: Icon(Icons.storefront_rounded, color: Colors.blue, size: 28),
+        child: HugeIcon(icon: HugeIcons.strokeRoundedStore01, color: Colors.blue, size: 28),
       ),
     );
   }

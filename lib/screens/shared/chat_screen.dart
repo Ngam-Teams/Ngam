@@ -215,8 +215,8 @@ class _ChatScreenState extends State<ChatScreen> {
                                   color: isDark ? Colors.white24 : Colors.black12,
                                   shape: BoxShape.circle,
                                 ),
-                                child: Icon(
-                                  Icons.close,
+                                child: HugeIcon(
+                                  icon: HugeIcons.strokeRoundedCancel01,
                                   color: isDark ? Colors.white : Colors.black87,
                                   size: 14,
                                 ),
@@ -865,7 +865,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
         id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
         conversationId: widget.conversation.id,
         senderId: currentUserId,
-        content: '📷 Photo',
+        content: 'Photo',
         isRead: false,
         createdAt: DateTime.now(),
         messageType: 'image',
@@ -1141,7 +1141,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
           id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
           conversationId: widget.conversation.id,
           senderId: currentUserId,
-          content: '📎 File',
+          content: 'File',
           isRead: false,
           createdAt: DateTime.now(),
           messageType: 'file',
@@ -1669,7 +1669,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.reply_rounded, color: AppTheme.primary, size: 20),
+                        const HugeIcon(icon: HugeIcons.strokeRoundedShare01, color: AppTheme.primary, size: 20),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Column(
@@ -1691,7 +1691,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                         GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: _cancelReply,
-                          child: const Icon(Icons.close_rounded, size: 20, color: Colors.grey),
+                          child: const HugeIcon(icon: HugeIcons.strokeRoundedCancel01, size: 20, color: Colors.grey),
                         ),
                       ],
                     ),
@@ -2158,9 +2158,10 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                               ],
                             ),
                           ),
-                          Icon(
-                            Icons.chevron_right,
+                          HugeIcon(
+                            icon: HugeIcons.strokeRoundedArrowRight01,
                             color: isDark ? Colors.white54 : Colors.black45,
+                            size: 18,
                           ),
                         ],
                       ),
@@ -2428,7 +2429,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
                                 color: isDark ? Colors.white10 : Colors.black12,
                                 child: const Center(child: CircularProgressIndicator()),
                               ),
-                              errorWidget: (context, url, error) => const Icon(Icons.error),
+                              errorWidget: (context, url, error) => const HugeIcon(icon: HugeIcons.strokeRoundedAlert02, size: 24, color: Colors.red),
                             ),
                           ),
                         ),
@@ -2737,31 +2738,31 @@ class MessageStatusIndicator extends StatelessWidget {
     if (!isMe) return const SizedBox.shrink();
 
     if (status == 'failed') {
-      return const Icon(
-        Icons.error_outline,
+      return const HugeIcon(
+        icon: HugeIcons.strokeRoundedAlert02,
         color: Colors.redAccent,
         size: 14,
       );
     }
 
     if (status == 'sending') {
-      return Icon(
-        Icons.access_time,
+      return HugeIcon(
+        icon: HugeIcons.strokeRoundedTime02,
         color: defaultColor,
         size: 14,
       );
     }
 
     if (isRead) {
-      return const Icon(
-        Icons.done_all,
+      return const HugeIcon(
+        icon: HugeIcons.strokeRoundedTick01,
         color: Colors.blueAccent,
         size: 15,
       );
     }
 
-    return Icon(
-      Icons.check,
+    return HugeIcon(
+      icon: HugeIcons.strokeRoundedTick01,
       color: defaultColor,
       size: 15,
     );
@@ -2830,7 +2831,7 @@ class _ImageViewerDialogState extends State<_ImageViewerDialog> {
                     imageUrl: widget.imageUrls[index],
                     fit: BoxFit.contain,
                     placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                    errorWidget: (context, url, error) => const Icon(Icons.error, color: Colors.white),
+                    errorWidget: (context, url, error) => const HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.white, size: 24),
                   ),
                 ),
               );
@@ -2840,7 +2841,7 @@ class _ImageViewerDialogState extends State<_ImageViewerDialog> {
             top: 40,
             right: 20,
             child: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              icon: const HugeIcon(icon: HugeIcons.strokeRoundedCancel01, color: Colors.white, size: 30),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -2856,7 +2857,7 @@ class _ImageViewerDialogState extends State<_ImageViewerDialog> {
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    icon: const Icon(Icons.chevron_left, color: Colors.white, size: 40),
+                    icon: const HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, color: Colors.white, size: 40),
                     onPressed: _prevPage,
                   ),
                 ),
@@ -2874,7 +2875,7 @@ class _ImageViewerDialogState extends State<_ImageViewerDialog> {
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    icon: const Icon(Icons.chevron_right, color: Colors.white, size: 40),
+                    icon: const HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, color: Colors.white, size: 40),
                     onPressed: _nextPage,
                   ),
                 ),
@@ -2964,9 +2965,10 @@ class _SwipeToReplyState extends State<SwipeToReply> with SingleTickerProviderSt
           if (_dragOffset.abs() > 10)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Icon(
-                Icons.reply_rounded,
+              child: HugeIcon(
+                icon: HugeIcons.strokeRoundedShare01,
                 color: Colors.grey.withValues(alpha: (_dragOffset.abs() / _maxDrag).clamp(0.0, 1.0)),
+                size: 20,
               ),
             ),
           Transform.translate(

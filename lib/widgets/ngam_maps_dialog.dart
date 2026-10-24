@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'liquid_glass_compat.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -214,8 +215,8 @@ class NgamMapsAttributionBadge extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.info_outline_rounded,
+              HugeIcon(
+                icon: HugeIcons.strokeRoundedInformationCircle,
                 size: 11,
                 color: isDark ? const Color(0xFF64B5F6) : const Color(0xFF2196F3),
               ),

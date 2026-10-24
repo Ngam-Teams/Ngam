@@ -1121,7 +1121,7 @@ abstract class AppLocalizations {
   /// No description provided for @madeIn.
   ///
   /// In en, this message translates to:
-  /// **'Made with ❤️ in Malaysia'**
+  /// **'Made with pride in Malaysia'**
   String get madeIn;
 }
 

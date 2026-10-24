@@ -158,7 +158,11 @@ class _AppLockWrapperState extends State<AppLockWrapper> with WidgetsBindingObse
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                icon: const Icon(Icons.fingerprint),
+                icon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedFingerPrint,
+                  color: Colors.white,
+                  size: 20,
+                ),
                 label: const Text("Unlock"),
               ),
             ],

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class BookingData {
-  // 🟢 Stored data for bookings
+  //  Stored data for bookings
   static final ValueNotifier<List<Map<String, dynamic>>> upcomingBookings = ValueNotifier([]);
   static final ValueNotifier<List<Map<String, dynamic>>> historyBookings = ValueNotifier([]);
 

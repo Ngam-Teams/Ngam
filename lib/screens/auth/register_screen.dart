@@ -88,7 +88,7 @@ class _RegisterScreenState extends State<RegisterScreen>
 
   InputDecoration _inputDecoration({
     required String hintText,
-    required IconData icon,
+    required List<List<dynamic>> icon,
     bool isPassword = false,
     bool obscure = false,
     VoidCallback? onToggle,
@@ -101,14 +101,14 @@ class _RegisterScreenState extends State<RegisterScreen>
       ),
       filled: true,
       fillColor: Colors.white.withValues(alpha: 0.05),
-      prefixIcon: Icon(icon, color: textSecondary, size: 18),
+      prefixIcon: HugeIcon(icon: icon, color: textSecondary, size: 18),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       suffixIcon: isPassword
           ? IconButton(
-              icon: Icon(
-                obscure
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
+              icon: HugeIcon(
+                icon: obscure
+                    ? HugeIcons.strokeRoundedViewOffSlash
+                    : HugeIcons.strokeRoundedView,
                 color: textSecondary,
                 size: 18,
               ),
@@ -546,7 +546,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                   textCapitalization: TextCapitalization.words,
                   decoration: _inputDecoration(
                     hintText: 'Ahmad Faiz',
-                    icon: Icons.person_outline,
+                    icon: HugeIcons.strokeRoundedUser,
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
@@ -574,7 +574,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                   keyboardType: TextInputType.emailAddress,
                   decoration: _inputDecoration(
                     hintText: 'nama@domain.com',
-                    icon: Icons.email_outlined,
+                    icon: HugeIcons.strokeRoundedMail01,
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
@@ -605,7 +605,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                   style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
                   decoration: _inputDecoration(
                     hintText: '••••••••',
-                    icon: Icons.lock_outline,
+                    icon: HugeIcons.strokeRoundedLockKey,
                     isPassword: true,
                     obscure: _obscurePassword,
                     onToggle: () {

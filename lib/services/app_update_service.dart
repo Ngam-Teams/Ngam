@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../widgets/glass_toast.dart';
@@ -226,8 +227,8 @@ class AppUpdateService {
                               ),
                             ],
                           ),
-                          child: const Icon(
-                            Icons.rocket_launch_rounded,
+                          child: const HugeIcon(
+                            icon: HugeIcons.strokeRoundedRocket,
                             color: Colors.white,
                             size: 26,
                           ),
@@ -283,8 +284,8 @@ class AppUpdateService {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Icon(
-                            Icons.arrow_forward_rounded,
+                          const HugeIcon(
+                            icon: HugeIcons.strokeRoundedArrowRight01,
                             size: 14,
                             color: Color(0xFF10B981),
                           ),
@@ -394,7 +395,7 @@ class AppUpdateService {
                                 Navigator.of(ctx).pop();
                                 launchDownload(update.downloadUrl);
                               },
-                              icon: const Icon(Icons.download_rounded, size: 18),
+                              icon: const HugeIcon(icon: HugeIcons.strokeRoundedDownload01, color: Colors.white, size: 18),
                               label: const Text('Kemas Kini'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.transparent,

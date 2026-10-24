@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
@@ -235,7 +236,7 @@ class _MapPickerState extends State<MapPicker> {
                     autofocus: true,
                     decoration: InputDecoration(
                       hintText: 'Taip nama tempat, jalan, atau poskod...',
-                      prefixIcon: const Icon(Icons.search),
+                      prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedSearch01, color: Colors.grey, size: 20),
                       suffixIcon: isSearching
                           ? const Padding(
                               padding: EdgeInsets.all(12),
@@ -277,7 +278,7 @@ class _MapPickerState extends State<MapPicker> {
                             itemBuilder: (context, index) {
                               final item = results[index];
                               return ListTile(
-                                leading: const Icon(Icons.location_on, color: Colors.blue),
+                                leading: const HugeIcon(icon: HugeIcons.strokeRoundedLocation01, color: Colors.blue, size: 20),
                                 title: Text(item['title'] as String, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                                 subtitle: (item['subtitle'] as String).isNotEmpty
                                     ? Text(item['subtitle'] as String, style: TextStyle(color: Colors.grey.shade600, fontSize: 12))
@@ -389,8 +390,8 @@ class _MapPickerState extends State<MapPicker> {
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          const Icon(
-                            Icons.location_on_rounded,
+                          const HugeIcon(
+                            icon: HugeIcons.strokeRoundedLocation01,
                             size: 44,
                             color: Color(0xFFE53935),
                           ),
@@ -442,7 +443,7 @@ class _MapPickerState extends State<MapPicker> {
                       },
                       child: Transform.rotate(
                         angle: -_rotation * (3.1415926535897932 / 180),
-                        child: const Icon(Icons.navigation),
+                        child: const HugeIcon(icon: HugeIcons.strokeRoundedNavigation01, color: Colors.white, size: 20),
                       ),
                     ),
                   ),
@@ -456,7 +457,7 @@ class _MapPickerState extends State<MapPicker> {
                     elevation: 4,
                     tooltip: 'Cari Alamat',
                     onPressed: _openSearchSheet,
-                    child: const Icon(Icons.search),
+                    child: const HugeIcon(icon: HugeIcons.strokeRoundedSearch01, color: Colors.white, size: 20),
                   ),
                 ),
                 // Butang cari aku kat mana
@@ -468,7 +469,7 @@ class _MapPickerState extends State<MapPicker> {
                   onPressed: _fetchCurrentLocation,
                   child: _isLoadingLocation 
                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.my_location),
+                      : const HugeIcon(icon: HugeIcons.strokeRoundedLocation01, color: Colors.white, size: 20),
                 ),
               ],
             ),

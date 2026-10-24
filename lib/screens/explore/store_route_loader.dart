@@ -1,3 +1,4 @@
+import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -218,8 +219,8 @@ class _StoreRouteLoaderState extends State<StoreRouteLoader> {
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.storefront_rounded,
+                child: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedStore01,
                   color: Colors.white,
                   size: 32,
                 ),
@@ -274,8 +275,8 @@ class _StoreRouteLoaderState extends State<StoreRouteLoader> {
                     color: Colors.redAccent.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.store_mall_directory_outlined,
+                  child: const HugeIcon(
+                    icon: HugeIcons.strokeRoundedStore01,
                     color: Colors.redAccent,
                     size: 44,
                   ),
@@ -311,7 +312,7 @@ class _StoreRouteLoaderState extends State<StoreRouteLoader> {
                   onPressed: () {
                     Navigator.pushReplacementNamed(context, '/customer-home');
                   },
-                  icon: const Icon(Icons.home_rounded),
+                  icon: const HugeIcon(icon: HugeIcons.strokeRoundedHome01, size: 20),
                   label: const Text('Kembali ke Utama'),
                 ),
               ],

@@ -192,7 +192,7 @@ class MessageModel {
   bool get isFile {
     if (messageType == 'file' || messageType == 'document') return true;
     if (imageUrl != null) {
-      if (content == '📎 File' || (fileName != null && fileName!.isNotEmpty)) return true;
+      if (content == 'File' || (fileName != null && fileName!.isNotEmpty)) return true;
       final lowerUrl = imageUrl!.toLowerCase();
       if (lowerUrl.endsWith('.pdf') || lowerUrl.endsWith('.doc') || lowerUrl.endsWith('.docx') || lowerUrl.endsWith('.txt') || lowerUrl.endsWith('.csv')) {
         return true;

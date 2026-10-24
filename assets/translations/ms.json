@@ -105,7 +105,7 @@
     "assigned": "Ditetapkan",
     "err_chat": "Ralat membuka chat: {}",
     "rate_review": "Nilai & Ulas Runner",
-    "review_submitted": "Ulasan dihantar ✓"
+    "review_submitted": "Ulasan dihantar"
   },
   "runner": {
     "find_gigs": "Cari Kerja",
@@ -126,13 +126,13 @@
     "confirm": "Sahkan",
     "runner_view": "Paparan Runner",
     "active_job": "Tugasan Aktif:",
-    "in_progress": "⚡ SEDANG BERJALAN",
+    "in_progress": "SEDANG BERJALAN",
     "upload_proof": "Muat Naik Bukti (pilihan)",
     "photo_upload_soon": "Fungsi muat naik gambar akan datang!",
     "tap_upload": "Ketik untuk muat naik gambar",
     "notes_requester": "Nota untuk Pemesan",
     "notes_hint": "Sebarang mesej untuk pelanggan...",
-    "task_completed": "Tugasan Selesai! 🎉",
+    "task_completed": "Tugasan Selesai!",
     "requester_notified": "Pemesan akan dimaklumkan serta-merta.",
     "done": "Selesai",
     "my_jobs_title": "Tugasan",
@@ -169,7 +169,7 @@
     "privacy": "Dasar Privasi",
     "rate_app": "Nilaikan Aplikasi",
     "logout": "Log Keluar",
-    "made_with_love": "Dibuat dengan ❤️ di Malaysia",
+    "made_with_love": "Dibuat dengan bangga di Malaysia",
     "logout_success": "Berjaya log keluar!",
     "language_changed": "Bahasa ditukar kepada {}",
     "ngam_rank": "Pangkat Ngam (Runner)",
@@ -301,7 +301,7 @@
   "support": {
     "done": "Selesai",
     "help_center": "Pusat Bantuan",
-    "greeting": "Hi 👋\nBagaimana kami boleh bantu?",
+    "greeting": "Hi\nBagaimana kami boleh bantu?",
     "search_hint": "Cari soalan...",
     "faq_title": "SOALAN LAZIM",
     "no_results": "Tiada soalan dijumpai untuk \"{}\"",
@@ -351,7 +351,7 @@
     "rate_subtitle": "Bagi bintang untuk bantu kami berkembang.",
     "feedback_hint": "Kongsikan pendapat anda tentang Ngam...",
     "submit_feedback": "Hantar Maklum Balas",
-    "thank_you": "Terima kasih atas maklum balas anda! 😊"
+    "thank_you": "Terima kasih atas maklum balas anda!"
   },
   "account": {
     "title": "Butiran Akaun",
@@ -388,7 +388,7 @@
     "upload_selfie": "Muat Naik Selfie dengan IC",
     "submit": "Hantar Pengesahan",
     "pending": "Pengesahan Dalam Proses",
-    "approved": "Runner Disahkan ✓"
+    "approved": "Runner Disahkan"
   },
   "stats": {
     "title": "Statistik & Pendapatan",

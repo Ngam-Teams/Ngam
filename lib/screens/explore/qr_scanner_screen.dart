@@ -1,3 +1,4 @@
+import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -108,7 +109,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.qr_code_scanner, color: Colors.blueAccent, size: 20),
+                  HugeIcon(icon: HugeIcons.strokeRoundedQrCode, color: Colors.blueAccent, size: 20),
                   SizedBox(width: 10),
                   Flexible(
                     child: Text(
@@ -137,7 +138,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                 ),
                 onPressed: _pickFromGallery,
-                icon: const Icon(Icons.photo_library_rounded, size: 18, color: Color(0xFF42A5F5)),
+                icon: const HugeIcon(icon: HugeIcons.strokeRoundedImage01, size: 18, color: Color(0xFF42A5F5)),
                 label: const Text(
                   'Pilih dari Galeri Foto',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
@@ -154,18 +155,18 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                    icon: const HugeIcon(icon: HugeIcons.strokeRoundedCancel01, color: Colors.white, size: 28),
                     onPressed: () => Navigator.pop(context),
                   ),
                   Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.photo_library_outlined, color: Colors.white, size: 24),
+                        icon: const HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.white, size: 24),
                         tooltip: 'Pilih dari Galeri',
                         onPressed: _pickFromGallery,
                       ),
                       IconButton(
-                        icon: Icon(_torchEnabled ? Icons.flash_on : Icons.flash_off, color: _torchEnabled ? Colors.amber : Colors.white, size: 26),
+                        icon: HugeIcon(icon: _torchEnabled ? HugeIcons.strokeRoundedFlash : HugeIcons.strokeRoundedFlashOff, color: _torchEnabled ? Colors.amber : Colors.white, size: 26),
                         tooltip: 'Lampu Kilat',
                         onPressed: () {
                           controller.toggleTorch();

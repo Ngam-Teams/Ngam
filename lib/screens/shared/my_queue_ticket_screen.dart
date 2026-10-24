@@ -306,7 +306,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                           color: const Color(0xFF42A5F5).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF42A5F5), size: 24),
+                        child: const HugeIcon(icon: HugeIcons.strokeRoundedQrCode, color: Color(0xFF42A5F5), size: 24),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -485,7 +485,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? Colors.white : Colors.black87, size: 20),
+          icon: HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, color: isDark ? Colors.white : Colors.black87, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -498,12 +498,12 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF42A5F5)),
+            icon: const HugeIcon(icon: HugeIcons.strokeRoundedQrCode, color: Color(0xFF42A5F5), size: 22),
             onPressed: _scanQueueQr,
             tooltip: 'Imbas QR Giliran',
           ),
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF42A5F5)),
+            icon: const HugeIcon(icon: HugeIcons.strokeRoundedRefresh, color: Color(0xFF42A5F5), size: 22),
             onPressed: () => _loadCustomerTicket(),
             tooltip: 'Segarkan Status',
           ),
@@ -566,7 +566,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
                 onPressed: _scanQueueQr,
-                icon: const Icon(Icons.qr_code_scanner_rounded, size: 20),
+                icon: const HugeIcon(icon: HugeIcons.strokeRoundedQrCode, size: 20, color: Colors.white),
                 label: const Text('Imbas Kod QR Kedai untuk Ambil Giliran', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
@@ -583,7 +583,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                 onPressed: () {
                   Navigator.pop(context);
                 },
-                icon: const Icon(Icons.explore_rounded, size: 18),
+                icon: const HugeIcon(icon: HugeIcons.strokeRoundedNavigation01, size: 18, color: Colors.white),
                 label: const Text('Cari Barbershop / Kedai Berdekatan', style: TextStyle(fontWeight: FontWeight.w600)),
               ),
             ),
@@ -612,28 +612,28 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
     Color bannerColor;
     String bannerTitle;
     String bannerSubtitle;
-    IconData bannerIcon;
+    List<List<dynamic>> bannerIcon;
 
     if (isCalling) {
       bannerColor = const Color(0xFFF59E0B);
       bannerTitle = 'GILIRAN ANDA TELAH DIPANGGIL!';
       bannerSubtitle = station != null ? 'Sila ke $station sekarang!' : 'Sila ke kaunter sekarang!';
-      bannerIcon = Icons.notifications_active_rounded;
+      bannerIcon = HugeIcons.strokeRoundedNotification03;
     } else if (isServing) {
       bannerColor = const Color(0xFF10B981);
       bannerTitle = 'SEDANG DISERVIS';
       bannerSubtitle = 'Servis sedang dijalankan di ${station ?? 'stesen servis'}';
-      bannerIcon = Icons.content_cut_rounded;
+      bannerIcon = HugeIcons.strokeRoundedScissor;
     } else if (isCompleted) {
       bannerColor = const Color(0xFF6B7280);
       bannerTitle = 'SERVIS SELESAI';
       bannerSubtitle = 'Terima kasih kerana melanggan bersama kami!';
-      bannerIcon = Icons.check_circle_rounded;
+      bannerIcon = HugeIcons.strokeRoundedCheckmarkCircle02;
     } else {
       bannerColor = const Color(0xFF3B82F6);
       bannerTitle = 'MENUNGGU GILIRAN';
       bannerSubtitle = 'Anggaran giliran anda dalam ~$waitMin minit';
-      bannerIcon = Icons.hourglass_top_rounded;
+      bannerIcon = HugeIcons.strokeRoundedHourglass;
     }
 
     return SingleChildScrollView(
@@ -669,7 +669,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                       color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(bannerIcon, color: Colors.white, size: 28),
+                    child: HugeIcon(icon: bannerIcon, color: Colors.white, size: 28),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -736,7 +736,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                           color: const Color(0xFF42A5F5).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: const Icon(Icons.storefront_rounded, color: Color(0xFF42A5F5), size: 24),
+                        child: const HugeIcon(icon: HugeIcons.strokeRoundedStore01, color: Color(0xFF42A5F5), size: 24),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -807,8 +807,8 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              _peopleAhead == 0 ? Icons.check_circle_rounded : Icons.people_outline_rounded,
+                            HugeIcon(
+                              icon: _peopleAhead == 0 ? HugeIcons.strokeRoundedCheckmarkCircle02 : HugeIcons.strokeRoundedUserGroup,
                               size: 16,
                               color: _peopleAhead == 0 ? const Color(0xFF10B981) : const Color(0xFF3B82F6),
                             ),
@@ -909,7 +909,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                   onPressed: () => _callShop(shopPhone),
-                  icon: const Icon(Icons.phone_rounded, size: 18),
+                  icon: const HugeIcon(icon: HugeIcons.strokeRoundedCall, size: 18, color: Colors.blue),
                   label: const Text('Hubungi Kedai', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
@@ -940,7 +940,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
                 onPressed: _cancelTicket,
-                icon: const Icon(Icons.close_rounded, size: 16),
+                icon: const HugeIcon(icon: HugeIcons.strokeRoundedCancel01, size: 16, color: Colors.redAccent),
                 label: const Text('Batal Giliran Ini', style: TextStyle(fontWeight: FontWeight.w600)),
               ),
             ),

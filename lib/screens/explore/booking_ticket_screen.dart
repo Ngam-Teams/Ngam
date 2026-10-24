@@ -1,4 +1,4 @@
-import 'dart:async'; // 🟢 Needed for Timer
+import 'dart:async'; //  Needed for Timer
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -8,7 +8,7 @@ import 'package:ngam/l10n/generated/app_localizations.dart';
 import 'bookings_view.dart';
 
 class BookingTicketScreen extends StatefulWidget {
-  final String shopId; // 🟢 Add this
+  final String shopId; //  Add this
   final String shopName;
   final String category;
   final String shopImage;
@@ -23,7 +23,7 @@ class BookingTicketScreen extends StatefulWidget {
 
   const BookingTicketScreen({
     super.key,
-    required this.shopId, // 🟢 Add this
+    required this.shopId, //  Add this
     required this.shopName,
     required this.category,
     required this.shopImage,
@@ -55,7 +55,7 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
 
     _currentStatus = widget.isCancelled ? 'cancelled' : widget.status;
 
-    // 🟢 Realtime Supabase status sync with merchant
+    //  Realtime Supabase status sync with merchant
     if (widget.bookingDbId != null && widget.bookingDbId!.isNotEmpty) {
       _statusSubscription = Supabase.instance.client
           .from('bookings')
@@ -73,7 +73,7 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
       });
     }
 
-    // 🟢 ONLY run the timer if the booking is NOT cancelled!
+    //  ONLY run the timer if the booking is NOT cancelled!
     if (!widget.isCancelled && _currentStatus != 'cancelled') {
       _targetDateTime = _parseBookingDateTime(widget.date, widget.time);
       _updateTimeLeft();
@@ -190,14 +190,14 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
     final text = '''
 *NGAM — RESIT TEMPAHAN DIGITAL*
 --------------------------------
-🧾 *No. Tempahan:* ${widget.bookingId}
-🏪 *Kedai:* ${widget.shopName}
-✂️ *Perkhidmatan:* ${widget.category}
-👤 *Staf/Pakar:* ${widget.providerName}
-📅 *Tarikh:* ${widget.date}
-⏰ *Masa:* ${widget.time}
-💰 *Jumlah:* RM ${widget.totalPrice}
-📌 *Status:* ${_currentStatus.toUpperCase()}
+*No. Tempahan:* ${widget.bookingId}
+*Kedai:* ${widget.shopName}
+*Perkhidmatan:* ${widget.category}
+*Staf/Pakar:* ${widget.providerName}
+*Tarikh:* ${widget.date}
+*Masa:* ${widget.time}
+*Jumlah:* RM ${widget.totalPrice}
+*Status:* ${_currentStatus.toUpperCase()}
 
 Disahkan melalui aplikasi *Ngam*.
 ''';
@@ -248,13 +248,13 @@ Disahkan melalui aplikasi *Ngam*.
           ),
         ],
       ),
-      // 🟢 CHANGED: We now use a Column to separate the Scrollable Ticket from the Sticky Bottom Buttons
+      //  CHANGED: We now use a Column to separate the Scrollable Ticket from the Sticky Bottom Buttons
       body: Column(
         children: [
           // --- SCROLLABLE TICKET AREA ---
           Expanded(
             child: SingleChildScrollView(
-              // 🟢 FIX: Added bottom: 40 padding so it doesn't get stuck behind buttons
+              //  FIX: Added bottom: 40 padding so it doesn't get stuck behind buttons
               padding: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 40),
               physics: const BouncingScrollPhysics(),
               child: Column(
@@ -278,7 +278,7 @@ Disahkan melalui aplikasi *Ngam*.
                       ),
                     )
                   else ...[
-                    // 🟢 LIVE STATUS STEP TRACKER CARD
+                    //  LIVE STATUS STEP TRACKER CARD
                     _buildLiveStatusTrackerCard(context, isDark),
                     const SizedBox(height: 12),
 
@@ -322,7 +322,7 @@ Disahkan melalui aplikasi *Ngam*.
                   ),
                 ],
 
-                  // 🟢 REARRANGED CLEAN TICKET CARD
+                  //  REARRANGED CLEAN TICKET CARD
                   Container(
                     decoration: BoxDecoration(
                       color: isDark ? const Color(0xFF1E242B) : Colors.white,
@@ -403,10 +403,10 @@ Disahkan melalui aplikasi *Ngam*.
                         // Dashed Divider 2
                         _buildDashedDivider(isDark),
 
-                        // 🟢 Only show QR if NOT cancelled!
+                        //  Only show QR if NOT cancelled!
                         if (!widget.isCancelled)
 
-                        // 🟢 Only show QR if NOT cancelled!
+                        //  Only show QR if NOT cancelled!
                         if (!widget.isCancelled)
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 24),
@@ -445,11 +445,11 @@ Disahkan melalui aplikasi *Ngam*.
             ),
             child: SafeArea(
               top: false,
-              bottom: true, // 🟢 Helps prevent iOS swipe bar overlap
+              bottom: true, //  Helps prevent iOS swipe bar overlap
               child: Row(
                 children: [
                   Expanded(
-                    flex: 1, // 🟢 Force 1 flex
+                    flex: 1, //  Force 1 flex
                     child: ElevatedButton(
                       onPressed: _contactOwner,
                       style: ElevatedButton.styleFrom(
@@ -462,12 +462,12 @@ Disahkan melalui aplikasi *Ngam*.
                           side: BorderSide(color: isDark ? Colors.transparent : Colors.grey.shade300),
                         ),
                       ),
-                      child: const Icon(Icons.phone_outlined, size: 22),
+                      child: const HugeIcon(icon: HugeIcons.strokeRoundedCall02, size: 22, color: Colors.blue),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    flex: 1, // 🟢 Force 1 flex
+                    flex: 1, //  Force 1 flex
                     child: ElevatedButton(
                       onPressed: _openDirections,
                       style: ElevatedButton.styleFrom(
@@ -480,7 +480,7 @@ Disahkan melalui aplikasi *Ngam*.
                           side: BorderSide(color: isDark ? Colors.transparent : Colors.grey.shade300),
                         ),
                       ),
-                      child: const Icon(Icons.directions_rounded, size: 22),
+                      child: const HugeIcon(icon: HugeIcons.strokeRoundedDirections01, size: 22, color: Colors.blue),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -543,7 +543,7 @@ Disahkan melalui aplikasi *Ngam*.
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.star_rounded, size: 20),
+                            HugeIcon(icon: HugeIcons.strokeRoundedStar, size: 20, color: Colors.amber),
                             SizedBox(width: 6),
                             Text("Beri Ulasan", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                           ],
@@ -833,7 +833,7 @@ Disahkan melalui aplikasi *Ngam*.
                     ),
                     child: Center(
                       child: isDone
-                          ? const Icon(Icons.check, size: 12, color: Colors.white)
+                          ? const HugeIcon(icon: HugeIcons.strokeRoundedTick01, size: 12, color: Colors.white)
                           : isCurrent
                               ? Container(
                                   width: 6,

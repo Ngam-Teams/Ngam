@@ -540,5 +540,5 @@ class AppLocalizationsEn extends AppLocalizations {
   String get referralText => 'Get RM10 for every referral';
 
   @override
-  String get madeIn => 'Made with ❤️ in Malaysia';
+  String get madeIn => 'Made with pride in Malaysia';
 }

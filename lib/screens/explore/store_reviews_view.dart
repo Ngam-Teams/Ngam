@@ -180,9 +180,10 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
                   final starVal = idx + 1;
                   return IconButton(
                     iconSize: 34,
-                    icon: Icon(
-                      starVal <= rating ? Icons.star_rounded : Icons.star_outline_rounded,
-                      color: Colors.amber,
+                    icon: HugeIcon(
+                      icon: HugeIcons.strokeRoundedStar,
+                      color: starVal <= rating ? Colors.amber : Colors.grey,
+                      size: 34,
                     ),
                     onPressed: () => setModalState(() => rating = starVal),
                   );
@@ -321,7 +322,7 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
                         width: 44,
                         height: 44,
                         child: Center(
-                          child: Icon(Icons.rate_review_outlined, color: Colors.blue, size: 20),
+                          child: HugeIcon(icon: HugeIcons.strokeRoundedEdit02, color: Colors.blue, size: 20),
                         ),
                       ),
                     ),
@@ -359,7 +360,7 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
                             Row(
                               children: List.generate(
                                 5,
-                                (i) => Icon(Icons.star_rounded, color: Colors.amber, size: 18),
+                                (i) => const HugeIcon(icon: HugeIcons.strokeRoundedStar, color: Colors.amber, size: 18),
                               ),
                             ),
                             const SizedBox(height: 6),
@@ -445,7 +446,7 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
                                         ? NetworkImage(rev['avatar'])
                                         : null,
                                     child: rev['avatar'].toString().isEmpty
-                                        ? const Icon(Icons.person, color: Colors.blue, size: 20)
+                                        ? const HugeIcon(icon: HugeIcons.strokeRoundedUser, color: Colors.blue, size: 20)
                                         : null,
                                   ),
                                   const SizedBox(width: 12),
@@ -466,7 +467,7 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
                                             Row(
                                               children: List.generate(
                                                 rev['rating'] as int,
-                                                (i) => const Icon(Icons.star_rounded, color: Colors.amber, size: 14),
+                                                (i) => const HugeIcon(icon: HugeIcons.strokeRoundedStar, color: Colors.amber, size: 14),
                                               ),
                                             ),
                                             const SizedBox(width: 8),
@@ -521,8 +522,8 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
                                     },
                                     child: Row(
                                       children: [
-                                        Icon(
-                                          rev['isHelpful'] ? Icons.thumb_up_rounded : Icons.thumb_up_outlined,
+                                        HugeIcon(
+                                          icon: HugeIcons.strokeRoundedThumbsUp,
                                           size: 15,
                                           color: rev['isHelpful'] ? Colors.blue : textSecondary,
                                         ),

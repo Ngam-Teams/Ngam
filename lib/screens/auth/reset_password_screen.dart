@@ -108,7 +108,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
 
   InputDecoration _inputDecoration({
     required String hintText,
-    IconData? prefixIcon,
+    List<List<dynamic>>? prefixIcon,
     bool isPassword = false,
     bool obscure = false,
     VoidCallback? onToggle,
@@ -122,15 +122,15 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
       filled: true,
       fillColor: Colors.white.withValues(alpha: 0.05),
       prefixIcon: prefixIcon != null
-          ? Icon(prefixIcon, color: textSecondary, size: 18)
+          ? HugeIcon(icon: prefixIcon, color: textSecondary, size: 18)
           : null,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       suffixIcon: isPassword
           ? IconButton(
-              icon: Icon(
-                obscure
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
+              icon: HugeIcon(
+                icon: obscure
+                    ? HugeIcons.strokeRoundedViewOffSlash
+                    : HugeIcons.strokeRoundedView,
                 color: textSecondary,
                 size: 18,
               ),
@@ -343,7 +343,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                                 ),
                                 decoration: _inputDecoration(
                                   hintText: 'Minimal 6 aksara',
-                                  prefixIcon: Icons.lock_outline,
+                                  prefixIcon: HugeIcons.strokeRoundedLockKey,
                                   isPassword: true,
                                   obscure: _obscureNew,
                                   onToggle: () {
@@ -384,7 +384,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                                 ),
                                 decoration: _inputDecoration(
                                   hintText: 'Ulang kata laluan baharu',
-                                  prefixIcon: Icons.lock_outline,
+                                  prefixIcon: HugeIcons.strokeRoundedLockKey,
                                   isPassword: true,
                                   obscure: _obscureConfirm,
                                   onToggle: () {
@@ -477,8 +477,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(
-                                        Icons.arrow_back,
+                                      const HugeIcon(
+                                        icon: HugeIcons.strokeRoundedArrowLeft01,
                                         size: 14,
                                         color: textSecondary,
                                       ),

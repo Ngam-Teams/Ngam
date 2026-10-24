@@ -15,13 +15,13 @@ class MyBookingsView extends StatefulWidget {
 class _MyBookingsViewState extends State<MyBookingsView> {
   int _selectedTab = 0;
 
-  // 🟢 1. Declare a permanent stream variable
+  //  1. Declare a permanent stream variable
   late final Stream<List<Map<String, dynamic>>> _bookingsStream;
 
   @override
   void initState() {
     super.initState();
-    // 🟢 2. Start the stream exactly ONCE when the screen first loads.
+    //  2. Start the stream exactly ONCE when the screen first loads.
     // It will now stay awake in the background!
     _bookingsStream = Supabase.instance.client
         .from('bookings')
@@ -100,7 +100,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                           color: Colors.white.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.people_alt_rounded, color: Colors.white, size: 20),
+                        child: const HugeIcon(icon: HugeIcons.strokeRoundedUserGroup, color: Colors.white, size: 20),
                       ),
                       const SizedBox(width: 12),
                       const Expanded(
@@ -127,7 +127,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                           ],
                         ),
                       ),
-                      const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 14),
+                      const HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, color: Colors.white70, size: 14),
                     ],
                   ),
                 ),
@@ -157,7 +157,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
               // --- DYNAMIC DATABASE STREAM AREA ---
               Expanded(
                 child: StreamBuilder<List<Map<String, dynamic>>>(
-                  // 🟢 3. Use the permanent stream that never disconnects!
+                  //  3. Use the permanent stream that never disconnects!
                   stream: _bookingsStream,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -170,7 +170,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
 
                     final myUid = Supabase.instance.client.auth.currentUser?.id;
 
-                    // 🟢 Filter bookings that belong only to the logged-in user
+                    //  Filter bookings that belong only to the logged-in user
                     final myBookings = snapshot.data!.where((b) {
                       final meta = b['booking_metadata'] as Map<String, dynamic>?;
                       final belongsToUser = b['customer_id'] == myUid || meta?['customer_auth_id'] == myUid;
@@ -196,7 +196,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
 
                       return {
                         'db_id': dbItem['id'],
-                        'shopId': dbItem['business_id'] ?? '', // 🟢 Shop ID
+                        'shopId': dbItem['business_id'] ?? '', //  Shop ID
                         'id': meta['booking_id'] ?? meta['short_ref'] ?? 'BK-0000',
                         'title': meta['shop_name'] ?? 'Shop',
                         'category': meta['category'] ?? 'Service',
@@ -372,7 +372,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
               ],
             ),
           ),
-          // 🟢 Reactive Step Progress Tracker
+          //  Reactive Step Progress Tracker
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: _buildMiniProgressTracker(status, isDark),
@@ -548,7 +548,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                 ),
                 child: Center(
                   child: isDone
-                      ? const Icon(Icons.check, size: 9, color: Colors.white)
+                      ? const HugeIcon(icon: HugeIcons.strokeRoundedTick01, size: 9, color: Colors.white)
                       : isCurrent
                           ? Container(width: 4, height: 4, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle))
                           : null,
@@ -646,5 +646,5 @@ class _MyBookingsViewState extends State<MyBookingsView> {
   }
 }
 
-// 🟢 Alias for backwards compatibility
+//  Alias for backwards compatibility
 typedef MyRezrvView = MyBookingsView;

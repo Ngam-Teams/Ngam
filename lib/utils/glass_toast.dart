@@ -113,7 +113,7 @@ class _ToastIcon extends StatelessWidget {
     try {
       return HugeIcon(icon: icon, color: color, size: 20);
     } catch (_) {
-      return Icon(Icons.info_outline_rounded, color: color, size: 20);
+      return HugeIcon(icon: HugeIcons.strokeRoundedInformationCircle, color: color, size: 20);
     }
   }
 }

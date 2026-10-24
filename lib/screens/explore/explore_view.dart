@@ -74,7 +74,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
   Map<String, dynamic>? _selectedShop;
   List<Map<String, dynamic>> _nearbyShops = [];
-  List<Map<String, dynamic>> _displayedShops = []; // 🟢 Added this back!
+  List<Map<String, dynamic>> _displayedShops = []; //  Added this back!
   String? _activeSearchQuery;
 
   // --- NEW: ADVANCED SEARCH STATE ---
@@ -210,26 +210,26 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   void initState() {
     super.initState();
 
-    // 🟢 1. Initialize the PageController for your bottom carousel
+    //  1. Initialize the PageController for your bottom carousel
     _pageController = PageController(viewportFraction: 0.85);
 
-    // 🟢 2. Attach the listener for the search bar focus
+    //  2. Attach the listener for the search bar focus
     _searchFocus.addListener(_onSearchFocusChanged);
 
-    // 🟢 3. Load cached location immediately for instant startup
+    //  3. Load cached location immediately for instant startup
     _loadCachedLocation();
 
-    // 🟢 4. Start GPS tracking
+    //  4. Start GPS tracking
     _initLocationTracking();
 
-    // 🟢 5. Fetch the data (using the correct method name)
+    //  5. Fetch the data (using the correct method name)
     _fetchShopsFromDatabase();
   }
 
-  // 🟢 1. ADD THIS VARIABLE right above the fetch function
+  //  1. ADD THIS VARIABLE right above the fetch function
   StreamSubscription<List<Map<String, dynamic>>>? _shopsSubscription;
 
-  // 🟢 2. REPLACE your old _fetchShopsFromDatabase with this real-time stream
+  //  2. REPLACE your old _fetchShopsFromDatabase with this real-time stream
   void _fetchShopsFromDatabase() {
     _shopsSubscription?.cancel(); // Kill any old streams
 
@@ -240,7 +240,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         .listen((data) async {
       if (!mounted) return;
 
-      // 🟢 SYNC OPENING HOURS FROM business_settings
+      //  SYNC OPENING HOURS FROM business_settings
       Map<String, dynamic> settingsMap = {};
       try {
         final settingsList = await Supabase.instance.client
@@ -527,7 +527,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           List<String> services = List<String>.from(shop['services']);
           var matchedSrv = services.where((s) => s.toLowerCase().contains(q));
           if (matchedSrv.isNotEmpty) {
-            shopMatches.add({'shop': shop, 'match_reason': AppLocalizations.of(context)!.searchMatchProvides(matchedSrv.first)}); // 🟢 Localized
+            shopMatches.add({'shop': shop, 'match_reason': AppLocalizations.of(context)!.searchMatchProvides(matchedSrv.first)}); //  Localized
           }
         }
       }
@@ -595,7 +595,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Colors.white12)),
           title: const Row(
             children: [
-              Icon(Icons.wifi_rounded, color: Color(0xFF42A5F5), size: 22),
+              HugeIcon(icon: HugeIcons.strokeRoundedWifi01, color: Color(0xFF42A5F5), size: 22),
               SizedBox(width: 10),
               Text('WiFi Tetamu Kedai', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
             ],
@@ -618,7 +618,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.router_rounded, color: Colors.white70, size: 16),
+                        const HugeIcon(icon: HugeIcons.strokeRoundedRouter, color: Colors.white70, size: 16),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text('SSID: $ssid', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
@@ -628,7 +628,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(Icons.key_rounded, color: Color(0xFF42A5F5), size: 16),
+                        const HugeIcon(icon: HugeIcons.strokeRoundedKey01, color: Color(0xFF42A5F5), size: 16),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text('Kata Laluan: $pass', style: const TextStyle(color: Colors.white70, fontSize: 13)),
@@ -656,7 +656,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                 Navigator.pop(ctx);
                 showGlassToast(context, 'Kata laluan WiFi disalin ke papan klip!');
               },
-              icon: const Icon(Icons.copy_rounded, size: 16),
+              icon: const HugeIcon(icon: HugeIcons.strokeRoundedCopy01, size: 16),
               label: const Text('Salin Kata Laluan'),
             ),
           ],
@@ -990,7 +990,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   }
 
   void _showMessageOptions(BuildContext context, bool isDark) {
-    final l10n = AppLocalizations.of(context)!; // 🟢 Fetch l10n
+    final l10n = AppLocalizations.of(context)!; //  Fetch l10n
     BottomNavCustomer.isVisible.value = false;
     showModalBottomSheet(
       context: context,
@@ -1015,14 +1015,14 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
             Padding(
               padding: const EdgeInsets.only(bottom: 8, top: 4),
               child: Text(
-                l10n.msgVia, // 🟢 Localized
+                l10n.msgVia, //  Localized
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
               ),
             ),
             Divider(color: isDark ? Colors.white12 : Colors.black12),
-            _buildMessageOption(l10n.msgWhatsApp, "https://wa.me/${_shopPhoneNumber.replaceAll('+', '')}", isDark, HugeIcons.strokeRoundedWhatsapp), // 🟢 Localized
-            _buildMessageOption(l10n.msgTelegram, "https://t.me/$_shopPhoneNumber", isDark, HugeIcons.strokeRoundedTelegram), // 🟢 Localized
-            _buildMessageOption(l10n.msgSMS, "sms:$_shopPhoneNumber", isDark, HugeIcons.strokeRoundedMessage01), // 🟢 Localized
+            _buildMessageOption(l10n.msgWhatsApp, "https://wa.me/${_shopPhoneNumber.replaceAll('+', '')}", isDark, HugeIcons.strokeRoundedWhatsapp), //  Localized
+            _buildMessageOption(l10n.msgTelegram, "https://t.me/$_shopPhoneNumber", isDark, HugeIcons.strokeRoundedTelegram), //  Localized
+            _buildMessageOption(l10n.msgSMS, "sms:$_shopPhoneNumber", isDark, HugeIcons.strokeRoundedMessage01), //  Localized
           ],
         ),
       ),
@@ -1035,7 +1035,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     return ListTile(
       leading: HugeIcon(icon: icon, color: Colors.blue, size: 24),
       title: Text(title, style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.w600)),
-      trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: isDark ? Colors.white30 : Colors.black26),
+      trailing: HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, size: 14, color: isDark ? Colors.white30 : Colors.black26),
       onTap: () async {
         Navigator.pop(context); // Close the bottom sheet
         final Uri uri = Uri.parse(urlString);
@@ -1130,7 +1130,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                       subdomains: const ['0', '1', '2', '3'],
                       userAgentPackageName: 'com.ngam.app',
 
-                      // 🟢 PERFECT FIX: Has (context), but NO 'const' keyword!
+                      //  PERFECT FIX: Has (context), but NO 'const' keyword!
                       retinaMode: RetinaMode.isHighDensity(context),
 
                       tileBuilder: (context, tileWidget, tile) {
@@ -1153,13 +1153,13 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                       },
                     ),
 
-                    // 🟢 1. CLUSTER LAYER (For all unselected shops)
+                    //  1. CLUSTER LAYER (For all unselected shops)
                     MarkerClusterLayerWidget(
                       options: MarkerClusterLayerOptions(
                         maxClusterRadius: 45,
                         size: const Size(40, 40),
 
-                        // 🟢 FIXED: Use the official cluster tap handler!
+                        //  FIXED: Use the official cluster tap handler!
                         onMarkerTap: (Marker marker) {
                           // Find which shop belongs to the tapped marker using its Key
                           final shopName = (marker.key as ValueKey).value;
@@ -1172,11 +1172,11 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                         markers: _displayedShops.asMap().entries.where((e) => e.value != _selectedShop).map((e) {
                           final Map<String, dynamic> shop = e.value;
                           return Marker(
-                            key: ValueKey(shop['name']), // 🟢 ADDED: Unique key to identify the shop
+                            key: ValueKey(shop['name']), //  ADDED: Unique key to identify the shop
                             point: shop['location'],
                             width: 44, // Increased slightly for a better touch target
                             height: 44,
-                            child: _buildMarkerPin(shop, false), // 🟢 REMOVED GestureDetector from here
+                            child: _buildMarkerPin(shop, false), //  REMOVED GestureDetector from here
                           );
                         }).toList(),
 
@@ -1201,7 +1201,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                       ),
                     ),
 
-                    // 🟢 2. STANDARD MARKER LAYER (For the User Dot & Selected Shop)
+                    //  2. STANDARD MARKER LAYER (For the User Dot & Selected Shop)
                     // We keep these separate so they ALWAYS stay on top and never get clustered!
                     MarkerLayer(markers: [
                       Marker(
@@ -1349,9 +1349,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
                     if (_searchController.text.isNotEmpty)
                       GestureDetector(onTap: _clearSearch,
-                          child: Icon(Icons.close, size: 18,
-                              color: isDark ? Colors.white70 : _lightModeGray
-                                  .withValues(alpha: 0.6))),
+                          child: HugeIcon(icon: HugeIcons.strokeRoundedCancel01, size: 18, color: isDark ? Colors.white70 : _lightModeGray.withValues(alpha: 0.6))),
                   ],
                 ),
               ),
@@ -1451,7 +1449,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                           if (isExpanded) {
                             _expandedCategories.remove(cat['id']);
                           } else {
-                            _expandedCategories.clear(); // 🟢 Closes others
+                            _expandedCategories.clear(); //  Closes others
                             _expandedCategories.add(cat['id']);
                           }
                         });
@@ -1580,7 +1578,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                       if (isExpanded) {
                         _expandedCategories.remove(group['id']);
                       } else {
-                        _expandedCategories.clear(); // 🟢 Closes others
+                        _expandedCategories.clear(); //  Closes others
                         _expandedCategories.add(group['id']);
                       }
                     });
@@ -1865,8 +1863,8 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                       Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
-                                Icons.star, color: Colors.amber, size: 10),
+                            const HugeIcon(
+                                icon: HugeIcons.strokeRoundedStar, color: Colors.amber, size: 10),
                             const SizedBox(width: 4),
                             Text(
                                 "${shop['rating']} (${shop['reviews']})",
@@ -2129,8 +2127,8 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                   ),
                                 ),
                               ),
-                              const Icon(
-                                Icons.star_rounded,
+                              const HugeIcon(
+                                icon: HugeIcons.strokeRoundedStar,
                                 size: 13,
                                 color: Color(0xFFFFB800),
                               ),
@@ -2222,7 +2220,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   // --- 5. BOTTOM SHEET MODAL ---
 
   void _showBusinessProfile(BuildContext context, Map<String, dynamic> shop) {
-    // 🟢 SAFELY set local state here, outside the sheet builder!
+    //  SAFELY set local state here, outside the sheet builder!
     setState(() {
       _isProfileOpen = true;
     });
@@ -2435,7 +2433,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                         null,
                                         isDark,
                                         false,
-                                        onTap: _makeCall, // 🟢 Triggers phone call
+                                        onTap: _makeCall, //  Triggers phone call
                                       ),
                                     ),
                                     const SizedBox(width: 12),
@@ -2446,7 +2444,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                         null,
                                         isDark,
                                         false,
-                                        onTap: () => _showMessageOptions(context, isDark), // 🟢 Opens the message options popup
+                                        onTap: () => _showMessageOptions(context, isDark), //  Opens the message options popup
                                       ),
                                     ),
                                     const SizedBox(width: 12),
@@ -2457,13 +2455,13 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                         AppLocalizations.of(context)!.directions,
                                         isDark,
                                         true,
-                                        onTap: () => _getDirections(shop), // 🟢 Opens Google Maps / Apple Maps
+                                        onTap: () => _getDirections(shop), //  Opens Google Maps / Apple Maps
                                       ),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 24),
-                                // 🟢 VIEW STORE BUTTON → BusinessStoreView (main store page)
+                                //  VIEW STORE BUTTON → BusinessStoreView (main store page)
                                 GestureDetector(
                                   onTap: () {
                                     Navigator.pop(context); // Close bottom sheet first
@@ -2516,7 +2514,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                         ])),
                                 child: Row(
                                   children: [
-                                    // 🟢 BUTTON 1: View Store
+                                    //  BUTTON 1: View Store
                                     Expanded(
                                       child: _AnimatedPressable(
                                         onTap: () {
@@ -2525,14 +2523,14 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                           // Navigate to the full detail screen
                                           Navigator.push(context, MaterialPageRoute(builder: (context) => BusinessStoreView(shop: shop)));
                                         },
-                                        // 👇 CHANGED: Now uses the exact same frosted glass style as the Stats Dashboard!
+                                        //  CHANGED: Now uses the exact same frosted glass style as the Stats Dashboard!
                                         child: _buildInnerGlassCard(
                                           isDark: isDark,
                                           radius: 18.0,
                                           padding: const EdgeInsets.symmetric(vertical: 18),
                                           child: Center(
                                             child: Text(
-                                                AppLocalizations.of(context)!.btnViewProfile, // 🟢 Localized
+                                                AppLocalizations.of(context)!.btnViewProfile, //  Localized
                                                 style: TextStyle(
                                                     color: isDark ? Colors.white : Colors.black87,
                                                     fontSize: 16,
@@ -2544,16 +2542,16 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                       ),
                                     ),
                                     const SizedBox(width: 12),
-                                    // 🟢 BUTTON 2: Book Now (WITH AUTH GUARD)
+                                    //  BUTTON 2: Book Now (WITH AUTH GUARD)
                                     Expanded(
                                       child: _AnimatedPressable(
                                         onTap: () {
                                           _searchFocus.unfocus();
                                           Navigator.pop(context); // Close the bottom sheet
 
-                                          // 🟢 THE AUTH GUARD LOGIC
+                                          //  THE AUTH GUARD LOGIC
                                           if (Supabase.instance.client.auth.currentUser != null) {
-                                            // ✅ USER IS LOGGED IN: Proceed to checkout/booking!
+                                            //  USER IS LOGGED IN: Proceed to checkout/booking!
                                             Navigator.push(context, MaterialPageRoute(builder: (context) => BookingsView(
                                               shopId: shop["id"].toString(),
                                               shopName: shop["name"] ?? "Unknown Shop",
@@ -2561,7 +2559,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                               shopImage: shop["image"] ?? "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400",
                                             )));
                                           } else {
-                                            // ❌ USER IS GUEST: Show Toast and Redirect to Login!
+                                            //  USER IS GUEST: Show Toast and Redirect to Login!
                                             showGlassToast(
                                                 context,
                                                 "Please sign in or register to make a booking.",

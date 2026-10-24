@@ -229,7 +229,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.swap_vert_rounded, size: 16, color: isDark ? Colors.white54 : Colors.black54),
+                              HugeIcon(icon: HugeIcons.strokeRoundedArrowUpDown, size: 16, color: isDark ? Colors.white54 : Colors.black54),
                               const SizedBox(width: 8),
                               Text("wallet.swipe_hint".tr(), style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 13, fontWeight: FontWeight.w500)),
                             ],
@@ -390,7 +390,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text("wallet.balance".tr(), style: TextStyle(fontSize: 16, color: isDark ? Colors.white70 : Colors.black54, fontWeight: FontWeight.w500)),
-                            const Icon(Icons.wallet, color: AppTheme.primary, size: 28),
+                            const HugeIcon(icon: HugeIcons.strokeRoundedCreditCard, color: AppTheme.primary, size: 28),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -448,7 +448,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           // 2. Bayang-bayang watermark bumi
           Positioned(
             right: -20, bottom: -20,
-            child: Icon(Icons.public, size: 160, color: Colors.white.withValues(alpha: 0.04)),
+            child: HugeIcon(icon: HugeIcons.strokeRoundedGlobal, size: 160, color: Colors.white.withValues(alpha: 0.04)),
           ),
 
           // 3. Isi kandungan kad tu
@@ -487,7 +487,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                   children: [
                     _buildRealisticChip(),
                     const SizedBox(width: 12),
-                    const Icon(Icons.contactless_outlined, color: Colors.white70, size: 28),
+                    const HugeIcon(icon: HugeIcons.strokeRoundedNfc, color: Colors.white70, size: 28),
                   ],
                 ),
 
@@ -557,7 +557,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(Icons.account_balance, color: Colors.white70, size: 32),
+              const HugeIcon(icon: HugeIcons.strokeRoundedBank, color: Colors.white70, size: 32),
               Text("wallet.bank_account".tr(), style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
             ],
           ),
@@ -814,7 +814,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(Icons.check_circle_rounded, size: 48, color: Colors.green),
+                                      const HugeIcon(icon: HugeIcons.strokeRoundedCheckmarkCircle02, size: 48, color: Colors.green),
                                       const SizedBox(height: 16),
                                       const Text('Baki Dah Cukup!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                                       const SizedBox(height: 8),
@@ -1046,8 +1046,13 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
               color: tx['isPositive'] ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(tx['isPositive'] ? Icons.arrow_downward : Icons.arrow_upward,
-                color: tx['isPositive'] ? Colors.green : Colors.red, size: 20),
+            child: HugeIcon(
+              icon: tx['isPositive']
+                  ? HugeIcons.strokeRoundedArrowDown01
+                  : HugeIcons.strokeRoundedArrowUp01,
+              color: tx['isPositive'] ? Colors.green : Colors.red,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -1149,7 +1154,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
             Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: color.withValues(alpha: 0.15), shape: BoxShape.circle), child: HugeIcon(icon: icon, color: color, size: 22)),
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)), const SizedBox(height: 2), Text(subtitle, style: TextStyle(fontSize: 11, color: isDark ? Colors.white54 : Colors.black54))])),
-            Icon(Icons.arrow_forward_ios_rounded, color: isDark ? Colors.white30 : Colors.black26, size: 14)
+            HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, color: isDark ? Colors.white30 : Colors.black26, size: 14)
           ],
         ),
       ),
@@ -1306,7 +1311,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                                         value: selectedBank,
                                         isExpanded: true,
                                         dropdownColor: isDark ? const Color(0xFF262626) : Colors.white,
-                                        icon: Icon(Icons.keyboard_arrow_down_rounded, color: isDark ? Colors.white54 : Colors.black54),
+                                        icon: HugeIcon(icon: HugeIcons.strokeRoundedArrowDown01, color: isDark ? Colors.white54 : Colors.black54, size: 20),
                                         items: _malaysianBanks.map((String bank) {
                                           return DropdownMenuItem<String>(
                                               value: bank,
@@ -1418,8 +1423,8 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
         borderRadius: BorderRadius.circular(10),
       ),
       child: Center(
-        child: Icon(
-          Icons.account_balance, 
+        child: HugeIcon(
+          icon: HugeIcons.strokeRoundedBank, 
           size: size * 0.5, 
           color: isDark ? Colors.white70 : Colors.black87
         ),

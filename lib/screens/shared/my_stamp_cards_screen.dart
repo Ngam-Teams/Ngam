@@ -1,3 +1,4 @@
+import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -128,7 +129,7 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? Colors.white : Colors.black87, size: 20),
+          icon: HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, color: isDark ? Colors.white : Colors.black87, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -141,7 +142,7 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.qr_code_rounded, color: Color(0xFF42A5F5), size: 26),
+            icon: const HugeIcon(icon: HugeIcons.strokeRoundedQrCode, color: Color(0xFF42A5F5), size: 26),
             tooltip: 'Tunjuk QR Saya',
             onPressed: () => _showCustomerQrSheet(phone, name),
           ),
@@ -198,7 +199,7 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.verified_rounded, color: Color(0xFF67E8F9), size: 16),
+                    const HugeIcon(icon: HugeIcons.strokeRoundedCheckmarkBadge01, color: Color(0xFF67E8F9), size: 16),
                     const SizedBox(width: 6),
                     Text(
                       'NGAM LOYALTY PASS',
@@ -233,7 +234,7 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.qr_code_scanner_rounded, color: Colors.black, size: 28),
+              child: const HugeIcon(icon: HugeIcons.strokeRoundedQrCode, color: Colors.black, size: 26),
             ),
           ),
         ],
@@ -303,7 +304,7 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
                     border: Border.all(color: const Color(0xFF10B981)),
                   ),
                   child: const Text(
-                    '🎉 SEDIA DITEBUS',
+                    'SEDIA DITEBUS',
                     style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.w900),
                   ),
                 )
@@ -342,8 +343,8 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
                 ),
                 child: Center(
                   child: isStamped
-                      ? Icon(
-                          isRewardSlot ? Icons.card_giftcard_rounded : Icons.check_rounded,
+                      ? HugeIcon(
+                          icon: isRewardSlot ? HugeIcons.strokeRoundedGift : HugeIcons.strokeRoundedTick01,
                           color: Colors.white,
                           size: 18,
                         )
@@ -372,8 +373,8 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
             ),
             child: Row(
               children: [
-                Icon(
-                  Icons.card_giftcard_rounded,
+                HugeIcon(
+                  icon: HugeIcons.strokeRoundedGift,
                   color: isReady ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
                   size: 18,
                 ),

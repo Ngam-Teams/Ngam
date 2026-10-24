@@ -341,12 +341,12 @@ class ChatService {
         await _supabase.rpc('update_conversation_task_message', params: {
           'p_conversation_id': pendingMessage.conversationId,
           'p_sender_id': pendingMessage.senderId,
-          'p_message_content': '📷 Photo',
+          'p_message_content': 'Photo',
           'p_gig_id': contextGigId,
         });
       } else {
         await _supabase.from('conversations').update({
-          'last_message': '📷 Photo',
+          'last_message': 'Photo',
           'last_message_sender_id': pendingMessage.senderId,
           'last_message_is_read': false,
           'updated_at': actualMessage.createdAt.toUtc().toIso8601String(),
@@ -384,12 +384,12 @@ class ChatService {
         await _supabase.rpc('update_conversation_task_message', params: {
           'p_conversation_id': pendingMessage.conversationId,
           'p_sender_id': pendingMessage.senderId,
-          'p_message_content': '📎 File',
+          'p_message_content': 'File',
           'p_gig_id': contextGigId,
         });
       } else {
         await _supabase.from('conversations').update({
-          'last_message': '📎 File',
+          'last_message': 'File',
           'last_message_sender_id': pendingMessage.senderId,
           'last_message_is_read': false,
           'updated_at': actualMessage.createdAt.toUtc().toIso8601String(),

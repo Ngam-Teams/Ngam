@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import '../utils/app_theme.dart';
 
 // ============================================================
@@ -51,32 +52,31 @@ class CategoryChip extends StatelessWidget {
   }
 
   /// Get category icon
-  String _getCategoryIcon() {
+  List<List<dynamic>> _getCategoryIcon() {
     switch (label) {
       case 'Food':
-        return '🍔';
+        return HugeIcons.strokeRoundedHamburger01;
       case 'Shopping':
-        return '🛒';
+        return HugeIcons.strokeRoundedShoppingBag01;
       case 'Print':
-        return '🖨️';
+        return HugeIcons.strokeRoundedPrinter;
       case 'Heavy':
-        return '📦';
+        return HugeIcons.strokeRoundedPackage;
       case 'Parcel':
-        return '📮';
+        return HugeIcons.strokeRoundedDeliveryBox01;
       case 'Cleaning':
-        return '🧹';
+        return HugeIcons.strokeRoundedClean;
       case 'Pet Care':
-        return '🐕';
+        return HugeIcons.strokeRoundedFavourite;
       case 'Errands':
-        return '🚶‍♂️';
+        return HugeIcons.strokeRoundedUser;
       case 'Automotive':
-        return '🚗';
+        return HugeIcons.strokeRoundedCar01;
       case 'Others':
-        return '✨';
       case 'All':
-        return '✨';
+        return HugeIcons.strokeRoundedSparkles;
       default:
-        return '📋';
+        return HugeIcons.strokeRoundedNote;
     }
   }
 
@@ -103,7 +103,13 @@ class CategoryChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (showIcon) ...[
-              Text(_getCategoryIcon(), style: const TextStyle(fontSize: 14)),
+              HugeIcon(
+                icon: _getCategoryIcon(),
+                size: 14,
+                color: isSelected
+                    ? color
+                    : Theme.of(context).textTheme.bodyMedium?.color,
+              ),
               const SizedBox(width: 6),
             ],
             Text(

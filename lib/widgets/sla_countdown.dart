@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import '../utils/app_theme.dart';
 import '../utils/constants.dart';
 
@@ -109,8 +110,8 @@ class _SlaCountdownState extends State<SlaCountdown>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    isExpired ? Icons.warning_amber_rounded : Icons.timer,
+                  HugeIcon(
+                    icon: isExpired ? HugeIcons.strokeRoundedAlert02 : HugeIcons.strokeRoundedTime02,
                     color: _timerColor,
                     size: 20,
                   ),

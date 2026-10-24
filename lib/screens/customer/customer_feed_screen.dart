@@ -57,11 +57,11 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       'location': 'Bangi Sentral',
       'image':
           'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=800',
-      'title': 'Low Taper Fade + Beard Sculpting 🔥',
+      'title': 'Low Taper Fade + Beard Sculpting',
       'caption':
           'Hasil sentuhan kemas petang ini untuk regular bro Hazim. Slot walk-in dan giliran petang ni masih dibuka sampai jam 10 malam! #barber #taperfade #ngam',
-      'serviceTag': '✂️ Potong + Cuci • RM35 · Buka Hingga 10:00 PM',
-      'ctaText': '⚡ AMBIL GILIRAN (1 MENUNGGU)',
+      'serviceTag': 'Potong + Cuci • RM35 · Buka Hingga 10:00 PM',
+      'ctaText': 'AMBIL GILIRAN (1 MENUNGGU)',
       'likes': 142,
       'isLiked': false,
       'isSaved': false,
@@ -71,14 +71,14 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         {
           'user': 'Hazim Azlan',
           'avatar': 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150',
-          'text': 'Memang kemas bro! Balik rumah bini terus puji haha 👍',
+          'text': 'Memang kemas bro! Balik rumah bini terus puji haha',
           'time': '20m lepas',
           'likes': 4,
         },
         {
           'user': 'Farhan Barber',
           'avatar': 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?q=80&w=150',
-          'text': 'Fade paling licin minggu ni 🔥 Mantap Danial!',
+          'text': 'Fade paling licin minggu ni! Mantap Danial!',
           'time': '15m lepas',
           'likes': 2,
         },
@@ -110,11 +110,11 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       'location': 'Seksyen 9, Bangi',
       'image':
           'https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?q=80&w=800',
-      'title': 'Cermin Kereta Bersinar Bak Kristal ✨',
+      'title': 'Cermin Kereta Bersinar Bak Kristal',
       'caption':
           'Pakej Nano Wax Coating + Interior Steam Wash promosi khas pertengahan bulan. Hilangkan watermark dan bau hapak kereta anda sekarang! #detailing #carwash #ngam',
-      'serviceTag': '🚗 Nano Coating • RM45 · 3 Bay Cucian Aktif',
-      'ctaText': '🚗 MASUK TERUS (0 MENUNGGU)',
+      'serviceTag': 'Nano Coating • RM45 · 3 Bay Cucian Aktif',
+      'ctaText': 'MASUK TERUS (0 MENUNGGU)',
       'likes': 89,
       'isLiked': true,
       'isSaved': true,
@@ -149,11 +149,11 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       'location': 'Bandar Baru Bangi',
       'image':
           'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?q=80&w=800',
-      'title': 'Iced Salted Caramel Butter Pecan Latte ☕',
+      'title': 'Iced Salted Caramel Butter Pecan Latte',
       'caption':
           'Port santai untuk buat kerja atau lepak sambil tunggu kereta siap dicuci. Ada high-speed WiFi dan plug di setiap meja santai. #ngamcafe #kopiroti #viral',
-      'serviceTag': '☕ Menu Baru Musim Ini • RM14 · Meja Santai Tersedia',
-      'ctaText': '☕ PESAN QR / TEMPAH MEJA',
+      'serviceTag': 'Menu Baru Musim Ini • RM14 · Meja Santai Tersedia',
+      'ctaText': 'PESAN QR / TEMPAH MEJA',
       'likes': 234,
       'isLiked': false,
       'isSaved': false,
@@ -163,7 +163,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         {
           'user': 'Sarah Nadia',
           'avatar': 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=150',
-          'text': 'Butter Pecan dia memang sedap gila, tak manis sangat ☕🤍',
+          'text': 'Butter Pecan dia memang sedap gila, tak manis sangat',
           'time': '2j lepas',
           'likes': 12,
         },
@@ -188,11 +188,11 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       'location': 'Changkat Jering',
       'image':
           'https://images.unsplash.com/photo-1486006920555-c77dce18193b?q=80&w=800',
-      'title': 'Servis Minyak Hitam & Brek Siap Dalam 25 Minit 🔧',
+      'title': 'Servis Minyak Hitam & Brek Siap Dalam 25 Minit',
       'caption':
           'Servis pantas tanpa perlu tinggal kereta seharian. Percuma pemeriksaan 21 poin keselamatan kenderaan untuk setiap pelanggan Ngam. #bengkel #serviskereta',
-      'serviceTag': '🔧 Pakej Servis • Dari RM85 · 2 Bay Sedang Servis',
-      'ctaText': '⚡ AMBIL TIKET SERVIS',
+      'serviceTag': 'Pakej Servis • Dari RM85 · 2 Bay Sedang Servis',
+      'ctaText': 'AMBIL TIKET SERVIS',
       'likes': 76,
       'isLiked': false,
       'isSaved': false,
@@ -342,9 +342,9 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             mediaUrl = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
           }
           final ctaType = row['cta_type']?.toString() ?? 'queue';
-          final ctaText = row['cta_text']?.toString() ?? '⚡ AMBIL GILIRAN';
+          final ctaText = row['cta_text']?.toString() ?? 'AMBIL GILIRAN';
           final serviceTag =
-              row['service_tag']?.toString() ?? '⚡ Servis Pantas Ngam';
+              row['service_tag']?.toString() ?? 'Servis Pantas Ngam';
 
           loaded.add({
             'id': row['id'].toString(),
@@ -483,10 +483,10 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     });
     showGlassToast(
       context,
-      _isMuted ? 'Audio Dimatikan 🔇' : 'Audio Dihidupkan 🔊',
+      _isMuted ? 'Audio Dimatikan' : 'Audio Dihidupkan',
       icon: _isMuted
-          ? Icons.volume_off_rounded
-          : Icons.volume_up_rounded,
+          ? HugeIcons.strokeRoundedVolumeOff
+          : HugeIcons.strokeRoundedVolumeHigh,
     );
   }
 
@@ -496,14 +496,14 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       _openStore(post);
       showGlassToast(
         context,
-        'Membuka giliran untuk ${post['shopName']} ⚡',
+        'Membuka giliran untuk ${post['shopName']}',
         icon: HugeIcons.strokeRoundedFlash,
       );
     } else if (ctaType == 'booking') {
       _openStore(post);
       showGlassToast(
         context,
-        'Membuka tempahan untuk ${post['shopName']} 📅',
+        'Membuka tempahan untuk ${post['shopName']}',
         icon: HugeIcons.strokeRoundedCalendar03,
       );
     } else {
@@ -519,7 +519,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     showGlassToast(
       context,
       post['isFollowed']
-          ? 'Mengikuti ${post['shopName']} ✓'
+          ? 'Mengikuti ${post['shopName']}'
           : 'Batal ikuti ${post['shopName']}',
       icon: post['isFollowed']
           ? HugeIcons.strokeRoundedCheckmarkCircle02
@@ -535,7 +535,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     showGlassToast(
       context,
       post['isSaved']
-          ? 'Disimpan ke koleksi simpanan anda 🔖'
+          ? 'Disimpan ke koleksi simpanan anda'
           : 'Dikeluarkan dari simpanan',
       icon: HugeIcons.strokeRoundedBookmark02,
     );
@@ -544,7 +544,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   void _sharePost(Map<String, dynamic> post) {
     showGlassToast(
       context,
-      'Pautan ${post['shopName']} disalin ke papan klip! 📋',
+      'Pautan ${post['shopName']} disalin ke papan klip!',
       icon: HugeIcons.strokeRoundedShare01,
     );
   }
@@ -637,8 +637,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                                   ),
                                 ),
                               ] else ...[
-                                Icon(
-                                  Icons.movie_filter_rounded,
+                                HugeIcon(
+                                  icon: HugeIcons.strokeRoundedVideo01,
                                   size: 48,
                                   color: isDark ? Colors.white24 : Colors.black26,
                                 ),
@@ -654,8 +654,10 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                                 const SizedBox(height: 12),
                                 TextButton.icon(
                                   onPressed: _fetchLivePosts,
-                                  icon: const Icon(Icons.refresh_rounded,
-                                      color: Color(0xFF00E5FF)),
+                                  icon: const HugeIcon(
+                                      icon: HugeIcons.strokeRoundedRefresh,
+                                      color: Color(0xFF00E5FF),
+                                      size: 18),
                                   label: const Text(
                                     'Muat Semula',
                                     style: TextStyle(color: Color(0xFF00E5FF)),
@@ -706,7 +708,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                           _fetchLivePosts();
                           showGlassToast(
                             context,
-                            'Memuat semula suapan Ngam... 🔄',
+                            'Memuat semula suapan Ngam...',
                             icon: HugeIcons.strokeRoundedRefresh,
                           );
                         },
@@ -770,7 +772,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                                 setState(() => _activeTopTab = 0);
                                 showGlassToast(
                                   context,
-                                  'Menapis pos dalam radius 10KM 📍',
+                                  'Menapis pos dalam radius 10KM',
                                   icon: HugeIcons.strokeRoundedLocation01,
                                 );
                               },
@@ -810,7 +812,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                                 setState(() => _activeTopTab = 1);
                                 showGlassToast(
                                   context,
-                                  'Memaparkan pos paling trending 🔥',
+                                  'Memaparkan pos paling trending',
                                   icon: HugeIcons.strokeRoundedFire,
                                 );
                               },
@@ -891,7 +893,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildDesktopNavArrow(
-                      icon: Icons.keyboard_arrow_up_rounded,
+                      icon: HugeIcons.strokeRoundedArrowUp01,
                       tooltip: 'Pos Sebelumnya (↑)',
                       enabled: _currentPage > 0,
                       isDark: isDark,
@@ -904,7 +906,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                     ),
                     const SizedBox(height: 14),
                     _buildDesktopNavArrow(
-                      icon: Icons.keyboard_arrow_down_rounded,
+                      icon: HugeIcons.strokeRoundedArrowDown01,
                       tooltip: 'Pos Seterusnya (↓)',
                       enabled: _currentPage < _posts.length - 1,
                       isDark: isDark,
@@ -1221,7 +1223,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       errorWidget: (_, __, ___) => Container(
         color: const Color(0xFF11171E),
         child: const Center(
-          child: Icon(Icons.broken_image_rounded, color: Colors.white38),
+          child: HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.white38, size: 28),
         ),
       ),
     );
@@ -1255,8 +1257,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.bolt_rounded,
+                const HugeIcon(
+                  icon: HugeIcons.strokeRoundedFlash,
                   color: Colors.black,
                   size: 16,
                 ),
@@ -1275,8 +1277,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                   ),
                 ),
                 const SizedBox(width: 4),
-                const Icon(
-                  Icons.arrow_forward_ios_rounded,
+                const HugeIcon(
+                  icon: HugeIcons.strokeRoundedArrowRight01,
                   color: Colors.black,
                   size: 11,
                 ),
@@ -1307,8 +1309,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                 ),
               ),
               const SizedBox(width: 5),
-              const Icon(
-                Icons.verified_rounded,
+              const HugeIcon(
+                icon: HugeIcons.strokeRoundedCheckmarkBadge01,
                 color: Color(0xFF00E5FF),
                 size: 16,
               ),
@@ -1352,8 +1354,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         // Rolling Music / Service Price Ticker
         Row(
           children: [
-            const Icon(
-              Icons.music_note_rounded,
+            const HugeIcon(
+              icon: HugeIcons.strokeRoundedMusicNote01,
               color: Color(0xFF00E5FF),
               size: 14,
             ),
@@ -1447,8 +1449,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                         ),
                       ],
                     ),
-                    child: Icon(
-                      isFollowed ? Icons.check_rounded : Icons.add_rounded,
+                    child: HugeIcon(
+                      icon: isFollowed ? HugeIcons.strokeRoundedTick01 : HugeIcons.strokeRoundedAdd01,
                       size: isShortPhone ? 12 : 14,
                       color: Colors.black,
                     ),
@@ -1463,9 +1465,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
 
         // Like (Hati) Action
         _buildRightActionButton(
-          icon: isLiked
-              ? Icons.favorite_rounded
-              : Icons.favorite_border_rounded,
+          hugeIcon: HugeIcons.strokeRoundedFavourite,
           iconColor: isLiked ? const Color(0xFFFF2B54) : Colors.white,
           label: '$likes',
           isCompact: isShortPhone,
@@ -1490,9 +1490,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
 
         // Save / Bookmark Action
         _buildRightActionButton(
-          icon: isSaved
-              ? Icons.bookmark_rounded
-              : Icons.bookmark_border_rounded,
+          hugeIcon: HugeIcons.strokeRoundedBookmark02,
           iconColor: isSaved ? const Color(0xFFFBBF24) : Colors.white,
           label: 'Simpan',
           isCompact: isShortPhone,
@@ -1518,9 +1516,9 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         // Audio Mute/Unmute Action for Video
         if (post['mediaType'] == 'video') ...[
           _buildRightActionButton(
-            icon: _isMuted
-                ? Icons.volume_off_rounded
-                : Icons.volume_up_rounded,
+            hugeIcon: _isMuted
+                ? HugeIcons.strokeRoundedVolumeOff
+                : HugeIcons.strokeRoundedVolumeHigh,
             iconColor: _isMuted ? Colors.white54 : const Color(0xFF00E5FF),
             label: _isMuted ? 'Bisu' : 'Audio',
             isCompact: isShortPhone,
@@ -1571,7 +1569,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
 
   // --- DESKTOP NAVIGATION ARROW BUTTON ---
   Widget _buildDesktopNavArrow({
-    required IconData icon,
+    required List<List<dynamic>> icon,
     required String tooltip,
     required bool enabled,
     required bool isDark,
@@ -1616,12 +1614,12 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                   : null,
             ),
             child: Center(
-              child: Icon(
-                icon,
+              child: HugeIcon(
+                icon: icon,
                 color: isDark
                     ? (enabled ? Colors.white : Colors.white24)
                     : (enabled ? const Color(0xFF0F172A) : Colors.black26),
-                size: 26,
+                size: 24,
               ),
             ),
           ),
@@ -1632,7 +1630,6 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
 
   // --- RIGHT FLOATING ACTION BUTTON BUILDER ---
   Widget _buildRightActionButton({
-    IconData? icon,
     dynamic hugeIcon,
     Color iconColor = Colors.white,
     required String label,
@@ -1675,9 +1672,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
               ],
             ),
             child: Center(
-              child: icon != null
-                  ? Icon(icon, color: effectiveIconColor, size: isCompact ? 22 : 26)
-                  : HugeIcon(icon: hugeIcon, color: effectiveIconColor, size: isCompact ? 19 : 22),
+              child: HugeIcon(icon: hugeIcon, color: effectiveIconColor, size: isCompact ? 19 : 22),
             ),
           ),
           const SizedBox(height: 3),
@@ -1766,8 +1761,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                         ),
                         GestureDetector(
                           onTap: () => Navigator.pop(ctx),
-                          child: Icon(
-                            Icons.close_rounded,
+                          child: HugeIcon(
+                            icon: HugeIcons.strokeRoundedCancel01,
                             color: isDark ? Colors.white60 : const Color(0xFF64748B),
                             size: 20,
                           ),
@@ -1856,8 +1851,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                                   const SizedBox(width: 10),
                                   Column(
                                     children: [
-                                      Icon(
-                                        Icons.favorite_border_rounded,
+                                      HugeIcon(
+                                        icon: HugeIcons.strokeRoundedFavourite,
                                         size: 16,
                                         color: isDark
                                             ? Colors.white38
@@ -1962,8 +1957,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                               shape: BoxShape.circle,
                             ),
                             child: const Center(
-                              child: Icon(
-                                Icons.arrow_upward_rounded,
+                              child: HugeIcon(
+                                icon: HugeIcons.strokeRoundedArrowUp01,
                                 color: Colors.black,
                                 size: 20,
                               ),
@@ -2065,13 +2060,10 @@ class _FloatingHeartState extends State<_FloatingHeart>
             ),
           );
         },
-        child: const Icon(
-          Icons.favorite_rounded,
+        child: const HugeIcon(
+          icon: HugeIcons.strokeRoundedFavourite,
           color: Color(0xFFFF2B54),
           size: 90,
-          shadows: [
-            Shadow(color: Colors.black54, blurRadius: 18),
-          ],
         ),
       ),
     );
@@ -2249,7 +2241,7 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.videocam_off_rounded, color: Colors.white38, size: 42),
+              const HugeIcon(icon: HugeIcons.strokeRoundedVideoOff, color: Colors.white38, size: 42),
               const SizedBox(height: 8),
               const Text(
                 'Gagal memuatkan video',
@@ -2274,7 +2266,7 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.refresh_rounded, color: Color(0xFF00E5FF), size: 14),
+                      HugeIcon(icon: HugeIcons.strokeRoundedRefresh, color: Color(0xFF00E5FF), size: 14),
                       SizedBox(width: 6),
                       Text(
                         'Cuba Semula',
@@ -2370,7 +2362,7 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.crop_rotate_rounded, color: Color(0xFF00E5FF), size: 16),
+                      HugeIcon(icon: HugeIcons.strokeRoundedCrop, color: Color(0xFF00E5FF), size: 16),
                       SizedBox(width: 6),
                       Text(
                         'Lihat Melintang',
@@ -2411,10 +2403,10 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.bolt_rounded, color: Color(0xFF00E5FF), size: 18),
+                    HugeIcon(icon: HugeIcons.strokeRoundedFlash, color: Color(0xFF00E5FF), size: 18),
                     SizedBox(width: 6),
                     Text(
-                      '⚡ 2X KELAJUAN',
+                      '2X KELAJUAN',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -2440,8 +2432,8 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
                   color: Colors.black.withValues(alpha: 0.45),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  _controller.value.isPlaying ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                child: HugeIcon(
+                  icon: _controller.value.isPlaying ? HugeIcons.strokeRoundedPlay : HugeIcons.strokeRoundedPauseCircle,
                   color: Colors.white,
                   size: 48,
                 ),
@@ -2648,7 +2640,7 @@ class _LandscapeVideoFullscreenDialogState
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Colors.white, size: 24),
+                      icon: const HugeIcon(icon: HugeIcons.strokeRoundedCancel01, color: Colors.white, size: 24),
                       style: IconButton.styleFrom(backgroundColor: Colors.black45),
                       onPressed: () => Navigator.pop(context),
                       tooltip: 'Tutup Skrin Penuh',
@@ -2665,7 +2657,7 @@ class _LandscapeVideoFullscreenDialogState
                           border: Border.all(color: Colors.white24),
                         ),
                         child: Text(
-                          _is2x ? '⚡ 2X' : '1X',
+                          _is2x ? '2X' : '1X',
                           style: TextStyle(
                             color: _is2x ? Colors.black : Colors.white,
                             fontWeight: FontWeight.bold,
@@ -2676,8 +2668,8 @@ class _LandscapeVideoFullscreenDialogState
                     ),
                     const SizedBox(width: 10),
                     IconButton(
-                      icon: Icon(
-                        widget.isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                      icon: HugeIcon(
+                        icon: widget.isMuted ? HugeIcons.strokeRoundedVolumeOff : HugeIcons.strokeRoundedVolumeHigh,
                         color: Colors.white,
                         size: 22,
                       ),
@@ -2707,10 +2699,10 @@ class _LandscapeVideoFullscreenDialogState
                       color: Colors.black.withValues(alpha: 0.55),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
-                      widget.controller.value.isPlaying
-                          ? Icons.pause_rounded
-                          : Icons.play_arrow_rounded,
+                    child: HugeIcon(
+                      icon: widget.controller.value.isPlaying
+                          ? HugeIcons.strokeRoundedPauseCircle
+                          : HugeIcons.strokeRoundedPlay,
                       color: Colors.white,
                       size: 52,
                     ),

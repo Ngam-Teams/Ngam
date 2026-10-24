@@ -522,7 +522,7 @@ class _LoginScreenState extends State<LoginScreen>
                 keyboardType: TextInputType.emailAddress,
                 decoration: _inputDecoration(
                   hintText: 'alex.rivera@company.com',
-                  prefixIcon: Icons.email_outlined,
+                  prefixIcon: HugeIcons.strokeRoundedMail01,
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) return 'Sila masukkan emel';
@@ -569,7 +569,7 @@ class _LoginScreenState extends State<LoginScreen>
                 style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
                 decoration: _inputDecoration(
                   hintText: '••••••••',
-                  prefixIcon: Icons.lock_outline,
+                  prefixIcon: HugeIcons.strokeRoundedLockKey,
                   isPassword: true,
                   obscure: _obscurePassword,
                   onToggle: () => setState(() => _obscurePassword = !_obscurePassword),
@@ -728,7 +728,7 @@ class _LoginScreenState extends State<LoginScreen>
                 textCapitalization: TextCapitalization.words,
                 decoration: _inputDecoration(
                   hintText: 'Ahmad Faiz',
-                  prefixIcon: Icons.person_outline,
+                  prefixIcon: HugeIcons.strokeRoundedUser,
                 ),
                 validator: (val) => (val == null || val.trim().isEmpty) ? 'Sila masukkan nama anda' : null,
               ),
@@ -751,7 +751,7 @@ class _LoginScreenState extends State<LoginScreen>
                 keyboardType: TextInputType.emailAddress,
                 decoration: _inputDecoration(
                   hintText: 'nama@domain.com',
-                  prefixIcon: Icons.email_outlined,
+                  prefixIcon: HugeIcons.strokeRoundedMail01,
                 ),
                 validator: (val) {
                   if (val == null || val.trim().isEmpty) return 'Sila masukkan emel';
@@ -778,7 +778,7 @@ class _LoginScreenState extends State<LoginScreen>
                 style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
                 decoration: _inputDecoration(
                   hintText: '••••••••',
-                  prefixIcon: Icons.lock_outline,
+                  prefixIcon: HugeIcons.strokeRoundedLockKey,
                   isPassword: true,
                   obscure: _regObscurePassword,
                   onToggle: () => setState(() => _regObscurePassword = !_regObscurePassword),
@@ -961,7 +961,7 @@ class _LoginScreenState extends State<LoginScreen>
             controller: _forgotEmailController,
             style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
             keyboardType: TextInputType.emailAddress,
-            decoration: _inputDecoration(hintText: 'nama@domain.com', prefixIcon: Icons.email_outlined),
+            decoration: _inputDecoration(hintText: 'nama@domain.com', prefixIcon: HugeIcons.strokeRoundedMail01),
             validator: (val) {
               if (val == null || val.trim().isEmpty) return 'Sila masukkan emel';
               if (!val.contains('@')) return 'Emel tidak sah';
@@ -1016,7 +1016,7 @@ class _LoginScreenState extends State<LoginScreen>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.arrow_back, size: 14, color: textSecondary),
+                  const HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, size: 14, color: textSecondary),
                   const SizedBox(width: 6),
                   Text(
                     'Back to Sign In',
@@ -1141,7 +1141,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   InputDecoration _inputDecoration({
     required String hintText,
-    IconData? prefixIcon,
+    List<List<dynamic>>? prefixIcon,
     bool isPassword = false,
     bool obscure = false,
     VoidCallback? onToggle,
@@ -1154,12 +1154,12 @@ class _LoginScreenState extends State<LoginScreen>
       ),
       filled: true,
       fillColor: Colors.white.withValues(alpha: 0.05),
-      prefixIcon: prefixIcon != null ? Icon(prefixIcon, color: textSecondary, size: 18) : null,
+      prefixIcon: prefixIcon != null ? HugeIcon(icon: prefixIcon, color: textSecondary, size: 18) : null,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       suffixIcon: isPassword
           ? IconButton(
-              icon: Icon(
-                obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+              icon: HugeIcon(
+                icon: obscure ? HugeIcons.strokeRoundedViewOffSlash : HugeIcons.strokeRoundedView,
                 color: textSecondary,
                 size: 18,
               ),

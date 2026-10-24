@@ -172,7 +172,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // 🟢 Ikon Security Phone
+              //  Ikon Security Phone
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -187,7 +187,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 🟢 Tajuk Utama
+              //  Tajuk Utama
               Text(
                 "privacy.enable_2fa".tr(),
                 style: TextStyle(
@@ -199,7 +199,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
               ),
               const SizedBox(height: 12),
 
-              // 🟢 Isi Kandungan
+              //  Isi Kandungan
               Text(
                 "We will use your registered number (${SecurityData.userPhone.value}) to send verification codes.",
                 textAlign: TextAlign.center,
@@ -212,7 +212,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
               ),
               const SizedBox(height: 28),
 
-              // 🟢 Tindakan (Butang)
+              //  Tindakan (Butang)
               Row(
                 children: [
                   Expanded(
@@ -241,7 +241,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         backgroundColor: Colors.blueAccent.withValues(alpha: 0.1),
                       ),
-                      onPressed: () => Navigator.pop(context, true), // 🟢 Pulangkan 'true' untuk enable benda ni
+                      onPressed: () => Navigator.pop(context, true), //  Pulangkan 'true' untuk enable benda ni
                       child: Text(
                         "privacy.enable".tr(),
                         style: const TextStyle(
@@ -342,7 +342,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
 
             const SizedBox(height: 32),
 
-            // --- 🟢 SEKSYEN DATA & PRIVACY ---
+            // ---  SEKSYEN DATA & PRIVACY ---
             _buildSectionHeader("privacy.data_privacy".tr()),
             const SizedBox(height: 12),
             _buildSystemGlass(
@@ -380,7 +380,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
 
             const SizedBox(height: 32),
 
-            // --- 🟢 SEKSYEN SESSIONS ---
+            // ---  SEKSYEN SESSIONS ---
             _buildSectionHeader("privacy.active_sessions".tr()),
             const SizedBox(height: 12),
             _buildSystemGlass(
@@ -388,7 +388,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
               borderRadius: 20,
               child: Column(
                 children: [
-                  // 🟢 Tile Device (Reaktif): Dia akan sync dengan Refresh GPS dari Profil
+                  //  Tile Device (Reaktif): Dia akan sync dengan Refresh GPS dari Profil
                   // Dalam Column untuk SESSION YANG AKTIF
                   ValueListenableBuilder<String>(
                     valueListenable: SecurityData.userLocation,
@@ -438,7 +438,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                 ],
               ),
             ),
-            if (trailing != null) trailing else const Icon(Icons.arrow_forward_ios_rounded, color: Colors.grey, size: 14),
+            if (trailing != null) trailing else const HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, color: Colors.grey, size: 14),
           ],
         ),
       ),
@@ -507,7 +507,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                           if (appLockEnabled)
                             RotationTransition(
                               turns: AlwaysStoppedAnimation(_isTimeoutExpanded ? 0.5 : 0.0),
-                              child: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey, size: 22),
+                              child: const HugeIcon(icon: HugeIcons.strokeRoundedArrowDown01, color: Colors.grey, size: 20),
                             ),
                           const SizedBox(width: 8),
                           Switch.adaptive(
@@ -516,7 +516,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                             inactiveThumbColor: Colors.white,
                             inactiveTrackColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
                             trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
-                            thumbIcon: WidgetStateProperty.all(const Icon(Icons.circle, color: Colors.transparent)),
+                            thumbIcon: WidgetStateProperty.resolveWith<Icon?>((states) => null),
                             onChanged: (val) {
                               _toggleAppLock(val);
                               if (!val) setState(() => _isTimeoutExpanded = false);
@@ -576,7 +576,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                   )
               ),
             ),
-            if (isSelected) const Icon(Icons.check_circle_rounded, color: Colors.blue, size: 22),
+            if (isSelected) const HugeIcon(icon: HugeIcons.strokeRoundedCheckmarkCircle02, color: Colors.blue, size: 22),
             const SizedBox(width: 4),
           ],
         ),
@@ -599,7 +599,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
           ),
           const SizedBox(width: 16),
           Expanded(child: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, fontFamily: 'Inter'))),
-          Switch.adaptive(value: value, activeColor: Colors.blue, inactiveThumbColor: Colors.white, inactiveTrackColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300, trackOutlineColor: WidgetStateProperty.all(Colors.transparent), thumbIcon: WidgetStateProperty.all(const Icon(Icons.circle, color: Colors.transparent)), onChanged: onChanged),
+          Switch.adaptive(value: value, activeColor: Colors.blue, inactiveThumbColor: Colors.white, inactiveTrackColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300, trackOutlineColor: WidgetStateProperty.all(Colors.transparent), thumbIcon: WidgetStateProperty.resolveWith<Icon?>((states) => null), onChanged: onChanged),
         ],
       ),
     );
@@ -643,7 +643,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                     children: [
                       Flexible(child: Text(_deviceName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, fontFamily: 'Inter'), overflow: TextOverflow.ellipsis)),
                       const SizedBox(width: 8),
-                      // 🟢 Lencana Hijau
+                      //  Lencana Hijau
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                         decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
@@ -652,19 +652,19 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  // 🟢 Teks lokasi (berubah ikut keadaan)
+                  //  Teks lokasi (berubah ikut keadaan)
                   Text("${"privacy.active_now".tr()}  •  $syncedLocation", style: const TextStyle(fontSize: 12, color: Colors.grey, fontFamily: 'Inter')),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.grey, size: 12),
+            const HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, color: Colors.grey, size: 12),
           ],
         ),
       ),
     );
   }
 
-  // 🟢 FIXED: Dah tambah parameter 'syncedLocation'
+  //  FIXED: Dah tambah parameter 'syncedLocation'
   void _showCurrentDeviceDetails(BuildContext context, String syncedLocation) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -690,7 +690,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // --- 🟢 Ikon Peranti ---
+                // ---  Ikon Peranti ---
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -710,11 +710,11 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // --- 🟢 Senarai Details ---
+                // ---  Senarai Details ---
                 _buildDetailRow("Model", _deviceName, isDark),
                 _buildDivider(isDark),
 
-                // 🟢 FIXED: Pakai lokasi GPS yang dah sync berbanding IP variables lama
+                //  FIXED: Pakai lokasi GPS yang dah sync berbanding IP variables lama
                 _buildDetailRow("Location", syncedLocation.isNotEmpty ? syncedLocation : "Detecting...", isDark),
 
                 _buildDivider(isDark),
@@ -722,7 +722,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
 
                 const SizedBox(height: 32),
 
-                // --- 🟢 Butang Pangkah (Tutup) ---
+                // ---  Butang Pangkah (Tutup) ---
                 SizedBox(
                   width: double.infinity,
                   child: TextButton(
@@ -862,12 +862,12 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                         onPressed: () {
                           Navigator.pop(context); // Tutup dialog ni
 
-                          // 🟢 LOGIK UTAMA
+                          //  LOGIK UTAMA
                           HapticFeedback.heavyImpact();
 
                           // Berlakon macam buat Supabase/Auth logout kat sini...
 
-                          // 🟢 FIXED: Tukar pakai global glass helper yang baru
+                          //  FIXED: Tukar pakai global glass helper yang baru
                           showGlassToast(context, "Other sessions secured successfully");
                         },
                         child: Text("auth.logout".tr(), style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
@@ -911,7 +911,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 🟢 Ikon Storage (Storan)
+                //  Ikon Storage (Storan)
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -926,7 +926,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // 🟢 Tajuk Utama
+                //  Tajuk Utama
                 Text(
                   "privacy.clear_cache".tr(),
                   style: TextStyle(
@@ -938,7 +938,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // 🟢 Isi Kandungan
+                //  Isi Kandungan
                 Text(
                   "privacy.free_storage".tr(),
                   textAlign: TextAlign.center,
@@ -951,7 +951,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                 ),
                 const SizedBox(height: 28),
 
-                // 🟢 Tindakan (Butang)
+                //  Tindakan (Butang)
                 Row(
                   children: [
                     Expanded(

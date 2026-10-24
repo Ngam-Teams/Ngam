@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import '../utils/app_theme.dart';
 
 // ============================================================
@@ -37,7 +38,7 @@ class StatusTimeline extends StatelessWidget {
       _TimelineStep(
         title: 'Task Posted',
         subtitle: 'Waiting for runner...',
-        icon: Icons.check_circle,
+        icon: HugeIcons.strokeRoundedCheckmarkCircle02,
         isCompleted: _currentStep >= 0,
         isActive: _currentStep == 0,
       ),
@@ -46,14 +47,14 @@ class StatusTimeline extends StatelessWidget {
         subtitle: runnerName != null
             ? '$runnerName accepted your task'
             : 'Pending confirmation',
-        icon: Icons.person_pin_circle,
+        icon: HugeIcons.strokeRoundedLocation01,
         isCompleted: _currentStep >= 1,
         isActive: _currentStep == 1,
       ),
       _TimelineStep(
         title: 'In Progress',
         subtitle: 'Runner is on the way',
-        icon: Icons.directions_run,
+        icon: HugeIcons.strokeRoundedWorkoutRun,
         isCompleted: _currentStep >= 2,
         isActive: _currentStep == 2,
       ),
@@ -62,7 +63,7 @@ class StatusTimeline extends StatelessWidget {
         subtitle: _currentStep >= 3
             ? 'Task delivered successfully!'
             : 'Pending confirmation',
-        icon: Icons.verified,
+        icon: HugeIcons.strokeRoundedCheckmarkBadge01,
         isCompleted: _currentStep >= 3,
         isActive: _currentStep == 3,
       ),
@@ -99,8 +100,8 @@ class StatusTimeline extends StatelessWidget {
                           ]
                         : null,
                   ),
-                  child: Icon(
-                    step.icon,
+                  child: HugeIcon(
+                    icon: step.icon,
                     size: 18,
                     color: step.isCompleted ? Colors.white : Colors.grey.shade500,
                   ),
@@ -159,7 +160,7 @@ class StatusTimeline extends StatelessWidget {
 class _TimelineStep {
   final String title;
   final String subtitle;
-  final IconData icon;
+  final List<List<dynamic>> icon;
   final bool isCompleted;
   final bool isActive;
 

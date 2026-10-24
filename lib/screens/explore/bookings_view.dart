@@ -1,27 +1,27 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // 🟢 REQUIRED for TextInputFormatter
+import 'package:flutter/services.dart'; //  REQUIRED for TextInputFormatter
 import 'package:hugeicons/hugeicons.dart';
-// 🟢 REQUIRED for LiquidGlassSettings
+//  REQUIRED for LiquidGlassSettings
 import 'booking_ticket_screen.dart';
 import '../../models/user_data.dart';
 import 'package:ngam/l10n/generated/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../services/booking_notification_service.dart'; // 🟢 ADD THIS LINE
-import '../../widgets/glass_toast.dart'; // 🟢 ADD THIS TO YOUR IMPORTS
+import '../../services/booking_notification_service.dart'; //  ADD THIS LINE
+import '../../widgets/glass_toast.dart'; //  ADD THIS TO YOUR IMPORTS
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:math'; // 🟢 Required for generating the short ID
+import 'dart:math'; //  Required for generating the short ID
 import 'dart:async';
 
 class BookingsView extends StatefulWidget {
-  final String shopId; // 🟢 ADD THIS
+  final String shopId; //  ADD THIS
   final String shopName;
   final String category;
   final String shopImage;
 
   const BookingsView({
     super.key,
-    required this.shopId, // 🟢 ADD THIS
+    required this.shopId, //  ADD THIS
     this.shopName = "Zul Barber Shop",
     this.category = "Barber",
     this.shopImage = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400",
@@ -35,7 +35,7 @@ class _BookingsViewState extends State<BookingsView> {
   List<String> _bookedTimes = [];
 
   int _selectedDateIndex = 0; // Keep this!
-  DateTime _selectedCalendarDate = DateTime.now(); // 🟢 ADD THIS FOR THE CALENDAR
+  DateTime _selectedCalendarDate = DateTime.now(); //  ADD THIS FOR THE CALENDAR
   int _selectedTimeIndex = -1;
 
   final Set<int> _selectedServices = {0};
@@ -49,7 +49,7 @@ class _BookingsViewState extends State<BookingsView> {
   int _frontCardIndex = 0;
   int _currentStep = 0;
   bool _isSubmitted = false;
-  // 🟢 We save the ID here so the success screen can use it
+  //  We save the ID here so the success screen can use it
   String _generatedBookingId = "";
 
   final List<Map<String, String>> _staffs = [
@@ -77,9 +77,9 @@ class _BookingsViewState extends State<BookingsView> {
   ];
 
   final List<Map<String, dynamic>> _paymentMethods = [
-    {"name": "Credit / Debit Card", "icon": Icons.credit_card_rounded, "type": "card"},
-    {"name": "Online Banking (FPX)", "icon": Icons.account_balance_rounded, "type": "fpx"},
-    {"name": "Cash at Counter", "icon": Icons.money_rounded, "type": "cash"},
+    {"name": "Credit / Debit Card", "icon": HugeIcons.strokeRoundedCreditCard, "type": "card"},
+    {"name": "Online Banking (FPX)", "icon": HugeIcons.strokeRoundedBank, "type": "fpx"},
+    {"name": "Cash at Counter", "icon": HugeIcons.strokeRoundedCash01, "type": "cash"},
   ];
 
   final List<String> _banksList = ["Maybank2u", "CIMB Clicks", "Public Bank", "RHB Now"];
@@ -111,7 +111,7 @@ class _BookingsViewState extends State<BookingsView> {
   bool _isTimeValid(String timeStr, int dateIndex) {
     if (dateIndex < 0 || dateIndex >= _dates.length) return false;
 
-    // 🟢 THE NO FAKE HOPE CHECK: Hide it if someone else booked it!
+    //  THE NO FAKE HOPE CHECK: Hide it if someone else booked it!
     if (_bookedTimes.contains(timeStr)) return false;
 
     // Check if the time has passed today
@@ -127,7 +127,7 @@ class _BookingsViewState extends State<BookingsView> {
   String _shopName = '';
   String _selectedTime = '';
 
-  // 🟢 Restored Auto-Save Functions
+  //  Restored Auto-Save Functions
   Future<void> _saveDraftToPreventLoss(String shopName, String selectedTime) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('draft_shop_name', shopName);
@@ -142,21 +142,21 @@ class _BookingsViewState extends State<BookingsView> {
     });
   }
 
-  // 🟢 Generates 60 days (~2 months) of valid upcoming dates
+  //  Generates 60 days (~2 months) of valid upcoming dates
   void _generateUpcomingDates() {
     final now = DateTime.now();
     final List<String> weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     final List<String> months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
     _dates.clear();
-    for (int i = 0; i < 90; i++) { // 🟢 Expanded to 90 days for the Calendar
+    for (int i = 0; i < 90; i++) { //  Expanded to 90 days for the Calendar
       final date = now.add(Duration(days: i));
       _dates.add({
         "day": weekdays[date.weekday - 1],
         "date": date.day.toString(),
         "month": months[date.month - 1],
         "year": date.year.toString(),
-        "fullDate": date.toIso8601String(), // 🟢 Required for Calendar Syncing!
+        "fullDate": date.toIso8601String(), //  Required for Calendar Syncing!
       });
     }
   }
@@ -167,7 +167,7 @@ class _BookingsViewState extends State<BookingsView> {
         if (_isTimeValid(_times[t], d)) {
           setState(() {
             _selectedDateIndex = d;
-            // 🟢 FIX 1: Forces the time to be unselected initially!
+            //  FIX 1: Forces the time to be unselected initially!
             _selectedTimeIndex = -1;
             _selectedTime = '';
             _selectedCalendarDate = DateTime.parse(_dates[d]['fullDate']!);
@@ -179,7 +179,7 @@ class _BookingsViewState extends State<BookingsView> {
   }
 
   void _listenToRealtimeBookings() {
-    // 🟢 Magic Stream: Updates the screen instantly if ANYONE books a slot!
+    //  Magic Stream: Updates the screen instantly if ANYONE books a slot!
     _timeStream = Supabase.instance.client
         .from('bookings')
         .stream(primaryKey: ['id'])
@@ -198,7 +198,7 @@ class _BookingsViewState extends State<BookingsView> {
   @override
   void initState() {
     super.initState();
-    // 🟢 CHANGED TO 0.85 so the left and right cards are clearly visible
+    //  CHANGED TO 0.85 so the left and right cards are clearly visible
     _generateUpcomingDates();
     _selectFirstAvailableSlot();
     _recoverLostDraft();
@@ -208,7 +208,7 @@ class _BookingsViewState extends State<BookingsView> {
   @override
   void dispose() {
     _timeStream?.cancel();
-    // 🟢 SAFETY CATCH: If they swipe out of the app while holding a slot, delete the lock!
+    //  SAFETY CATCH: If they swipe out of the app while holding a slot, delete the lock!
     if (_holdingRecordId != null && !_isSubmitted) {
       Supabase.instance.client.from('bookings').delete().eq('id', _holdingRecordId!);
     }
@@ -254,13 +254,13 @@ class _BookingsViewState extends State<BookingsView> {
                 child: Container(width: 250, height: 250, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.indigo.withValues(alpha: isDark ? 0.15 : 0.25))),
               ),
               Positioned.fill(
-                child: BackdropFilter(filter: ui.ImageFilter.blur(sigmaX: 60, sigmaY: 60), child: const SizedBox()), // 🟢 FIXED
+                child: BackdropFilter(filter: ui.ImageFilter.blur(sigmaX: 60, sigmaY: 60), child: const SizedBox()), //  FIXED
               ),
 
               SafeArea(
                 bottom: false,
                 child: SingleChildScrollView(
-                  // 🟢 RESTORED: Left and Right padding! The cards are no longer infinite width.
+                  //  RESTORED: Left and Right padding! The cards are no longer infinite width.
                   padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 40),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,7 +290,7 @@ class _BookingsViewState extends State<BookingsView> {
                       ),
                       const SizedBox(height: 16),
 
-                      // 🟢 RESTORED: THE CLASSIC VERTICAL 3D STACK
+                      //  RESTORED: THE CLASSIC VERTICAL 3D STACK
                       GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onVerticalDragEnd: (DragEndDetails details) {
@@ -304,7 +304,7 @@ class _BookingsViewState extends State<BookingsView> {
                           }
                         },
                         child: SizedBox(
-                          // 🟢 THE MASTER HEIGHT: Dictates the total space available for the deck.
+                          //  THE MASTER HEIGHT: Dictates the total space available for the deck.
                           height: MediaQuery.of(context).size.height * 0.74,
                           child: Stack(
                             alignment: Alignment.topCenter,
@@ -314,7 +314,7 @@ class _BookingsViewState extends State<BookingsView> {
 
                               double top; double scale; double opacity;
 
-                              // 🟢 RESTORED: The exact original math that creates the beautiful top stack!
+                              //  RESTORED: The exact original math that creates the beautiful top stack!
                               if (relativePosition == 0) {
                                 top = isFocused ? 10 : 100;
                                 scale = 1.0; opacity = 1.0;
@@ -337,7 +337,7 @@ class _BookingsViewState extends State<BookingsView> {
                                 top: top,
                                 left: 0,
                                 right: 0,
-                                // 🟢 THE MAGIC FIX:
+                                //  THE MAGIC FIX:
                                 // - If it is the Active Card (0), its bottom is ALWAYS locked to 0.
                                 // - If it is an inactive card in the back, it uses the old math so the scale looks right.
                                 bottom: relativePosition == 0 ? 0 : (isFocused ? 0 : -top),
@@ -386,7 +386,7 @@ class _BookingsViewState extends State<BookingsView> {
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 20 * opacity, sigmaY: 20 * opacity), // 🟢 FIXED
+        filter: ui.ImageFilter.blur(sigmaX: 20 * opacity, sigmaY: 20 * opacity), //  FIXED
         child: Container(
           height: height,
           width: width,
@@ -410,7 +410,7 @@ class _BookingsViewState extends State<BookingsView> {
     return _AnimatedPressable(onTap: () {}, child: _buildGlassBox(isDark: isDark, radius: 100, height: 44, padding: const EdgeInsets.symmetric(horizontal: 16), child: Center(child: Text(text, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: isDark ? Colors.white : Colors.black87)))));
   }
 
-  // 🟢 Changed 'isFocused' to 'isActiveCard'
+  //  Changed 'isFocused' to 'isActiveCard'
   Widget _buildExpandedGlassCard(Map<String, String> staff, bool isDark, bool isActiveCard) {
     Widget contentSwitcher = AnimatedSwitcher(
       duration: const Duration(milliseconds: 600),
@@ -460,7 +460,7 @@ class _BookingsViewState extends State<BookingsView> {
                       ],
                     ),
                   ),
-                  const Icon(Icons.star, color: Colors.amber, size: 16),
+                  const HugeIcon(icon: HugeIcons.strokeRoundedStar, color: Colors.amber, size: 16),
                   const SizedBox(width: 4),
                   Text(staff["rating"]!, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: isDark ? Colors.white : Colors.blue)),
                 ],
@@ -492,7 +492,7 @@ class _BookingsViewState extends State<BookingsView> {
 
     return Column(
       key: const ValueKey("booking_flow"),
-      // 🟢 FIX 1: Always take maximum available height from parent
+      //  FIX 1: Always take maximum available height from parent
       mainAxisSize: MainAxisSize.max,
       children: [
         Row(
@@ -510,7 +510,7 @@ class _BookingsViewState extends State<BookingsView> {
         ),
         const SizedBox(height: 16),
 
-        // 🟢 FIX 2: ALWAYS wrap the content in Expanded!
+        //  FIX 2: ALWAYS wrap the content in Expanded!
         // This forces the Step contents to respect the card's boundaries and prevents the pixel overflow.
         Expanded(child: stepSwitcher),
 
@@ -521,7 +521,7 @@ class _BookingsViewState extends State<BookingsView> {
             if (_currentStep > 0) ...[
               _AnimatedPressable(
                 onTap: () async {
-                  // 🟢 IF they back out of the checkout, RELEASE THE SLOT so others can book it!
+                  //  IF they back out of the checkout, RELEASE THE SLOT so others can book it!
                   if (_currentStep == 1 && _holdingRecordId != null) {
                     await Supabase.instance.client.from('bookings').delete().eq('id', _holdingRecordId!);
                     _holdingRecordId = null;
@@ -534,7 +534,7 @@ class _BookingsViewState extends State<BookingsView> {
                     color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Center(child: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? Colors.white : Colors.black87, size: 18)),
+                  child: Center(child: HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, color: isDark ? Colors.white : Colors.black87, size: 18)),
                 ),
               ),
               const SizedBox(width: 10),
@@ -542,7 +542,7 @@ class _BookingsViewState extends State<BookingsView> {
             Expanded(
               child: _AnimatedPressable(
                 onTap: () async {
-                  // 🟢 STEP 1: CREATE THE TEMPORARY LOCK
+                  //  STEP 1: CREATE THE TEMPORARY LOCK
                   if (_currentStep == 0) {
                     if (_selectedTimeIndex == -1) {
                       showGlassToast(context, "Please select an available time slot.", isError: true);
@@ -561,7 +561,7 @@ class _BookingsViewState extends State<BookingsView> {
                         'service_name': 'Holding...',
                         'booking_date': targetDate,
                         'booking_time': targetTime,
-                        'status': 'holding', // 🟢 Locks the slot for everyone else!
+                        'status': 'holding', //  Locks the slot for everyone else!
                         'pax': 1,
                         'booking_metadata': { 'customer_auth_id': Supabase.instance.client.auth.currentUser!.id }
                       }).select().single();
@@ -578,7 +578,7 @@ class _BookingsViewState extends State<BookingsView> {
                     setState(() => _currentStep++);
                   } else {
 
-                    // 🟢 STEP 3: FINALIZE CHECKOUT
+                    //  STEP 3: FINALIZE CHECKOUT
                     if (_selectedPaymentIndex == 0) {
                       final hasCards = UserData.savedPaymentMethods.value.any((m) => m["type"] == "card");
                       if (!hasCards) {
@@ -596,7 +596,7 @@ class _BookingsViewState extends State<BookingsView> {
                     final String shortBookingId = "RZRV-$datePart-$randomPart";
 
                     try {
-                      // 🟢 UPDATE the existing lock to 'pending' with all the final details!
+                      //  UPDATE the existing lock to 'pending' with all the final details!
                       await Supabase.instance.client.from('bookings').update({
                         'service_name': _servicesList[_selectedServices.first]["name"]!,
                         'status': 'pending',
@@ -606,7 +606,7 @@ class _BookingsViewState extends State<BookingsView> {
                           'customer_auth_id': Supabase.instance.client.auth.currentUser!.id,
                           'provider_name': staff["name"],
                           'total_price': "RM$_totalPrice",
-                          // 🟢 Save Shop details so MyBookingsView can display them directly from the DB!
+                          //  Save Shop details so MyBookingsView can display them directly from the DB!
                           'shop_name': widget.shopName,
                           'shop_image': widget.shopImage,
                           'category': widget.category
@@ -819,7 +819,7 @@ class _BookingsViewState extends State<BookingsView> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 🟢 DUAL CONFIRMATION HEADER
+                //  DUAL CONFIRMATION HEADER
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -833,7 +833,7 @@ class _BookingsViewState extends State<BookingsView> {
                 ),
                 const SizedBox(height: 12),
 
-                // 🟢 FULLY CUSTOM PREMIUM GLASS CALENDAR
+                //  FULLY CUSTOM PREMIUM GLASS CALENDAR
                 _buildGlassBox(
                   isDark: isDark,
                   radius: 20,
@@ -854,7 +854,7 @@ class _BookingsViewState extends State<BookingsView> {
                             child: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05), shape: BoxShape.circle),
-                              child: Icon(Icons.chevron_left_rounded, color: isDark ? Colors.white : Colors.black87, size: 20),
+                              child: HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, color: isDark ? Colors.white : Colors.black87, size: 20),
                             ),
                           ),
                           Text(
@@ -871,7 +871,7 @@ class _BookingsViewState extends State<BookingsView> {
                             child: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05), shape: BoxShape.circle),
-                              child: Icon(Icons.chevron_right_rounded, color: isDark ? Colors.white : Colors.black87, size: 20),
+                              child: HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, color: isDark ? Colors.white : Colors.black87, size: 20),
                             ),
                           ),
                         ],
@@ -920,7 +920,7 @@ class _BookingsViewState extends State<BookingsView> {
                                 _selectedDateIndex = _dates.indexWhere((d) => d['fullDate']!.substring(0, 10) == targetString);
                                 if (_selectedDateIndex == -1) _selectedDateIndex = 0;
 
-                                // 🟢 FIX 2: Completely clear the time selection when a new date is tapped!
+                                //  FIX 2: Completely clear the time selection when a new date is tapped!
                                 // (Removed the for-loop that used to auto-select a time here)
                                 _selectedTimeIndex = -1;
                                 _selectedTime = '';
@@ -932,7 +932,7 @@ class _BookingsViewState extends State<BookingsView> {
                                 color: isSelected ? Colors.blueAccent : Colors.transparent,
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  // 🟢 THE FIX: Transparent border for inactive dates! Only the active one gets the blue ring.
+                                  //  THE FIX: Transparent border for inactive dates! Only the active one gets the blue ring.
                                     color: isSelected ? Colors.blueAccent : Colors.transparent,
                                     width: 1.5
                                 ),
@@ -960,7 +960,7 @@ class _BookingsViewState extends State<BookingsView> {
                 Text(l10n.bkAvailTime, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
                 const SizedBox(height: 12),
 
-                // 🟢 HORIZONTAL TIME SCROLL
+                //  HORIZONTAL TIME SCROLL
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
@@ -1002,7 +1002,7 @@ class _BookingsViewState extends State<BookingsView> {
   }
 
 
-  // 🟢 NEW HELPER: Designed for the Horizontal Scroll layout
+  //  NEW HELPER: Designed for the Horizontal Scroll layout
   Widget _buildScrollTimeChip(String time, bool isSelected, bool isDark, int index) {
     return GestureDetector(
       onTap: () {
@@ -1015,7 +1015,7 @@ class _BookingsViewState extends State<BookingsView> {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        // 🟢 Padding gives the chip its shape in a Row!
+        //  Padding gives the chip its shape in a Row!
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         decoration: BoxDecoration(
           color: isSelected ? Colors.blue : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.4)),
@@ -1101,12 +1101,12 @@ class _BookingsViewState extends State<BookingsView> {
                     child: Divider(height: 1, color: Colors.grey.withValues(alpha: 0.2))
                 ),
 
-                _buildSummaryRow("Location", widget.shopName, Icons.storefront, isDark),
+                _buildSummaryRow("Location", widget.shopName, HugeIcons.strokeRoundedStore01, isDark),
                 const SizedBox(height: 12),
-                _buildSummaryRow("Provider", staff["name"]!, Icons.person, isDark),
+                _buildSummaryRow("Provider", staff["name"]!, HugeIcons.strokeRoundedUser, isDark),
                 const SizedBox(height: 12),
-                _buildSummaryRow("Date", "${_dates[_selectedDateIndex]['day']}, ${_dates[_selectedDateIndex]['date']} ${_dates[_selectedDateIndex]['month']}", Icons.calendar_month, isDark),                const SizedBox(height: 12),
-                _buildSummaryRow("Time", _times[_selectedTimeIndex], Icons.access_time_filled, isDark),
+                _buildSummaryRow("Date", "${_dates[_selectedDateIndex]['day']}, ${_dates[_selectedDateIndex]['date']} ${_dates[_selectedDateIndex]['month']}", HugeIcons.strokeRoundedCalendar03, isDark),                const SizedBox(height: 12),
+                _buildSummaryRow("Time", _times[_selectedTimeIndex], HugeIcons.strokeRoundedClock01, isDark),
 
                 Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1129,7 +1129,7 @@ class _BookingsViewState extends State<BookingsView> {
           Text("Payment Method", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black87)),
           const SizedBox(height: 16),
 
-          // 🟢 CLASSIC 3-METHOD LAYOUT (FIXED OVERFLOW)
+          //  CLASSIC 3-METHOD LAYOUT (FIXED OVERFLOW)
           Column(
             children: List.generate(_paymentMethods.length, (i) {
               bool isSel = _selectedPaymentIndex == i;
@@ -1162,9 +1162,9 @@ class _BookingsViewState extends State<BookingsView> {
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                         child: Row(
                           children: [
-                            Icon(_paymentMethods[i]["icon"], color: isSel ? Colors.blue : (isDark ? Colors.white60 : Colors.black54), size: 22),
+                            HugeIcon(icon: _paymentMethods[i]["icon"], color: isSel ? Colors.blue : (isDark ? Colors.white60 : Colors.black54), size: 22),
                             const SizedBox(width: 12),
-                            // 🟢 FIXED: Wrapped in Expanded to prevent title overflow
+                            //  FIXED: Wrapped in Expanded to prevent title overflow
                             Expanded(
                               child: Text(
                                 _paymentMethods[i]["name"],
@@ -1174,10 +1174,10 @@ class _BookingsViewState extends State<BookingsView> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Icon(
-                                isSel ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                            HugeIcon(
+                                icon: isSel ? HugeIcons.strokeRoundedCheckmarkCircle02 : HugeIcons.strokeRoundedCircle,
                                 color: isSel ? Colors.blue : (isDark ? Colors.white30 : Colors.black26),
-                                size: 20
+                                size: 20,
                             ),
                           ],
                         ),
@@ -1211,7 +1211,7 @@ class _BookingsViewState extends State<BookingsView> {
                               children: List.generate(cardMethods.length, (subIndex) {
                                 bool isSubSel = _selectedCardIndex == subIndex;
 
-                                // 🟢 FIXED: Grab only the last 4 digits for a clean, short display!
+                                //  FIXED: Grab only the last 4 digits for a clean, short display!
                                 final method = cardMethods[subIndex];
                                 final rawNumber = method["number"].toString();
                                 final last4 = rawNumber.length >= 4 ? rawNumber.substring(rawNumber.length - 4) : "0000";
@@ -1230,13 +1230,13 @@ class _BookingsViewState extends State<BookingsView> {
                                     ),
                                     child: Row(
                                       children: [
-                                        // 🟢 Clean and short text (e.g., "VISA  •••• 1234")
+                                        //  Clean and short text (e.g., "VISA  •••• 1234")
                                         Text(
                                             itemName,
                                             style: TextStyle(fontSize: 14, fontWeight: isSubSel ? FontWeight.w600 : FontWeight.normal, color: isDark ? Colors.white : Colors.black87)
                                         ),
                                         const Spacer(),
-                                        if (isSubSel) const Icon(Icons.check, color: Colors.blue, size: 16)
+                                        if (isSubSel) const HugeIcon(icon: HugeIcons.strokeRoundedTick01, color: Colors.blue, size: 16)
                                       ],
                                     ),
                                   ),
@@ -1264,7 +1264,7 @@ class _BookingsViewState extends State<BookingsView> {
                                 ),
                                 child: Row(
                                   children: [
-                                    // 🟢 FIXED: Wrapped in Expanded to stop Bank Name overflow
+                                    //  FIXED: Wrapped in Expanded to stop Bank Name overflow
                                     Expanded(
                                       child: Text(
                                         itemName,
@@ -1274,7 +1274,7 @@ class _BookingsViewState extends State<BookingsView> {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    if (isSubSel) const Icon(Icons.check, color: Colors.blue, size: 16) else const SizedBox(width: 16)
+                                    if (isSubSel) const HugeIcon(icon: HugeIcons.strokeRoundedTick01, color: Colors.blue, size: 16) else const SizedBox(width: 16)
                                   ],
                                 ),
                               ),
@@ -1321,15 +1321,15 @@ class _BookingsViewState extends State<BookingsView> {
     );
   }
 
-  Widget _buildSummaryRow(String label, String val, IconData icon, bool isDark) {
+  Widget _buildSummaryRow(String label, String val, dynamic icon, bool isDark) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: isDark ? Colors.white54 : Colors.black54),
+        HugeIcon(icon: icon, size: 16, color: isDark ? Colors.white54 : Colors.black54),
         const SizedBox(width: 8),
         Text(label, style: TextStyle(fontSize: 14, color: isDark ? Colors.white60 : Colors.black54)),
         const SizedBox(width: 16),
-        // 🟢 FIXED: Wrapped in Expanded to allow long shop names to drop to the next line safely
+        //  FIXED: Wrapped in Expanded to allow long shop names to drop to the next line safely
         Expanded(
           child: Text(
             val,
@@ -1343,7 +1343,7 @@ class _BookingsViewState extends State<BookingsView> {
     );
   }
 
-  // 🟢 FIXED: The success screen now shows the proper "View Order" button
+  //  FIXED: The success screen now shows the proper "View Order" button
   Widget _buildSuccessState(bool isDark) {
     return Center(
       key: const ValueKey("success_state"),
@@ -1365,7 +1365,7 @@ class _BookingsViewState extends State<BookingsView> {
                     border: Border.all(color: Colors.greenAccent, width: 3),
                     boxShadow: [BoxShadow(color: Colors.greenAccent.withValues(alpha: 0.4), blurRadius: 20, spreadRadius: 5)],
                   ),
-                  child: const Center(child: Icon(Icons.check_rounded, color: Colors.greenAccent, size: 50)),
+                  child: const Center(child: HugeIcon(icon: HugeIcons.strokeRoundedCheckmarkCircle02, color: Colors.greenAccent, size: 50)),
                 ),
                 const SizedBox(height: 32),
                 Text("Booking Confirmed!", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
@@ -1380,7 +1380,7 @@ class _BookingsViewState extends State<BookingsView> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => BookingTicketScreen(
-                          shopId: widget.shopId, // 🟢 ADD THIS LINE!
+                          shopId: widget.shopId, //  ADD THIS LINE!
                           shopName: widget.shopName,
                           category: widget.category,
                           shopImage: widget.shopImage,
@@ -1443,7 +1443,13 @@ class _BookingsViewState extends State<BookingsView> {
         ),
         child: Row(
           children: [
-            Icon(isSelected ? (isMultiSelect ? Icons.check_box_rounded : Icons.radio_button_checked) : (isMultiSelect ? Icons.check_box_outline_blank_rounded : Icons.radio_button_unchecked), color: isSelected ? Colors.blue : (isDark ? Colors.white54 : Colors.black54), size: 20),
+            HugeIcon(
+              icon: isSelected
+                  ? (isMultiSelect ? HugeIcons.strokeRoundedCheckmarkSquare02 : HugeIcons.strokeRoundedCheckmarkCircle02)
+                  : (isMultiSelect ? HugeIcons.strokeRoundedSquare : HugeIcons.strokeRoundedCircle),
+              color: isSelected ? Colors.blue : (isDark ? Colors.white54 : Colors.black54),
+              size: 20,
+            ),
             const SizedBox(width: 10),
             Expanded(child: Text(item["name"]!, style: TextStyle(fontSize: 14, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, color: isDark ? Colors.white : Colors.black87))),
             Text("${item["time"]} • ${item["price"]}", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isSelected ? Colors.blue : (isDark ? Colors.white60 : Colors.black54))),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart'; // Add this import at the top
 import 'package:latlong2/latlong.dart';
 
 class ShopData {
-  // 🟢 NEW: ValueNotifier broadcasts changes instantly to any listening screen!
+  //  NEW: ValueNotifier broadcasts changes instantly to any listening screen!
   static ValueNotifier<Set<String>> savedShopNames = ValueNotifier<Set<String>>({});
 
   static final List<Map<String, dynamic>> shops =

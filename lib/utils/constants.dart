@@ -1,4 +1,5 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 // ============================================================
 // Ngam App — Constants (Pemalar) & Konfigurasi
@@ -35,30 +36,30 @@ class TaskCategory {
   ];
 
   /// Returns an icon for each category
-  static String icon(String category) {
+  static List<List<dynamic>> icon(String category) {
     switch (category) {
       case food:
-        return '🍔';
+        return HugeIcons.strokeRoundedHamburger01;
       case shopping:
-        return '🛒';
+        return HugeIcons.strokeRoundedShoppingBag01;
       case print:
-        return '🖨️';
+        return HugeIcons.strokeRoundedPrinter;
       case heavy:
-        return '📦';
+        return HugeIcons.strokeRoundedPackage;
       case parcel:
-        return '📮';
+        return HugeIcons.strokeRoundedDeliveryBox01;
       case cleaning:
-        return '🧹';
+        return HugeIcons.strokeRoundedClean;
       case petCare:
-        return '🐕';
+        return HugeIcons.strokeRoundedFavourite;
       case errands:
-        return '🚶‍♂️';
+        return HugeIcons.strokeRoundedUser;
       case automotive:
-        return '🚗';
+        return HugeIcons.strokeRoundedCar01;
       case others:
-        return '✨';
+        return HugeIcons.strokeRoundedSparkles;
       default:
-        return '📋';
+        return HugeIcons.strokeRoundedNote;
     }
   }
 }

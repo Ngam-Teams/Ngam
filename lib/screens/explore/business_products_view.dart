@@ -263,11 +263,7 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
                                       color: isDark
                                           ? Colors.white.withValues(alpha: 0.05)
                                           : Colors.blue.withValues(alpha: 0.08),
-                                      child: const Icon(
-                                        Icons.image,
-                                        size: 50,
-                                        color: Colors.grey,
-                                      ),
+                                      child: const HugeIcon(icon: HugeIcons.strokeRoundedImage01, size: 50, color: Colors.grey),
                                     ),
                             ),
                             const SizedBox(height: 24),
@@ -504,13 +500,7 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
                                     _searchQuery = '';
                                     _filterProducts();
                                   },
-                                  child: Icon(
-                                    Icons.close,
-                                    size: 18,
-                                    color: isDark
-                                        ? Colors.white54
-                                        : Colors.black54,
-                                  ),
+                                  child: HugeIcon(icon: HugeIcons.strokeRoundedCancel01, size: 18, color: isDark ? Colors.white54 : Colors.black54),
                                 ),
                             ],
                           ),

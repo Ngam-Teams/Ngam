@@ -15,7 +15,7 @@ class NotificationData {
       List<dynamic> decoded = json.decode(saved);
       notifications.value = decoded.cast<Map<String, dynamic>>();
 
-      // 🟢 2. ADD: Calculate the initial unread count
+      //  2. ADD: Calculate the initial unread count
       unreadCount.value = notifications.value.where((n) => n["isUnread"] == true).length;
     }
   }
@@ -39,7 +39,7 @@ class NotificationData {
 
     notifications.value = [newNotif, ...notifications.value];
 
-    // 🟢 3. ADD: Increment unread count
+    //  3. ADD: Increment unread count
     unreadCount.value++;
 
     await _saveToDisk();
@@ -53,14 +53,14 @@ class NotificationData {
 
     notifications.value = updatedList;
 
-    // 🟢 4. ADD: Reset the count
+    //  4. ADD: Reset the count
     unreadCount.value = 0;
 
     await _saveToDisk();
   }
 
   static Future<void> removeNotification(String id) async {
-    // 🟢 5. ADD: If we are removing an unread item, lower the count
+    //  5. ADD: If we are removing an unread item, lower the count
     final bool wasUnread = notifications.value.any((n) => n["id"] == id && n["isUnread"] == true);
 
     final updatedList = List<Map<String, dynamic>>.from(notifications.value);
