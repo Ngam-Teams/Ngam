@@ -1010,9 +1010,11 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                         ],
                       ),
                       child: GestureDetector(
-                        onDoubleTapDown: (details) {
-                          _handleDoubleTap(details.globalPosition, post);
-                        },
+                        onDoubleTapDown: (post['mediaType'] == 'video')
+                            ? null
+                            : (details) {
+                                _handleDoubleTap(details.globalPosition, post);
+                              },
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
@@ -1103,11 +1105,13 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     return Stack(
       fit: StackFit.expand,
       children: [
-        // 1. FULL SCREEN MEDIA / IMAGE (Interactive Double Tap)
+        // 1. FULL SCREEN MEDIA / IMAGE (Interactive Double Tap for photo, handled by video player for video)
         GestureDetector(
-          onDoubleTapDown: (details) {
-            _handleDoubleTap(details.globalPosition, post);
-          },
+          onDoubleTapDown: (post['mediaType'] == 'video')
+              ? null
+              : (details) {
+                  _handleDoubleTap(details.globalPosition, post);
+                },
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -2181,18 +2185,29 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
     super.dispose();
   }
 
-  void _togglePlayPause() {
+  void _togglePlayPause() async {
     if (!_isInitialized) return;
-    setState(() {
+    try {
       if (_controller.value.isPlaying) {
-        _controller.pause();
-        _isUserPaused = true;
+        await _controller.pause();
+        if (mounted) {
+          setState(() {
+            _isUserPaused = true;
+            _showPlayStateIndicator = true;
+          });
+        }
       } else {
-        _controller.play();
-        _isUserPaused = false;
+        await _controller.play();
+        if (mounted) {
+          setState(() {
+            _isUserPaused = false;
+            _showPlayStateIndicator = true;
+          });
+        }
       }
-      _showPlayStateIndicator = true;
-    });
+    } catch (e) {
+      debugPrint('[FeedVideoPlayer] togglePlayPause error: $e');
+    }
 
     Future.delayed(const Duration(milliseconds: 650), () {
       if (mounted) {
@@ -2311,14 +2326,8 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // 1. Gesture detector covering entire canvas for Play/Pause, Double-Tap & Long-Press 2x
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: _togglePlayPause,
-          onDoubleTapDown: (details) => widget.onDoubleTap?.call(details.globalPosition),
-          onLongPressStart: (_) => _setSpeed(2.0),
-          onLongPressEnd: (_) => _setSpeed(1.0),
-          onLongPressCancel: () => _setSpeed(1.0),
+        // 1. Base Video Surface (IgnorePointer ensures HTML5 video element on Web doesn't swallow click events)
+        IgnorePointer(
           child: Container(
             color: Colors.black,
             alignment: Alignment.center,
@@ -2333,6 +2342,18 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
                 child: VideoPlayer(_controller),
               ),
             ),
+          ),
+        ),
+
+        // 2. Full-Screen Interactive Gesture Overlay (Tap to Play/Pause, Double-Tap Like & Long-Press 2x)
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _togglePlayPause,
+            onDoubleTapDown: (details) => widget.onDoubleTap?.call(details.globalPosition),
+            onLongPressStart: (_) => _setSpeed(2.0),
+            onLongPressEnd: (_) => _setSpeed(1.0),
+            onLongPressCancel: () => _setSpeed(1.0),
           ),
         ),
 
@@ -2420,22 +2441,24 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
             ),
           ),
 
-        // 4. Center Play / Pause Indicator Feedback
+        // 4. Center Play / Pause Indicator Feedback (IgnorePointer ensures clicks still reach the gesture layer)
         if (_showPlayStateIndicator || !_controller.value.isPlaying)
-          Center(
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 250),
-              opacity: _showPlayStateIndicator || !_controller.value.isPlaying ? 0.85 : 0.0,
-              child: Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.45),
-                  shape: BoxShape.circle,
-                ),
-                child: HugeIcon(
-                  icon: _controller.value.isPlaying ? HugeIcons.strokeRoundedPlay : HugeIcons.strokeRoundedPauseCircle,
-                  color: Colors.white,
-                  size: 48,
+          IgnorePointer(
+            child: Center(
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 250),
+                opacity: _showPlayStateIndicator || !_controller.value.isPlaying ? 0.85 : 0.0,
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    shape: BoxShape.circle,
+                  ),
+                  child: HugeIcon(
+                    icon: _controller.value.isPlaying ? HugeIcons.strokeRoundedPlay : HugeIcons.strokeRoundedPauseCircle,
+                    color: Colors.white,
+                    size: 48,
+                  ),
                 ),
               ),
             ),
@@ -2626,7 +2649,9 @@ class _LandscapeVideoFullscreenDialogState
                 aspectRatio: widget.controller.value.aspectRatio > 0
                     ? widget.controller.value.aspectRatio
                     : 16 / 9,
-                child: VideoPlayer(widget.controller),
+                child: IgnorePointer(
+                  child: VideoPlayer(widget.controller),
+                ),
               ),
             ),
 
