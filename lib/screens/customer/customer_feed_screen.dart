@@ -42,6 +42,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   int _currentPage = 0;
   bool _isMuted = false;
   bool _isModalOrRouteOpen = false;
+  bool _isVideoPlaying = true;
 
   // Double-tap heart animation items
   final List<_FloatingHeart> _hearts = [];
@@ -58,7 +59,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       'timeAgo': '35 min lepas',
       'location': 'Bangi Sentral',
       'image':
-          'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=800',
+          'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+      'mediaType': 'video',
       'title': 'Low Taper Fade + Beard Sculpting',
       'caption':
           'Hasil sentuhan kemas petang ini untuk regular bro Hazim. Slot walk-in dan giliran petang ni masih dibuka sampai jam 10 malam! #barber #taperfade #ngam',
@@ -111,7 +113,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       'timeAgo': '1 jam lepas',
       'location': 'Seksyen 9, Bangi',
       'image':
-          'https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?q=80&w=800',
+          'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4',
+      'mediaType': 'video',
       'title': 'Cermin Kereta Bersinar Bak Kristal',
       'caption':
           'Pakej Nano Wax Coating + Interior Steam Wash promosi khas pertengahan bulan. Hilangkan watermark dan bau hapak kereta anda sekarang! #detailing #carwash #ngam',
@@ -343,6 +346,13 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           if (mediaUrl.contains('mixkit.co')) {
             mediaUrl = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
           }
+          final cleanMedia = mediaUrl.trim().toLowerCase();
+          final isVideo = (row['media_type']?.toString().toLowerCase() == 'video') ||
+              cleanMedia.endsWith('.mp4') ||
+              cleanMedia.endsWith('.mov') ||
+              cleanMedia.endsWith('.webm') ||
+              cleanMedia.contains('/video/') ||
+              cleanMedia.contains('.mp4?');
           final ctaType = row['cta_type']?.toString() ?? 'queue';
           final ctaText = row['cta_text']?.toString() ?? 'AMBIL GILIRAN';
           final serviceTag =
@@ -360,7 +370,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             'image': mediaUrl.isNotEmpty
                 ? mediaUrl
                 : 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=800',
-            'mediaType': row['media_type'] ?? 'image',
+            'mediaType': isVideo ? 'video' : (row['media_type'] ?? 'image'),
             'title': row['title'] ?? '',
             'caption': row['caption'] ?? '',
             'serviceTag': serviceTag,
@@ -465,6 +475,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     _persistedPageIndex = index;
     setState(() {
       _currentPage = index;
+      _isVideoPlaying = true;
     });
     if (index >= 0 && index < _posts.length) {
       final post = _posts[index];
@@ -1217,9 +1228,14 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     required double bottomOffset,
     bool isDesktop = false,
   }) {
-    final bool isVideo = post['mediaType'] == 'video' &&
-        post['image'] != null &&
-        (post['image'] as String).isNotEmpty;
+    final String mediaUrl = post['image']?.toString() ?? '';
+    final String cleanMedia = mediaUrl.trim().toLowerCase();
+    final bool isVideo = (post['mediaType'] == 'video' ||
+        cleanMedia.endsWith('.mp4') ||
+        cleanMedia.endsWith('.mov') ||
+        cleanMedia.endsWith('.webm') ||
+        cleanMedia.contains('/video/') ||
+        cleanMedia.contains('.mp4?')) && mediaUrl.isNotEmpty;
 
     if (isVideo) {
       return _FeedVideoPlayerItem(
@@ -1231,6 +1247,11 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         isDesktop: isDesktop,
         onToggleMute: _toggleMute,
         onDoubleTap: (pos) => _handleDoubleTap(pos, post),
+        onPlayStateChanged: (playing) {
+          if (mounted && index == _currentPage && _isVideoPlaying != playing) {
+            setState(() => _isVideoPlaying = playing);
+          }
+        },
       );
     }
 
@@ -1489,14 +1510,15 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
 
         SizedBox(height: isShortPhone ? 12 : (isDesktop ? 18 : 16)),
 
-        // Like (Hati) Action
+        // Like (Hati) Action (TikTok Style: Solid #FE2C55 heart with bounce when liked)
         _buildRightActionButton(
-          hugeIcon: HugeIcons.strokeRoundedFavourite,
-          iconColor: isLiked ? const Color(0xFFFF2B54) : Colors.white,
+          hugeIcon: isLiked ? Icons.favorite : HugeIcons.strokeRoundedFavourite,
+          iconColor: isLiked ? const Color(0xFFFE2C55) : Colors.white,
           label: '$likes',
           isCompact: isShortPhone,
           isDesktop: isDesktop,
           isDark: isDark,
+          isLikedBounce: isLiked,
           onTap: () => _toggleLike(post),
         ),
 
@@ -1516,7 +1538,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
 
         // Save / Bookmark Action
         _buildRightActionButton(
-          hugeIcon: HugeIcons.strokeRoundedBookmark02,
+          hugeIcon: isSaved ? Icons.bookmark_rounded : HugeIcons.strokeRoundedBookmark02,
           iconColor: isSaved ? const Color(0xFFFBBF24) : Colors.white,
           label: 'Simpan',
           isCompact: isShortPhone,
@@ -1540,7 +1562,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         SizedBox(height: actionSpacing),
 
         // Audio Mute/Unmute Action for Video
-        if (post['mediaType'] == 'video') ...[
+        if (post['mediaType'] == 'video' || (post['image']?.toString() ?? '').toLowerCase().contains('.mp4')) ...[
           _buildRightActionButton(
             hugeIcon: _isMuted
                 ? HugeIcons.strokeRoundedVolumeOff
@@ -1550,44 +1572,26 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             isCompact: isShortPhone,
             isDesktop: isDesktop,
             isDark: isDark,
-            onTap: _toggleMute,
+            onTap: () {
+              _toggleMute();
+              showGlassToast(
+                context,
+                _isMuted ? 'Audio dibisukan' : 'Audio dibuka',
+                icon: _isMuted ? HugeIcons.strokeRoundedVolumeOff : HugeIcons.strokeRoundedVolumeHigh,
+              );
+            },
           ),
           SizedBox(height: actionSpacing),
         ],
 
-        // Rotating Merchant Vinyl Disc
-        GestureDetector(
+        // Rotating Merchant Vinyl Disc with Floating Musical Notes (Authentic TikTok Style)
+        _TikTokVinylDisc(
+          avatarUrl: post['shopAvatar'] ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200',
+          isPlaying: (post['mediaType'] == 'video' || (post['image']?.toString() ?? '').toLowerCase().contains('.mp4'))
+              ? _isVideoPlaying
+              : true,
+          isCompact: isShortPhone,
           onTap: () => _openStore(post),
-          child: RotationTransition(
-            turns: _discAnimController,
-            child: Container(
-              width: isShortPhone ? 34 : 40,
-              height: isShortPhone ? 34 : 40,
-              padding: EdgeInsets.all(isShortPhone ? 6 : 8),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const RadialGradient(
-                  colors: [Color(0xFF222831), Color(0xFF0F141A)],
-                ),
-                border: Border.all(color: Colors.white24, width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    blurRadius: 8,
-                  ),
-                ],
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  image: DecorationImage(
-                    image: NetworkImage(post['shopAvatar']),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            ),
-          ),
         ),
       ],
     );
@@ -1662,6 +1666,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     bool isCompact = false,
     bool isDesktop = false,
     bool isDark = true,
+    bool isLikedBounce = false,
     required VoidCallback onTap,
   }) {
     final double buttonSize = isCompact ? 38 : 44;
@@ -1674,32 +1679,44 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       onTap: onTap,
       child: Column(
         children: [
-          Container(
-            width: buttonSize,
-            height: buttonSize,
-            decoration: BoxDecoration(
-              color: useLightDesktop
-                  ? Colors.white
-                  : Colors.black.withValues(alpha: 0.35),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: useLightDesktop
-                    ? Colors.black.withValues(alpha: 0.08)
-                    : Colors.white12,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: useLightDesktop
-                      ? Colors.black.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: isLikedBounce ? 0.75 : 1.0, end: 1.0),
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.elasticOut,
+            builder: (context, scale, child) {
+              return Transform.scale(
+                scale: scale,
+                child: Container(
+                  width: buttonSize,
+                  height: buttonSize,
+                  decoration: BoxDecoration(
+                    color: useLightDesktop
+                        ? Colors.white
+                        : Colors.black.withValues(alpha: 0.35),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: useLightDesktop
+                          ? Colors.black.withValues(alpha: 0.08)
+                          : Colors.white12,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: useLightDesktop
+                            ? Colors.black.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: hugeIcon is IconData
+                        ? Icon(hugeIcon, color: effectiveIconColor, size: isCompact ? 22 : 26)
+                        : HugeIcon(icon: hugeIcon, color: effectiveIconColor, size: isCompact ? 19 : 22),
+                  ),
                 ),
-              ],
-            ),
-            child: Center(
-              child: HugeIcon(icon: hugeIcon, color: effectiveIconColor, size: isCompact ? 19 : 22),
-            ),
+              );
+            },
           ),
           const SizedBox(height: 3),
           Text(
@@ -2086,10 +2103,17 @@ class _FloatingHeartState extends State<_FloatingHeart>
             ),
           );
         },
-        child: const HugeIcon(
-          icon: HugeIcons.strokeRoundedFavourite,
-          color: Color(0xFFFF2B54),
-          size: 90,
+        child: Icon(
+          Icons.favorite,
+          color: const Color(0xFFFE2C55),
+          size: 96,
+          shadows: [
+            Shadow(
+              color: Colors.black.withValues(alpha: 0.45),
+              blurRadius: 18,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
       ),
     );
@@ -2109,6 +2133,7 @@ class _FeedVideoPlayerItem extends StatefulWidget {
   final bool isDesktop;
   final VoidCallback onToggleMute;
   final void Function(Offset position)? onDoubleTap;
+  final void Function(bool isPlaying)? onPlayStateChanged;
 
   const _FeedVideoPlayerItem({
     required this.videoUrl,
@@ -2119,6 +2144,7 @@ class _FeedVideoPlayerItem extends StatefulWidget {
     required this.isDesktop,
     required this.onToggleMute,
     this.onDoubleTap,
+    this.onPlayStateChanged,
   });
 
   @override
@@ -2130,7 +2156,6 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
   bool _isInitialized = false;
   bool _hasError = false;
   bool _isUserPaused = false;
-  bool _showPlayStateIndicator = false;
   bool _is2xSpeed = false;
   bool _isScrubbing = false;
   double _scrubRatio = 0.0;
@@ -2152,13 +2177,18 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
           _controller.setLooping(true);
           _controller.setVolume(widget.isMuted ? 0.0 : 1.0);
           if (widget.isCurrentPage && !widget.isPausedExternally && !_isUserPaused) {
-            _controller.play().catchError((playErr) {
+            _controller.play().then((_) {
+              widget.onPlayStateChanged?.call(true);
+            }).catchError((playErr) {
               debugPrint('[FeedVideoPlayer] Autoplay blocked, muted retry: $playErr');
               _controller.setVolume(0.0);
-              return _controller.play().catchError((_) {});
+              return _controller.play().then((_) {
+                widget.onPlayStateChanged?.call(true);
+              }).catchError((_) {});
             });
           } else {
             _controller.pause();
+            widget.onPlayStateChanged?.call(false);
           }
         }
       }).catchError((e) {
@@ -2186,10 +2216,12 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
       if (!shouldPlay) {
         if (_controller.value.isPlaying) {
           _controller.pause();
+          widget.onPlayStateChanged?.call(false);
         }
       } else {
         if (!_controller.value.isPlaying) {
           _controller.play();
+          widget.onPlayStateChanged?.call(true);
         }
       }
 
@@ -2209,33 +2241,29 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
 
   void _togglePlayPause() async {
     if (!_isInitialized) return;
+    HapticFeedback.lightImpact();
     try {
       if (_controller.value.isPlaying) {
         await _controller.pause();
         if (mounted) {
           setState(() {
             _isUserPaused = true;
-            _showPlayStateIndicator = true;
           });
+          widget.onPlayStateChanged?.call(false);
         }
       } else {
         await _controller.play();
         if (mounted) {
           setState(() {
             _isUserPaused = false;
-            _showPlayStateIndicator = true;
           });
+          widget.onPlayStateChanged?.call(true);
         }
       }
     } catch (e) {
       debugPrint('[FeedVideoPlayer] togglePlayPause error: $e');
     }
 
-    Future.delayed(const Duration(milliseconds: 650), () {
-      if (mounted) {
-        setState(() => _showPlayStateIndicator = false);
-      }
-    });
   }
 
   void _setSpeed(double speed) {
@@ -2463,28 +2491,49 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
             ),
           ),
 
-        // 4. Center Play / Pause Indicator Feedback (IgnorePointer ensures clicks still reach the gesture layer)
-        if (_showPlayStateIndicator || !_controller.value.isPlaying)
-          IgnorePointer(
-            child: Center(
+        // 4. Center Play Indicator (TikTok Signature: Large translucent Play triangle, visible ONLY when paused)
+        IgnorePointer(
+          child: Center(
+            child: AnimatedScale(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutBack,
+              scale: (!_controller.value.isPlaying) ? 1.0 : 1.35,
               child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 250),
-                opacity: _showPlayStateIndicator || !_controller.value.isPlaying ? 0.85 : 0.0,
+                duration: const Duration(milliseconds: 180),
+                opacity: (!_controller.value.isPlaying) ? 0.92 : 0.0,
                 child: Container(
-                  padding: const EdgeInsets.all(18),
+                  width: 76,
+                  height: 76,
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.45),
+                    color: Colors.black.withValues(alpha: 0.4),
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.45),
+                        blurRadius: 18,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  child: HugeIcon(
-                    icon: _controller.value.isPlaying ? HugeIcons.strokeRoundedPlay : HugeIcons.strokeRoundedPauseCircle,
-                    color: Colors.white,
-                    size: 48,
+                  child: const Center(
+                    child: Padding(
+                      padding: EdgeInsets.only(left: 4.0), // Optical center for triangle
+                      child: Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 54,
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
+        ),
 
         // 5. Floating Scrub Timestamp Bubble when Dragging Timeline
         if (_isScrubbing)
@@ -2867,5 +2916,205 @@ class _LandscapeVideoFullscreenDialogState
     }
 
     return content;
+  }
+}
+
+
+// =============================================================================
+// Widget: Cakera Vinyl Berputar Gaya TikTok dengan Nota Muzik Melayang
+// =============================================================================
+class _TikTokVinylDisc extends StatefulWidget {
+  final String avatarUrl;
+  final bool isPlaying;
+  final VoidCallback onTap;
+  final bool isCompact;
+
+  const _TikTokVinylDisc({
+    required this.avatarUrl,
+    required this.isPlaying,
+    required this.onTap,
+    this.isCompact = false,
+  });
+
+  @override
+  State<_TikTokVinylDisc> createState() => _TikTokVinylDiscState();
+}
+
+class _TikTokVinylDiscState extends State<_TikTokVinylDisc>
+    with TickerProviderStateMixin {
+  late AnimationController _rotationController;
+  late AnimationController _musicNotesController;
+
+  @override
+  void initState() {
+    super.initState();
+    _rotationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    );
+    _musicNotesController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    );
+
+    if (widget.isPlaying) {
+      _rotationController.repeat();
+      _musicNotesController.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _TikTokVinylDisc oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isPlaying != oldWidget.isPlaying) {
+      if (widget.isPlaying) {
+        _rotationController.repeat();
+        _musicNotesController.repeat();
+      } else {
+        _rotationController.stop();
+        _musicNotesController.stop();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _rotationController.dispose();
+    _musicNotesController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final double discSize = widget.isCompact ? 36 : 44;
+    final double avatarSize = widget.isCompact ? 20 : 25;
+
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: SizedBox(
+        width: discSize + 16,
+        height: discSize + 22,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.bottomCenter,
+          children: [
+            // Floating musical note 1 (drifts up and fades out)
+            AnimatedBuilder(
+              animation: _musicNotesController,
+              builder: (context, child) {
+                final t = (_musicNotesController.value + 0.0) % 1.0;
+                final opacity = (1.0 - t).clamp(0.0, 1.0);
+                final dx = -math.sin(t * math.pi) * 20;
+                final dy = -t * 40;
+                return Positioned(
+                  bottom: (discSize / 2) - dy,
+                  right: (discSize / 2) + dx - 6,
+                  child: Opacity(
+                    opacity: widget.isPlaying ? (opacity * 0.85) : 0.0,
+                    child: Transform.rotate(
+                      angle: -0.2 - (t * 0.4),
+                      child: const HugeIcon(
+                        icon: HugeIcons.strokeRoundedMusicNote01,
+                        color: Color(0xFF00E5FF),
+                        size: 13,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            // Floating musical note 2 (delayed phase, drifts up to the right)
+            AnimatedBuilder(
+              animation: _musicNotesController,
+              builder: (context, child) {
+                final t = (_musicNotesController.value + 0.5) % 1.0;
+                final opacity = (1.0 - t).clamp(0.0, 1.0);
+                final dx = -math.sin(t * math.pi * 0.8) * 14 - 5;
+                final dy = -t * 44;
+                return Positioned(
+                  bottom: (discSize / 2) - dy,
+                  right: (discSize / 2) + dx - 3,
+                  child: Opacity(
+                    opacity: widget.isPlaying ? (opacity * 0.75) : 0.0,
+                    child: Transform.rotate(
+                      angle: 0.15 + (t * 0.3),
+                      child: const HugeIcon(
+                        icon: HugeIcons.strokeRoundedMusicNote02,
+                        color: Colors.white70,
+                        size: 11,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            // The Vinyl Disc itself
+            RotationTransition(
+              turns: _rotationController,
+              child: Container(
+                width: discSize,
+                height: discSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const RadialGradient(
+                    colors: [
+                      Color(0xFF2C3440),
+                      Color(0xFF151A22),
+                      Color(0xFF0B0F15),
+                    ],
+                    stops: [0.35, 0.75, 1.0],
+                  ),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.22),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  // Inner Vinyl Grooves
+                  child: Container(
+                    width: discSize - 12,
+                    height: discSize - 12,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        width: 1.0,
+                      ),
+                    ),
+                    child: Center(
+                      // Center Label / Merchant Avatar
+                      child: Container(
+                        width: avatarSize,
+                        height: avatarSize,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: const Color(0xFF00E5FF),
+                            width: 1.2,
+                          ),
+                          image: DecorationImage(
+                            image: NetworkImage(widget.avatarUrl),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
