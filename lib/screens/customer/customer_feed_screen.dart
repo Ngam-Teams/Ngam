@@ -1,5 +1,7 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -528,13 +530,44 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   Widget build(BuildContext context) {
     final double safeBottom = MediaQuery.paddingOf(context).bottom;
     final double safeTop = MediaQuery.paddingOf(context).top;
+    final double screenWidth = MediaQuery.sizeOf(context).width;
+    final bool isDesktopLandscape = screenWidth > 700;
     
     // Bottom padding to position feed content nicely above the floating navbar
     final double bottomOffset = (safeBottom > 0 ? safeBottom : 16) + 78;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          if (event.logicalKey == LogicalKeyboardKey.arrowDown ||
+              event.logicalKey == LogicalKeyboardKey.pageDown) {
+            if (_currentPage < _posts.length - 1) {
+              _pageController.nextPage(
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeOutCubic,
+              );
+              return KeyEventResult.handled;
+            }
+          } else if (event.logicalKey == LogicalKeyboardKey.arrowUp ||
+              event.logicalKey == LogicalKeyboardKey.pageUp) {
+            if (_currentPage > 0) {
+              _pageController.previousPage(
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeOutCubic,
+              );
+              return KeyEventResult.handled;
+            }
+          } else if (event.logicalKey == LogicalKeyboardKey.keyM) {
+            _toggleMute();
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
         children: [
           // 1. VERTICAL FULL SCREEN PAGEVIEW (TIKTOK STYLE)
           RefreshIndicator(
@@ -620,155 +653,357 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             top: safeTop > 0 ? safeTop + 6 : 14,
             left: 0,
             right: 0,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  // Logo Badge (Tap to refresh feed)
-                  GestureDetector(
-                    onTap: () {
-                      _fetchLivePosts();
-                      showGlassToast(
-                        context,
-                        'Memuat semula suapan Ngam... 🔄',
-                        icon: HugeIcons.strokeRoundedRefresh,
-                      );
-                    },
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2.5),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: isDesktopLandscape ? 720 : double.infinity,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      // Logo Badge (Tap to refresh feed)
+                      GestureDetector(
+                        onTap: () {
+                          _fetchLivePosts();
+                          showGlassToast(
+                            context,
+                            'Memuat semula suapan Ngam... 🔄',
+                            icon: HugeIcons.strokeRoundedRefresh,
+                          );
+                        },
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2.5),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF00E5FF), Color(0xFF0284C7)],
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'NGAM',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Text(
+                              'FEED',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const Spacer(),
+
+                      // Center Feed Switcher: 'Berhampiran' vs 'Untuk Anda'
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                setState(() => _activeTopTab = 0);
+                                showGlassToast(
+                                  context,
+                                  'Menapis pos dalam radius 10KM 📍',
+                                  icon: HugeIcons.strokeRoundedLocation01,
+                                );
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                child: Text(
+                                  'Berhampiran',
+                                  style: TextStyle(
+                                    color: _activeTopTab == 0
+                                        ? Colors.white
+                                        : Colors.white54,
+                                    fontSize: 13,
+                                    fontWeight: _activeTopTab == 0
+                                        ? FontWeight.w900
+                                        : FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Container(
+                              width: 3,
+                              height: 3,
+                              decoration: const BoxDecoration(
+                                color: Colors.white30,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                setState(() => _activeTopTab = 1);
+                                showGlassToast(
+                                  context,
+                                  'Memaparkan pos paling trending 🔥',
+                                  icon: HugeIcons.strokeRoundedFire,
+                                );
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                child: Text(
+                                  'Untuk Anda',
+                                  style: TextStyle(
+                                    color: _activeTopTab == 1
+                                        ? Colors.white
+                                        : Colors.white54,
+                                    fontSize: 13,
+                                    fontWeight: _activeTopTab == 1
+                                        ? FontWeight.w900
+                                        : FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const Spacer(),
+
+                      // Search / Discover shortcut
+                      GestureDetector(
+                        onTap: () {
+                          if (widget.onSwitchTab != null) {
+                            widget.onSwitchTab!(1); // Go to Discover Tab
+                          }
+                        },
+                        child: Container(
+                          width: 36,
+                          height: 36,
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF00E5FF), Color(0xFF0284C7)],
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text(
-                            'NGAM',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Text(
-                          'FEED',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const Spacer(),
-
-                  // Center Feed Switcher: 'Berhampiran' vs 'Untuk Anda'
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.25),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        GestureDetector(
-                          onTap: () {
-                            setState(() => _activeTopTab = 0);
-                            showGlassToast(
-                              context,
-                              'Menapis pos dalam radius 10KM 📍',
-                              icon: HugeIcons.strokeRoundedLocation01,
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            child: Text(
-                              'Berhampiran',
-                              style: TextStyle(
-                                color: _activeTopTab == 0
-                                    ? Colors.white
-                                    : Colors.white54,
-                                fontSize: 13,
-                                fontWeight: _activeTopTab == 0
-                                    ? FontWeight.w900
-                                    : FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Container(
-                          width: 3,
-                          height: 3,
-                          decoration: const BoxDecoration(
-                            color: Colors.white30,
+                            color: Colors.black.withValues(alpha: 0.35),
                             shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white12),
                           ),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            setState(() => _activeTopTab = 1);
-                            showGlassToast(
-                              context,
-                              'Memaparkan pos paling trending 🔥',
-                              icon: HugeIcons.strokeRoundedFire,
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            child: Text(
-                              'Untuk Anda',
-                              style: TextStyle(
-                                color: _activeTopTab == 1
-                                    ? Colors.white
-                                    : Colors.white54,
-                                fontSize: 13,
-                                fontWeight: _activeTopTab == 1
-                                    ? FontWeight.w900
-                                    : FontWeight.w600,
-                              ),
+                          child: const Center(
+                            child: HugeIcon(
+                              icon: HugeIcons.strokeRoundedSearch01,
+                              color: Colors.white,
+                              size: 17,
                             ),
                           ),
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // 4. DESKTOP NAVIGATION ARROWS (TIKTOK STYLE)
+          if (isDesktopLandscape && _posts.length > 1)
+            Positioned(
+              right: 28,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildDesktopNavArrow(
+                      icon: Icons.keyboard_arrow_up_rounded,
+                      tooltip: 'Pos Sebelumnya (↑)',
+                      enabled: _currentPage > 0,
+                      onTap: () {
+                        _pageController.previousPage(
+                          duration: const Duration(milliseconds: 280),
+                          curve: Curves.easeOutCubic,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    _buildDesktopNavArrow(
+                      icon: Icons.keyboard_arrow_down_rounded,
+                      tooltip: 'Pos Seterusnya (↓)',
+                      enabled: _currentPage < _posts.length - 1,
+                      onTap: () {
+                        _pageController.nextPage(
+                          duration: const Duration(milliseconds: 280),
+                          curve: Curves.easeOutCubic,
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
+  // --- SINGLE FEED POST ITEM (RESPONSIVE TIKTOK DESKTOP / MOBILE ADAPTIVE) ---
+  Widget _buildFeedItem(
+      Map<String, dynamic> post, double bottomOffset, int index) {
+    final double screenWidth = MediaQuery.sizeOf(context).width;
+    final double screenHeight = MediaQuery.sizeOf(context).height;
+    final bool isDesktopLandscape = screenWidth > 700;
+    final bool isShortPhone = screenHeight < 720;
+
+    if (isDesktopLandscape) {
+      // -------------------------------------------------------------
+      // TIKTOK DESKTOP / LANDSCAPE MODE
+      // Centered 9:16 vertical video card, ambient blurred backdrop,
+      // action bar resting right beside the card (no 1920px stretching!)
+      // -------------------------------------------------------------
+      final double cardHeight = (screenHeight - 110).clamp(460.0, 780.0);
+      final double cardWidth = (cardHeight * (9 / 16)).clamp(300.0, 460.0);
+
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          // 1. Cinematic Ambient Blurred Backdrop (Signature TikTok Desktop glow)
+          if (post['image'] != null && (post['image'] as String).isNotEmpty)
+            Positioned.fill(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ImageFiltered(
+                    imageFilter: ui.ImageFilter.blur(sigmaX: 55, sigmaY: 55),
+                    child: CachedNetworkImage(
+                      imageUrl: post['image'],
+                      fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                  ),
+                  Container(
+                    color: Colors.black.withValues(alpha: 0.82),
+                  ),
+                ],
+              ),
+            ),
+
+          // 2. Centered Video Card + Action Bar Right Beside It
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 14, bottom: 20),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // Centered 9:16 Video Canvas
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      width: cardWidth,
+                      height: cardHeight,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0B0F15),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.7),
+                            blurRadius: 36,
+                            spreadRadius: 8,
+                            offset: const Offset(0, 12),
+                          ),
+                        ],
+                      ),
+                      child: GestureDetector(
+                        onDoubleTapDown: (details) {
+                          _handleDoubleTap(details.globalPosition, post);
+                        },
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            _buildMediaContent(post, index),
+
+                            // Top shadow gradient
+                            Positioned(
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              height: 100,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Colors.black.withValues(alpha: 0.6),
+                                      Colors.transparent,
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // Bottom shadow gradient
+                            Positioned(
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              height: 280,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Colors.transparent,
+                                      Colors.black.withValues(alpha: 0.5),
+                                      Colors.black.withValues(alpha: 0.88),
+                                      Colors.black,
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // Caption & CTA overlay inside card
+                            Positioned(
+                              left: 14,
+                              right: 14,
+                              bottom: 16,
+                              child: _buildBottomContent(post),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
 
-                  const Spacer(),
+                  const SizedBox(width: 16),
 
-                  // Search / Discover shortcut
-                  GestureDetector(
-                    onTap: () {
-                      if (widget.onSwitchTab != null) {
-                        widget.onSwitchTab!(1); // Go to Discover Tab
-                      }
-                    },
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.35),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white12),
-                      ),
-                      child: const Center(
-                        child: HugeIcon(
-                          icon: HugeIcons.strokeRoundedSearch01,
-                          color: Colors.white,
-                          size: 17,
-                        ),
-                      ),
+                  // Action Bar (Placed gracefully next to the card)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _buildActionBar(
+                      post,
+                      isShortPhone: false,
+                      isDesktop: true,
                     ),
                   ),
                 ],
@@ -776,23 +1011,13 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             ),
           ),
         ],
-      ),
-    );
-  }
+      );
+    }
 
-  // --- SINGLE FEED POST ITEM ---
-  Widget _buildFeedItem(
-      Map<String, dynamic> post, double bottomOffset, int index) {
-    final bool isLiked = post['isLiked'] ?? false;
-    final bool isSaved = post['isSaved'] ?? false;
-    final bool isFollowed = post['isFollowed'] ?? false;
-    final int likes = post['likes'] ?? 0;
-    final int comments = post['comments'] ?? 0;
-
-    final double screenHeight = MediaQuery.sizeOf(context).height;
-    final bool isShortPhone = screenHeight < 720;
-    final double actionSpacing = isShortPhone ? 10 : 14;
-
+    // -------------------------------------------------------------
+    // MOBILE / VERTICAL PHONE MODE
+    // Full screen edge-to-edge immersive experience
+    // -------------------------------------------------------------
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -804,37 +1029,9 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           child: Stack(
             fit: StackFit.expand,
             children: [
-              (post['mediaType'] == 'video' &&
-                      post['image'] != null &&
-                      (post['image'] as String).isNotEmpty)
-                  ? _FeedVideoPlayerItem(
-                      videoUrl: post['image'],
-                      isCurrentPage: index == _currentPage,
-                      isMuted: _isMuted,
-                      onToggleMute: _toggleMute,
-                    )
-                  : CachedNetworkImage(
-                      imageUrl: post['image'],
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
-                        color: const Color(0xFF11171E),
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Color(0xFF00E5FF),
-                          ),
-                        ),
-                      ),
-                      errorWidget: (_, __, ___) => Container(
-                        color: const Color(0xFF11171E),
-                        child: const Center(
-                          child: Icon(Icons.broken_image_rounded,
-                              color: Colors.white38),
-                        ),
-                      ),
-                    ),
+              _buildMediaContent(post, index),
 
-              // Top dark shadow gradient for top bar readability
+              // Top dark shadow gradient
               Positioned(
                 top: 0,
                 left: 0,
@@ -854,7 +1051,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                 ),
               ),
 
-              // Bottom heavy shadow gradient for captions, CTA and floating navbar
+              // Bottom heavy shadow gradient
               Positioned(
                 bottom: 0,
                 left: 0,
@@ -879,173 +1076,287 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           ),
         ),
 
-        // 2. RIGHT-SIDE FLOATING ACTION BAR (TIKTOK STYLE - ADAPTIVE FOR PHONES)
+        // 2. RIGHT-SIDE FLOATING ACTION BAR (Mobile)
         Positioned(
           right: 12,
           bottom: bottomOffset + 6,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Avatar with Follow Plus / Check Badge
-              GestureDetector(
-                onTap: () => _openStore(post),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  alignment: Alignment.center,
-                  children: [
-                    Container(
-                      width: isShortPhone ? 42 : 48,
-                      height: isShortPhone ? 42 : 48,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0xFF00E5FF),
-                          width: 2,
-                        ),
-                        image: DecorationImage(
-                          image: NetworkImage(post['shopAvatar']),
-                          fit: BoxFit.cover,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.4),
-                            blurRadius: 10,
-                          ),
-                        ],
-                      ),
+          child: _buildActionBar(
+            post,
+            isShortPhone: isShortPhone,
+            isDesktop: false,
+          ),
+        ),
+
+        // 3. BOTTOM CONTENT OVERLAY (Mobile)
+        Positioned(
+          left: 16,
+          right: 76,
+          bottom: bottomOffset,
+          child: _buildBottomContent(post),
+        ),
+      ],
+    );
+  }
+
+  // --- MEDIA CONTENT BUILDER (VIDEO PLAYER OR IMAGE) ---
+  Widget _buildMediaContent(Map<String, dynamic> post, int index) {
+    final bool isVideo = post['mediaType'] == 'video' &&
+        post['image'] != null &&
+        (post['image'] as String).isNotEmpty;
+
+    if (isVideo) {
+      return _FeedVideoPlayerItem(
+        videoUrl: post['image'],
+        isCurrentPage: index == _currentPage,
+        isMuted: _isMuted,
+        onToggleMute: _toggleMute,
+      );
+    }
+
+    return CachedNetworkImage(
+      imageUrl: post['image'] ?? '',
+      fit: BoxFit.cover,
+      placeholder: (_, __) => Container(
+        color: const Color(0xFF11171E),
+        child: const Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Color(0xFF00E5FF),
+          ),
+        ),
+      ),
+      errorWidget: (_, __, ___) => Container(
+        color: const Color(0xFF11171E),
+        child: const Center(
+          child: Icon(Icons.broken_image_rounded, color: Colors.white38),
+        ),
+      ),
+    );
+  }
+
+  // --- BOTTOM CONTENT (CTA, SHOP HANDLE, CAPTION, MUSIC TICKER) ---
+  Widget _buildBottomContent(Map<String, dynamic> post) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // EXCLUSIVE NGAM DIRECT CTA BUTTON
+        GestureDetector(
+          onTap: () => _handleCtaAction(post),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF00E5FF), Color(0xFF0284C7)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF00E5FF).withValues(alpha: 0.35),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.bolt_rounded,
+                  color: Colors.black,
+                  size: 16,
+                ),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    post['ctaText'] ?? 'AMBIL GILIRAN',
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.3,
                     ),
-                    Positioned(
-                      bottom: -7,
-                      child: GestureDetector(
-                        onTap: () => _toggleFollow(post),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: isShortPhone ? 18 : 20,
-                          height: isShortPhone ? 18 : 20,
-                          decoration: BoxDecoration(
-                            color: isFollowed
-                                ? const Color(0xFF10B981)
-                                : const Color(0xFF00E5FF),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: (isFollowed
-                                        ? const Color(0xFF10B981)
-                                        : const Color(0xFF00E5FF))
-                                    .withValues(alpha: 0.5),
-                                blurRadius: 6,
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            isFollowed
-                                ? Icons.check_rounded
-                                : Icons.add_rounded,
-                            size: isShortPhone ? 12 : 14,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: Colors.black,
+                  size: 11,
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Shop Handle & Verified Badge
+        GestureDetector(
+          onTap: () => _openStore(post),
+          child: Row(
+            children: [
+              Flexible(
+                child: Text(
+                  post['shopHandle'],
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.2,
+                    shadows: [
+                      Shadow(color: Colors.black, blurRadius: 6),
+                    ],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 5),
+              const Icon(
+                Icons.verified_rounded,
+                color: Color(0xFF00E5FF),
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  '· ${post['location']}',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 6),
+
+        // Post Caption & Hashtags
+        Text(
+          post['caption'],
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12.5,
+            height: 1.35,
+            fontWeight: FontWeight.w500,
+            shadows: [
+              Shadow(color: Colors.black87, blurRadius: 6),
+            ],
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+
+        const SizedBox(height: 8),
+
+        // Rolling Music / Service Price Ticker
+        Row(
+          children: [
+            const Icon(
+              Icons.music_note_rounded,
+              color: Color(0xFF00E5FF),
+              size: 14,
+            ),
+            const SizedBox(width: 5),
+            Expanded(
+              child: Text(
+                post['serviceTag'],
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  shadows: [
+                    Shadow(color: Colors.black, blurRadius: 4),
+                  ],
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // --- FLOATING ACTION BAR (AVATAR, LIKE, COMMENT, SAVE, SHARE, MUTE, VINYL) ---
+  Widget _buildActionBar(
+    Map<String, dynamic> post, {
+    required bool isShortPhone,
+    required bool isDesktop,
+  }) {
+    final bool isLiked = post['isLiked'] ?? false;
+    final bool isSaved = post['isSaved'] ?? false;
+    final bool isFollowed = post['isFollowed'] ?? false;
+    final int likes = post['likes'] ?? 0;
+    final int comments = post['comments'] ?? 0;
+    final double actionSpacing = isShortPhone ? 10 : (isDesktop ? 16 : 14);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Avatar with Follow Plus / Check Badge
+        GestureDetector(
+          onTap: () => _openStore(post),
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: isShortPhone ? 42 : 48,
+                height: isShortPhone ? 42 : 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFF00E5FF),
+                    width: 2,
+                  ),
+                  image: DecorationImage(
+                    image: NetworkImage(post['shopAvatar']),
+                    fit: BoxFit.cover,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      blurRadius: 10,
                     ),
                   ],
                 ),
               ),
-
-              SizedBox(height: isShortPhone ? 12 : 16),
-
-              // Like (Hati) Action
-              _buildRightActionButton(
-                icon: isLiked
-                    ? Icons.favorite_rounded
-                    : Icons.favorite_border_rounded,
-                iconColor:
-                    isLiked ? const Color(0xFFFF2B54) : Colors.white,
-                label: '$likes',
-                isCompact: isShortPhone,
-                onTap: () => _toggleLike(post),
-              ),
-
-              SizedBox(height: actionSpacing),
-
-              // Comment Action
-              _buildRightActionButton(
-                hugeIcon: HugeIcons.strokeRoundedComment01,
-                label: '$comments',
-                isCompact: isShortPhone,
-                onTap: () => _showCommentsModal(context, post),
-              ),
-
-              SizedBox(height: actionSpacing),
-
-              // Save / Bookmark Action
-              _buildRightActionButton(
-                icon: isSaved
-                    ? Icons.bookmark_rounded
-                    : Icons.bookmark_border_rounded,
-                iconColor:
-                    isSaved ? const Color(0xFFFBBF24) : Colors.white,
-                label: 'Simpan',
-                isCompact: isShortPhone,
-                onTap: () => _toggleSave(post),
-              ),
-
-              SizedBox(height: actionSpacing),
-
-              // Share Action
-              _buildRightActionButton(
-                hugeIcon: HugeIcons.strokeRoundedShare01,
-                label: 'Kongsi',
-                isCompact: isShortPhone,
-                onTap: () => _sharePost(post),
-              ),
-
-              SizedBox(height: actionSpacing),
-
-              // Audio Mute/Unmute Action for Video
-              if (post['mediaType'] == 'video') ...[
-                _buildRightActionButton(
-                  icon: _isMuted
-                      ? Icons.volume_off_rounded
-                      : Icons.volume_up_rounded,
-                  iconColor:
-                      _isMuted ? Colors.white54 : const Color(0xFF00E5FF),
-                  label: _isMuted ? 'Bisu' : 'Audio',
-                  isCompact: isShortPhone,
-                  onTap: _toggleMute,
-                ),
-                SizedBox(height: actionSpacing),
-              ],
-
-              // Rotating Merchant Vinyl Disc
-              GestureDetector(
-                onTap: () => _openStore(post),
-                child: RotationTransition(
-                  turns: _discAnimController,
-                  child: Container(
-                    width: isShortPhone ? 34 : 40,
-                    height: isShortPhone ? 34 : 40,
-                    padding: EdgeInsets.all(isShortPhone ? 6 : 8),
+              Positioned(
+                bottom: -7,
+                child: GestureDetector(
+                  onTap: () => _toggleFollow(post),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: isShortPhone ? 18 : 20,
+                    height: isShortPhone ? 18 : 20,
                     decoration: BoxDecoration(
+                      color: isFollowed
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFF00E5FF),
                       shape: BoxShape.circle,
-                      gradient: const RadialGradient(
-                        colors: [Color(0xFF222831), Color(0xFF0F141A)],
-                      ),
-                      border: Border.all(color: Colors.white24, width: 1.5),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.5),
-                          blurRadius: 8,
+                          color: (isFollowed
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFF00E5FF))
+                              .withValues(alpha: 0.5),
+                          blurRadius: 6,
                         ),
                       ],
                     ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        image: DecorationImage(
-                          image: NetworkImage(post['shopAvatar']),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
+                    child: Icon(
+                      isFollowed ? Icons.check_rounded : Icons.add_rounded,
+                      size: isShortPhone ? 12 : 14,
+                      color: Colors.black,
                     ),
                   ),
                 ),
@@ -1054,162 +1365,153 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           ),
         ),
 
-        // 3. BOTTOM CONTENT OVERLAY (Positioned safely ABOVE Floating Navbar)
-        Positioned(
-          left: 16,
-          right: 76, // Space for right action bar
-          bottom: bottomOffset,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // EXCLUSIVE NGAM DIRECT CTA BUTTON
-              GestureDetector(
-                onTap: () => _handleCtaAction(post),
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF00E5FF), Color(0xFF0284C7)],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF00E5FF).withValues(alpha: 0.35),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.bolt_rounded,
-                        color: Colors.black,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          post['ctaText'] ?? 'AMBIL GILIRAN',
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.3,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        color: Colors.black,
-                        size: 11,
-                      ),
-                    ],
-                  ),
+        SizedBox(height: isShortPhone ? 12 : (isDesktop ? 18 : 16)),
+
+        // Like (Hati) Action
+        _buildRightActionButton(
+          icon: isLiked
+              ? Icons.favorite_rounded
+              : Icons.favorite_border_rounded,
+          iconColor: isLiked ? const Color(0xFFFF2B54) : Colors.white,
+          label: '$likes',
+          isCompact: isShortPhone,
+          onTap: () => _toggleLike(post),
+        ),
+
+        SizedBox(height: actionSpacing),
+
+        // Comment Action
+        _buildRightActionButton(
+          hugeIcon: HugeIcons.strokeRoundedComment01,
+          label: '$comments',
+          isCompact: isShortPhone,
+          onTap: () => _showCommentsModal(context, post),
+        ),
+
+        SizedBox(height: actionSpacing),
+
+        // Save / Bookmark Action
+        _buildRightActionButton(
+          icon: isSaved
+              ? Icons.bookmark_rounded
+              : Icons.bookmark_border_rounded,
+          iconColor: isSaved ? const Color(0xFFFBBF24) : Colors.white,
+          label: 'Simpan',
+          isCompact: isShortPhone,
+          onTap: () => _toggleSave(post),
+        ),
+
+        SizedBox(height: actionSpacing),
+
+        // Share Action
+        _buildRightActionButton(
+          hugeIcon: HugeIcons.strokeRoundedShare01,
+          label: 'Kongsi',
+          isCompact: isShortPhone,
+          onTap: () => _sharePost(post),
+        ),
+
+        SizedBox(height: actionSpacing),
+
+        // Audio Mute/Unmute Action for Video
+        if (post['mediaType'] == 'video') ...[
+          _buildRightActionButton(
+            icon: _isMuted
+                ? Icons.volume_off_rounded
+                : Icons.volume_up_rounded,
+            iconColor: _isMuted ? Colors.white54 : const Color(0xFF00E5FF),
+            label: _isMuted ? 'Bisu' : 'Audio',
+            isCompact: isShortPhone,
+            onTap: _toggleMute,
+          ),
+          SizedBox(height: actionSpacing),
+        ],
+
+        // Rotating Merchant Vinyl Disc
+        GestureDetector(
+          onTap: () => _openStore(post),
+          child: RotationTransition(
+            turns: _discAnimController,
+            child: Container(
+              width: isShortPhone ? 34 : 40,
+              height: isShortPhone ? 34 : 40,
+              padding: EdgeInsets.all(isShortPhone ? 6 : 8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const RadialGradient(
+                  colors: [Color(0xFF222831), Color(0xFF0F141A)],
                 ),
-              ),
-
-              // Shop Handle & Verified Badge
-              GestureDetector(
-                onTap: () => _openStore(post),
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        post['shopHandle'],
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.2,
-                          shadows: [
-                            Shadow(color: Colors.black, blurRadius: 6),
-                          ],
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    const Icon(
-                      Icons.verified_rounded,
-                      color: Color(0xFF00E5FF),
-                      size: 16,
-                    ),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        '· ${post['location']}',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 6),
-
-              // Post Caption & Hashtags
-              Text(
-                post['caption'],
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12.5,
-                  height: 1.35,
-                  fontWeight: FontWeight.w500,
-                  shadows: [
-                    Shadow(color: Colors.black87, blurRadius: 6),
-                  ],
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-
-              const SizedBox(height: 8),
-
-              // Rolling Music / Service Price Ticker
-              Row(
-                children: [
-                  const Icon(
-                    Icons.music_note_rounded,
-                    color: Color(0xFF00E5FF),
-                    size: 14,
-                  ),
-                  const SizedBox(width: 5),
-                  Expanded(
-                    child: Text(
-                      post['serviceTag'],
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                        shadows: [
-                          Shadow(color: Colors.black, blurRadius: 4),
-                        ],
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                border: Border.all(color: Colors.white24, width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    blurRadius: 8,
                   ),
                 ],
               ),
-            ],
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  image: DecorationImage(
+                    image: NetworkImage(post['shopAvatar']),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ],
+    );
+  }
+
+  // --- DESKTOP NAVIGATION ARROW BUTTON ---
+  Widget _buildDesktopNavArrow({
+    required IconData icon,
+    required String tooltip,
+    required bool enabled,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          borderRadius: BorderRadius.circular(24),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: enabled
+                  ? Colors.white.withValues(alpha: 0.12)
+                  : Colors.white.withValues(alpha: 0.04),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: enabled ? Colors.white24 : Colors.white10,
+                width: 1.2,
+              ),
+              boxShadow: enabled
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.4),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Center(
+              child: Icon(
+                icon,
+                color: enabled ? Colors.white : Colors.white24,
+                size: 26,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -1276,22 +1578,25 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.65,
-              decoration: BoxDecoration(
-                color: const Color(0xFF141920),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(28)),
-                border: Border.all(color: Colors.white10),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black54,
-                    blurRadius: 20,
-                    offset: Offset(0, -5),
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 540),
+                child: Container(
+                  height: MediaQuery.of(context).size.height * 0.65,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF141920),
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(28)),
+                    border: Border.all(color: Colors.white10),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black54,
+                        blurRadius: 20,
+                        offset: Offset(0, -5),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Column(
+                  child: Column(
                 children: [
                   // Handle Bar
                   Container(
@@ -1499,11 +1804,13 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                   ),
                 ],
               ),
-            );
-          },
+            ),
+          ),
         );
       },
     );
+  },
+);
   }
 }
 
