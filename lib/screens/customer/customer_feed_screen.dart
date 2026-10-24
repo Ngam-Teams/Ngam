@@ -309,7 +309,10 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             timeAgo = '${createdAt.day}/${createdAt.month}/${createdAt.year}';
           }
 
-          final mediaUrl = row['media_url']?.toString() ?? '';
+          String mediaUrl = row['media_url']?.toString() ?? '';
+          if (mediaUrl.contains('mixkit.co')) {
+            mediaUrl = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
+          }
           final ctaType = row['cta_type']?.toString() ?? 'queue';
           final ctaText = row['cta_text']?.toString() ?? '⚡ AMBIL GILIRAN';
           final serviceTag =
@@ -2008,15 +2011,48 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
     if (_hasError) {
       return Container(
         color: const Color(0xFF11171E),
-        child: const Center(
+        child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.videocam_off_rounded, color: Colors.white38, size: 42),
-              SizedBox(height: 8),
-              Text(
+              const Icon(Icons.videocam_off_rounded, color: Colors.white38, size: 42),
+              const SizedBox(height: 8),
+              const Text(
                 'Gagal memuatkan video',
                 style: TextStyle(color: Colors.white38, fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _hasError = false;
+                    _isInitialized = false;
+                  });
+                  _initializeController();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white10,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.refresh_rounded, color: Color(0xFF00E5FF), size: 14),
+                      SizedBox(width: 6),
+                      Text(
+                        'Cuba Semula',
+                        style: TextStyle(
+                          color: Color(0xFF00E5FF),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
