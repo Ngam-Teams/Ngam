@@ -5,6 +5,7 @@ import 'package:ngam/widgets/glass_box.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/glass_toast.dart';
@@ -20,6 +21,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
   final _formKey = GlobalKey<FormState>();
 
   late TextEditingController _nameController;
+  late TextEditingController _displayNameController;
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
   late TextEditingController _dobController;
@@ -38,7 +40,13 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
   void initState() {
     super.initState();
     final user = context.read<AuthProvider>().user;
+    final authUser = Supabase.instance.client.auth.currentUser;
+    final initialDisplayName = authUser?.userMetadata?['display_name'] ??
+        authUser?.userMetadata?['nickname'] ??
+        (user?.userName != null && user!.userName!.contains(' ') ? user.userName!.split(' ').first : (user?.userName ?? ''));
+
     _nameController = TextEditingController(text: user?.userName ?? '');
+    _displayNameController = TextEditingController(text: initialDisplayName.toString());
     _emailController = TextEditingController(text: user?.userEmail ?? '');
     _phoneController = TextEditingController(text: user?.userPhone ?? '');
     _selectedDob = user?.userBirthDate;
@@ -53,6 +61,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _displayNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _dobController.dispose();
@@ -114,6 +123,14 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
         showGlassToast(context, profileError, isError: true);
         return;
       }
+
+      // Simpan nama panggilan / display name ke Supabase metadata
+      final customDisplayName = _displayNameController.text.trim();
+      try {
+        await Supabase.instance.client.auth.updateUser(
+          UserAttributes(data: {'display_name': customDisplayName}),
+        );
+      } catch (_) {}
 
       final currentPass = _currentPasswordController.text.trim();
       final newPass = _newPasswordController.text.trim();
@@ -316,6 +333,8 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                         child: Column(
                           children: [
                             _buildPremiumInput(isDark: isDark, label: "account.full_name".tr(), controller: _nameController, icon: HugeIcons.strokeRoundedUser),
+                            const SizedBox(height: 16),
+                            _buildPremiumInput(isDark: isDark, label: "Nama Panggilan / Display Name", controller: _displayNameController, icon: HugeIcons.strokeRoundedSmile, validator: (v) => null),
                             const SizedBox(height: 16),
                             _buildPremiumInput(isDark: isDark, label: "account.email_readonly".tr(), controller: _emailController, icon: HugeIcons.strokeRoundedMail01, keyboardType: TextInputType.emailAddress, readOnly: true),
                             const SizedBox(height: 16),

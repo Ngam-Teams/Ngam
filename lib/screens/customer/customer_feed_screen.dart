@@ -1395,35 +1395,6 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
-
-        const SizedBox(height: 8),
-
-        // Rolling Music / Service Price Ticker
-        Row(
-          children: [
-            const HugeIcon(
-              icon: HugeIcons.strokeRoundedMusicNote01,
-              color: Color(0xFF00E5FF),
-              size: 14,
-            ),
-            const SizedBox(width: 5),
-            Expanded(
-              child: Text(
-                post['serviceTag'],
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                  shadows: [
-                    Shadow(color: Colors.black, blurRadius: 4),
-                  ],
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
       ],
     );
   }
@@ -1581,18 +1552,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
               );
             },
           ),
-          SizedBox(height: actionSpacing),
         ],
-
-        // Rotating Merchant Vinyl Disc with Floating Musical Notes (Authentic TikTok Style)
-        _TikTokVinylDisc(
-          avatarUrl: post['shopAvatar'] ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200',
-          isPlaying: (post['mediaType'] == 'video' || (post['image']?.toString() ?? '').toLowerCase().contains('.mp4'))
-              ? _isVideoPlaying
-              : true,
-          isCompact: isShortPhone,
-          onTap: () => _openStore(post),
-        ),
       ],
     );
   }
@@ -2370,86 +2330,109 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
         : 0.0;
     final scrubTime = duration * currentRatio;
 
-    // Detect if this is a horizontal landscape video (aspectRatio > 1.05)
-    final bool isLandscape = _controller.value.aspectRatio > 1.05;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Detect if this is a horizontal landscape video (aspectRatio > 1.05)
+        final double videoAspect = _controller.value.aspectRatio;
+        final bool isLandscape = videoAspect > 1.05;
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // 1. Base Video Surface (IgnorePointer ensures HTML5 video element on Web doesn't swallow click events)
-        IgnorePointer(
-          child: Container(
-            color: Colors.black,
-            alignment: Alignment.center,
-            child: FittedBox(
-              // If landscape, fitWidth maintains locked aspect ratio with black bars (TikTok style)
-              // If portrait, cover fills the vertical frame immersive
-              fit: isLandscape ? BoxFit.fitWidth : BoxFit.cover,
-              clipBehavior: Clip.hardEdge,
-              child: SizedBox(
-                width: _controller.value.size.width > 0 ? _controller.value.size.width : 720,
-                height: _controller.value.size.height > 0 ? _controller.value.size.height : 1280,
-                child: VideoPlayer(_controller),
-              ),
-            ),
-          ),
-        ),
+        // Calculate landscape video frame geometry:
+        // Video height when fitWidth is used = maxWidth / videoAspect
+        final double safeAspect = videoAspect > 0.1 ? videoAspect : (16 / 9);
+        final double videoHeight = constraints.maxWidth / safeAspect;
+        // Distance from bottom of screen to the bottom edge of the vertically centered video frame
+        final double videoBottomDistance = (constraints.maxHeight - videoHeight) / 2;
+        // Position the "Lihat Melintang" pill in the open space below the video,
+        // strictly higher than the bottom CTA and caption overlay zone
+        final double minSafeBottom = widget.bottomOffset + 120;
+        final double targetBottom = videoBottomDistance - 48;
+        final double pillBottom = targetBottom > minSafeBottom ? targetBottom : minSafeBottom;
 
-        // 2. Full-Screen Interactive Gesture Overlay (Tap to Play/Pause, Double-Tap Like & Long-Press 2x)
-        Positioned.fill(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: _togglePlayPause,
-            onDoubleTapDown: (details) => widget.onDoubleTap?.call(details.globalPosition),
-            onLongPressStart: (_) => _setSpeed(2.0),
-            onLongPressEnd: (_) => _setSpeed(1.0),
-            onLongPressCancel: () => _setSpeed(1.0),
-          ),
-        ),
-
-        // 2. TikTok-style "Lihat Melintang" Pill for Landscape Videos on Mobile/Portrait
-        if (isLandscape && !widget.isDesktop)
-          Positioned(
-            bottom: widget.bottomOffset + 38,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: GestureDetector(
-                onTap: () => _openLandscapeFullscreen(context),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.72),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white24, width: 1.1),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.45),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      HugeIcon(icon: HugeIcons.strokeRoundedCrop, color: Color(0xFF00E5FF), size: 16),
-                      SizedBox(width: 6),
-                      Text(
-                        'Lihat Melintang',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    ],
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            // 1. Base Video Surface (IgnorePointer ensures HTML5 video element on Web doesn't swallow click events)
+            IgnorePointer(
+              child: Container(
+                color: Colors.black,
+                alignment: Alignment.center,
+                child: FittedBox(
+                  // If landscape, fitWidth maintains locked aspect ratio with black bars (TikTok style)
+                  // If portrait, cover fills the vertical frame immersive
+                  fit: isLandscape ? BoxFit.fitWidth : BoxFit.cover,
+                  clipBehavior: Clip.hardEdge,
+                  child: SizedBox(
+                    width: _controller.value.size.width > 0 ? _controller.value.size.width : 720,
+                    height: _controller.value.size.height > 0 ? _controller.value.size.height : 1280,
+                    child: VideoPlayer(_controller),
                   ),
                 ),
               ),
             ),
-          ),
+
+            // 2. Full-Screen Interactive Gesture Overlay (Tap to Play/Pause, Double-Tap Like & Long-Press 2x)
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _togglePlayPause,
+                onDoubleTapDown: (details) => widget.onDoubleTap?.call(details.globalPosition),
+                onLongPressStart: (_) => _setSpeed(2.0),
+                onLongPressEnd: (_) => _setSpeed(1.0),
+                onLongPressCancel: () => _setSpeed(1.0),
+              ),
+            ),
+
+            // 2. TikTok-style "Lihat Melintang" Pill for Landscape Videos on Mobile/Portrait
+            // Prominently placed in the clear space below the video frame, never obscured by CTA/caption
+            if (isLandscape && !widget.isDesktop)
+              Positioned(
+                bottom: pillBottom,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () => _openLandscapeFullscreen(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.82),
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: const Color(0xFF00E5FF).withValues(alpha: 0.7),
+                          width: 1.2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                          BoxShadow(
+                            color: const Color(0xFF00E5FF).withValues(alpha: 0.3),
+                            blurRadius: 12,
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          HugeIcon(icon: HugeIcons.strokeRoundedCrop, color: Color(0xFF00E5FF), size: 16),
+                          SizedBox(width: 7),
+                          Text(
+                            'Lihat Melintang',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
 
         // 3. 2X Speed Floating Indicator
         if (_is2xSpeed)
@@ -2629,7 +2612,9 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
             },
           ),
         ),
-      ],
+          ],
+        );
+      },
     );
   }
 }
@@ -2920,201 +2905,4 @@ class _LandscapeVideoFullscreenDialogState
 }
 
 
-// =============================================================================
-// Widget: Cakera Vinyl Berputar Gaya TikTok dengan Nota Muzik Melayang
-// =============================================================================
-class _TikTokVinylDisc extends StatefulWidget {
-  final String avatarUrl;
-  final bool isPlaying;
-  final VoidCallback onTap;
-  final bool isCompact;
 
-  const _TikTokVinylDisc({
-    required this.avatarUrl,
-    required this.isPlaying,
-    required this.onTap,
-    this.isCompact = false,
-  });
-
-  @override
-  State<_TikTokVinylDisc> createState() => _TikTokVinylDiscState();
-}
-
-class _TikTokVinylDiscState extends State<_TikTokVinylDisc>
-    with TickerProviderStateMixin {
-  late AnimationController _rotationController;
-  late AnimationController _musicNotesController;
-
-  @override
-  void initState() {
-    super.initState();
-    _rotationController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 4),
-    );
-    _musicNotesController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2400),
-    );
-
-    if (widget.isPlaying) {
-      _rotationController.repeat();
-      _musicNotesController.repeat();
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant _TikTokVinylDisc oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isPlaying != oldWidget.isPlaying) {
-      if (widget.isPlaying) {
-        _rotationController.repeat();
-        _musicNotesController.repeat();
-      } else {
-        _rotationController.stop();
-        _musicNotesController.stop();
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _rotationController.dispose();
-    _musicNotesController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final double discSize = widget.isCompact ? 36 : 44;
-    final double avatarSize = widget.isCompact ? 20 : 25;
-
-    return GestureDetector(
-      onTap: widget.onTap,
-      child: SizedBox(
-        width: discSize + 16,
-        height: discSize + 22,
-        child: Stack(
-          clipBehavior: Clip.none,
-          alignment: Alignment.bottomCenter,
-          children: [
-            // Floating musical note 1 (drifts up and fades out)
-            AnimatedBuilder(
-              animation: _musicNotesController,
-              builder: (context, child) {
-                final t = (_musicNotesController.value + 0.0) % 1.0;
-                final opacity = (1.0 - t).clamp(0.0, 1.0);
-                final dx = -math.sin(t * math.pi) * 20;
-                final dy = -t * 40;
-                return Positioned(
-                  bottom: (discSize / 2) - dy,
-                  right: (discSize / 2) + dx - 6,
-                  child: Opacity(
-                    opacity: widget.isPlaying ? (opacity * 0.85) : 0.0,
-                    child: Transform.rotate(
-                      angle: -0.2 - (t * 0.4),
-                      child: const HugeIcon(
-                        icon: HugeIcons.strokeRoundedMusicNote01,
-                        color: Color(0xFF00E5FF),
-                        size: 13,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-
-            // Floating musical note 2 (delayed phase, drifts up to the right)
-            AnimatedBuilder(
-              animation: _musicNotesController,
-              builder: (context, child) {
-                final t = (_musicNotesController.value + 0.5) % 1.0;
-                final opacity = (1.0 - t).clamp(0.0, 1.0);
-                final dx = -math.sin(t * math.pi * 0.8) * 14 - 5;
-                final dy = -t * 44;
-                return Positioned(
-                  bottom: (discSize / 2) - dy,
-                  right: (discSize / 2) + dx - 3,
-                  child: Opacity(
-                    opacity: widget.isPlaying ? (opacity * 0.75) : 0.0,
-                    child: Transform.rotate(
-                      angle: 0.15 + (t * 0.3),
-                      child: const HugeIcon(
-                        icon: HugeIcons.strokeRoundedMusicNote02,
-                        color: Colors.white70,
-                        size: 11,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-
-            // The Vinyl Disc itself
-            RotationTransition(
-              turns: _rotationController,
-              child: Container(
-                width: discSize,
-                height: discSize,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const RadialGradient(
-                    colors: [
-                      Color(0xFF2C3440),
-                      Color(0xFF151A22),
-                      Color(0xFF0B0F15),
-                    ],
-                    stops: [0.35, 0.75, 1.0],
-                  ),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.22),
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.55),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  // Inner Vinyl Grooves
-                  child: Container(
-                    width: discSize - 12,
-                    height: discSize - 12,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        width: 1.0,
-                      ),
-                    ),
-                    child: Center(
-                      // Center Label / Merchant Avatar
-                      child: Container(
-                        width: avatarSize,
-                        height: avatarSize,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: const Color(0xFF00E5FF),
-                            width: 1.2,
-                          ),
-                          image: DecorationImage(
-                            image: NetworkImage(widget.avatarUrl),
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

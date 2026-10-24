@@ -140,12 +140,31 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user != null) {
-        final metaName = user.userMetadata?['full_name'] ??
-            user.userMetadata?['name'] ??
-            user.email?.split('@').first;
-        if (metaName != null && metaName.toString().isNotEmpty) {
+        String resolvedName = 'Pelanggan';
+
+        // 1. Keutamaan Pertama: Semak metadata display_name / nickname yang ditetapkan pengguna
+        final metaDisplayName = user.userMetadata?['display_name'] ??
+            user.userMetadata?['nickname'] ??
+            user.userMetadata?['short_name'];
+
+        if (metaDisplayName != null && metaDisplayName.toString().trim().isNotEmpty) {
+          resolvedName = metaDisplayName.toString().trim();
+        } else {
+          // 2. Keutamaan Kedua: Jika tiada display_name, ambil nama panggilan / nama pertama (bukan nama penuh panjang)
+          final rawName = user.userMetadata?['full_name'] ??
+              user.userMetadata?['name'] ??
+              user.email?.split('@').first;
+
+          if (rawName != null && rawName.toString().trim().isNotEmpty) {
+            final trimmed = rawName.toString().trim();
+            final parts = trimmed.split(RegExp(r'\s+'));
+            resolvedName = parts.isNotEmpty ? parts.first : trimmed;
+          }
+        }
+
+        if (mounted) {
           setState(() {
-            _userName = metaName.toString();
+            _userName = resolvedName;
           });
         }
       }
