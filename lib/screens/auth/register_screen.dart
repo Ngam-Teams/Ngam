@@ -101,7 +101,14 @@ class _RegisterScreenState extends State<RegisterScreen>
       ),
       filled: true,
       fillColor: Colors.white.withValues(alpha: 0.05),
-      prefixIcon: HugeIcon(icon: icon, color: textSecondary, size: 18),
+      prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+      prefixIcon: UnconstrainedBox(
+        child: HugeIcon(
+          icon: icon,
+          color: textSecondary,
+          size: 18,
+        ),
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       suffixIcon: isPassword
           ? IconButton(

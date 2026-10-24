@@ -236,7 +236,8 @@ class _MapPickerState extends State<MapPicker> {
                     autofocus: true,
                     decoration: InputDecoration(
                       hintText: 'Taip nama tempat, jalan, atau poskod...',
-                      prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedSearch01, color: Colors.grey, size: 20),
+                      prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                      prefixIcon: const UnconstrainedBox(child: HugeIcon(icon: HugeIcons.strokeRoundedSearch01, color: Colors.grey, size: 20)),
                       suffixIcon: isSearching
                           ? const Padding(
                               padding: EdgeInsets.all(12),

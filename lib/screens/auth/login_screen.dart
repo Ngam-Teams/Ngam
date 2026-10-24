@@ -1154,7 +1154,16 @@ class _LoginScreenState extends State<LoginScreen>
       ),
       filled: true,
       fillColor: Colors.white.withValues(alpha: 0.05),
-      prefixIcon: prefixIcon != null ? HugeIcon(icon: prefixIcon, color: textSecondary, size: 18) : null,
+      prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+      prefixIcon: prefixIcon != null
+          ? UnconstrainedBox(
+              child: HugeIcon(
+                icon: prefixIcon,
+                color: textSecondary,
+                size: 18,
+              ),
+            )
+          : null,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       suffixIcon: isPassword
           ? IconButton(

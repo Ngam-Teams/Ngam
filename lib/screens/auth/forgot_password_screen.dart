@@ -422,10 +422,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
               ),
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.04),
-              prefixIcon: HugeIcon(
-                icon: _recoveryMode == 'phone' ? HugeIcons.strokeRoundedSmartPhone01 : HugeIcons.strokeRoundedMail01,
-                color: textSecondary,
-                size: 18,
+              prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+              prefixIcon: UnconstrainedBox(
+                child: HugeIcon(
+                  icon: _recoveryMode == 'phone' ? HugeIcons.strokeRoundedSmartPhone01 : HugeIcons.strokeRoundedMail01,
+                  color: textSecondary,
+                  size: 18,
+                ),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               border: OutlineInputBorder(
