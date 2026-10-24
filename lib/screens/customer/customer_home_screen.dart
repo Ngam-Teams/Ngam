@@ -49,7 +49,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     final List<Widget> pages = [
       _initializedPages[0] ? CustomerHomeFeedView(onSwitchTab: _onTabTapped) : const SizedBox.shrink(),
       _initializedPages[1] ? const ExploreView() : const SizedBox.shrink(),
-      _initializedPages[2] ? CustomerFeedScreen(onSwitchTab: _onTabTapped, isTabActive: _currentIndex == 2) : const SizedBox.shrink(),
+      _currentIndex == 2 ? CustomerFeedScreen(onSwitchTab: _onTabTapped, isTabActive: true) : const SizedBox.shrink(),
       _initializedPages[3] ? const ChatScreen() : const SizedBox.shrink(),
       _initializedPages[4] ? const ProfileScreen() : const SizedBox.shrink(),
     ];

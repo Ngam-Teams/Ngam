@@ -30,7 +30,9 @@ class CustomerFeedScreen extends StatefulWidget {
 }
 
 class _CustomerFeedScreenState extends State<CustomerFeedScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+  static int _persistedPageIndex = 0;
+
   late PageController _pageController;
   late AnimationController _discAnimController;
 
@@ -215,8 +217,10 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _posts = List.from(_demoPosts);
-    _pageController = PageController();
+    _currentPage = _persistedPageIndex;
+    _pageController = PageController(initialPage: _persistedPageIndex);
     _discAnimController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 5),
@@ -226,9 +230,19 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pageController.dispose();
     _discAnimController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) {
+      if (mounted) setState(() => _isModalOrRouteOpen = true);
+    } else {
+      if (mounted) setState(() => _isModalOrRouteOpen = false);
+    }
   }
 
   /// Tarik pos suapan langsung dari jadual 'feed_posts' (bersama maklumat kedai)
@@ -446,6 +460,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   }
 
   void _onPageChanged(int index) {
+    _persistedPageIndex = index;
     setState(() {
       _currentPage = index;
     });
@@ -2007,6 +2022,8 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
               _controller.setVolume(0.0);
               return _controller.play().catchError((_) {});
             });
+          } else {
+            _controller.pause();
           }
         }
       }).catchError((e) {
@@ -2030,13 +2047,14 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
     super.didUpdateWidget(oldWidget);
     if (_isInitialized) {
       final shouldPlay = widget.isCurrentPage && !widget.isPausedExternally && !_isUserPaused;
-      final wasPlaying = oldWidget.isCurrentPage && !oldWidget.isPausedExternally && !_isUserPaused;
 
-      if (shouldPlay != wasPlaying) {
-        if (shouldPlay) {
-          _controller.play();
-        } else {
+      if (!shouldPlay) {
+        if (_controller.value.isPlaying) {
           _controller.pause();
+        }
+      } else {
+        if (!_controller.value.isPlaying) {
+          _controller.play();
         }
       }
 
@@ -2049,6 +2067,7 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
   @override
   void dispose() {
     _controller.removeListener(_videoListener);
+    _controller.pause();
     _controller.dispose();
     super.dispose();
   }
