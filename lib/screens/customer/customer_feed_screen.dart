@@ -17,8 +17,13 @@ import '../explore/business_store_view.dart';
 
 class CustomerFeedScreen extends StatefulWidget {
   final void Function(int index)? onSwitchTab;
+  final bool isTabActive;
 
-  const CustomerFeedScreen({super.key, this.onSwitchTab});
+  const CustomerFeedScreen({
+    super.key,
+    this.onSwitchTab,
+    this.isTabActive = true,
+  });
 
   @override
   State<CustomerFeedScreen> createState() => _CustomerFeedScreenState();
@@ -32,6 +37,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   int _activeTopTab = 1; // 0: 'Berhampiran', 1: 'Untuk Anda'
   int _currentPage = 0;
   bool _isMuted = false;
+  bool _isModalOrRouteOpen = false;
 
   // Double-tap heart animation items
   final List<_FloatingHeart> _hearts = [];
@@ -528,13 +534,17 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     );
   }
 
-  void _openStore(Map<String, dynamic> post) {
-    Navigator.push(
+  Future<void> _openStore(Map<String, dynamic> post) async {
+    setState(() => _isModalOrRouteOpen = true);
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => BusinessStoreView(shop: post['shopData'] ?? {}),
       ),
     );
+    if (mounted) {
+      setState(() => _isModalOrRouteOpen = false);
+    }
   }
 
   @override
@@ -949,7 +959,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            _buildMediaContent(post, index),
+                            _buildMediaContent(post, index, bottomOffset: 16, isDesktop: true),
 
                             // Top shadow gradient
                             Positioned(
@@ -957,15 +967,17 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                               left: 0,
                               right: 0,
                               height: 100,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      Colors.black.withValues(alpha: 0.6),
-                                      Colors.transparent,
-                                    ],
+                              child: IgnorePointer(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.black.withValues(alpha: 0.6),
+                                        Colors.transparent,
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -977,17 +989,19 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                               left: 0,
                               right: 0,
                               height: 280,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      Colors.transparent,
-                                      Colors.black.withValues(alpha: 0.5),
-                                      Colors.black.withValues(alpha: 0.88),
-                                      Colors.black,
-                                    ],
+                              child: IgnorePointer(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.transparent,
+                                        Colors.black.withValues(alpha: 0.5),
+                                        Colors.black.withValues(alpha: 0.88),
+                                        Colors.black,
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1040,7 +1054,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           child: Stack(
             fit: StackFit.expand,
             children: [
-              _buildMediaContent(post, index),
+              _buildMediaContent(post, index, bottomOffset: bottomOffset, isDesktop: false),
 
               // Top dark shadow gradient
               Positioned(
@@ -1048,15 +1062,17 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                 left: 0,
                 right: 0,
                 height: 140,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.75),
-                        Colors.transparent,
-                      ],
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.75),
+                          Colors.transparent,
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1068,17 +1084,19 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                 left: 0,
                 right: 0,
                 height: 380,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black.withValues(alpha: 0.5),
-                        Colors.black.withValues(alpha: 0.88),
-                        Colors.black,
-                      ],
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.5),
+                          Colors.black.withValues(alpha: 0.88),
+                          Colors.black,
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1110,7 +1128,12 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   }
 
   // --- MEDIA CONTENT BUILDER (VIDEO PLAYER OR IMAGE) ---
-  Widget _buildMediaContent(Map<String, dynamic> post, int index) {
+  Widget _buildMediaContent(
+    Map<String, dynamic> post,
+    int index, {
+    required double bottomOffset,
+    bool isDesktop = false,
+  }) {
     final bool isVideo = post['mediaType'] == 'video' &&
         post['image'] != null &&
         (post['image'] as String).isNotEmpty;
@@ -1119,8 +1142,12 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       return _FeedVideoPlayerItem(
         videoUrl: post['image'],
         isCurrentPage: index == _currentPage,
+        isPausedExternally: !widget.isTabActive || _isModalOrRouteOpen,
         isMuted: _isMuted,
+        bottomOffset: bottomOffset,
+        isDesktop: isDesktop,
         onToggleMute: _toggleMute,
+        onDoubleTap: (pos) => _handleDoubleTap(pos, post),
       );
     }
 
@@ -1578,11 +1605,12 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   }
 
   // --- COMMENTS MODAL SHEET ---
-  void _showCommentsModal(BuildContext context, Map<String, dynamic> post) {
+  Future<void> _showCommentsModal(BuildContext context, Map<String, dynamic> post) async {
     final List comments = post['commentList'] ?? [];
     final TextEditingController commentController = TextEditingController();
 
-    showModalBottomSheet(
+    setState(() => _isModalOrRouteOpen = true);
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -1822,6 +1850,9 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     );
   },
 );
+    if (mounted) {
+      setState(() => _isModalOrRouteOpen = false);
+    }
   }
 }
 
@@ -1916,19 +1947,28 @@ class _FloatingHeartState extends State<_FloatingHeart>
 }
 
 // =============================================================================
-// Helper: Pemain Video Skrin Penuh Gaya TikTok / Reels (Auto-loop & Vertical Fit)
+// Helper: Pemain Video Skrin Penuh Gaya TikTok / Reels
+// Autoplay, Pause on tap, Timeline Dragging, Hold 2x Speed & Landscape Support
 // =============================================================================
 class _FeedVideoPlayerItem extends StatefulWidget {
   final String videoUrl;
   final bool isCurrentPage;
+  final bool isPausedExternally;
   final bool isMuted;
+  final double bottomOffset;
+  final bool isDesktop;
   final VoidCallback onToggleMute;
+  final void Function(Offset position)? onDoubleTap;
 
   const _FeedVideoPlayerItem({
     required this.videoUrl,
     required this.isCurrentPage,
+    required this.isPausedExternally,
     required this.isMuted,
+    required this.bottomOffset,
+    required this.isDesktop,
     required this.onToggleMute,
+    this.onDoubleTap,
   });
 
   @override
@@ -1941,6 +1981,9 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
   bool _hasError = false;
   bool _isUserPaused = false;
   bool _showPlayStateIndicator = false;
+  bool _is2xSpeed = false;
+  bool _isScrubbing = false;
+  double _scrubRatio = 0.0;
 
   @override
   void initState() {
@@ -1955,9 +1998,10 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
           setState(() {
             _isInitialized = true;
           });
+          _controller.addListener(_videoListener);
           _controller.setLooping(true);
           _controller.setVolume(widget.isMuted ? 0.0 : 1.0);
-          if (widget.isCurrentPage && !_isUserPaused) {
+          if (widget.isCurrentPage && !widget.isPausedExternally && !_isUserPaused) {
             _controller.play().catchError((playErr) {
               debugPrint('[FeedVideoPlayer] Autoplay blocked, muted retry: $playErr');
               _controller.setVolume(0.0);
@@ -1975,17 +2019,27 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
       });
   }
 
+  void _videoListener() {
+    if (mounted && !_isScrubbing) {
+      setState(() {});
+    }
+  }
+
   @override
   void didUpdateWidget(covariant _FeedVideoPlayerItem oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (_isInitialized) {
-      if (widget.isCurrentPage != oldWidget.isCurrentPage) {
-        if (widget.isCurrentPage && !_isUserPaused) {
+      final shouldPlay = widget.isCurrentPage && !widget.isPausedExternally && !_isUserPaused;
+      final wasPlaying = oldWidget.isCurrentPage && !oldWidget.isPausedExternally && !_isUserPaused;
+
+      if (shouldPlay != wasPlaying) {
+        if (shouldPlay) {
           _controller.play();
         } else {
           _controller.pause();
         }
       }
+
       if (widget.isMuted != oldWidget.isMuted) {
         _controller.setVolume(widget.isMuted ? 0.0 : 1.0);
       }
@@ -1994,6 +2048,7 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
 
   @override
   void dispose() {
+    _controller.removeListener(_videoListener);
     _controller.dispose();
     super.dispose();
   }
@@ -2011,11 +2066,42 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
       _showPlayStateIndicator = true;
     });
 
-    Future.delayed(const Duration(milliseconds: 600), () {
+    Future.delayed(const Duration(milliseconds: 650), () {
       if (mounted) {
         setState(() => _showPlayStateIndicator = false);
       }
     });
+  }
+
+  void _setSpeed(double speed) {
+    if (!_isInitialized) return;
+    _controller.setPlaybackSpeed(speed);
+    if (speed > 1.0) {
+      HapticFeedback.lightImpact();
+      if (!_controller.value.isPlaying && !_isUserPaused) {
+        _controller.play();
+      }
+    }
+    setState(() => _is2xSpeed = speed > 1.0);
+  }
+
+  String _formatDuration(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  void _openLandscapeFullscreen(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black,
+      useSafeArea: false,
+      builder: (ctx) => _LandscapeVideoFullscreenDialog(
+        controller: _controller,
+        isMuted: widget.isMuted,
+        onToggleMute: widget.onToggleMute,
+      ),
+    );
   }
 
   @override
@@ -2084,52 +2170,527 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
       );
     }
 
-    return GestureDetector(
-      onTap: _togglePlayPause,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Full Screen Cover Video (TikTok Style Vertical Fit)
-          FittedBox(
-            fit: BoxFit.cover,
-            clipBehavior: Clip.hardEdge,
-            child: SizedBox(
-              width: _controller.value.size.width > 0
-                  ? _controller.value.size.width
-                  : 720,
-              height: _controller.value.size.height > 0
-                  ? _controller.value.size.height
-                  : 1280,
-              child: VideoPlayer(_controller),
+    final duration = _controller.value.duration;
+    final position = _controller.value.position;
+    final double currentRatio = duration.inMilliseconds > 0
+        ? (_isScrubbing ? _scrubRatio : (position.inMilliseconds / duration.inMilliseconds)).clamp(0.0, 1.0)
+        : 0.0;
+    final scrubTime = duration * currentRatio;
+
+    // Detect if this is a horizontal landscape video (aspectRatio > 1.05)
+    final bool isLandscape = _controller.value.aspectRatio > 1.05;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // 1. Gesture detector covering entire canvas for Play/Pause, Double-Tap & Long-Press 2x
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _togglePlayPause,
+          onDoubleTapDown: (details) => widget.onDoubleTap?.call(details.globalPosition),
+          onLongPressStart: (_) => _setSpeed(2.0),
+          onLongPressEnd: (_) => _setSpeed(1.0),
+          onLongPressCancel: () => _setSpeed(1.0),
+          child: Container(
+            color: Colors.black,
+            alignment: Alignment.center,
+            child: FittedBox(
+              // If landscape, fitWidth maintains locked aspect ratio with black bars (TikTok style)
+              // If portrait, cover fills the vertical frame immersive
+              fit: isLandscape ? BoxFit.fitWidth : BoxFit.cover,
+              clipBehavior: Clip.hardEdge,
+              child: SizedBox(
+                width: _controller.value.size.width > 0 ? _controller.value.size.width : 720,
+                height: _controller.value.size.height > 0 ? _controller.value.size.height : 1280,
+                child: VideoPlayer(_controller),
+              ),
             ),
           ),
+        ),
 
-          // Temporary Animated Play / Pause Icon Feedback
-          if (_showPlayStateIndicator || !_controller.value.isPlaying)
-            Center(
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 250),
-                opacity: _showPlayStateIndicator || !_controller.value.isPlaying
-                    ? 0.85
-                    : 0.0,
+        // 2. TikTok-style "Lihat Melintang" Pill for Landscape Videos on Mobile/Portrait
+        if (isLandscape && !widget.isDesktop)
+          Positioned(
+            bottom: widget.bottomOffset + 38,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: GestureDetector(
+                onTap: () => _openLandscapeFullscreen(context),
                 child: Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.45),
-                    shape: BoxShape.circle,
+                    color: Colors.black.withValues(alpha: 0.72),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white24, width: 1.1),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.45),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
-                  child: Icon(
-                    _controller.value.isPlaying
-                        ? Icons.play_arrow_rounded
-                        : Icons.pause_rounded,
-                    color: Colors.white,
-                    size: 48,
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.crop_rotate_rounded, color: Color(0xFF00E5FF), size: 16),
+                      SizedBox(width: 6),
+                      Text(
+                        'Lihat Melintang',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
-        ],
+          ),
+
+        // 3. 2X Speed Floating Indicator
+        if (_is2xSpeed)
+          Positioned(
+            top: widget.isDesktop ? 18 : 64,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.8),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.6)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF00E5FF).withValues(alpha: 0.3),
+                      blurRadius: 14,
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.bolt_rounded, color: Color(0xFF00E5FF), size: 18),
+                    SizedBox(width: 6),
+                    Text(
+                      '⚡ 2X KELAJUAN',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+        // 4. Center Play / Pause Indicator Feedback
+        if (_showPlayStateIndicator || !_controller.value.isPlaying)
+          Center(
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 250),
+              opacity: _showPlayStateIndicator || !_controller.value.isPlaying ? 0.85 : 0.0,
+              child: Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _controller.value.isPlaying ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                  color: Colors.white,
+                  size: 48,
+                ),
+              ),
+            ),
+          ),
+
+        // 5. Floating Scrub Timestamp Bubble when Dragging Timeline
+        if (_isScrubbing)
+          Positioned(
+            bottom: widget.isDesktop ? 32 : (widget.bottomOffset + 24),
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white24),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black54, blurRadius: 10),
+                  ],
+                ),
+                child: Text(
+                  '${_formatDuration(scrubTime)} / ${_formatDuration(duration)}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        // 6. Interactive Video Timeline Scrubber (TikTok Style Progress Bar)
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: widget.isDesktop ? 2 : (widget.bottomOffset - 16),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final barWidth = constraints.maxWidth;
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onHorizontalDragStart: (details) {
+                  setState(() {
+                    _isScrubbing = true;
+                    _scrubRatio = (details.localPosition.dx / barWidth).clamp(0.0, 1.0);
+                  });
+                },
+                onHorizontalDragUpdate: (details) {
+                  setState(() {
+                    _scrubRatio = (details.localPosition.dx / barWidth).clamp(0.0, 1.0);
+                  });
+                },
+                onHorizontalDragEnd: (details) {
+                  final targetMs = (duration.inMilliseconds * _scrubRatio).toInt();
+                  _controller.seekTo(Duration(milliseconds: targetMs));
+                  setState(() => _isScrubbing = false);
+                },
+                onTapDown: (details) {
+                  final ratio = (details.localPosition.dx / barWidth).clamp(0.0, 1.0);
+                  final targetMs = (duration.inMilliseconds * ratio).toInt();
+                  _controller.seekTo(Duration(milliseconds: targetMs));
+                },
+                child: Container(
+                  height: 24, // Touch target
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Stack(
+                    alignment: Alignment.centerLeft,
+                    children: [
+                      // Base track
+                      Container(
+                        height: _isScrubbing ? 5.5 : 2.5,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.28),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                      // Progress track
+                      FractionallySizedBox(
+                        widthFactor: currentRatio,
+                        child: Container(
+                          height: _isScrubbing ? 5.5 : 2.5,
+                          decoration: BoxDecoration(
+                            color: _isScrubbing ? const Color(0xFF00E5FF) : Colors.white.withValues(alpha: 0.85),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// =============================================================================
+// Dialog: Skrin Penuh Video Melintang (TikTok Landscape Fullscreen Mode)
+// =============================================================================
+class _LandscapeVideoFullscreenDialog extends StatefulWidget {
+  final VideoPlayerController controller;
+  final bool isMuted;
+  final VoidCallback onToggleMute;
+
+  const _LandscapeVideoFullscreenDialog({
+    required this.controller,
+    required this.isMuted,
+    required this.onToggleMute,
+  });
+
+  @override
+  State<_LandscapeVideoFullscreenDialog> createState() =>
+      _LandscapeVideoFullscreenDialogState();
+}
+
+class _LandscapeVideoFullscreenDialogState
+    extends State<_LandscapeVideoFullscreenDialog> {
+  bool _showControls = true;
+  bool _isScrubbing = false;
+  double _scrubRatio = 0.0;
+  bool _is2x = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_listener);
+  }
+
+  void _listener() {
+    if (mounted && !_isScrubbing) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_listener);
+    if (_is2x) {
+      widget.controller.setPlaybackSpeed(1.0);
+    }
+    super.dispose();
+  }
+
+  String _format(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  void _toggleSpeed() {
+    setState(() {
+      _is2x = !_is2x;
+      widget.controller.setPlaybackSpeed(_is2x ? 2.0 : 1.0);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final bool isPortraitScreen = size.width < size.height;
+
+    final duration = widget.controller.value.duration;
+    final position = widget.controller.value.position;
+    final double currentRatio = duration.inMilliseconds > 0
+        ? (_isScrubbing ? _scrubRatio : (position.inMilliseconds / duration.inMilliseconds)).clamp(0.0, 1.0)
+        : 0.0;
+    final scrubTime = duration * currentRatio;
+
+    Widget content = Material(
+      color: Colors.black,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _showControls = !_showControls),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Centered Landscape Video Player
+            Center(
+              child: AspectRatio(
+                aspectRatio: widget.controller.value.aspectRatio > 0
+                    ? widget.controller.value.aspectRatio
+                    : 16 / 9,
+                child: VideoPlayer(widget.controller),
+              ),
+            ),
+
+            // Controls Overlay
+            if (_showControls) ...[
+              // Top Bar: Close (X), Speed, Mute
+              Positioned(
+                top: 14,
+                left: 16,
+                right: 16,
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: Colors.white, size: 24),
+                      style: IconButton.styleFrom(backgroundColor: Colors.black45),
+                      onPressed: () => Navigator.pop(context),
+                      tooltip: 'Tutup Skrin Penuh',
+                    ),
+                    const Spacer(),
+                    // 2X Speed Toggle Button
+                    GestureDetector(
+                      onTap: _toggleSpeed,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _is2x ? const Color(0xFF00E5FF) : Colors.black45,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: Text(
+                          _is2x ? '⚡ 2X' : '1X',
+                          style: TextStyle(
+                            color: _is2x ? Colors.black : Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    IconButton(
+                      icon: Icon(
+                        widget.isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                      style: IconButton.styleFrom(backgroundColor: Colors.black45),
+                      onPressed: widget.onToggleMute,
+                      tooltip: widget.isMuted ? 'Buka Suara' : 'Senyap',
+                    ),
+                  ],
+                ),
+              ),
+
+              // Center Big Play/Pause Button
+              Center(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      if (widget.controller.value.isPlaying) {
+                        widget.controller.pause();
+                      } else {
+                        widget.controller.play();
+                      }
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      widget.controller.value.isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: 52,
+                    ),
+                  ),
+                ),
+              ),
+
+              // Bottom Bar: Scrubber + Timestamps
+              Positioned(
+                bottom: 16,
+                left: 18,
+                right: 18,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_isScrubbing)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black87,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: Text(
+                          '${_format(scrubTime)} / ${_format(duration)}',
+                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    Row(
+                      children: [
+                        Text(
+                          _format(position),
+                          style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final barW = constraints.maxWidth;
+                              return GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onHorizontalDragStart: (details) {
+                                  setState(() {
+                                    _isScrubbing = true;
+                                    _scrubRatio = (details.localPosition.dx / barW).clamp(0.0, 1.0);
+                                  });
+                                },
+                                onHorizontalDragUpdate: (details) {
+                                  setState(() {
+                                    _scrubRatio = (details.localPosition.dx / barW).clamp(0.0, 1.0);
+                                  });
+                                },
+                                onHorizontalDragEnd: (details) {
+                                  final ms = (duration.inMilliseconds * _scrubRatio).toInt();
+                                  widget.controller.seekTo(Duration(milliseconds: ms));
+                                  setState(() => _isScrubbing = false);
+                                },
+                                child: Container(
+                                  height: 24,
+                                  alignment: Alignment.center,
+                                  child: Stack(
+                                    alignment: Alignment.centerLeft,
+                                    children: [
+                                      Container(
+                                        height: 4,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white24,
+                                          borderRadius: BorderRadius.circular(2),
+                                        ),
+                                      ),
+                                      FractionallySizedBox(
+                                        widthFactor: currentRatio,
+                                        child: Container(
+                                          height: 4,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF00E5FF),
+                                            borderRadius: BorderRadius.circular(2),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          _format(duration),
+                          style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
+
+    // If screen is portrait (phone held vertically), rotate 90 degrees to landscape!
+    if (isPortraitScreen) {
+      return RotatedBox(
+        quarterTurns: 1,
+        child: SizedBox(
+          width: size.height,
+          height: size.width,
+          child: content,
+        ),
+      );
+    }
+
+    return content;
   }
 }
