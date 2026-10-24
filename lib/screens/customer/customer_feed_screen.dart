@@ -293,14 +293,22 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
               locParts.isNotEmpty ? locParts.join(', ') : 'Malaysia';
 
           // Format masa
-          final createdAt =
-              DateTime.tryParse(row['created_at']?.toString() ?? '') ??
-                  DateTime.now();
+          final rawDate = row['created_at']?.toString() ?? '';
+          DateTime createdAt;
+          if (!rawDate.endsWith('Z') && !rawDate.contains('+') && rawDate.contains('T')) {
+            createdAt = DateTime.tryParse('${rawDate}Z')?.toLocal() ?? DateTime.now();
+          } else if (!rawDate.endsWith('Z') && !rawDate.contains('+') && !rawDate.contains('T')) {
+            createdAt = DateTime.tryParse('${rawDate.replaceAll(' ', 'T')}Z')?.toLocal() ?? DateTime.now();
+          } else {
+            createdAt = DateTime.tryParse(rawDate)?.toLocal() ?? DateTime.now();
+          }
           final diff = DateTime.now().difference(createdAt);
           String timeAgo;
-          if (diff.inMinutes < 60) {
+          if (diff.isNegative || diff.inSeconds < 60) {
+            timeAgo = 'Baru saja';
+          } else if (diff.inMinutes < 60) {
             final m = diff.inMinutes;
-            timeAgo = '${m > 0 ? m : 1} min lepas';
+            timeAgo = '$m min lepas';
           } else if (diff.inHours < 24) {
             timeAgo = '${diff.inHours} jam lepas';
           } else if (diff.inDays < 7) {
@@ -1950,7 +1958,11 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
           _controller.setLooping(true);
           _controller.setVolume(widget.isMuted ? 0.0 : 1.0);
           if (widget.isCurrentPage && !_isUserPaused) {
-            _controller.play();
+            _controller.play().catchError((playErr) {
+              debugPrint('[FeedVideoPlayer] Autoplay blocked, muted retry: $playErr');
+              _controller.setVolume(0.0);
+              return _controller.play().catchError((_) {});
+            });
           }
         }
       }).catchError((e) {
