@@ -73,12 +73,22 @@ class _StoreRouteLoaderState extends State<StoreRouteLoader> {
         }
       }
 
-      // If still not found, try fallback by business_name ilike
+      // If still not found, try exact business_name match (without loose wildcards to prevent matching wrong shops)
       res ??= await Supabase.instance.client
           .from('businesses')
           .select()
-          .ilike('business_name', '%$cleanHandle%')
+          .ilike('business_name', cleanHandle)
           .maybeSingle();
+
+      // If still not found and handle had hyphens, try replacing hyphens with spaces for exact name
+      if (res == null && cleanHandle.contains('-')) {
+        final nameWithSpaces = cleanHandle.replaceAll('-', ' ');
+        res = await Supabase.instance.client
+            .from('businesses')
+            .select()
+            .ilike('business_name', nameWithSpaces)
+            .maybeSingle();
+      }
 
       // If still not found, check if rawId is a voucher code
       if (res == null) {
