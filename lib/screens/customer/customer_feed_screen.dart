@@ -1,3 +1,5 @@
+import 'package:provider/provider.dart';
+import '../../providers/theme_provider.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -568,8 +570,9 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     final double safeTop = MediaQuery.paddingOf(context).top;
     final double screenWidth = MediaQuery.sizeOf(context).width;
     final bool isDesktopLandscape = screenWidth > 700;
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color scaffoldBg = isDark ? Colors.black : const Color(0xFFF8FAFC);
+    final themeProvider = context.watch<ThemeProvider?>();
+    final bool isDark = themeProvider?.isDarkMode ?? (Theme.of(context).brightness == Brightness.dark);
+    final Color scaffoldBg = isDark ? const Color(0xFF0B0F17) : const Color(0xFFF8FAFC);
     
     // Bottom padding to position feed content nicely above the floating navbar
     final double bottomOffset = (safeBottom > 0 ? safeBottom : 16) + 78;
@@ -934,7 +937,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     final double screenHeight = MediaQuery.sizeOf(context).height;
     final bool isDesktopLandscape = screenWidth > 700;
     final bool isShortPhone = screenHeight < 720;
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final themeProvider = context.watch<ThemeProvider?>();
+    final bool isDark = themeProvider?.isDarkMode ?? (Theme.of(context).brightness == Brightness.dark);
 
     if (isDesktopLandscape) {
       // -------------------------------------------------------------
@@ -945,34 +949,52 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       final double cardHeight = (screenHeight - 110).clamp(460.0, 780.0);
       final double cardWidth = (cardHeight * (9 / 16)).clamp(300.0, 460.0);
 
+      final String rawMedia = post['image']?.toString() ?? '';
+      final bool isVideoMedia = post['mediaType'] == 'video' || rawMedia.toLowerCase().endsWith('.mp4');
+      final String backdropImageUrl = isVideoMedia
+          ? (post['shopAvatar']?.toString() ?? '')
+          : (rawMedia.isNotEmpty ? rawMedia : (post['shopAvatar']?.toString() ?? ''));
+
       return Stack(
         fit: StackFit.expand,
         children: [
-          // 1. Cinematic Ambient Blurred Backdrop (Signature TikTok Desktop glow)
-          if (post['image'] != null && (post['image'] as String).isNotEmpty)
-            Positioned.fill(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ImageFiltered(
-                    imageFilter: ui.ImageFilter.blur(sigmaX: 55, sigmaY: 55),
-                    child: CachedNetworkImage(
-                      imageUrl: post['image'],
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
-                    ),
-                  ),
-                  Container(
-                    color: isDark
-                        ? Colors.black.withValues(alpha: 0.82)
-                        : const Color(0xFFF1F5F9).withValues(alpha: 0.88),
-                  ),
-                ],
+          // 1. Rich Themed Ambient Mesh/Radial Gradient (Never dead pitch black!)
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.center,
+                  radius: 1.35,
+                  colors: isDark
+                      ? [
+                          const Color(0xFF1E293B), // Deep slate blue glow in center
+                          const Color(0xFF0F172A), // Dark slate
+                          const Color(0xFF0B0F17), // Edge
+                        ]
+                      : [
+                          const Color(0xFFE2E8F0), // Soft slate center
+                          const Color(0xFFF1F5F9), // Light studio slate
+                          const Color(0xFFF8FAFC), // Crisp light white
+                        ],
+                ),
               ),
-            )
-          else
-            Container(
-              color: isDark ? Colors.black : const Color(0xFFF8FAFC),
+            ),
+          ),
+
+          // 2. Cinematic Ambient Blurred Glow from Store Avatar/Photo
+          if (backdropImageUrl.isNotEmpty)
+            Positioned.fill(
+              child: Opacity(
+                opacity: isDark ? 0.38 : 0.22,
+                child: ImageFiltered(
+                  imageFilter: ui.ImageFilter.blur(sigmaX: 65, sigmaY: 65),
+                  child: CachedNetworkImage(
+                    imageUrl: backdropImageUrl,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                ),
+              ),
             ),
 
           // 2. Centered Video Card + Action Bar Right Beside It
