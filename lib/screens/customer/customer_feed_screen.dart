@@ -568,6 +568,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     final double safeTop = MediaQuery.paddingOf(context).top;
     final double screenWidth = MediaQuery.sizeOf(context).width;
     final bool isDesktopLandscape = screenWidth > 700;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color scaffoldBg = isDark ? Colors.black : const Color(0xFFF8FAFC);
     
     // Bottom padding to position feed content nicely above the floating navbar
     final double bottomOffset = (safeBottom > 0 ? safeBottom : 16) + 78;
@@ -602,13 +604,13 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         return KeyEventResult.ignored;
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: scaffoldBg,
         body: Stack(
         children: [
           // 1. VERTICAL FULL SCREEN PAGEVIEW (TIKTOK STYLE)
           RefreshIndicator(
             color: const Color(0xFF00E5FF),
-            backgroundColor: const Color(0xFF141920),
+            backgroundColor: isDark ? const Color(0xFF141920) : Colors.white,
             onRefresh: _fetchLivePosts,
             child: _posts.isEmpty
                 ? ListView(
@@ -626,25 +628,25 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                                   color: Color(0xFF00E5FF),
                                 ),
                                 const SizedBox(height: 16),
-                                const Text(
+                                Text(
                                   'Memuatkan suapan Ngam...',
                                   style: TextStyle(
-                                    color: Colors.white70,
+                                    color: isDark ? Colors.white70 : const Color(0xFF475569),
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ] else ...[
-                                const Icon(
+                                Icon(
                                   Icons.movie_filter_rounded,
                                   size: 48,
-                                  color: Colors.white24,
+                                  color: isDark ? Colors.white24 : Colors.black26,
                                 ),
                                 const SizedBox(height: 12),
-                                const Text(
+                                Text(
                                   'Tiada pos suapan ditemui.',
                                   style: TextStyle(
-                                    color: Colors.white70,
+                                    color: isDark ? Colors.white70 : const Color(0xFF1E293B),
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -730,10 +732,12 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                               ),
                             ),
                             const SizedBox(width: 4),
-                            const Text(
+                            Text(
                               'FEED',
                               style: TextStyle(
-                                color: Colors.white,
+                                color: (isDesktopLandscape && !isDark)
+                                    ? const Color(0xFF0F172A)
+                                    : Colors.white,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 1,
@@ -750,8 +754,13 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 4, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.25),
+                          color: (isDesktopLandscape && !isDark)
+                              ? Colors.black.withValues(alpha: 0.06)
+                              : Colors.black.withValues(alpha: 0.25),
                           borderRadius: BorderRadius.circular(20),
+                          border: (isDesktopLandscape && !isDark)
+                              ? Border.all(color: Colors.black12, width: 0.8)
+                              : null,
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -771,9 +780,13 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                                 child: Text(
                                   'Berhampiran',
                                   style: TextStyle(
-                                    color: _activeTopTab == 0
-                                        ? Colors.white
-                                        : Colors.white54,
+                                    color: (isDesktopLandscape && !isDark)
+                                        ? (_activeTopTab == 0
+                                            ? const Color(0xFF0F172A)
+                                            : const Color(0xFF64748B))
+                                        : (_activeTopTab == 0
+                                            ? Colors.white
+                                            : Colors.white54),
                                     fontSize: 13,
                                     fontWeight: _activeTopTab == 0
                                         ? FontWeight.w900
@@ -785,8 +798,10 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                             Container(
                               width: 3,
                               height: 3,
-                              decoration: const BoxDecoration(
-                                color: Colors.white30,
+                              decoration: BoxDecoration(
+                                color: (isDesktopLandscape && !isDark)
+                                    ? Colors.black26
+                                    : Colors.white30,
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -805,9 +820,13 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                                 child: Text(
                                   'Untuk Anda',
                                   style: TextStyle(
-                                    color: _activeTopTab == 1
-                                        ? Colors.white
-                                        : Colors.white54,
+                                    color: (isDesktopLandscape && !isDark)
+                                        ? (_activeTopTab == 1
+                                            ? const Color(0xFF0F172A)
+                                            : const Color(0xFF64748B))
+                                        : (_activeTopTab == 1
+                                            ? Colors.white
+                                            : Colors.white54),
                                     fontSize: 13,
                                     fontWeight: _activeTopTab == 1
                                         ? FontWeight.w900
@@ -833,14 +852,22 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                           width: 36,
                           height: 36,
                           decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.35),
+                            color: (isDesktopLandscape && !isDark)
+                                ? Colors.black.withValues(alpha: 0.05)
+                                : Colors.black.withValues(alpha: 0.35),
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white12),
+                            border: Border.all(
+                              color: (isDesktopLandscape && !isDark)
+                                  ? Colors.black12
+                                  : Colors.white12,
+                            ),
                           ),
-                          child: const Center(
+                          child: Center(
                             child: HugeIcon(
                               icon: HugeIcons.strokeRoundedSearch01,
-                              color: Colors.white,
+                              color: (isDesktopLandscape && !isDark)
+                                  ? const Color(0xFF0F172A)
+                                  : Colors.white,
                               size: 17,
                             ),
                           ),
@@ -867,6 +894,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                       icon: Icons.keyboard_arrow_up_rounded,
                       tooltip: 'Pos Sebelumnya (↑)',
                       enabled: _currentPage > 0,
+                      isDark: isDark,
                       onTap: () {
                         _pageController.previousPage(
                           duration: const Duration(milliseconds: 280),
@@ -879,6 +907,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                       icon: Icons.keyboard_arrow_down_rounded,
                       tooltip: 'Pos Seterusnya (↓)',
                       enabled: _currentPage < _posts.length - 1,
+                      isDark: isDark,
                       onTap: () {
                         _pageController.nextPage(
                           duration: const Duration(milliseconds: 280),
@@ -903,6 +932,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     final double screenHeight = MediaQuery.sizeOf(context).height;
     final bool isDesktopLandscape = screenWidth > 700;
     final bool isShortPhone = screenHeight < 720;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (isDesktopLandscape) {
       // -------------------------------------------------------------
@@ -931,10 +961,16 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                     ),
                   ),
                   Container(
-                    color: Colors.black.withValues(alpha: 0.82),
+                    color: isDark
+                        ? Colors.black.withValues(alpha: 0.82)
+                        : const Color(0xFFF1F5F9).withValues(alpha: 0.88),
                   ),
                 ],
               ),
+            )
+          else
+            Container(
+              color: isDark ? Colors.black : const Color(0xFFF8FAFC),
             ),
 
           // 2. Centered Video Card + Action Bar Right Beside It
@@ -955,15 +991,19 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                         color: const Color(0xFF0B0F15),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.12),
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.12)
+                              : Colors.black.withValues(alpha: 0.08),
                           width: 1.5,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.7),
-                            blurRadius: 36,
-                            spreadRadius: 8,
-                            offset: const Offset(0, 12),
+                            color: isDark
+                                ? Colors.black.withValues(alpha: 0.7)
+                                : Colors.black.withValues(alpha: 0.12),
+                            blurRadius: isDark ? 36 : 24,
+                            spreadRadius: isDark ? 8 : 2,
+                            offset: const Offset(0, 8),
                           ),
                         ],
                       ),
@@ -1345,6 +1385,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     required bool isShortPhone,
     required bool isDesktop,
   }) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isLiked = post['isLiked'] ?? false;
     final bool isSaved = post['isSaved'] ?? false;
     final bool isFollowed = post['isFollowed'] ?? false;
@@ -1428,6 +1469,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           iconColor: isLiked ? const Color(0xFFFF2B54) : Colors.white,
           label: '$likes',
           isCompact: isShortPhone,
+          isDesktop: isDesktop,
+          isDark: isDark,
           onTap: () => _toggleLike(post),
         ),
 
@@ -1438,6 +1481,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           hugeIcon: HugeIcons.strokeRoundedComment01,
           label: '$comments',
           isCompact: isShortPhone,
+          isDesktop: isDesktop,
+          isDark: isDark,
           onTap: () => _showCommentsModal(context, post),
         ),
 
@@ -1451,6 +1496,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           iconColor: isSaved ? const Color(0xFFFBBF24) : Colors.white,
           label: 'Simpan',
           isCompact: isShortPhone,
+          isDesktop: isDesktop,
+          isDark: isDark,
           onTap: () => _toggleSave(post),
         ),
 
@@ -1461,6 +1508,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           hugeIcon: HugeIcons.strokeRoundedShare01,
           label: 'Kongsi',
           isCompact: isShortPhone,
+          isDesktop: isDesktop,
+          isDark: isDark,
           onTap: () => _sharePost(post),
         ),
 
@@ -1475,6 +1524,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             iconColor: _isMuted ? Colors.white54 : const Color(0xFF00E5FF),
             label: _isMuted ? 'Bisu' : 'Audio',
             isCompact: isShortPhone,
+            isDesktop: isDesktop,
+            isDark: isDark,
             onTap: _toggleMute,
           ),
           SizedBox(height: actionSpacing),
@@ -1523,6 +1574,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     required IconData icon,
     required String tooltip,
     required bool enabled,
+    required bool isDark,
     required VoidCallback onTap,
   }) {
     return Tooltip(
@@ -1537,18 +1589,26 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: enabled
-                  ? Colors.white.withValues(alpha: 0.12)
-                  : Colors.white.withValues(alpha: 0.04),
+              color: isDark
+                  ? (enabled
+                      ? Colors.white.withValues(alpha: 0.12)
+                      : Colors.white.withValues(alpha: 0.04))
+                  : (enabled
+                      ? Colors.black.withValues(alpha: 0.06)
+                      : Colors.black.withValues(alpha: 0.02)),
               shape: BoxShape.circle,
               border: Border.all(
-                color: enabled ? Colors.white24 : Colors.white10,
+                color: isDark
+                    ? (enabled ? Colors.white24 : Colors.white10)
+                    : (enabled ? Colors.black12 : Colors.black.withValues(alpha: 0.04)),
                 width: 1.2,
               ),
               boxShadow: enabled
                   ? [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.4),
+                        color: isDark
+                            ? Colors.black.withValues(alpha: 0.4)
+                            : Colors.black.withValues(alpha: 0.08),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -1558,7 +1618,9 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             child: Center(
               child: Icon(
                 icon,
-                color: enabled ? Colors.white : Colors.white24,
+                color: isDark
+                    ? (enabled ? Colors.white : Colors.white24)
+                    : (enabled ? const Color(0xFF0F172A) : Colors.black26),
                 size: 26,
               ),
             ),
@@ -1575,9 +1637,16 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     Color iconColor = Colors.white,
     required String label,
     bool isCompact = false,
+    bool isDesktop = false,
+    bool isDark = true,
     required VoidCallback onTap,
   }) {
     final double buttonSize = isCompact ? 38 : 44;
+    final bool useLightDesktop = isDesktop && !isDark;
+    final Color effectiveIconColor = (useLightDesktop && iconColor == Colors.white)
+        ? const Color(0xFF1E293B)
+        : iconColor;
+
     return GestureDetector(
       onTap: onTap,
       child: Column(
@@ -1586,32 +1655,43 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             width: buttonSize,
             height: buttonSize,
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.35),
+              color: useLightDesktop
+                  ? Colors.white
+                  : Colors.black.withValues(alpha: 0.35),
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white12),
+              border: Border.all(
+                color: useLightDesktop
+                    ? Colors.black.withValues(alpha: 0.08)
+                    : Colors.white12,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
+                  color: useLightDesktop
+                      ? Colors.black.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.3),
                   blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
             child: Center(
               child: icon != null
-                  ? Icon(icon, color: iconColor, size: isCompact ? 22 : 26)
-                  : HugeIcon(icon: hugeIcon, color: iconColor, size: isCompact ? 19 : 22),
+                  ? Icon(icon, color: effectiveIconColor, size: isCompact ? 22 : 26)
+                  : HugeIcon(icon: hugeIcon, color: effectiveIconColor, size: isCompact ? 19 : 22),
             ),
           ),
           const SizedBox(height: 3),
           Text(
             label,
             style: TextStyle(
-              color: Colors.white,
+              color: useLightDesktop ? const Color(0xFF334155) : Colors.white,
               fontSize: isCompact ? 10 : 11,
               fontWeight: FontWeight.w700,
-              shadows: const [
-                Shadow(color: Colors.black, blurRadius: 6),
-              ],
+              shadows: useLightDesktop
+                  ? null
+                  : const [
+                      Shadow(color: Colors.black, blurRadius: 6),
+                    ],
             ),
           ),
         ],
@@ -1621,6 +1701,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
 
   // --- COMMENTS MODAL SHEET ---
   Future<void> _showCommentsModal(BuildContext context, Map<String, dynamic> post) async {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final List comments = post['commentList'] ?? [];
     final TextEditingController commentController = TextEditingController();
 
@@ -1638,15 +1719,21 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                 child: Container(
                   height: MediaQuery.of(context).size.height * 0.65,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF141920),
+                    color: isDark ? const Color(0xFF141920) : Colors.white,
                     borderRadius:
                         const BorderRadius.vertical(top: Radius.circular(28)),
-                    border: Border.all(color: Colors.white10),
-                    boxShadow: const [
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white10
+                          : Colors.black.withValues(alpha: 0.08),
+                    ),
+                    boxShadow: [
                       BoxShadow(
-                        color: Colors.black54,
+                        color: isDark
+                            ? Colors.black54
+                            : Colors.black.withValues(alpha: 0.12),
                         blurRadius: 20,
-                        offset: Offset(0, -5),
+                        offset: const Offset(0, -5),
                       ),
                     ],
                   ),
@@ -1658,7 +1745,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.white24,
+                      color: isDark ? Colors.white24 : Colors.black12,
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -1671,32 +1758,38 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                       children: [
                         Text(
                           'Komen (${comments.length})',
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
                             fontSize: 15,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
                         GestureDetector(
                           onTap: () => Navigator.pop(ctx),
-                          child: const Icon(Icons.close_rounded,
-                              color: Colors.white60, size: 20),
+                          child: Icon(
+                            Icons.close_rounded,
+                            color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                            size: 20,
+                          ),
                         ),
                       ],
                     ),
                   ),
 
-                  const Divider(color: Colors.white10, height: 1),
+                  Divider(
+                    color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.08),
+                    height: 1,
+                  ),
 
                   // Comment List
                   Expanded(
                     child: comments.isEmpty
-                        ? const Center(
+                        ? Center(
                             child: Text(
                               'Belum ada komen lagi.\nJadilah yang pertama!',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: Colors.white54,
+                                color: isDark ? Colors.white54 : const Color(0xFF64748B),
                                 fontSize: 13,
                               ),
                             ),
@@ -1726,8 +1819,10 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                                           children: [
                                             Text(
                                               c['user'],
-                                              style: const TextStyle(
-                                                color: Colors.white70,
+                                              style: TextStyle(
+                                                color: isDark
+                                                    ? Colors.white70
+                                                    : const Color(0xFF1E293B),
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w700,
                                               ),
@@ -1735,8 +1830,10 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                                             const SizedBox(width: 8),
                                             Text(
                                               c['time'],
-                                              style: const TextStyle(
-                                                color: Colors.white38,
+                                              style: TextStyle(
+                                                color: isDark
+                                                    ? Colors.white38
+                                                    : const Color(0xFF94A3B8),
                                                 fontSize: 11,
                                               ),
                                             ),
@@ -1745,8 +1842,10 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                                         const SizedBox(height: 3),
                                         Text(
                                           c['text'],
-                                          style: const TextStyle(
-                                            color: Colors.white,
+                                          style: TextStyle(
+                                            color: isDark
+                                                ? Colors.white
+                                                : const Color(0xFF0F172A),
                                             fontSize: 13,
                                             height: 1.35,
                                           ),
@@ -1757,16 +1856,20 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                                   const SizedBox(width: 10),
                                   Column(
                                     children: [
-                                      const Icon(
+                                      Icon(
                                         Icons.favorite_border_rounded,
                                         size: 16,
-                                        color: Colors.white38,
+                                        color: isDark
+                                            ? Colors.white38
+                                            : const Color(0xFF94A3B8),
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
                                         '${c['likes'] ?? 0}',
-                                        style: const TextStyle(
-                                          color: Colors.white38,
+                                        style: TextStyle(
+                                          color: isDark
+                                              ? Colors.white38
+                                              : const Color(0xFF94A3B8),
                                           fontSize: 10,
                                         ),
                                       ),
@@ -1786,9 +1889,17 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                       14,
                       MediaQuery.of(context).viewInsets.bottom + 12,
                     ),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF0F1318),
-                      border: Border(top: BorderSide(color: Colors.white10)),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF0F1318)
+                          : const Color(0xFFF8FAFC),
+                      border: Border(
+                        top: BorderSide(
+                          color: isDark
+                              ? Colors.white10
+                              : Colors.black.withValues(alpha: 0.08),
+                        ),
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -1796,19 +1907,25 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 14),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.08),
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : Colors.black.withValues(alpha: 0.05),
                               borderRadius: BorderRadius.circular(24),
                             ),
                             child: TextField(
                               controller: commentController,
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF0F172A),
                                 fontSize: 13,
                               ),
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 hintText: 'Tulis komen anda...',
                                 hintStyle: TextStyle(
-                                  color: Colors.white38,
+                                  color: isDark
+                                      ? Colors.white38
+                                      : const Color(0xFF94A3B8),
                                   fontSize: 13,
                                 ),
                                 border: InputBorder.none,
