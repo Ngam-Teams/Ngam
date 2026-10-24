@@ -207,8 +207,8 @@ class NgamApp extends StatelessWidget {
                 );
               }
 
-              // 3. /queue/:businessId (e.g. /queue/@pisangkrispy or /queue/uuid)
-              if (segments.isNotEmpty && segments.first == 'queue') {
+              // 3. /queue/:businessId or /q/:businessId (e.g. /q/@pisangkrispy or /q/pisangkrispy or /queue/pisangkrispy)
+              if (segments.isNotEmpty && (segments.first == 'queue' || segments.first == 'q')) {
                 final businessId = segments.length > 1 ? segments[1] : '';
                 if (businessId.isNotEmpty) {
                   return MaterialPageRoute(
@@ -241,7 +241,7 @@ class NgamApp extends StatelessWidget {
 
               // 5. Clean handle fallback (e.g. /pisangkrispy?table=1) where first segment is NOT reserved
               const reservedRoutes = {
-                'login', 'register', 'forgot-password', 'reset-password',
+                'q', 'queue', 'login', 'register', 'forgot-password', 'reset-password',
                 'customer-home', 'review', 'profile', 'explore', 'bookings',
                 'cart', 'chat', 'wallet', 'orders', 'notifications', 'search',
                 'privacy', 'terms', 'support', 'about', 'feed', 'api', 'assets'
