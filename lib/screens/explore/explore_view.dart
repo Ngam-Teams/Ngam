@@ -368,7 +368,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     setState(() {}); // Kemas kini anjakan komponen desktop mengikut kelebaran sidebar
 
     // Kira semula titik tengah peta dan gerakkan kamera secara lancar
-    if (_selectedShop != null && _isProfileOpen) {
+    if (_selectedShop != null) {
       double currentZoom = _mapController.camera.zoom;
       LatLng newCenter = _getDynamicCenterOffset(_selectedShop!, currentZoom);
       _animatedMapMove(newCenter, currentZoom);
@@ -1249,6 +1249,11 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                       _clearSearch();
                       if (isDesktop && _isProfileOpen) {
                         setState(() => _isProfileOpen = false);
+                        if (_selectedShop != null) {
+                          double currentZoom = _mapController.camera.zoom;
+                          LatLng newCenter = _getDynamicCenterOffset(_selectedShop!, currentZoom, panelOpen: false);
+                          _animatedMapMove(newCenter, currentZoom);
+                        }
                       }
                     },
                     onPositionChanged: (pos, hasGesture) {
@@ -1408,14 +1413,15 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                 ValueListenableBuilder<bool>(
                   valueListenable: CustomerDesktopSidebar.isExpandedNotifier,
                   builder: (context, isSidebarExpanded, _) {
-                    final double sidebarOffset = isSidebarExpanded ? 256.0 : 88.0;
+                    final double sidebarOffset = isSidebarExpanded ? 276.0 : 88.0;
+                    final double gap = 18.0;
                     final bool showDesktopPanel = _isProfileOpen && _selectedShop != null;
                     return AnimatedPositioned(
                       duration: const Duration(milliseconds: 320),
                       curve: Curves.easeInOutCubic,
                       top: 16.0,
                       bottom: 16.0,
-                      left: showDesktopPanel ? (sidebarOffset + 14.0) : (-panelWidth - 50.0),
+                      left: showDesktopPanel ? (sidebarOffset + gap) : (-panelWidth - 50.0),
                       width: panelWidth,
                       child: AnimatedOpacity(
                         duration: const Duration(milliseconds: 250),
@@ -1432,10 +1438,11 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
               ValueListenableBuilder<bool>(
                 valueListenable: CustomerDesktopSidebar.isExpandedNotifier,
                 builder: (context, isSidebarExpanded, _) {
-                  final double sidebarOffset = isSidebarExpanded ? 256.0 : 88.0;
+                  final double sidebarOffset = isSidebarExpanded ? 276.0 : 88.0;
+                  final double gap = 18.0;
                   final bool showDesktopPanel = isDesktop && _isProfileOpen && _selectedShop != null;
                   final double carouselLeft = isDesktop
-                      ? (showDesktopPanel ? (sidebarOffset + 14.0 + panelWidth + 14.0) : (sidebarOffset + 14.0))
+                      ? (showDesktopPanel ? (sidebarOffset + gap + panelWidth + gap) : (sidebarOffset + gap))
                       : 0.0;
 
                   return AnimatedPositioned(
@@ -2632,7 +2639,14 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                     ),
                     const Spacer(),
                     _AnimatedPressable(
-                      onTap: () => setState(() => _isProfileOpen = false),
+                      onTap: () {
+                        setState(() => _isProfileOpen = false);
+                        if (_selectedShop != null) {
+                          double currentZoom = _mapController.camera.zoom;
+                          LatLng newCenter = _getDynamicCenterOffset(_selectedShop!, currentZoom, panelOpen: false);
+                          _animatedMapMove(newCenter, currentZoom);
+                        }
+                      },
                       child: Container(
                         padding: const EdgeInsets.all(7),
                         decoration: BoxDecoration(
