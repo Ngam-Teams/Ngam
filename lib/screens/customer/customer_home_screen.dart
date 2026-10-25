@@ -77,7 +77,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   opacity: isVisible ? 1.0 : 0.0,
                   child: IgnorePointer(
                     ignoring: !isVisible,
-                    child: child,
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 540),
+                        child: child,
+                      ),
+                    ),
                   ),
                 ),
               );

@@ -271,9 +271,12 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
         ),
         child: SafeArea(
           bottom: false,
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 680),
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(),
+                slivers: [
               // 1. Top Glass Header
               SliverToBoxAdapter(
                 child: Padding(
@@ -417,7 +420,9 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 
   void _openQrScanner() async {

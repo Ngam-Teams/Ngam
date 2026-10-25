@@ -193,7 +193,10 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
-        child: Column(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 680),
+            child: Column(
               children: [
                 // ─── Header ─────────────────────────────────────
                 Padding(
@@ -388,7 +391,9 @@ class _ChatScreenState extends State<ChatScreen> {
               ],
             ),
           ),
-        );
+        ),
+      ),
+    );
   }
 
   Widget _buildChatShimmer(bool isDark) {

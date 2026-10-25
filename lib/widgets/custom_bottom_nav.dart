@@ -54,9 +54,11 @@ class _CustomBottomNavState extends State<CustomBottomNav> {
       opacity: isKeyboardOpen ? 0.0 : 1.0,
       child: isKeyboardOpen
           ? const SizedBox.shrink()
-          : ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
-              child: Padding(
+          : Align(
+              alignment: Alignment.bottomCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 560),
+                child: Padding(
                 padding: EdgeInsets.only(
                   left: 14,
                   right: 14,
@@ -241,6 +243,7 @@ class _CustomBottomNavState extends State<CustomBottomNav> {
                 ),
               ),
             ),
+          ),
     );
   }
 }
