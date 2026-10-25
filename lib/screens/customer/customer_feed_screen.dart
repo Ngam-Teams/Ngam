@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import 'dart:math' as math;
@@ -41,7 +42,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
 
   int _activeTopTab = 1; // 0: 'Berhampiran', 1: 'Untuk Anda'
   int _currentPage = 0;
-  bool _isMuted = false;
+  bool _isMuted = kIsWeb; // Web browsers block unmuted autoplay; default muted on Web ensures instant autoplay!
   bool _isModalOrRouteOpen = false;
   bool _isVideoPlaying = true;
 
@@ -224,7 +225,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _posts = List.from(_demoPosts);
+    _posts = [];
+    _isLoading = true;
     _currentPage = _persistedPageIndex;
     _pageController = PageController(initialPage: _persistedPageIndex);
     _discAnimController = AnimationController(
@@ -402,6 +404,9 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           setState(() {
             _posts = loaded;
             _isLoading = false;
+            if (_currentPage >= loaded.length) {
+              _currentPage = 0;
+            }
           });
         }
         return;
@@ -988,11 +993,14 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     if (isDesktopLandscape) {
       // -------------------------------------------------------------
       // TIKTOK DESKTOP / LANDSCAPE MODE
-      // Centered 9:16 vertical video card, ambient blurred backdrop,
-      // action bar resting right beside the card (no 1920px stretching!)
+      // Full viewport height below top navigation header (TikTok Desktop standard)
+      // Minimizes gap between stacked/scrolled video cards to ~68px
       // -------------------------------------------------------------
-      final double cardHeight = (screenHeight - 110).clamp(460.0, 780.0);
-      final double cardWidth = (cardHeight * (9 / 16)).clamp(300.0, 460.0);
+      final double topNavOffset = 58.0;
+      final double bottomOffset = 10.0;
+      final double availableHeight = screenHeight - topNavOffset - bottomOffset;
+      final double cardHeight = availableHeight.clamp(480.0, 1150.0);
+      final double cardWidth = (cardHeight * (9 / 16)).clamp(280.0, screenWidth * 0.52);
 
       final String backdropImageUrl = isVideoMedia
           ? (post['shopAvatar']?.toString() ?? '')
@@ -1018,9 +1026,12 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             ),
 
           // 2. Centered Video Card + Action Bar Right Beside It
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 14, bottom: 20),
+          Positioned(
+            top: topNavOffset,
+            bottom: bottomOffset,
+            left: 0,
+            right: 0,
+            child: Center(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -1248,6 +1259,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
 
     if (isVideo) {
       return _FeedVideoPlayerItem(
+        key: ValueKey('feed_vid_${post['id']}_$mediaUrl'),
         videoUrl: post['image'],
         isCurrentPage: index == _currentPage,
         isPausedExternally: !widget.isTabActive || _isModalOrRouteOpen,
@@ -2278,6 +2290,7 @@ class _FeedVideoPlayerItem extends StatefulWidget {
   final void Function(bool isPlaying)? onPlayStateChanged;
 
   const _FeedVideoPlayerItem({
+    super.key,
     required this.videoUrl,
     required this.isCurrentPage,
     required this.isPausedExternally,
@@ -2297,6 +2310,7 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
   late VideoPlayerController _controller;
   bool _isInitialized = false;
   bool _hasError = false;
+  int _retryCount = 0;
   bool _isUserPaused = false;
   bool _is2xSpeed = false;
   bool _isScrubbing = false;
@@ -2311,38 +2325,65 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
   }
 
   void _initializeController() {
-    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
-      ..initialize().then((_) {
-        if (mounted) {
-          setState(() {
-            _isInitialized = true;
-          });
-          _controller.addListener(_videoListener);
-          _controller.setLooping(true);
-          _controller.setVolume(widget.isMuted ? 0.0 : 1.0);
-          if (widget.isCurrentPage && !widget.isPausedExternally && !_isUserPaused) {
-            _controller.play().then((_) {
-              widget.onPlayStateChanged?.call(true);
-            }).catchError((playErr) {
-              debugPrint('[FeedVideoPlayer] Autoplay blocked, muted retry: $playErr');
-              _controller.setVolume(0.0);
-              return _controller.play().then((_) {
-                widget.onPlayStateChanged?.call(true);
-              }).catchError((_) {});
-            });
-          } else {
-            _controller.pause();
-            widget.onPlayStateChanged?.call(false);
-          }
-        }
-      }).catchError((e) {
-        debugPrint('[FeedVideoPlayer] Error loading video: $e');
-        if (mounted) {
-          setState(() {
-            _hasError = true;
-          });
-        }
+    final String cleanUrl = widget.videoUrl.trim();
+    if (cleanUrl.isEmpty) {
+      if (mounted) setState(() => _hasError = true);
+      return;
+    }
+
+    _controller = VideoPlayerController.networkUrl(
+      Uri.parse(cleanUrl),
+      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+    );
+
+    _controller.initialize().then((_) {
+      if (!mounted) return;
+      setState(() {
+        _isInitialized = true;
+        _hasError = false;
       });
+      _controller.addListener(_videoListener);
+      _controller.setLooping(true);
+
+      // On Web, start at 0.0 volume for instant autoplay compliance without user gesture
+      final double initialVolume = widget.isMuted ? 0.0 : (kIsWeb ? 0.0 : 1.0);
+      _controller.setVolume(initialVolume).catchError((_) {});
+
+      if (widget.isCurrentPage && !widget.isPausedExternally && !_isUserPaused) {
+        _controller.play().then((_) {
+          if (mounted) {
+            widget.onPlayStateChanged?.call(true);
+            if (!widget.isMuted && initialVolume == 0.0) {
+              _controller.setVolume(1.0).catchError((_) {});
+            }
+          }
+        }).catchError((playErr) {
+          debugPrint('[FeedVideoPlayer] Autoplay blocked, muted retry: $playErr');
+          _controller.setVolume(0.0).then((_) {
+            return _controller.play().then((_) {
+              if (mounted) widget.onPlayStateChanged?.call(true);
+            });
+          }).catchError((_) {});
+        });
+      } else {
+        _controller.pause();
+        widget.onPlayStateChanged?.call(false);
+      }
+    }).catchError((e) {
+      debugPrint('[FeedVideoPlayer] Error loading video: $e (attempt $_retryCount)');
+      if (_retryCount < 2 && mounted) {
+        _retryCount++;
+        Future.delayed(const Duration(milliseconds: 400), () {
+          if (mounted) _initializeController();
+        });
+        return;
+      }
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+        });
+      }
+    });
   }
 
   void _videoListener() {
@@ -2354,6 +2395,17 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
   @override
   void didUpdateWidget(covariant _FeedVideoPlayerItem oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.videoUrl != oldWidget.videoUrl) {
+      _controller.removeListener(_videoListener);
+      _controller.pause();
+      _controller.dispose();
+      _isInitialized = false;
+      _hasError = false;
+      _retryCount = 0;
+      _initializeController();
+      return;
+    }
+
     if (oldWidget.isCurrentPage != widget.isCurrentPage && !widget.isCurrentPage) {
       _playIndicatorTimer?.cancel();
       _showPlayIndicator = false;
@@ -2368,13 +2420,15 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
         }
       } else {
         if (!_controller.value.isPlaying) {
-          _controller.play();
+          _controller.play().catchError((_) {
+            _controller.setVolume(0.0).then((_) => _controller.play()).catchError((_) {});
+          });
           widget.onPlayStateChanged?.call(true);
         }
       }
 
       if (widget.isMuted != oldWidget.isMuted) {
-        _controller.setVolume(widget.isMuted ? 0.0 : 1.0);
+        _controller.setVolume(widget.isMuted ? 0.0 : 1.0).catchError((_) {});
       }
     }
   }
@@ -2480,6 +2534,7 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
                   setState(() {
                     _hasError = false;
                     _isInitialized = false;
+                    _retryCount = 0;
                   });
                   _initializeController();
                 },

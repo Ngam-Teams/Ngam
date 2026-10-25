@@ -59,28 +59,69 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       builder: (context, constraints) {
         final isDesktop = constraints.maxWidth >= 800;
 
-        // Desktop / Landscape Layout (≥800px): Collapsible Modern Sidebar Rail
+        // Desktop / Landscape Layout (≥800px): Collapsible Modern Glass Sidebar
         if (isDesktop) {
           final isDark = Theme.of(context).brightness == Brightness.dark;
           return Scaffold(
             backgroundColor: isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8F9FA),
             resizeToAvoidBottomInset: false,
-            body: SafeArea(
-              bottom: false,
-              child: Row(
-                children: [
-                  CustomerDesktopSidebar(
-                    selectedIndex: _currentIndex,
-                    onNavTap: _onTabTapped,
+            body: Stack(
+              children: [
+                // Ambient Aurora Glow behind the glass sidebar for authentic refraction
+                if (isDark) ...[
+                  Positioned(
+                    top: -60,
+                    left: -60,
+                    child: Container(
+                      width: 340,
+                      height: 340,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            const Color(0xFF2196F3).withValues(alpha: 0.22),
+                            const Color(0xFF2196F3).withValues(alpha: 0.0),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                  Expanded(
-                    child: IndexedStack(
-                      index: _currentIndex,
-                      children: pages,
+                  Positioned(
+                    bottom: 30,
+                    left: -30,
+                    child: Container(
+                      width: 300,
+                      height: 300,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            const Color(0xFF6366F1).withValues(alpha: 0.18),
+                            const Color(0xFF6366F1).withValues(alpha: 0.0),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ],
-              ),
+                SafeArea(
+                  bottom: false,
+                  child: Row(
+                    children: [
+                      CustomerDesktopSidebar(
+                        selectedIndex: _currentIndex,
+                        onNavTap: _onTabTapped,
+                      ),
+                      Expanded(
+                        child: IndexedStack(
+                          index: _currentIndex,
+                          children: pages,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           );
         }

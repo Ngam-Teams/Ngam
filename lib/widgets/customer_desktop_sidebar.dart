@@ -53,28 +53,47 @@ class CustomerDesktopSidebar extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(28),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+              filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
                 curve: Curves.easeInOutCubic,
                 width: isExpanded ? 240 : 72,
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.05)
-                      : Colors.white.withValues(alpha: 0.85),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isDark
+                        ? [
+                            Colors.white.withValues(alpha: 0.16),
+                            const Color(0xFF161628).withValues(alpha: 0.65),
+                            const Color(0xFF0C0C16).withValues(alpha: 0.85),
+                          ]
+                        : [
+                            Colors.white.withValues(alpha: 0.90),
+                            Colors.white.withValues(alpha: 0.65),
+                          ],
+                    stops: isDark ? const [0.0, 0.40, 1.0] : null,
+                  ),
                   borderRadius: BorderRadius.circular(28),
                   border: Border.all(
                     color: isDark
-                        ? Colors.white.withValues(alpha: 0.12)
-                        : Colors.black.withValues(alpha: 0.08),
-                    width: 1.2,
+                        ? Colors.white.withValues(alpha: 0.24)
+                        : Colors.white.withValues(alpha: 0.80),
+                    width: 1.5,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
-                      blurRadius: 24,
-                      offset: const Offset(0, 8),
+                      color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
+                      blurRadius: 32,
+                      offset: const Offset(0, 10),
                     ),
+                    if (isDark)
+                      BoxShadow(
+                        color: const Color(0xFF2196F3).withValues(alpha: 0.14),
+                        blurRadius: 30,
+                        spreadRadius: 1,
+                        offset: const Offset(0, 2),
+                      ),
                   ],
                 ),
                 child: Column(
@@ -180,14 +199,25 @@ class CustomerDesktopSidebar extends StatelessWidget {
                           child: Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.05)
-                                  : Colors.black.withValues(alpha: 0.03),
-                              borderRadius: BorderRadius.circular(14),
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: isDark
+                                    ? [
+                                        Colors.white.withValues(alpha: 0.10),
+                                        Colors.white.withValues(alpha: 0.03),
+                                      ]
+                                    : [
+                                        Colors.white.withValues(alpha: 0.70),
+                                        Colors.white.withValues(alpha: 0.40),
+                                      ],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
                               border: Border.all(
                                 color: isDark
-                                    ? Colors.white.withValues(alpha: 0.08)
-                                    : Colors.black.withValues(alpha: 0.06),
+                                    ? Colors.white.withValues(alpha: 0.16)
+                                    : Colors.white.withValues(alpha: 0.50),
+                                width: 1.0,
                               ),
                             ),
                             child: Row(
@@ -622,15 +652,30 @@ class _SidebarNavItem extends StatelessWidget {
               height: 46,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-                color: selected
-                    ? const Color(0xFF2196F3).withValues(alpha: 0.18)
-                    : Colors.transparent,
+                gradient: selected
+                    ? LinearGradient(
+                        colors: [
+                          const Color(0xFF2196F3).withValues(alpha: 0.28),
+                          const Color(0xFF2196F3).withValues(alpha: 0.12),
+                        ],
+                      )
+                    : null,
+                color: selected ? null : Colors.transparent,
                 border: Border.all(
                   color: selected
-                      ? const Color(0xFF2196F3).withValues(alpha: 0.35)
+                      ? const Color(0xFF2196F3).withValues(alpha: 0.50)
                       : Colors.transparent,
-                  width: 1,
+                  width: 1.2,
                 ),
+                boxShadow: selected
+                    ? [
+                        BoxShadow(
+                          color: const Color(0xFF2196F3).withValues(alpha: 0.25),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
               ),
               child: Center(
                 child: HugeIcon(
@@ -656,16 +701,33 @@ class _SidebarNavItem extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 2.5),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: selected
-              ? const Color(0xFF2196F3).withValues(alpha: 0.18)
-              : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          gradient: selected
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFF2196F3).withValues(alpha: 0.25),
+                    const Color(0xFF2196F3).withValues(alpha: 0.10),
+                  ],
+                )
+              : null,
+          color: selected ? null : Colors.transparent,
           border: Border.all(
             color: selected
-                ? const Color(0xFF2196F3).withValues(alpha: 0.35)
+                ? const Color(0xFF2196F3).withValues(alpha: 0.45)
                 : Colors.transparent,
-            width: 1,
+            width: 1.2,
           ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF2196F3).withValues(alpha: 0.18),
+                    blurRadius: 12,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           children: [
