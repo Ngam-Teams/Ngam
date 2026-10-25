@@ -92,8 +92,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       _buildDesktopPaddedPage(0, pages[0]),
                       // Tab 1: Terokai Peta (ExploreView) — FULL BLEED EDGE-TO-EDGE UNDER FLOATING SIDEBAR!
                       pages[1],
-                      // Tab 2: Ngam Feed (Reels)
-                      _buildDesktopPaddedPage(2, pages[2]),
+                      // Tab 2: Ngam Feed (Reels) — FULL BLEED EDGE-TO-EDGE UNDER FLOATING SIDEBAR!
+                      pages[2],
                       // Tab 3: Mesej (Chat)
                       _buildDesktopPaddedPage(3, pages[3]),
                       // Tab 4: Profil Saya (Profile)
@@ -102,8 +102,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   ),
                 ),
 
-                // Ambient Aurora Glow behind the glass sidebar for authentic refraction (only when NOT on map)
-                if (isDark && _currentIndex != 1) ...[
+                // Ambient Aurora Glow behind the glass sidebar for authentic refraction (only when NOT on map or feed)
+                if (isDark && _currentIndex != 1 && _currentIndex != 2) ...[
                   Positioned(
                     top: -60,
                     left: -60,
