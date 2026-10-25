@@ -158,34 +158,46 @@
     });
   </script>
   <script>
-    // PWA Install Prompt Capture for Ngam Web Mobile
+    // Native Browser PWA Install Prompt Automation for Ngam
     window.deferredPWAInstallPrompt = null;
-    window.isPWAInstallAvailable = false;
+    var hasPromptedNativeInstall = false;
 
     window.addEventListener('beforeinstallprompt', function (e) {
-      e.preventDefault();
+      // Capture the browser's native install event
       window.deferredPWAInstallPrompt = e;
-      window.isPWAInstallAvailable = true;
-      window.dispatchEvent(new CustomEvent('pwa-install-ready'));
+
+      // Check if user already saw or interacted with the prompt in this session
+      if (sessionStorage.getItem('ngam_native_pwa_prompted') === 'true') {
+        return;
+      }
+
+      function triggerBrowserNativePrompt() {
+        if (window.deferredPWAInstallPrompt && !hasPromptedNativeInstall) {
+          hasPromptedNativeInstall = true;
+          sessionStorage.setItem('ngam_native_pwa_prompted', 'true');
+          window.removeEventListener('click', triggerBrowserNativePrompt, true);
+          window.removeEventListener('touchend', triggerBrowserNativePrompt, true);
+
+          // Give command to the browser to display its official native install prompt!
+          window.deferredPWAInstallPrompt.prompt().then(function (choiceResult) {
+            console.log('[PWA] Native install choice:', choiceResult.outcome);
+            window.deferredPWAInstallPrompt = null;
+          }).catch(function (err) {
+            console.log('[PWA] Native prompt notice:', err);
+          });
+        }
+      }
+
+      // Command browser to pop up native install on the first user interaction
+      window.addEventListener('click', triggerBrowserNativePrompt, true);
+      window.addEventListener('touchend', triggerBrowserNativePrompt, true);
     });
 
     window.addEventListener('appinstalled', function () {
       window.deferredPWAInstallPrompt = null;
-      window.isPWAInstallAvailable = false;
-      console.log('[PWA] Ngam App successfully installed.');
+      sessionStorage.setItem('ngam_native_pwa_prompted', 'true');
+      console.log('[PWA] Ngam app installed natively on device.');
     });
-
-    window.triggerPWAInstall = function () {
-      if (window.deferredPWAInstallPrompt) {
-        window.deferredPWAInstallPrompt.prompt();
-        window.deferredPWAInstallPrompt.userChoice.then(function (choiceResult) {
-          window.deferredPWAInstallPrompt = null;
-          window.isPWAInstallAvailable = false;
-        });
-        return true;
-      }
-      return false;
-    };
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
