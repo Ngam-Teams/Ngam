@@ -138,25 +138,48 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   }
 
   LatLng _getDynamicCenterOffset(Map<String, dynamic> shop, double targetZoom) {
-    // 1. Get screen dimensions
-    final double screenHeight = MediaQuery
-        .of(context)
-        .size
-        .height;
-    final double screenWidth = MediaQuery
-        .of(context)
-        .size
-        .width;
-    final double topSafeArea = MediaQuery
-        .of(context)
-        .padding
-        .top;
-    final double bottomSafeArea = MediaQuery
-        .of(context)
-        .padding
-        .bottom;
+    final double screenHeight = MediaQuery.of(context).size.height;
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isDesktop = screenWidth >= 800;
 
-    // 2. Predict the exact height of the bottom sheet (mirroring your modal logic)
+    double degreesPerPixelAtZoom14 = 0.0055 / 64.0;
+    double scale = pow(2, 14.0 - targetZoom).toDouble();
+
+    if (isDesktop) {
+      // 1. Ruang di sebelah kiri yang dihalang oleh Sidebar + Panel Maklumat Kedai
+      final bool isSidebarExpanded = CustomerDesktopSidebar.isExpandedNotifier.value;
+      final double sidebarOffset = isSidebarExpanded ? 256.0 : 88.0;
+      final double panelWidth = (screenWidth * 0.30).clamp(350.0, 440.0);
+      final double leftObstruction = sidebarOffset + 14.0 + panelWidth + 14.0;
+
+      // 2. Pusat mendatar bagi kawasan peta yang TERBUKA di sebelah kanan
+      final double visibleMapWidth = screenWidth - leftObstruction;
+      final double visibleCenterX = leftObstruction + (visibleMapWidth / 2.0);
+
+      // 3. Pusat menegak bagi kawasan peta (tolak ketinggian carousel di bawah ~140px)
+      final double bottomObstruction = 140.0;
+      final double visibleMapHeight = screenHeight - bottomObstruction;
+      // Anjakan 28px ke bawah supaya keseluruhan blok (marker pin + popup label) betul-betul di tengah
+      final double visibleCenterY = (visibleMapHeight / 2.0) + 28.0;
+
+      // 4. Hitung anjakan piksel dari titik tengah fizikal skrin
+      final double dx = visibleCenterX - (screenWidth / 2.0);
+      final double dy = visibleCenterY - (screenHeight / 2.0);
+
+      // 5. Tukar beza piksel kepada koordinat Latitud & Longitud offset
+      final double latOffset = dy * degreesPerPixelAtZoom14 * scale;
+      final double lonOffset = dx * degreesPerPixelAtZoom14 * scale;
+
+      return LatLng(
+        shop['location'].latitude + latOffset,
+        shop['location'].longitude - lonOffset,
+      );
+    }
+
+    // Untuk Mobile (<800px):
+    final double topSafeArea = MediaQuery.of(context).padding.top;
+    final double bottomSafeArea = MediaQuery.of(context).padding.bottom;
+
     double textAvailableWidth = screenWidth - 108;
     final TextPainter textPainter = TextPainter(
       text: TextSpan(
@@ -165,39 +188,22 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       ),
       textDirection: TextDirection.ltr,
       maxLines: 2,
-    )
-      ..layout(maxWidth: textAvailableWidth);
+    )..layout(maxWidth: textAvailableWidth);
 
-    // --- APPLY THE EXACT SAME FIX HERE ---
-    int numLines = textPainter
-        .computeLineMetrics()
-        .length;
-
-    // Make sure these numbers exactly match the ones you used in _showBusinessProfile!
+    int numLines = textPainter.computeLineMetrics().length;
     double baseHeight = numLines > 1 ? 435.0 : 405;
-    // -------------------------------------
 
     double sheetExtent = (baseHeight + bottomSafeArea) / screenHeight;
     sheetExtent = sheetExtent.clamp(0.40, 0.85);
 
-    // 3. Define the UI boundaries on the screen
     final double searchBarBottom = topSafeArea + 80;
     final double bottomSheetTop = screenHeight * (1.0 - sheetExtent);
 
-    // 4. Find the exact middle pixel in the visible map gap
     double visibleCenterY = searchBarBottom + (bottomSheetTop - searchBarBottom) / 2.0;
-    
-    // 5. Account for the popup which sits above the marker (approx 60px tall)
-    // We want the whole block (marker + popup) to be centered, so we push the target center down slightly.
     visibleCenterY += 30.0; 
 
-    // 6. Calculate pixel difference from true screen center
     double pixelOffset = visibleCenterY - (screenHeight / 2.0);
-
-    // 7. Convert pixel offset to latitude offset
-    // Based on the user's base offset: 0.0055 degrees ~= 64 pixels at zoom 14
-    double degreesPerPixelAtZoom14 = 0.0055 / 64.0;
-    double latOffset = pixelOffset * degreesPerPixelAtZoom14 * pow(2, 14.0 - targetZoom);
+    double latOffset = pixelOffset * degreesPerPixelAtZoom14 * scale;
 
     return LatLng(
       shop['location'].latitude + latOffset,
@@ -825,11 +831,46 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     try {
       zoom = _mapController.camera.zoom;
     } catch (_) {}
-    double adaptiveOffset = _baseLatitudeOffset * pow(2, 14.0 - zoom);
-    LatLng offsetLocation = LatLng(
-      _currentLocation.latitude + adaptiveOffset,
-      _currentLocation.longitude,
-    );
+
+    final bool isDesktop = MediaQuery.of(context).size.width >= 800;
+    LatLng offsetLocation;
+
+    if (isDesktop) {
+      final double screenWidth = MediaQuery.of(context).size.width;
+      final double screenHeight = MediaQuery.of(context).size.height;
+      final bool isSidebarExpanded = CustomerDesktopSidebar.isExpandedNotifier.value;
+      final double sidebarOffset = isSidebarExpanded ? 256.0 : 88.0;
+      final double panelWidth = (screenWidth * 0.30).clamp(350.0, 440.0);
+      final double leftObstruction = (_isProfileOpen && _selectedShop != null)
+          ? (sidebarOffset + 14.0 + panelWidth + 14.0)
+          : (sidebarOffset + 14.0);
+
+      final double visibleMapWidth = screenWidth - leftObstruction;
+      final double visibleCenterX = leftObstruction + (visibleMapWidth / 2.0);
+      final double visibleMapHeight = screenHeight - 140.0;
+      final double visibleCenterY = (visibleMapHeight / 2.0);
+
+      final double dx = visibleCenterX - (screenWidth / 2.0);
+      final double dy = visibleCenterY - (screenHeight / 2.0);
+
+      double degreesPerPixelAtZoom14 = 0.0055 / 64.0;
+      double scale = pow(2, 14.0 - zoom).toDouble();
+
+      final double latOffset = dy * degreesPerPixelAtZoom14 * scale;
+      final double lonOffset = dx * degreesPerPixelAtZoom14 * scale;
+
+      offsetLocation = LatLng(
+        _currentLocation.latitude + latOffset,
+        _currentLocation.longitude - lonOffset,
+      );
+    } else {
+      double adaptiveOffset = _baseLatitudeOffset * pow(2, 14.0 - zoom);
+      offsetLocation = LatLng(
+        _currentLocation.latitude + adaptiveOffset,
+        _currentLocation.longitude,
+      );
+    }
+
     if (animated) {
       _animatedMapMove(offsetLocation, zoom);
     } else {
