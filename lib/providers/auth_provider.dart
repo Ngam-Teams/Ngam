@@ -1,3 +1,4 @@
+import '../services/image_compression_service.dart';
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
@@ -284,14 +285,19 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Upload user avatar
+  /// Upload user avatar with compression
   Future<String?> uploadAvatar(File imageFile) async {
     if (_user == null) return 'User not logged in';
     try {
-      final String path = '${_user!.id}/profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final rawBytes = await imageFile.readAsBytes();
+      final compressed = await ImageCompressionService.compress(
+        bytes: rawBytes,
+        type: ImageCompressionType.avatar,
+      );
+      final String path = '${_user!.id}/profile_${DateTime.now().millisecondsSinceEpoch}.${compressed.extension}';
       await Supabase.instance.client.storage
           .from('avatars')
-          .upload(path, imageFile, fileOptions: const FileOptions(cacheControl: '3600', upsert: true));
+          .uploadBinary(path, compressed.bytes, fileOptions: FileOptions(cacheControl: '3600', contentType: compressed.mimeType, upsert: true));
 
       final String publicUrl = Supabase.instance.client.storage
           .from('avatars')
@@ -312,14 +318,19 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Upload runner QR Code
+  /// Upload runner QR Code with compression
   Future<String?> uploadQrCode(File imageFile) async {
     if (_user == null) return 'User not logged in';
     try {
-      final String path = '${_user!.id}/qrcode_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final rawBytes = await imageFile.readAsBytes();
+      final compressed = await ImageCompressionService.compress(
+        bytes: rawBytes,
+        type: ImageCompressionType.qrCode,
+      );
+      final String path = '${_user!.id}/qrcode_${DateTime.now().millisecondsSinceEpoch}.${compressed.extension}';
       await Supabase.instance.client.storage
-          .from('avatars') // Or create a new bucket 'qrcodes' if preferred, using 'avatars' for simplicity
-          .upload(path, imageFile, fileOptions: const FileOptions(cacheControl: '3600', upsert: true));
+          .from('avatars')
+          .uploadBinary(path, compressed.bytes, fileOptions: FileOptions(cacheControl: '3600', contentType: compressed.mimeType, upsert: true));
 
       final String publicUrl = Supabase.instance.client.storage
           .from('avatars')

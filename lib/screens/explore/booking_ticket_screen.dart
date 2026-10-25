@@ -48,12 +48,14 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
   late DateTime _targetDateTime;
   late String _currentStatus;
   StreamSubscription<List<Map<String, dynamic>>>? _statusSubscription;
+  String? _shopPhoneNumber;
 
   @override
   void initState() {
     super.initState();
 
     _currentStatus = widget.isCancelled ? 'cancelled' : widget.status;
+    _fetchShopPhone();
 
     //  Realtime Supabase status sync with merchant
     if (widget.bookingDbId != null && widget.bookingDbId!.isNotEmpty) {
@@ -165,13 +167,185 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
     return "$days$hours:$minutes:$seconds";
   }
 
-  Future<void> _contactOwner() async {
-    final Uri phoneUri = Uri(scheme: 'tel', path: '+60123456789');
-    if (await canLaunchUrl(phoneUri)) {
-      await launchUrl(phoneUri);
-    } else {
-      debugPrint("Could not launch $phoneUri");
+  Future<void> _fetchShopPhone() async {
+    try {
+      if (widget.shopId.isNotEmpty) {
+        final res = await Supabase.instance.client
+            .from('businesses')
+            .select('business_phone')
+            .eq('id', widget.shopId)
+            .maybeSingle();
+        if (res != null && res['business_phone'] != null && mounted) {
+          setState(() {
+            _shopPhoneNumber = res['business_phone']?.toString();
+          });
+          return;
+        }
+      }
+      final byName = await Supabase.instance.client
+          .from('businesses')
+          .select('business_phone')
+          .ilike('business_name', widget.shopName)
+          .maybeSingle();
+      if (byName != null && byName['business_phone'] != null && mounted) {
+        setState(() {
+          _shopPhoneNumber = byName['business_phone']?.toString();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching shop phone: $e');
     }
+  }
+
+  Future<void> _openWhatsAppToShop() async {
+    final rawPhone = _shopPhoneNumber ?? '+60123456789';
+    String cleanPhone = rawPhone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (cleanPhone.startsWith('0')) {
+      cleanPhone = '6$cleanPhone';
+    } else if (!cleanPhone.startsWith('60') && cleanPhone.length >= 9) {
+      cleanPhone = '60$cleanPhone';
+    }
+
+    final message = '''
+Hai ${widget.shopName}! 👋
+Saya ada tempahan melalui aplikasi *Ngam*:
+📋 *No. Tempahan:* ${widget.bookingId}
+✂️ *Perkhidmatan:* ${widget.category}
+👤 *Pakar/Staf:* ${widget.providerName}
+📅 *Tarikh:* ${widget.date}
+⏰ *Masa:* ${widget.time}
+💰 *Jumlah:* RM ${widget.totalPrice}
+
+Boleh saya sahkan slot tempahan saya? Terima kasih!
+''';
+
+    final waUrl = Uri.parse('https://wa.me/$cleanPhone?text=${Uri.encodeComponent(message)}');
+    try {
+      if (await canLaunchUrl(waUrl)) {
+        await launchUrl(waUrl, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Tidak dapat membuka WhatsApp')),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error launching WhatsApp: $e');
+    }
+  }
+
+  Future<void> _contactOwner() async {
+    final rawPhone = _shopPhoneNumber ?? '+60123456789';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E242B) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Hubungi ${widget.shopName}',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Pilih saluran komunikasi langsung:',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDark ? Colors.white60 : Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF25D366).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const HugeIcon(
+                    icon: HugeIcons.strokeRoundedWhatsapp,
+                    color: Color(0xFF25D366),
+                    size: 24,
+                  ),
+                ),
+                title: Text(
+                  'WhatsApp Peniaga',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                subtitle: const Text('Hantar butiran tempahan terus ke WhatsApp kedai'),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openWhatsAppToShop();
+                },
+              ),
+              const Divider(height: 16),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const HugeIcon(
+                    icon: HugeIcons.strokeRoundedCall02,
+                    color: Colors.blue,
+                    size: 24,
+                  ),
+                ),
+                title: Text(
+                  'Panggilan Telefon',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                subtitle: Text(rawPhone),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final Uri phoneUri = Uri(scheme: 'tel', path: rawPhone.replaceAll(RegExp(r'\s+'), ''));
+                  if (await canLaunchUrl(phoneUri)) {
+                    await launchUrl(phoneUri);
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _openDirections() async {
@@ -554,14 +728,14 @@ Disahkan melalui aplikasi *Ngam*.
                     Expanded(
                       flex: 2,
                       child: ElevatedButton.icon(
-                        onPressed: _shareTicketToWhatsApp,
+                        onPressed: _openWhatsAppToShop,
                         icon: const HugeIcon(
-                          icon: HugeIcons.strokeRoundedShare01,
+                          icon: HugeIcons.strokeRoundedWhatsapp,
                           color: Colors.white,
-                          size: 18,
+                          size: 20,
                         ),
                         label: const Text(
-                          "Kongsi Resit",
+                          "WhatsApp Peniaga",
                           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                         style: ElevatedButton.styleFrom(

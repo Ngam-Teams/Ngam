@@ -563,7 +563,10 @@ class _BookingsViewState extends State<BookingsView> {
                         'booking_time': targetTime,
                         'status': 'holding', //  Locks the slot for everyone else!
                         'pax': 1,
-                        'booking_metadata': { 'customer_auth_id': Supabase.instance.client.auth.currentUser!.id }
+                        'booking_metadata': {
+                          'customer_auth_id': Supabase.instance.client.auth.currentUser!.id,
+                          'phone': UserData.userPhone.value.isNotEmpty ? UserData.userPhone.value : '',
+                        }
                       }).select().single();
 
                       _holdingRecordId = holdResponse['id'].toString();
@@ -604,6 +607,8 @@ class _BookingsViewState extends State<BookingsView> {
                           'short_ref': shortBookingId, // For your UI
                           'booking_id': shortBookingId, // For the MyBookingsView sync
                           'customer_auth_id': Supabase.instance.client.auth.currentUser!.id,
+                          'customer_name': UserData.userName.value.isNotEmpty ? UserData.userName.value : 'Pelanggan Ngam',
+                          'phone': UserData.userPhone.value.isNotEmpty ? UserData.userPhone.value : '',
                           'provider_name': staff["name"],
                           'total_price': "RM$_totalPrice",
                           //  Save Shop details so MyBookingsView can display them directly from the DB!
