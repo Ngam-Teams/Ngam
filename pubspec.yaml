@@ -68,6 +68,7 @@ flutter:
     - .env
     - assets/translations/
     - assets/app.png
+    - assets/splash.png
     - assets/admin_hero_bg.png
     - assets/google_logo.png
 
