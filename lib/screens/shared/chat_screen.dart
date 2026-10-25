@@ -931,7 +931,12 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
-    final pickedFile = await _picker.pickImage(source: source, imageQuality: 70);
+    final pickedFile = await _picker.pickImage(
+      source: source,
+      maxWidth: 1080,
+      maxHeight: 1080,
+      imageQuality: 70,
+    );
     if (pickedFile != null) {
       setState(() => _isUploadingImage = true);
       
