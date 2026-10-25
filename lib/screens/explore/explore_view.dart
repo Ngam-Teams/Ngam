@@ -2803,6 +2803,17 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
               ); // End NotificationListener
             },
           );
+
+          if (isDesktop) {
+            return Align(
+              alignment: Alignment.bottomCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 620),
+                child: sheet,
+              ),
+            );
+          }
+          return sheet;
         });
       },
     ).closed.whenComplete(() {
