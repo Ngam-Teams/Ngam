@@ -1700,10 +1700,18 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   // --- COMMENTS MODAL SHEET ---
   Future<void> _showCommentsModal(BuildContext context, Map<String, dynamic> post) async {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final List comments = post['commentList'] ?? [];
+    final String postId = post['id']?.toString() ?? '';
     final TextEditingController commentController = TextEditingController();
 
+    // Inisialisasi senarai komen (ambil dari post sedia ada atau senarai kosong)
+    final List<Map<String, dynamic>> comments = List<Map<String, dynamic>>.from(
+      (post['commentList'] as List? ?? []).map((e) => Map<String, dynamic>.from(e as Map)),
+    );
+
+    bool isLoadingLiveComments = false;
+
     setState(() => _isModalOrRouteOpen = true);
+
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1711,15 +1719,139 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
+            // Muat turun komen masa nyata dari Supabase jika ada ID pos yang sah
+            void fetchLiveComments() async {
+              if (postId.length > 20 && !isLoadingLiveComments && comments.isEmpty) {
+                setModalState(() => isLoadingLiveComments = true);
+                try {
+                  final dbRes = await Supabase.instance.client
+                      .from('feed_comments')
+                      .select()
+                      .eq('post_id', postId)
+                      .order('created_at', ascending: false)
+                      .limit(60);
+
+                  if (dbRes.isNotEmpty) {
+                    final List<Map<String, dynamic>> loadedDb = [];
+                    for (final row in dbRes) {
+                      final rawDate = row['created_at']?.toString() ?? '';
+                      DateTime dt;
+                      if (!rawDate.endsWith('Z') && !rawDate.contains('+') && rawDate.contains('T')) {
+                        dt = DateTime.tryParse('${rawDate}Z')?.toLocal() ?? DateTime.now();
+                      } else {
+                        dt = DateTime.tryParse(rawDate)?.toLocal() ?? DateTime.now();
+                      }
+                      final diff = DateTime.now().difference(dt);
+                      String timeAgo;
+                      if (diff.inSeconds < 60) {
+                        timeAgo = 'Baru saja';
+                      } else if (diff.inMinutes < 60) {
+                        timeAgo = '${diff.inMinutes}m lepas';
+                      } else if (diff.inHours < 24) {
+                        timeAgo = '${diff.inHours}j lepas';
+                      } else {
+                        timeAgo = '${dt.day}/${dt.month}';
+                      }
+
+                      loadedDb.add({
+                        'id': row['id']?.toString(),
+                        'user': row['user_name'] ?? 'Pelanggan Ngam',
+                        'avatar': row['user_avatar'] ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150',
+                        'text': row['comment_text'] ?? '',
+                        'time': timeAgo,
+                        'likes': (row['likes_count'] as num?)?.toInt() ?? 0,
+                        'isLiked': false,
+                      });
+                    }
+                    if (context.mounted) {
+                      setModalState(() {
+                        comments.clear();
+                        comments.addAll(loadedDb);
+                        isLoadingLiveComments = false;
+                        post['commentList'] = comments;
+                        post['comments'] = comments.length;
+                      });
+                    }
+                  } else {
+                    if (context.mounted) {
+                      setModalState(() => isLoadingLiveComments = false);
+                    }
+                  }
+                } catch (e) {
+                  debugPrint('[CustomerFeedScreen] Feed comments table fetch notice: $e');
+                  if (context.mounted) {
+                    setModalState(() => isLoadingLiveComments = false);
+                  }
+                }
+              }
+            }
+
+            // Panggil sekali sewaktu modal dibuka
+            fetchLiveComments();
+
+            void handleSendComment() async {
+              final text = commentController.text.trim();
+              if (text.isEmpty) return;
+
+              HapticFeedback.lightImpact();
+              final currentUser = Supabase.instance.client.auth.currentUser;
+              final userName = (currentUser?.userMetadata?['full_name'] as String?) ??
+                  (currentUser?.userMetadata?['name'] as String?) ??
+                  (currentUser?.email?.split('@').first) ??
+                  'Pelanggan Ngam';
+              final userAvatar = (currentUser?.userMetadata?['avatar_url'] as String?) ??
+                  'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150';
+
+              final newEntry = {
+                'user': userName,
+                'avatar': userAvatar,
+                'text': text,
+                'time': 'Baru saja',
+                'likes': 0,
+                'isLiked': false,
+              };
+
+              setModalState(() {
+                comments.insert(0, newEntry);
+                post['commentList'] = comments;
+                post['comments'] = (post['comments'] as int? ?? 0) + 1;
+              });
+
+              commentController.clear();
+              if (mounted) setState(() {});
+
+              // Simpan ke Supabase jika pos mempunyai UUID sebenar
+              if (postId.length > 20) {
+                try {
+                  await Supabase.instance.client.from('feed_comments').insert({
+                    'post_id': postId,
+                    'user_id': currentUser?.id,
+                    'user_name': userName,
+                    'user_avatar': userAvatar,
+                    'comment_text': text,
+                  });
+                } catch (err) {
+                  debugPrint('[CustomerFeedScreen] DB insert comment note: $err');
+                }
+              }
+
+              if (context.mounted) {
+                showGlassToast(
+                  context,
+                  'Komen berjaya dihantar!',
+                  icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+                );
+              }
+            }
+
             return Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 540),
                 child: Container(
-                  height: MediaQuery.of(context).size.height * 0.65,
+                  height: MediaQuery.of(context).size.height * 0.68,
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF141920) : Colors.white,
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(28)),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
                     border: Border.all(
                       color: isDark
                           ? Colors.white10
@@ -1736,250 +1868,291 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                     ],
                   ),
                   child: Column(
-                children: [
-                  // Handle Bar
-                  Container(
-                    margin: const EdgeInsets.only(top: 10, bottom: 8),
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.white24 : Colors.black12,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-
-                  // Header
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 4, 18, 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Komen (${comments.length})',
-                          style: TextStyle(
-                            color: isDark ? Colors.white : const Color(0xFF0F172A),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                          ),
+                    children: [
+                      // Handle Bar
+                      Container(
+                        margin: const EdgeInsets.only(top: 10, bottom: 8),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white24 : Colors.black12,
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        GestureDetector(
-                          onTap: () => Navigator.pop(ctx),
-                          child: HugeIcon(
-                            icon: HugeIcons.strokeRoundedCancel01,
-                            color: isDark ? Colors.white60 : const Color(0xFF64748B),
-                            size: 20,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                      ),
 
-                  Divider(
-                    color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.08),
-                    height: 1,
-                  ),
-
-                  // Comment List
-                  Expanded(
-                    child: comments.isEmpty
-                        ? Center(
-                            child: Text(
-                              'Belum ada komen lagi.\nJadilah yang pertama!',
-                              textAlign: TextAlign.center,
+                      // Header Komen
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 4, 18, 12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Komen (${comments.length})',
                               style: TextStyle(
-                                color: isDark ? Colors.white54 : const Color(0xFF64748B),
-                                fontSize: 13,
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
                               ),
                             ),
-                          )
-                        : ListView.separated(
-                            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                            itemCount: comments.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 16),
-                            itemBuilder: (_, idx) {
-                              final c = comments[idx];
-                              return Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  CircleAvatar(
-                                    radius: 17,
-                                    backgroundImage:
-                                        NetworkImage(c['avatar']),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
+                            GestureDetector(
+                              onTap: () => Navigator.pop(ctx),
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: HugeIcon(
+                                  icon: HugeIcons.strokeRoundedCancel01,
+                                  color: isDark ? Colors.white70 : const Color(0xFF64748B),
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      Divider(
+                        color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.08),
+                        height: 1,
+                      ),
+
+                      // Senarai Komen
+                      Expanded(
+                        child: isLoadingLiveComments
+                            ? const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFF00E5FF),
+                                ),
+                              )
+                            : comments.isEmpty
+                                ? Center(
                                     child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Row(
-                                          children: [
-                                            Text(
-                                              c['user'],
-                                              style: TextStyle(
-                                                color: isDark
-                                                    ? Colors.white70
-                                                    : const Color(0xFF1E293B),
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w700,
-                                              ),
+                                        Container(
+                                          width: 56,
+                                          height: 56,
+                                          decoration: BoxDecoration(
+                                            color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Center(
+                                            child: HugeIcon(
+                                              icon: HugeIcons.strokeRoundedComment01,
+                                              color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                                              size: 26,
                                             ),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              c['time'],
-                                              style: TextStyle(
-                                                color: isDark
-                                                    ? Colors.white38
-                                                    : const Color(0xFF94A3B8),
-                                                fontSize: 11,
-                                              ),
-                                            ),
-                                          ],
+                                          ),
                                         ),
-                                        const SizedBox(height: 3),
+                                        const SizedBox(height: 12),
                                         Text(
-                                          c['text'],
+                                          'Belum ada komen lagi.',
                                           style: TextStyle(
-                                            color: isDark
-                                                ? Colors.white
-                                                : const Color(0xFF0F172A),
-                                            fontSize: 13,
-                                            height: 1.35,
+                                            color: isDark ? Colors.white70 : const Color(0xFF1E293B),
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Jadilah yang pertama berkongsi pandangan!',
+                                          style: TextStyle(
+                                            color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                                            fontSize: 12,
                                           ),
                                         ),
                                       ],
                                     ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Column(
-                                    children: [
-                                      HugeIcon(
-                                        icon: HugeIcons.strokeRoundedFavourite,
-                                        size: 16,
-                                        color: isDark
-                                            ? Colors.white38
-                                            : const Color(0xFF94A3B8),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '${c['likes'] ?? 0}',
-                                        style: TextStyle(
-                                          color: isDark
-                                              ? Colors.white38
-                                              : const Color(0xFF94A3B8),
-                                          fontSize: 10,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                  ),
+                                  )
+                                : ListView.separated(
+                                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                                    itemCount: comments.length,
+                                    separatorBuilder: (_, __) => const SizedBox(height: 16),
+                                    itemBuilder: (_, idx) {
+                                      final c = comments[idx];
+                                      final bool isCommentLiked = c['isLiked'] == true;
+                                      final int commentLikes = (c['likes'] as num?)?.toInt() ?? 0;
 
-                  // Comment Input Field at Bottom
-                  Container(
-                    padding: EdgeInsets.fromLTRB(
-                      14,
-                      10,
-                      14,
-                      MediaQuery.of(context).viewInsets.bottom + 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF0F1318)
-                          : const Color(0xFFF8FAFC),
-                      border: Border(
-                        top: BorderSide(
+                                      return Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 18,
+                                            backgroundImage: NetworkImage(
+                                              c['avatar']?.toString() ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150',
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Text(
+                                                      c['user']?.toString() ?? 'Pelanggan',
+                                                      style: TextStyle(
+                                                        color: isDark
+                                                            ? Colors.white70
+                                                            : const Color(0xFF1E293B),
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      c['time']?.toString() ?? '',
+                                                      style: TextStyle(
+                                                        color: isDark
+                                                            ? Colors.white38
+                                                            : const Color(0xFF94A3B8),
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 3),
+                                                Text(
+                                                  c['text']?.toString() ?? '',
+                                                  style: TextStyle(
+                                                    color: isDark
+                                                        ? Colors.white
+                                                        : const Color(0xFF0F172A),
+                                                    fontSize: 13,
+                                                    height: 1.35,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          GestureDetector(
+                                            onTap: () {
+                                              HapticFeedback.lightImpact();
+                                              setModalState(() {
+                                                c['isLiked'] = !isCommentLiked;
+                                                c['likes'] = commentLikes + (isCommentLiked ? -1 : 1);
+                                              });
+                                            },
+                                            child: Column(
+                                              children: [
+                                                Icon(
+                                                  isCommentLiked ? Icons.favorite : Icons.favorite_border_rounded,
+                                                  size: 16,
+                                                  color: isCommentLiked
+                                                      ? const Color(0xFFFE2C55)
+                                                      : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  '${c['likes'] ?? 0}',
+                                                  style: TextStyle(
+                                                    color: isCommentLiked
+                                                        ? const Color(0xFFFE2C55)
+                                                        : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                      ),
+
+                      // Input Bar Komen di Bawah
+                      Container(
+                        padding: EdgeInsets.fromLTRB(
+                          14,
+                          10,
+                          14,
+                          MediaQuery.of(context).viewInsets.bottom + 12,
+                        ),
+                        decoration: BoxDecoration(
                           color: isDark
-                              ? Colors.white10
-                              : Colors.black.withValues(alpha: 0.08),
+                              ? const Color(0xFF0F1318)
+                              : const Color(0xFFF8FAFC),
+                          border: Border(
+                            top: BorderSide(
+                              color: isDark
+                                  ? Colors.white10
+                                  : Colors.black.withValues(alpha: 0.08),
+                            ),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.08)
+                                      : Colors.black.withValues(alpha: 0.05),
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                child: TextField(
+                                  controller: commentController,
+                                  onSubmitted: (_) => handleSendComment(),
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white
+                                        : const Color(0xFF0F172A),
+                                    fontSize: 13,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: 'Tulis komen anda...',
+                                    hintStyle: TextStyle(
+                                      color: isDark
+                                          ? Colors.white38
+                                          : const Color(0xFF94A3B8),
+                                      fontSize: 13,
+                                    ),
+                                    border: InputBorder.none,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: handleSendComment,
+                              child: Container(
+                                width: 38,
+                                height: 38,
+                                decoration: const BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [Color(0xFF00E5FF), Color(0xFF0284C7)],
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Center(
+                                  child: HugeIcon(
+                                    icon: HugeIcons.strokeRoundedArrowUp01,
+                                    color: Colors.black,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.08)
-                                  : Colors.black.withValues(alpha: 0.05),
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            child: TextField(
-                              controller: commentController,
-                              style: TextStyle(
-                                color: isDark
-                                    ? Colors.white
-                                    : const Color(0xFF0F172A),
-                                fontSize: 13,
-                              ),
-                              decoration: InputDecoration(
-                                hintText: 'Tulis komen anda...',
-                                hintStyle: TextStyle(
-                                  color: isDark
-                                      ? Colors.white38
-                                      : const Color(0xFF94A3B8),
-                                  fontSize: 13,
-                                ),
-                                border: InputBorder.none,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () {
-                            if (commentController.text.trim().isNotEmpty) {
-                              setModalState(() {
-                                comments.add({
-                                  'user': 'Anda',
-                                  'avatar':
-                                      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150',
-                                  'text': commentController.text.trim(),
-                                  'time': 'Sekarang',
-                                  'likes': 0,
-                                });
-                                post['comments'] = comments.length;
-                              });
-                              commentController.clear();
-                              setState(() {});
-                            }
-                          },
-                          child: Container(
-                            width: 38,
-                            height: 38,
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [Color(0xFF00E5FF), Color(0xFF0284C7)],
-                              ),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Center(
-                              child: HugeIcon(
-                                icon: HugeIcons.strokeRoundedArrowUp01,
-                                color: Colors.black,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
-  },
-);
+
     if (mounted) {
       setState(() => _isModalOrRouteOpen = false);
     }

@@ -9,6 +9,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../models/shop_data.dart';
 import '../../widgets/glass_toast.dart';
+import '../../widgets/pwa/pwa_install_banner.dart';
 import '../explore/business_store_view.dart';
 import '../explore/my_bookings_view.dart';
 import '../explore/qr_scanner_screen.dart';
@@ -274,6 +275,11 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
           child: CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
+              // PWA Mobile Web Add-To-Home-Screen Banner
+              const SliverToBoxAdapter(
+                child: PwaInstallBanner(),
+              ),
+
               // 1. Top Glass Header
               SliverToBoxAdapter(
                 child: Padding(

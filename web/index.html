@@ -157,6 +157,36 @@
       }
     });
   </script>
+  <script>
+    // PWA Install Prompt Capture for Ngam Web Mobile
+    window.deferredPWAInstallPrompt = null;
+    window.isPWAInstallAvailable = false;
+
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      window.deferredPWAInstallPrompt = e;
+      window.isPWAInstallAvailable = true;
+      window.dispatchEvent(new CustomEvent('pwa-install-ready'));
+    });
+
+    window.addEventListener('appinstalled', function () {
+      window.deferredPWAInstallPrompt = null;
+      window.isPWAInstallAvailable = false;
+      console.log('[PWA] Ngam App successfully installed.');
+    });
+
+    window.triggerPWAInstall = function () {
+      if (window.deferredPWAInstallPrompt) {
+        window.deferredPWAInstallPrompt.prompt();
+        window.deferredPWAInstallPrompt.userChoice.then(function (choiceResult) {
+          window.deferredPWAInstallPrompt = null;
+          window.isPWAInstallAvailable = false;
+        });
+        return true;
+      }
+      return false;
+    };
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

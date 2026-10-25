@@ -4,6 +4,7 @@ import 'package:ngam/widgets/glass_box.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/product_model.dart';
 import '../../widgets/glass_toast.dart';
+import '../../widgets/customer_payment_modal.dart';
 
 // ============================================================
 // CartItem Model
@@ -252,82 +253,36 @@ class _StoreCartViewState extends State<StoreCartView> {
       if (!mounted) return;
       setState(() => _isProcessing = false);
 
-      // Show Order Success Sheet
-      final isDark = Theme.of(context).brightness == Brightness.dark;
-      showModalBottomSheet(
+      // Open Chip Asia Payment Modal & Digital Receipt!
+      await CustomerPaymentModal.show(
         context: context,
-        backgroundColor: Colors.transparent,
-        isScrollControlled: true,
-        builder: (ctx) => Container(
-          padding: const EdgeInsets.all(28),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E2228) : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 68,
-                  height: 68,
-                  decoration: BoxDecoration(
-                    color: (_isPreOrder ? Colors.purpleAccent : Colors.green).withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: HugeIcon(
-                      icon: _isPreOrder ? HugeIcons.strokeRoundedClock01 : HugeIcons.strokeRoundedCheckmarkCircle02,
-                      color: _isPreOrder ? Colors.purpleAccent : Colors.green,
-                      size: 40,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  _isPreOrder ? 'Pesanan Awal (Pre-Order) Diterima!' : 'Order Placed Successfully!',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _isPreOrder
-                      ? 'Pesanan awal anda untuk ${widget.shop['name'] ?? 'kedai'} telah berjaya dihantar. Pihak peniaga akan menyediakan pesanan ini sebaik sahaja kedai dibuka.'
-                      : 'Your order with ${widget.shop['name'] ?? 'the store'} has been received. You will be notified when it is ready.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: isDark ? Colors.white70 : Colors.black54,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _isPreOrder ? Colors.deepPurpleAccent : Colors.blue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    ),
-                    onPressed: () {
-                      Navigator.pop(ctx); // Close modal
-                      widget.onClearCart?.call();
-                      Navigator.pop(context); // Return to store
-                    },
-                    child: const Text('Back to Store', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        amount: _total,
+        orderTitle: 'Pesanan #${orderId.length > 6 ? orderId.substring(0, 6).toUpperCase() : orderId} - ${widget.shop['name'] ?? 'Kedai'}',
+        shopName: widget.shop['name']?.toString() ?? 'Kedai Ngam',
+        orderId: orderId,
+        items: _items.map((i) => {
+          'name': i.product.name,
+          'qty': i.quantity,
+          'price': i.totalPrice,
+        }).toList(),
+        customerName: customerName,
+        onPaymentSuccess: (method, ref) async {
+          try {
+            await Supabase.instance.client.from('orders').update({
+              'status': 'paid',
+              'payment_method': method,
+              'payment_reference': ref,
+            }).eq('id', orderId);
+          } catch (e) {
+            debugPrint('[StoreCartView] Update order to paid note: $e');
+          }
+        },
       );
+
+      if (mounted) {
+        widget.onClearCart?.call();
+        Navigator.pop(context); // Return to store
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isProcessing = false);
