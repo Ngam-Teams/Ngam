@@ -622,6 +622,30 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         backgroundColor: scaffoldBg,
         body: Stack(
         children: [
+          // 0. Continuous Unified Ambient Mesh/Radial Gradient for Desktop
+          if (isDesktopLandscape)
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment.center,
+                    radius: 1.35,
+                    colors: isDark
+                        ? [
+                            const Color(0xFF1E293B), // Deep slate blue glow in center
+                            const Color(0xFF0F172A), // Dark slate
+                            const Color(0xFF0B0F17), // Edge
+                          ]
+                        : [
+                            const Color(0xFFE2E8F0), // Soft slate center
+                            const Color(0xFFF1F5F9), // Light studio slate
+                            const Color(0xFFF8FAFC), // Crisp light white
+                          ],
+                  ),
+                ),
+              ),
+            ),
+
           // 1. VERTICAL FULL SCREEN PAGEVIEW (TIKTOK STYLE)
           RefreshIndicator(
             color: const Color(0xFF00E5FF),
@@ -688,7 +712,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                 : PageView.builder(
                     controller: _pageController,
                     scrollDirection: Axis.vertical,
-                    physics: const AlwaysScrollableScrollPhysics(
+                    physics: const PageScrollPhysics(
                       parent: BouncingScrollPhysics(),
                     ),
                     onPageChanged: _onPageChanged,
@@ -977,30 +1001,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       return Stack(
         fit: StackFit.expand,
         children: [
-          // 1. Rich Themed Ambient Mesh/Radial Gradient (Never dead pitch black!)
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.center,
-                  radius: 1.35,
-                  colors: isDark
-                      ? [
-                          const Color(0xFF1E293B), // Deep slate blue glow in center
-                          const Color(0xFF0F172A), // Dark slate
-                          const Color(0xFF0B0F17), // Edge
-                        ]
-                      : [
-                          const Color(0xFFE2E8F0), // Soft slate center
-                          const Color(0xFFF1F5F9), // Light studio slate
-                          const Color(0xFFF8FAFC), // Crisp light white
-                        ],
-                ),
-              ),
-            ),
-          ),
-
-          // 2. Cinematic Ambient Blurred Glow from Store Avatar/Photo
+          // 1. Cinematic Ambient Blurred Glow from Store Avatar/Photo
           if (backdropImageUrl.isNotEmpty)
             Positioned.fill(
               child: Opacity(
