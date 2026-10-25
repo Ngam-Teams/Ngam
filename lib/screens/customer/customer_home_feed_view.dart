@@ -1450,8 +1450,8 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
           final Color catAccent = _getCategoryColor(cat);
           final String rating = shop['rating']?.toString() ?? '4.9';
           final String dist = _formatDistance(shop['distanceKm']);
-          final String img = shop['image'] ??
-              'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=400';
+          final String rawImg = (shop['image'] ?? shop['business_logo_url'] ?? '').toString();
+          final String img = rawImg.contains('photo-1503951914875-452162b0f3f1') ? '' : rawImg;
 
           return GestureDetector(
             onTap: () {
@@ -1487,17 +1487,54 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                         SizedBox(
                           height: 125,
                           width: double.infinity,
-                          child: CachedNetworkImage(
-                            imageUrl: img,
-                            fit: BoxFit.cover,
-                            placeholder: (_, __) => Container(
-                              color: isDark ? Colors.grey.shade900 : Colors.grey.shade300,
-                            ),
-                            errorWidget: (_, __, ___) => Container(
-                              color: isDark ? Colors.grey.shade900 : Colors.grey.shade300,
-                              child: const HugeIcon(icon: HugeIcons.strokeRoundedStore01, color: Colors.grey, size: 22),
-                            ),
-                          ),
+                          child: img.isNotEmpty
+                              ? CachedNetworkImage(
+                                  imageUrl: img,
+                                  fit: BoxFit.cover,
+                                  placeholder: (_, __) => Container(
+                                    color: isDark ? Colors.grey.shade900 : Colors.grey.shade300,
+                                  ),
+                                  errorWidget: (_, __, ___) => Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: isDark
+                                            ? [const Color(0xFF2A2B3D), const Color(0xFF161622)]
+                                            : [const Color(0xFF2563EB), const Color(0xFF1E40AF)],
+                                      ),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : 'S',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 32,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              : Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: isDark
+                                          ? [const Color(0xFF2A2B3D), const Color(0xFF161622)]
+                                          : [const Color(0xFF2563EB), const Color(0xFF1E40AF)],
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : 'S',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 32,
+                                    ),
+                                  ),
+                                ),
                         ),
                         // Dark overlay gradient
                         Container(

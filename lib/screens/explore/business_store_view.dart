@@ -62,14 +62,25 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
   int get _closeHour => _syncedCloseHour ?? widget.shop['closeHour'] ?? 22;
   int get _closeMinute => _syncedCloseMinute ?? widget.shop['closeMinute'] ?? 0;
   String get _coverUrl {
-    if (_syncedCoverUrl != null && _syncedCoverUrl!.isNotEmpty) {
-      return _syncedCoverUrl!;
+    if (_syncedCoverUrl != null && _syncedCoverUrl!.trim().isNotEmpty) {
+      final s = _syncedCoverUrl!.trim();
+      if (!s.contains('photo-1503951914875-452162b0f3f1')) return s;
     }
     final c = widget.shop['cover'] ?? widget.shop['business_cover_url'];
-    if (c != null && c.toString().isNotEmpty) {
-      return c.toString();
+    if (c != null && c.toString().trim().isNotEmpty) {
+      final s = c.toString().trim();
+      if (!s.contains('photo-1503951914875-452162b0f3f1')) return s;
     }
-    return widget.shop['image']?.toString() ?? '';
+    return '';
+  }
+
+  String get _logoUrl {
+    final l = widget.shop['business_logo_url'] ?? widget.shop['logo_url'] ?? widget.shop['image'];
+    if (l != null && l.toString().trim().isNotEmpty) {
+      final s = l.toString().trim();
+      if (!s.contains('photo-1503951914875-452162b0f3f1')) return s;
+    }
+    return '';
   }
 
   late AnimationController _fadeCtrl;
@@ -934,10 +945,9 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                         ],
                       ),
                       child: ClipOval(
-                        child: widget.shop['image'] != null &&
-                                widget.shop['image'].toString().isNotEmpty
+                        child: _logoUrl.isNotEmpty
                             ? Image.network(
-                                widget.shop['image'],
+                                _logoUrl,
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => _logoFallback(isDark),
                               )
@@ -1198,10 +1208,9 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                       ],
                     ),
                     child: ClipOval(
-                      child: widget.shop['image'] != null &&
-                              widget.shop['image'].toString().isNotEmpty
+                      child: _logoUrl.isNotEmpty
                           ? Image.network(
-                              widget.shop['image'],
+                              _logoUrl,
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => _logoFallback(isDark),
                             )
@@ -1625,16 +1634,28 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
   // ── Sub-widgets ──────────────────────────────────────────────
 
   Widget _logoFallback(bool isDark) {
+    final name = (widget.shop['name'] ?? widget.shop['business_name'] ?? 'Store').toString().trim();
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : 'N';
+
     return Container(
-      color: isDark
-          ? Colors.white.withValues(alpha: 0.08)
-          : Colors.blue.withValues(alpha: 0.12),
-      child: Center(
-        child: HugeIcon(
-          icon: HugeIcons.strokeRoundedStore01,
-          color: isDark ? Colors.white54 : Colors.blue,
-          size: 28,
-          strokeWidth: 2.0,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF2A2B3D),
+            Color(0xFF161622),
+          ],
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+          fontSize: 26,
         ),
       ),
     );

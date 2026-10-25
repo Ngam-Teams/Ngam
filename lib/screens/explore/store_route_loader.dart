@@ -163,9 +163,12 @@ class _StoreRouteLoaderState extends State<StoreRouteLoader> {
           (row['latitude'] as num?)?.toDouble() ?? 3.1390,
           (row['longitude'] as num?)?.toDouble() ?? 101.6869,
         ),
-        'image': row['business_logo_url'] ??
-            'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=300',
-        'cover': row['business_cover_url'] ?? row['business_logo_url'] ?? '',
+        'image': (row['business_logo_url'] as String?)?.isNotEmpty == true
+            ? row['business_logo_url']
+            : '',
+        'cover': (row['business_cover_url'] as String?)?.isNotEmpty == true
+            ? row['business_cover_url']
+            : '',
         'phone': row['business_phone'] ?? '',
         'address': row['address_line'] ?? row['business_city'] ?? '',
         'openHour': parsedOpenHour,
