@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 import '../../widgets/bottom_nav_customer.dart';
+import '../../widgets/customer_desktop_sidebar.dart';
 import 'customer_home_feed_view.dart';
 import 'customer_feed_screen.dart';
 import '../explore/explore_view.dart';
@@ -54,47 +55,80 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       _initializedPages[4] ? const ProfileScreen() : const SizedBox.shrink(),
     ];
 
-    return Scaffold(
-      extendBody: true,
-      resizeToAvoidBottomInset: false,
-      body: Stack(
-        children: [
-          IndexedStack(
-            index: _currentIndex,
-            children: pages,
-          ),
-          ValueListenableBuilder<bool>(
-            valueListenable: BottomNavCustomer.isVisible,
-            builder: (context, isVisible, child) {
-              return AnimatedPositioned(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeInOut,
-                left: 0,
-                right: 0,
-                bottom: isVisible ? 0 : -120,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 200),
-                  opacity: isVisible ? 1.0 : 0.0,
-                  child: IgnorePointer(
-                    ignoring: !isVisible,
-                    child: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 540),
-                        child: child,
-                      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isDesktop = constraints.maxWidth >= 800;
+
+        // Desktop / Landscape Layout (≥800px): Collapsible Modern Sidebar Rail
+        if (isDesktop) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          return Scaffold(
+            backgroundColor: isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8F9FA),
+            resizeToAvoidBottomInset: false,
+            body: SafeArea(
+              bottom: false,
+              child: Row(
+                children: [
+                  CustomerDesktopSidebar(
+                    selectedIndex: _currentIndex,
+                    onNavTap: _onTabTapped,
+                  ),
+                  Expanded(
+                    child: IndexedStack(
+                      index: _currentIndex,
+                      children: pages,
                     ),
                   ),
-                ),
-              );
-            },
-            child: BottomNavCustomer(
-              currentIndex: _currentIndex,
-              onTap: _onTabTapped,
+                ],
+              ),
             ),
+          );
+        }
+
+        // Mobile Layout (<800px): Floating BottomNavCustomer
+        return Scaffold(
+          extendBody: true,
+          resizeToAvoidBottomInset: false,
+          body: Stack(
+            children: [
+              IndexedStack(
+                index: _currentIndex,
+                children: pages,
+              ),
+              ValueListenableBuilder<bool>(
+                valueListenable: BottomNavCustomer.isVisible,
+                builder: (context, isVisible, child) {
+                  return AnimatedPositioned(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOut,
+                    left: 0,
+                    right: 0,
+                    bottom: isVisible ? 0 : -120,
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 200),
+                      opacity: isVisible ? 1.0 : 0.0,
+                      child: IgnorePointer(
+                        ignoring: !isVisible,
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 540),
+                            child: child,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                child: BottomNavCustomer(
+                  currentIndex: _currentIndex,
+                  onTap: _onTabTapped,
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

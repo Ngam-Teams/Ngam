@@ -256,6 +256,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isDesktop = MediaQuery.of(context).size.width >= 800;
     final Color bgGradStart = isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8F9FA);
     final Color bgGradEnd = isDark ? const Color(0xFF10101C) : const Color(0xFFF1F5F9);
 
@@ -273,7 +274,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
           bottom: false,
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 680),
+              constraints: BoxConstraints(maxWidth: isDesktop ? 780 : double.infinity),
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(),
                 slivers: [
@@ -414,8 +415,8 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                 ),
               ),
 
-              // Bottom Spacer to prevent floating navbar from obscuring content
-              const SliverToBoxAdapter(child: SizedBox(height: 130)),
+              // Bottom Spacer (Only on mobile so floating navbar doesn't obscure content)
+              SliverToBoxAdapter(child: SizedBox(height: isDesktop ? 40 : 130)),
             ],
           ),
         ),
