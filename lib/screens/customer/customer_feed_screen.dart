@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import 'dart:math' as math;
@@ -951,6 +952,15 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     final themeProvider = context.watch<ThemeProvider?>();
     final bool isDark = themeProvider?.isDarkMode ?? (Theme.of(context).brightness == Brightness.dark);
 
+    final String rawMedia = post['image']?.toString() ?? '';
+    final String cleanRawMedia = rawMedia.trim().toLowerCase();
+    final bool isVideoMedia = (post['mediaType'] == 'video' ||
+        cleanRawMedia.endsWith('.mp4') ||
+        cleanRawMedia.endsWith('.mov') ||
+        cleanRawMedia.endsWith('.webm') ||
+        cleanRawMedia.contains('/video/') ||
+        cleanRawMedia.contains('.mp4?')) && rawMedia.isNotEmpty;
+
     if (isDesktopLandscape) {
       // -------------------------------------------------------------
       // TIKTOK DESKTOP / LANDSCAPE MODE
@@ -960,8 +970,6 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       final double cardHeight = (screenHeight - 110).clamp(460.0, 780.0);
       final double cardWidth = (cardHeight * (9 / 16)).clamp(300.0, 460.0);
 
-      final String rawMedia = post['image']?.toString() ?? '';
-      final bool isVideoMedia = post['mediaType'] == 'video' || rawMedia.toLowerCase().endsWith('.mp4');
       final String backdropImageUrl = isVideoMedia
           ? (post['shopAvatar']?.toString() ?? '')
           : (rawMedia.isNotEmpty ? rawMedia : (post['shopAvatar']?.toString() ?? ''));
@@ -1140,7 +1148,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       children: [
         // 1. FULL SCREEN MEDIA / IMAGE (Interactive Double Tap for photo, handled by video player for video)
         GestureDetector(
-          onDoubleTapDown: (post['mediaType'] == 'video')
+          onDoubleTapDown: isVideoMedia
               ? null
               : (details) {
                   _handleDoubleTap(details.globalPosition, post);
@@ -2292,6 +2300,8 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
   bool _is2xSpeed = false;
   bool _isScrubbing = false;
   double _scrubRatio = 0.0;
+  bool _showPlayIndicator = false;
+  Timer? _playIndicatorTimer;
 
   @override
   void initState() {
@@ -2343,6 +2353,10 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
   @override
   void didUpdateWidget(covariant _FeedVideoPlayerItem oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.isCurrentPage != widget.isCurrentPage && !widget.isCurrentPage) {
+      _playIndicatorTimer?.cancel();
+      _showPlayIndicator = false;
+    }
     if (_isInitialized) {
       final shouldPlay = widget.isCurrentPage && !widget.isPausedExternally && !_isUserPaused;
 
@@ -2366,6 +2380,7 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
 
   @override
   void dispose() {
+    _playIndicatorTimer?.cancel();
     _controller.removeListener(_videoListener);
     _controller.pause();
     _controller.dispose();
@@ -2381,22 +2396,35 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
         if (mounted) {
           setState(() {
             _isUserPaused = true;
+            _showPlayIndicator = true;
           });
           widget.onPlayStateChanged?.call(false);
+          _playIndicatorTimer?.cancel();
+          _playIndicatorTimer = Timer(const Duration(milliseconds: 1800), () {
+            if (mounted) {
+              setState(() => _showPlayIndicator = false);
+            }
+          });
         }
       } else {
         await _controller.play();
         if (mounted) {
           setState(() {
             _isUserPaused = false;
+            _showPlayIndicator = true;
           });
           widget.onPlayStateChanged?.call(true);
+          _playIndicatorTimer?.cancel();
+          _playIndicatorTimer = Timer(const Duration(milliseconds: 600), () {
+            if (mounted) {
+              setState(() => _showPlayIndicator = false);
+            }
+          });
         }
       }
     } catch (e) {
       debugPrint('[FeedVideoPlayer] togglePlayPause error: $e');
     }
-
   }
 
   void _setSpeed(double speed) {
@@ -2647,41 +2675,45 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
             ),
           ),
 
-        // 4. Center Play Indicator (TikTok Signature: Large translucent Play triangle, visible ONLY when paused)
+        // 4. Center Play/Pause Indicator (TikTok Signature: Pops on tap, auto-fades out smoothly)
         IgnorePointer(
           child: Center(
             child: AnimatedScale(
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOutBack,
-              scale: (!_controller.value.isPlaying) ? 1.0 : 1.35,
+              scale: _showPlayIndicator ? 1.0 : 1.35,
               child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 180),
-                opacity: (!_controller.value.isPlaying) ? 0.92 : 0.0,
+                duration: const Duration(milliseconds: 240),
+                opacity: _showPlayIndicator ? 0.92 : 0.0,
                 child: Container(
                   width: 76,
                   height: 76,
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.4),
+                    color: Colors.black.withValues(alpha: 0.45),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.25),
+                      color: Colors.white.withValues(alpha: 0.3),
                       width: 1.5,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.45),
+                        color: Colors.black.withValues(alpha: 0.5),
                         blurRadius: 18,
                         offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Padding(
-                      padding: EdgeInsets.only(left: 4.0), // Optical center for triangle
+                      padding: EdgeInsets.only(
+                        left: (!_controller.value.isPlaying) ? 4.0 : 0.0,
+                      ),
                       child: Icon(
-                        Icons.play_arrow_rounded,
+                        _controller.value.isPlaying
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
                         color: Colors.white,
-                        size: 54,
+                        size: 52,
                       ),
                     ),
                   ),
@@ -2817,11 +2849,15 @@ class _LandscapeVideoFullscreenDialogState
   bool _isScrubbing = false;
   double _scrubRatio = 0.0;
   bool _is2x = false;
+  Timer? _hideControlsTimer;
+  double _buttonScale = 1.0;
 
   @override
   void initState() {
     super.initState();
     widget.controller.addListener(_listener);
+    // Auto-hide controls after 2.5 seconds upon entering landscape
+    _startHideControlsTimer(milliseconds: 2500);
   }
 
   void _listener() {
@@ -2830,8 +2866,52 @@ class _LandscapeVideoFullscreenDialogState
     }
   }
 
+  void _startHideControlsTimer({int milliseconds = 2500}) {
+    _hideControlsTimer?.cancel();
+    _hideControlsTimer = Timer(Duration(milliseconds: milliseconds), () {
+      if (mounted && !_isScrubbing) {
+        setState(() {
+          _showControls = false;
+        });
+      }
+    });
+  }
+
+  void _toggleControls() {
+    setState(() {
+      _showControls = !_showControls;
+      if (_showControls) {
+        _startHideControlsTimer();
+      } else {
+        _hideControlsTimer?.cancel();
+      }
+    });
+  }
+
+  void _togglePlayPause() {
+    HapticFeedback.lightImpact();
+    setState(() {
+      _buttonScale = 1.25;
+      if (widget.controller.value.isPlaying) {
+        widget.controller.pause();
+      } else {
+        widget.controller.play();
+      }
+    });
+
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (mounted) {
+        setState(() => _buttonScale = 1.0);
+      }
+    });
+
+    // Auto-hide controls after 1.8s whether paused or playing ("pause ke play ke still butang tu hilang lepas tu")
+    _startHideControlsTimer(milliseconds: 1800);
+  }
+
   @override
   void dispose() {
+    _hideControlsTimer?.cancel();
     widget.controller.removeListener(_listener);
     if (_is2x) {
       widget.controller.setPlaybackSpeed(1.0);
@@ -2850,6 +2930,7 @@ class _LandscapeVideoFullscreenDialogState
       _is2x = !_is2x;
       widget.controller.setPlaybackSpeed(_is2x ? 2.0 : 1.0);
     });
+    _startHideControlsTimer();
   }
 
   @override
@@ -2866,198 +2947,286 @@ class _LandscapeVideoFullscreenDialogState
 
     Widget content = Material(
       color: Colors.black,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => setState(() => _showControls = !_showControls),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Centered Landscape Video Player
-            Center(
-              child: AspectRatio(
-                aspectRatio: widget.controller.value.aspectRatio > 0
-                    ? widget.controller.value.aspectRatio
-                    : 16 / 9,
-                child: IgnorePointer(
-                  child: VideoPlayer(widget.controller),
-                ),
-              ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Centered Landscape Video Player
+          Center(
+            child: AspectRatio(
+              aspectRatio: widget.controller.value.aspectRatio > 0
+                  ? widget.controller.value.aspectRatio
+                  : 16 / 9,
+              child: VideoPlayer(widget.controller),
             ),
+          ),
 
-            // Controls Overlay
-            if (_showControls) ...[
-              // Top Bar: Close (X), Speed, Mute
-              Positioned(
-                top: 14,
-                left: 16,
-                right: 16,
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const HugeIcon(icon: HugeIcons.strokeRoundedCancel01, color: Colors.white, size: 24),
-                      style: IconButton.styleFrom(backgroundColor: Colors.black45),
-                      onPressed: () => Navigator.pop(context),
-                      tooltip: 'Tutup Skrin Penuh',
-                    ),
-                    const Spacer(),
-                    // 2X Speed Toggle Button
-                    GestureDetector(
-                      onTap: _toggleSpeed,
+          // Tap gesture over entire screen to toggle controls visibility
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _toggleControls,
+            ),
+          ),
+
+          // Controls Overlay with Smooth Fade Animation
+          AnimatedOpacity(
+            opacity: _showControls ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeInOut,
+            child: IgnorePointer(
+              ignoring: !_showControls,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Top Gradient Shadow
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 90,
+                    child: IgnorePointer(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: _is2x ? const Color(0xFF00E5FF) : Colors.black45,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white24),
-                        ),
-                        child: Text(
-                          _is2x ? '2X' : '1X',
-                          style: TextStyle(
-                            color: _is2x ? Colors.black : Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.75),
+                              Colors.transparent,
+                            ],
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    IconButton(
-                      icon: HugeIcon(
-                        icon: widget.isMuted ? HugeIcons.strokeRoundedVolumeOff : HugeIcons.strokeRoundedVolumeHigh,
-                        color: Colors.white,
-                        size: 22,
-                      ),
-                      style: IconButton.styleFrom(backgroundColor: Colors.black45),
-                      onPressed: widget.onToggleMute,
-                      tooltip: widget.isMuted ? 'Buka Suara' : 'Senyap',
-                    ),
-                  ],
-                ),
-              ),
-
-              // Center Big Play/Pause Button
-              Center(
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      if (widget.controller.value.isPlaying) {
-                        widget.controller.pause();
-                      } else {
-                        widget.controller.play();
-                      }
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.55),
-                      shape: BoxShape.circle,
-                    ),
-                    child: HugeIcon(
-                      icon: widget.controller.value.isPlaying
-                          ? HugeIcons.strokeRoundedPauseCircle
-                          : HugeIcons.strokeRoundedPlay,
-                      color: Colors.white,
-                      size: 52,
                     ),
                   ),
-                ),
-              ),
 
-              // Bottom Bar: Scrubber + Timestamps
-              Positioned(
-                bottom: 16,
-                left: 18,
-                right: 18,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_isScrubbing)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  // Bottom Gradient Shadow
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: 100,
+                    child: IgnorePointer(
+                      child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.black87,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white24),
-                        ),
-                        child: Text(
-                          '${_format(scrubTime)} / ${_format(duration)}',
-                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.85),
+                            ],
+                          ),
                         ),
                       ),
-                    Row(
+                    ),
+                  ),
+
+                  // Top Bar: Close (X), Speed, Mute
+                  Positioned(
+                    top: 14,
+                    left: 16,
+                    right: 16,
+                    child: Row(
                       children: [
-                        Text(
-                          _format(position),
-                          style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
+                        IconButton(
+                          icon: const HugeIcon(
+                            icon: HugeIcons.strokeRoundedCancel01,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          style: IconButton.styleFrom(backgroundColor: Colors.black54),
+                          onPressed: () => Navigator.pop(context),
+                          tooltip: 'Tutup Skrin Penuh',
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              final barW = constraints.maxWidth;
-                              return GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onHorizontalDragStart: (details) {
-                                  setState(() {
-                                    _isScrubbing = true;
-                                    _scrubRatio = (details.localPosition.dx / barW).clamp(0.0, 1.0);
-                                  });
-                                },
-                                onHorizontalDragUpdate: (details) {
-                                  setState(() {
-                                    _scrubRatio = (details.localPosition.dx / barW).clamp(0.0, 1.0);
-                                  });
-                                },
-                                onHorizontalDragEnd: (details) {
-                                  final ms = (duration.inMilliseconds * _scrubRatio).toInt();
-                                  widget.controller.seekTo(Duration(milliseconds: ms));
-                                  setState(() => _isScrubbing = false);
-                                },
-                                child: Container(
-                                  height: 24,
-                                  alignment: Alignment.center,
-                                  child: Stack(
-                                    alignment: Alignment.centerLeft,
-                                    children: [
-                                      Container(
-                                        height: 4,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white24,
-                                          borderRadius: BorderRadius.circular(2),
-                                        ),
-                                      ),
-                                      FractionallySizedBox(
-                                        widthFactor: currentRatio,
-                                        child: Container(
-                                          height: 4,
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF00E5FF),
-                                            borderRadius: BorderRadius.circular(2),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
+                        const Spacer(),
+                        // 2X Speed Toggle Button
+                        GestureDetector(
+                          onTap: _toggleSpeed,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: _is2x ? const Color(0xFF00E5FF) : Colors.black54,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.white24),
+                            ),
+                            child: Text(
+                              _is2x ? '2X' : '1X',
+                              style: TextStyle(
+                                color: _is2x ? Colors.black : Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),
-                        Text(
-                          _format(duration),
-                          style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
+                        IconButton(
+                          icon: HugeIcon(
+                            icon: widget.isMuted
+                                ? HugeIcons.strokeRoundedVolumeOff
+                                : HugeIcons.strokeRoundedVolumeHigh,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                          style: IconButton.styleFrom(backgroundColor: Colors.black54),
+                          onPressed: () {
+                            widget.onToggleMute();
+                            _startHideControlsTimer();
+                          },
+                          tooltip: widget.isMuted ? 'Buka Suara' : 'Senyap',
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+
+                  // Center Big Play/Pause Button
+                  Center(
+                    child: GestureDetector(
+                      onTap: _togglePlayPause,
+                      child: AnimatedScale(
+                        duration: const Duration(milliseconds: 150),
+                        curve: Curves.easeOutBack,
+                        scale: _buttonScale,
+                        child: Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.6),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.3),
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.5),
+                                blurRadius: 20,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: HugeIcon(
+                            icon: widget.controller.value.isPlaying
+                                ? HugeIcons.strokeRoundedPauseCircle
+                                : HugeIcons.strokeRoundedPlay,
+                            color: Colors.white,
+                            size: 48,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Bottom Bar: Scrubber + Timestamps
+                  Positioned(
+                    bottom: 16,
+                    left: 18,
+                    right: 18,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_isScrubbing)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black87,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.white24),
+                            ),
+                            child: Text(
+                              '${_format(scrubTime)} / ${_format(duration)}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        Row(
+                          children: [
+                            Text(
+                              _format(position),
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final barW = constraints.maxWidth;
+                                  return GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onHorizontalDragStart: (details) {
+                                      _hideControlsTimer?.cancel();
+                                      setState(() {
+                                        _isScrubbing = true;
+                                        _scrubRatio = (details.localPosition.dx / barW).clamp(0.0, 1.0);
+                                      });
+                                    },
+                                    onHorizontalDragUpdate: (details) {
+                                      setState(() {
+                                        _scrubRatio = (details.localPosition.dx / barW).clamp(0.0, 1.0);
+                                      });
+                                    },
+                                    onHorizontalDragEnd: (details) {
+                                      final ms = (duration.inMilliseconds * _scrubRatio).toInt();
+                                      widget.controller.seekTo(Duration(milliseconds: ms));
+                                      setState(() => _isScrubbing = false);
+                                      _startHideControlsTimer();
+                                    },
+                                    child: Container(
+                                      height: 24,
+                                      alignment: Alignment.center,
+                                      child: Stack(
+                                        alignment: Alignment.centerLeft,
+                                        children: [
+                                          Container(
+                                            height: 4,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white24,
+                                              borderRadius: BorderRadius.circular(2),
+                                            ),
+                                          ),
+                                          FractionallySizedBox(
+                                            widthFactor: currentRatio,
+                                            child: Container(
+                                              height: 4,
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF00E5FF),
+                                                borderRadius: BorderRadius.circular(2),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              _format(duration),
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ],
-        ),
+            ),
+          ),
+        ],
       ),
     );
 
@@ -3076,6 +3245,3 @@ class _LandscapeVideoFullscreenDialogState
     return content;
   }
 }
-
-
-
