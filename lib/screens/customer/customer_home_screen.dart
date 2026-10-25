@@ -45,6 +45,22 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     });
   }
 
+  /// Memastikan laman selain peta mempunyai anjakan (offset) mengikut kelebaran sidebar desktop
+  Widget _buildDesktopPaddedPage(int index, Widget page) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: CustomerDesktopSidebar.isExpandedNotifier,
+      builder: (context, isExpanded, _) {
+        final double sidebarWidth = isExpanded ? 256.0 : 88.0;
+        return AnimatedPadding(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOutCubic,
+          padding: EdgeInsets.only(left: sidebarWidth),
+          child: page,
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<Widget> pages = [
@@ -67,8 +83,27 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             resizeToAvoidBottomInset: false,
             body: Stack(
               children: [
-                // Ambient Aurora Glow behind the glass sidebar for authentic refraction
-                if (isDark) ...[
+                // 1. Full-screen Content Pages
+                Positioned.fill(
+                  child: IndexedStack(
+                    index: _currentIndex,
+                    children: [
+                      // Tab 0: Laman Utama (Home Feed)
+                      _buildDesktopPaddedPage(0, pages[0]),
+                      // Tab 1: Terokai Peta (ExploreView) — FULL BLEED EDGE-TO-EDGE UNDER FLOATING SIDEBAR!
+                      pages[1],
+                      // Tab 2: Ngam Feed (Reels)
+                      _buildDesktopPaddedPage(2, pages[2]),
+                      // Tab 3: Mesej (Chat)
+                      _buildDesktopPaddedPage(3, pages[3]),
+                      // Tab 4: Profil Saya (Profile)
+                      _buildDesktopPaddedPage(4, pages[4]),
+                    ],
+                  ),
+                ),
+
+                // Ambient Aurora Glow behind the glass sidebar for authentic refraction (only when NOT on map)
+                if (isDark && _currentIndex != 1) ...[
                   Positioned(
                     top: -60,
                     left: -60,
@@ -104,21 +139,18 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     ),
                   ),
                 ],
-                SafeArea(
-                  bottom: false,
-                  child: Row(
-                    children: [
-                      CustomerDesktopSidebar(
-                        selectedIndex: _currentIndex,
-                        onNavTap: _onTabTapped,
-                      ),
-                      Expanded(
-                        child: IndexedStack(
-                          index: _currentIndex,
-                          children: pages,
-                        ),
-                      ),
-                    ],
+
+                // 2. Floating Glassmorphic Sidebar (Floats right on top of the edge-to-edge map!)
+                Positioned(
+                  top: 0,
+                  bottom: 0,
+                  left: 0,
+                  child: SafeArea(
+                    bottom: false,
+                    child: CustomerDesktopSidebar(
+                      selectedIndex: _currentIndex,
+                      onNavTap: _onTabTapped,
+                    ),
                   ),
                 ),
               ],
