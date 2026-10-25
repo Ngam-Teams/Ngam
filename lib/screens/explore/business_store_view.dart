@@ -505,13 +505,1093 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
 
 
 
+  // ── Action Handlers ──────────────────────────────────────────
+
+  void _openBookings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BookingsView(
+          shopId: widget.shop['id']?.toString() ?? '1',
+          shopName: widget.shop['name'] ?? 'Store',
+          category: widget.shop['category']?.toString().toUpperCase() ?? 'SERVICE',
+          shopImage: widget.shop['image'] ?? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400',
+        ),
+      ),
+    );
+  }
+
+  void _openStoreInfo() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StoreInfoView(shop: {
+          ...widget.shop,
+          'openHour': _openHour,
+          'openMinute': _openMinute,
+          'closeHour': _closeHour,
+          'closeMinute': _closeMinute,
+          'cover': _coverUrl,
+          'operating_hours': _syncedOperatingHours ?? widget.shop['operating_hours'],
+        }),
+      ),
+    );
+  }
+
+  void _openReviews() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StoreReviewsView(shop: widget.shop),
+      ),
+    );
+  }
+
+  // ── Shared UI Helpers ────────────────────────────────────────
+
+  Widget _buildQuickActionButton({
+    required dynamic icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+    required bool isDark,
+    required Color textPrimary,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: _glassBox(
+        isDark: isDark,
+        radius: 16,
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            HugeIcon(icon: icon, color: color, size: 15),
+            const SizedBox(width: 4),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: textPrimary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTableBadge() {
+    if (widget.tableNumber == null || widget.tableNumber!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF00E676).withValues(alpha: 0.25),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF00E676),
+          width: 1.2,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const HugeIcon(icon: HugeIcons.strokeRoundedDesk01, color: Color(0xFF00E676), size: 14),
+          const SizedBox(width: 5),
+          Text(
+            'Meja #${widget.tableNumber} (Dine-In)',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar(bool isDark, Color textPrimary) {
+    return Row(
+      children: [
+        Expanded(
+          child: GlassContainer(
+            useOwnLayer: true,
+            quality: GlassQuality.standard,
+            shape: LiquidRoundedSuperellipse(borderRadius: 24),
+            settings: _glassSettings(isDark),
+            child: Container(
+              height: 50,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : Colors.white.withValues(alpha: 0.28),
+              ),
+              child: Row(
+                children: [
+                  HugeIcon(
+                    icon: HugeIcons.strokeRoundedSearch01,
+                    color: isDark ? Colors.white54 : const Color(0xFF3A3A3C).withValues(alpha: 0.5),
+                    size: 20,
+                    strokeWidth: 2.0,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (val) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BusinessProductsView(
+                              shopId: widget.shop['id']?.toString() ?? 'unknown',
+                              shopName: widget.shop['name'] ?? 'Store',
+                              initialSearchQuery: val,
+                            ),
+                          ),
+                        );
+                      },
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      cursorColor: textPrimary,
+                      decoration: InputDecoration(
+                        hintText: 'Search products...',
+                        hintStyle: TextStyle(
+                          color: isDark
+                              ? Colors.white38
+                              : const Color(0xFF3A3A3C).withValues(alpha: 0.45),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w400,
+                        ),
+                        border: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
+                        filled: false,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        _liquidGlassBox(
+          isDark: isDark,
+          radius: 100,
+          child: SizedBox(
+            width: 50,
+            height: 50,
+            child: Center(
+              child: HugeIcon(
+                icon: HugeIcons.strokeRoundedMoreHorizontal,
+                color: isDark ? Colors.white70 : Colors.black87,
+                size: 22,
+                strokeWidth: 2.0,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryChips(bool isDark) {
+    return SizedBox(
+      height: 38,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: _categories.length,
+        itemBuilder: (context, index) {
+          final cat = _categories[index];
+          final isSelected = _selectedCategory == cat;
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedCategory = cat;
+                _filterProducts();
+              });
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOut,
+              margin: const EdgeInsets.only(right: 10),
+              child: isSelected
+                  ? _liquidGlassBox(
+                      isDark: isDark,
+                      radius: 20,
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                      child: Text(
+                        cat,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    )
+                  : Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        cat,
+                        style: TextStyle(
+                          color: isDark
+                              ? Colors.white54
+                              : const Color(0xFF3A3A3C).withValues(alpha: 0.55),
+                          fontWeight: FontWeight.w500,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildProductsArea(
+    bool isDark,
+    Color textPrimary,
+    Color textSecondary, {
+    required double rightWidth,
+  }) {
+    if (_isLoading) {
+      return Shimmer.fromColors(
+        baseColor: isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.black.withValues(alpha: 0.05),
+        highlightColor: isDark
+            ? Colors.white.withValues(alpha: 0.1)
+            : Colors.black.withValues(alpha: 0.1),
+        child: MasonryGridView.count(
+          crossAxisCount: rightWidth > 650 ? 3 : 2,
+          mainAxisSpacing: 14,
+          crossAxisSpacing: 14,
+          itemCount: 6,
+          itemBuilder: (context, index) {
+            final double height = index.isEven ? 200.0 : 250.0;
+            return Container(
+              height: height,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
+    if (_filteredProducts.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            HugeIcon(
+              icon: HugeIcons.strokeRoundedShoppingBag01,
+              color: isDark ? Colors.white24 : Colors.black26,
+              size: 56,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No products available',
+              style: TextStyle(
+                color: isDark ? Colors.white54 : Colors.black54,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            if (_selectedCategory != 'All items') ...[
+              const SizedBox(height: 10),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _selectedCategory = 'All items';
+                    _filterProducts();
+                  });
+                },
+                child: const Text('View all items'),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    return MasonryGridView.count(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 40),
+      crossAxisCount: rightWidth > 750 ? 3 : 2,
+      mainAxisSpacing: 14,
+      crossAxisSpacing: 14,
+      itemCount: _filteredProducts.length,
+      itemBuilder: (context, index) {
+        return FadeTransition(
+          opacity: _fadeAnim,
+          child: _buildProductCard(
+            _filteredProducts[index],
+            isDark,
+            textPrimary,
+            textSecondary,
+            index,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStoreSidebarCard(bool isDark, Color textPrimary, Color textSecondary) {
+    final address = (widget.shop['address'] ?? widget.shop['address_line'] ?? '').toString();
+    final hasLocation = address.isNotEmpty;
+    final phone = (widget.shop['phone'] ?? widget.shop['contact'] ?? '').toString();
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.4),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.5),
+          width: 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 1. Cover Banner with Logo Avatar overlay
+            SizedBox(
+              height: 160,
+              width: double.infinity,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _coverUrl.isNotEmpty
+                      ? Image.network(
+                          _coverUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _buildCoverFallback(isDark),
+                        )
+                      : _buildCoverFallback(isDark),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.2),
+                          Colors.black.withValues(alpha: 0.8),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 14,
+                    left: 16,
+                    child: Container(
+                      width: 68,
+                      height: 68,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.45),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ClipOval(
+                        child: widget.shop['image'] != null &&
+                                widget.shop['image'].toString().isNotEmpty
+                            ? Image.network(
+                                widget.shop['image'],
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _logoFallback(isDark),
+                              )
+                            : _logoFallback(isDark),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 2. Info Body
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Welcome to',
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    widget.shop['name'] ?? 'Business',
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  if (widget.shop['category'] != null && widget.shop['category'].toString().isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.shop['category'].toString().toUpperCase(),
+                      style: const TextStyle(
+                        color: Color(0xFF42A5F5),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+
+                  // Status Badge
+                  GestureDetector(
+                    onTap: _openStoreInfo,
+                    child: _buildStatusBadge(isDark),
+                  ),
+
+                  if (widget.tableNumber != null && widget.tableNumber!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _buildTableBadge(),
+                  ],
+
+                  const SizedBox(height: 16),
+                  Divider(color: isDark ? Colors.white12 : Colors.black12, height: 1),
+                  const SizedBox(height: 16),
+
+                  // 3 Quick Action Buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildQuickActionButton(
+                          icon: HugeIcons.strokeRoundedCalendar03,
+                          label: 'Book Slot',
+                          color: Colors.blue,
+                          onTap: _openBookings,
+                          isDark: isDark,
+                          textPrimary: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildQuickActionButton(
+                          icon: HugeIcons.strokeRoundedInformationCircle,
+                          label: 'Info & Hours',
+                          color: Colors.blue,
+                          onTap: _openStoreInfo,
+                          isDark: isDark,
+                          textPrimary: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildQuickActionButton(
+                          icon: HugeIcons.strokeRoundedStar,
+                          label: 'Reviews',
+                          color: Colors.amber,
+                          onTap: _openReviews,
+                          isDark: isDark,
+                          textPrimary: textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Quick metadata summary (Hours, Location, Phone)
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.03),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.06),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            HugeIcon(
+                              icon: HugeIcons.strokeRoundedClock01,
+                              color: isDark ? Colors.white60 : Colors.black54,
+                              size: 15,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Hours: ${_formatTime(_openHour, _openMinute)} - ${_formatTime(_closeHour, _closeMinute)}',
+                                style: TextStyle(
+                                  color: textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (hasLocation) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              HugeIcon(
+                                icon: HugeIcons.strokeRoundedLocation01,
+                                color: isDark ? Colors.white60 : Colors.black54,
+                                size: 15,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  address,
+                                  style: TextStyle(
+                                    color: textSecondary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        if (phone.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              HugeIcon(
+                                icon: HugeIcons.strokeRoundedCall02,
+                                color: isDark ? Colors.white60 : Colors.black54,
+                                size: 15,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  phone,
+                                  style: TextStyle(
+                                    color: textSecondary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileHeroHeader(bool isDark, Color textPrimary, Color textSecondary) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: _coverUrl.isNotEmpty
+                  ? Image.network(
+                      _coverUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _buildCoverFallback(isDark),
+                    )
+                  : _buildCoverFallback(isDark),
+            ),
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.25),
+                      Colors.black.withValues(alpha: 0.78),
+                    ],
+                  ),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.35),
+                    width: 1.0,
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.4),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: widget.shop['image'] != null &&
+                              widget.shop['image'].toString().isNotEmpty
+                          ? Image.network(
+                              widget.shop['image'],
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _logoFallback(isDark),
+                            )
+                          : _logoFallback(isDark),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Welcome to',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            shadows: const [Shadow(color: Colors.black54, blurRadius: 4)],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          widget.shop['name'] ?? 'Business',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.3,
+                            shadows: [Shadow(color: Colors.black54, blurRadius: 6)],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (widget.tableNumber != null && widget.tableNumber!.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          _buildTableBadge(),
+                        ],
+                        const SizedBox(height: 8),
+                        GestureDetector(
+                          onTap: _openStoreInfo,
+                          child: _buildStatusBadge(isDark),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWideLayout(
+    BuildContext context,
+    bool isDark,
+    Color textPrimary,
+    Color textSecondary,
+    BoxConstraints constraints,
+  ) {
+    final double sidebarWidth = constraints.maxWidth < 950 ? 320.0 : 360.0;
+    final double rightWidth = constraints.maxWidth - sidebarWidth - 60.0;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 75, 20, 20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── LEFT SIDEBAR: Store Profile & Details ──
+          SizedBox(
+            width: sidebarWidth,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: _buildStoreSidebarCard(isDark, textPrimary, textSecondary),
+            ),
+          ),
+          const SizedBox(width: 20),
+
+          // ── RIGHT CONTENT: Search, Categories, Products ──
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSearchBar(isDark, textPrimary),
+                const SizedBox(height: 16),
+                _buildCategoryChips(isDark),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: _buildProductsArea(
+                    isDark,
+                    textPrimary,
+                    textSecondary,
+                    rightWidth: rightWidth,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout(
+    BuildContext context,
+    bool isDark,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        // 1. Header with cover, logo, name, status, 3 action buttons, search, category chips
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 75, 20, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildMobileHeroHeader(isDark, textPrimary, textSecondary),
+                const SizedBox(height: 16),
+                // 3 Quick action buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildQuickActionButton(
+                        icon: HugeIcons.strokeRoundedCalendar03,
+                        label: 'Book Slot',
+                        color: Colors.blue,
+                        onTap: _openBookings,
+                        isDark: isDark,
+                        textPrimary: textPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildQuickActionButton(
+                        icon: HugeIcons.strokeRoundedInformationCircle,
+                        label: 'Info & Hours',
+                        color: Colors.blue,
+                        onTap: _openStoreInfo,
+                        isDark: isDark,
+                        textPrimary: textPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildQuickActionButton(
+                        icon: HugeIcons.strokeRoundedStar,
+                        label: 'Reviews',
+                        color: Colors.amber,
+                        onTap: _openReviews,
+                        isDark: isDark,
+                        textPrimary: textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                // Search Bar
+                _buildSearchBar(isDark, textPrimary),
+                const SizedBox(height: 20),
+                // Category Chips
+                _buildCategoryChips(isDark),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        ),
+
+        // 2. Product Grid or Empty State
+        if (_isLoading)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+            sliver: SliverMasonryGrid.count(
+              crossAxisCount: 2,
+              mainAxisSpacing: 14,
+              crossAxisSpacing: 14,
+              childCount: 6,
+              itemBuilder: (context, index) {
+                final double height = index.isEven ? 200.0 : 250.0;
+                return Shimmer.fromColors(
+                  baseColor: isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.black.withValues(alpha: 0.05),
+                  highlightColor: isDark
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : Colors.black.withValues(alpha: 0.1),
+                  child: Container(
+                    height: height,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                );
+              },
+            ),
+          )
+        else if (_filteredProducts.isEmpty)
+          SliverFillRemaining(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  HugeIcon(
+                    icon: HugeIcons.strokeRoundedShoppingBag01,
+                    color: isDark ? Colors.white24 : Colors.black26,
+                    size: 48,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No products available',
+                    style: TextStyle(
+                      color: isDark ? Colors.white54 : Colors.black54,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+            sliver: SliverMasonryGrid.count(
+              crossAxisCount: 2,
+              mainAxisSpacing: 14,
+              crossAxisSpacing: 14,
+              childCount: _filteredProducts.length,
+              itemBuilder: (context, index) {
+                return FadeTransition(
+                  opacity: _fadeAnim,
+                  child: _buildProductCard(
+                    _filteredProducts[index],
+                    isDark,
+                    textPrimary,
+                    textSecondary,
+                    index,
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildFloatingTopBar(bool isDark) {
+    return Positioned(
+      top: 20,
+      left: 20,
+      right: 20,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: _liquidGlassBox(
+              isDark: isDark,
+              radius: 100,
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: Center(
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedArrowLeft01,
+                    color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                    size: 22,
+                    strokeWidth: 2.0,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          _liquidGlassBox(
+            isDark: isDark,
+            radius: 100,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Like button
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _isLiked = !_isLiked;
+                    });
+                  },
+                  child: SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: Center(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedFavourite,
+                          key: ValueKey(_isLiked),
+                          color: _isLiked ? Colors.red : (isDark ? Colors.white : const Color(0xFF1C1C1E)),
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Cart button
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => StoreCartView(
+                          shop: widget.shop,
+                          cartItems: _cart,
+                          tableNumber: widget.tableNumber,
+                          promoCode: widget.promoCode,
+                          isStoreOpen: _status == _StoreStatus.open || _status == _StoreStatus.closingSoon,
+                          storeStatusText: _statusText,
+                          isHoliday: _status == _StoreStatus.holiday,
+                          onUpdateQuantity: (product, delta) {
+                            setState(() {
+                              final idx = _cart.indexWhere((c) => c.product.id == product.id);
+                              if (idx >= 0) {
+                                _cart[idx].quantity += delta;
+                                if (_cart[idx].quantity <= 0) _cart.removeAt(idx);
+                              }
+                            });
+                          },
+                          onClearCart: () => setState(() => _cart.clear()),
+                        ),
+                      ),
+                    );
+                  },
+                  child: SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        HugeIcon(
+                          icon: HugeIcons.strokeRoundedShoppingBag01,
+                          color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                          size: 22,
+                          strokeWidth: 2.0,
+                        ),
+                        if (_cartItemCount > 0)
+                          Positioned(
+                            right: 6,
+                            top: 6,
+                            child: Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: const BoxDecoration(
+                                color: Colors.blue,
+                                shape: BoxShape.circle,
+                              ),
+                              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                              child: Text(
+                                '$_cartItemCount',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Build ────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color textPrimary =
-        isDark ? Colors.white : const Color(0xFF1C1C1E);
+    final Color textPrimary = isDark ? Colors.white : const Color(0xFF1C1C1E);
     final Color textSecondary = isDark
         ? Colors.white60
         : const Color(0xFF3A3A3C).withValues(alpha: 0.7);
@@ -520,718 +1600,26 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SizedBox.expand(
         child: SafeArea(
-          child: Stack(
-            children: [
-              CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  // ── 1. HEADER WITH BUSINESS COVER BANNER ───────────
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 75, 20, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          //  Hero Cover Card with Logo, Name & Status Badge
-                          Container(
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
-                                  blurRadius: 18,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(24),
-                              child: Stack(
-                                children: [
-                                  // Background Cover Image
-                                  Positioned.fill(
-                                    child: _coverUrl.isNotEmpty
-                                        ? Image.network(
-                                            _coverUrl,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) => _buildCoverFallback(isDark),
-                                          )
-                                        : _buildCoverFallback(isDark),
-                                  ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= 768;
 
-                                  // Gradient & Frosted Overlay for optimal contrast
-                                  Positioned.fill(
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topCenter,
-                                          end: Alignment.bottomCenter,
-                                          colors: [
-                                            Colors.black.withValues(alpha: 0.25),
-                                            Colors.black.withValues(alpha: 0.78),
-                                          ],
-                                        ),
-                                        border: Border.all(
-                                          color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.35),
-                                          width: 1.0,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
+              return Stack(
+                children: [
+                  if (isWide)
+                    _buildWideLayout(context, isDark, textPrimary, textSecondary, constraints)
+                  else
+                    _buildMobileLayout(context, isDark, textPrimary, textSecondary),
 
-                                  // Content: Logo + Info
-                                  Padding(
-                                    padding: const EdgeInsets.all(18),
-                                    child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      children: [
-                                        // Business Logo Avatar with crisp glass/white border
-                                        Container(
-                                          width: 70,
-                                          height: 70,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: Colors.white,
-                                              width: 2.5,
-                                            ),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withValues(alpha: 0.4),
-                                                blurRadius: 10,
-                                                offset: const Offset(0, 4),
-                                              ),
-                                            ],
-                                          ),
-                                          child: ClipOval(
-                                            child: widget.shop['image'] != null &&
-                                                    widget.shop['image'].toString().isNotEmpty
-                                                ? Image.network(
-                                                    widget.shop['image'],
-                                                    fit: BoxFit.cover,
-                                                    errorBuilder: (_, __, ___) => _logoFallback(isDark),
-                                                  )
-                                                : _logoFallback(isDark),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 14),
-
-                                        // Business Name, Welcome & Status
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text(
-                                                'Welcome to',
-                                                style: TextStyle(
-                                                  color: Colors.white.withValues(alpha: 0.85),
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w600,
-                                                  shadows: const [
-                                                    Shadow(color: Colors.black54, blurRadius: 4),
-                                                  ],
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                widget.shop['name'] ?? 'Business',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 20,
-                                                  fontWeight: FontWeight.w900,
-                                                  letterSpacing: -0.3,
-                                                  shadows: [
-                                                    Shadow(color: Colors.black54, blurRadius: 6),
-                                                  ],
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              if (widget.tableNumber != null && widget.tableNumber!.isNotEmpty) ...[
-                                                const SizedBox(height: 6),
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                                  decoration: BoxDecoration(
-                                                    color: const Color(0xFF00E676).withValues(alpha: 0.25),
-                                                    borderRadius: BorderRadius.circular(20),
-                                                    border: Border.all(
-                                                      color: const Color(0xFF00E676),
-                                                      width: 1.2,
-                                                    ),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisSize: MainAxisSize.min,
-                                                    children: [
-                                                      const HugeIcon(icon: HugeIcons.strokeRoundedDesk01, color: Color(0xFF00E676), size: 14),
-                                                      const SizedBox(width: 5),
-                                                      Text(
-                                                        'Meja #${widget.tableNumber} (Dine-In)',
-                                                        style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontWeight: FontWeight.bold,
-                                                          fontSize: 11,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                              const SizedBox(height: 8),
-                                              GestureDetector(
-                                                onTap: () {
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (_) => StoreInfoView(shop: {
-                                                        ...widget.shop,
-                                                        'openHour': _openHour,
-                                                        'openMinute': _openMinute,
-                                                        'closeHour': _closeHour,
-                                                        'closeMinute': _closeMinute,
-                                                        'cover': _coverUrl,
-                                                        'operating_hours': _syncedOperatingHours ?? widget.shop['operating_hours'],
-                                                      }),
-                                                    ),
-                                                  );
-                                                },
-                                                child: _buildStatusBadge(isDark),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          // ── 3 QUICK REDIRECTION CARDS ──
-                          Row(
-                            children: [
-                              // 1. Book Service
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => BookingsView(
-                                          shopId: widget.shop['id']?.toString() ?? '1',
-                                          shopName: widget.shop['name'] ?? 'Store',
-                                          category: widget.shop['category']?.toString().toUpperCase() ?? 'SERVICE',
-                                          shopImage: widget.shop['image'] ?? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400',
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  child: _glassBox(
-                                    isDark: isDark,
-                                    radius: 16,
-                                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        const HugeIcon(icon: HugeIcons.strokeRoundedCalendar03, color: Colors.blue, size: 15),
-                                        const SizedBox(width: 4),
-                                        Flexible(
-                                          child: FittedBox(
-                                            fit: BoxFit.scaleDown,
-                                            child: Text(
-                                              'Book Slot',
-                                              style: TextStyle(
-                                                color: textPrimary,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // 2. Store Info
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => StoreInfoView(shop: {
-                                          ...widget.shop,
-                                          'openHour': _openHour,
-                                          'openMinute': _openMinute,
-                                          'closeHour': _closeHour,
-                                          'closeMinute': _closeMinute,
-                                          'cover': _coverUrl,
-                                          'operating_hours': _syncedOperatingHours ?? widget.shop['operating_hours'],
-                                        }),
-                                      ),
-                                    );
-                                  },
-                                  child: _glassBox(
-                                    isDark: isDark,
-                                    radius: 16,
-                                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        const HugeIcon(icon: HugeIcons.strokeRoundedInformationCircle, color: Colors.blue, size: 15),
-                                        const SizedBox(width: 4),
-                                        Flexible(
-                                          child: FittedBox(
-                                            fit: BoxFit.scaleDown,
-                                            child: Text(
-                                              'Info & Hours',
-                                              style: TextStyle(
-                                                color: textPrimary,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // 3. Reviews
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => StoreReviewsView(shop: widget.shop),
-                                      ),
-                                    );
-                                  },
-                                  child: _glassBox(
-                                    isDark: isDark,
-                                    radius: 16,
-                                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        const HugeIcon(icon: HugeIcons.strokeRoundedStar, color: Colors.amber, size: 16),
-                                        const SizedBox(width: 4),
-                                        Flexible(
-                                          child: FittedBox(
-                                            fit: BoxFit.scaleDown,
-                                            child: Text(
-                                              'Reviews',
-                                              style: TextStyle(
-                                                color: textPrimary,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // ── 2. SEARCH BAR → navigates to BusinessProductsView
-                          Row(
-                            children: [
-                              Expanded(
-                                child: GlassContainer(
-                              useOwnLayer: true,
-                              quality: GlassQuality.standard,
-                              shape: LiquidRoundedSuperellipse(borderRadius: 24),
-                              settings: _glassSettings(isDark),
-                              child: Container(
-                                height: 50,
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(24),
-                                  color: isDark
-                                      ? Colors.white.withValues(alpha: 0.06)
-                                      : Colors.white.withValues(alpha: 0.28),
-                                ),
-                                child: Row(
-                                  children: [
-                                    HugeIcon(
-                                      icon: HugeIcons.strokeRoundedSearch01,
-                                      color: isDark
-                                          ? Colors.white54
-                                          : const Color(0xFF3A3A3C)
-                                              .withValues(alpha: 0.5),
-                                      size: 20,
-                                      strokeWidth: 2.0,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: TextField(
-                                        textInputAction: TextInputAction.search,
-                                        onSubmitted: (val) {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) => BusinessProductsView(
-                                                shopId: widget.shop['id']?.toString() ?? 'unknown',
-                                                shopName: widget.shop['name'] ?? 'Store',
-                                                initialSearchQuery: val,
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                        style: TextStyle(
-                                          color: textPrimary,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                        cursorColor: textPrimary,
-                                        decoration: InputDecoration(
-                                          hintText: 'Search products...',
-                                          hintStyle: TextStyle(
-                                            color: isDark
-                                                ? Colors.white38
-                                                : const Color(0xFF3A3A3C)
-                                                    .withValues(alpha: 0.45),
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w400,
-                                          ),
-                                          border: InputBorder.none,
-                                          focusedBorder: InputBorder.none,
-                                          enabledBorder: InputBorder.none,
-                                          errorBorder: InputBorder.none,
-                                          disabledBorder: InputBorder.none,
-                                          filled: false,
-                                          isDense: true,
-                                          contentPadding: EdgeInsets.zero,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          _liquidGlassBox(
-                            isDark: isDark,
-                            radius: 100,
-                            child: SizedBox(
-                              width: 50,
-                              height: 50,
-                              child: Center(
-                                child: HugeIcon(
-                                  icon: HugeIcons.strokeRoundedMoreHorizontal,
-                                  color: isDark ? Colors.white70 : Colors.black87,
-                                  size: 22,
-                                  strokeWidth: 2.0,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // ── 3. CATEGORY CHIPS ─────────────────────────────
-                      SizedBox(
-                        height: 38,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          physics: const BouncingScrollPhysics(),
-                          itemCount: _categories.length,
-                          itemBuilder: (context, index) {
-                            final cat = _categories[index];
-                            final isSelected = _selectedCategory == cat;
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _selectedCategory = cat;
-                                  _filterProducts();
-                                });
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 250),
-                                curve: Curves.easeOut,
-                                margin: const EdgeInsets.only(right: 10),
-                                child: isSelected
-                                    ? _liquidGlassBox(
-                                        isDark: isDark,
-                                        radius: 20,
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 18, vertical: 8),
-                                        child: Text(
-                                          cat,
-                                          style: TextStyle(
-                                            color: isDark
-                                                ? Colors.white
-                                                : const Color(0xFF1C1C1E),
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      )
-                                    : Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 18, vertical: 8),
-                                        decoration: BoxDecoration(
-                                          color: Colors.transparent,
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                        ),
-                                        child: Text(
-                                          cat,
-                                          style: TextStyle(
-                                            color: isDark
-                                                ? Colors.white54
-                                                : const Color(0xFF3A3A3C)
-                                                    .withValues(alpha: 0.55),
-                                            fontWeight: FontWeight.w500,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-                    ],
-                  ),
-                ),
-              ),
-
-              // ── 4. PRODUCT GRID ────────────────────────────────
-              if (_isLoading)
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                  sliver: SliverMasonryGrid.count(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 14,
-                    crossAxisSpacing: 14,
-                    childCount: 6,
-                    itemBuilder: (context, index) {
-                      final double height = index.isEven ? 200.0 : 250.0;
-                      return Shimmer.fromColors(
-                        baseColor: isDark
-                            ? Colors.white.withValues(alpha: 0.05)
-                            : Colors.black.withValues(alpha: 0.05),
-                        highlightColor: isDark
-                            ? Colors.white.withValues(alpha: 0.1)
-                            : Colors.black.withValues(alpha: 0.1),
-                        child: Container(
-                          height: height,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                )
-              else if (_filteredProducts.isEmpty)
-                SliverFillRemaining(
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        HugeIcon(
-                          icon: HugeIcons.strokeRoundedShoppingBag01,
-                          color: isDark ? Colors.white24 : Colors.black26,
-                          size: 48,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No products available',
-                          style: TextStyle(
-                            color: isDark ? Colors.white54 : Colors.black54,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                  sliver: SliverMasonryGrid.count(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 14,
-                    crossAxisSpacing: 14,
-                    childCount: _filteredProducts.length,
-                    itemBuilder: (context, index) {
-                      return FadeTransition(
-                        opacity: _fadeAnim,
-                        child: _buildProductCard(
-                          _filteredProducts[index],
-                          isDark,
-                          textPrimary,
-                          textSecondary,
-                          index,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-            ],
+                  // Floating top bar
+                  _buildFloatingTopBar(isDark),
+                ],
+              );
+            },
           ),
-          
-          // ── FLOATING TOP BAR (Nav Back + Cart) ──
-          Positioned(
-            top: 20,
-            left: 20,
-            right: 20,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: _liquidGlassBox(
-                    isDark: isDark,
-                    radius: 100,
-                    child: SizedBox(
-                      width: 44,
-                      height: 44,
-                      child: Center(
-                        child: HugeIcon(
-                          icon: HugeIcons.strokeRoundedArrowLeft01,
-                          color: isDark ? Colors.white : const Color(0xFF1C1C1E),
-                          size: 22,
-                          strokeWidth: 2.0,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                _liquidGlassBox(
-                  isDark: isDark,
-                  radius: 100,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Like button
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _isLiked = !_isLiked;
-                          });
-                        },
-                        child: SizedBox(
-                          width: 44,
-                          height: 44,
-                          child: Center(
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 300),
-                              transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-                              child: HugeIcon(
-                                  icon: HugeIcons.strokeRoundedFavourite,
-                                  key: ValueKey(_isLiked),
-                                  color: _isLiked ? Colors.red : (isDark ? Colors.white : const Color(0xFF1C1C1E)),
-                                  size: 22,
-                                ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Divider removed as per user request
-                      // Cart button
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => StoreCartView(
-                                shop: widget.shop,
-                                cartItems: _cart,
-                                tableNumber: widget.tableNumber,
-                                promoCode: widget.promoCode,
-                                isStoreOpen: _status == _StoreStatus.open || _status == _StoreStatus.closingSoon,
-                                storeStatusText: _statusText,
-                                isHoliday: _status == _StoreStatus.holiday,
-                                onUpdateQuantity: (product, delta) {
-                                  setState(() {
-                                    final idx = _cart.indexWhere((c) => c.product.id == product.id);
-                                    if (idx >= 0) {
-                                      _cart[idx].quantity += delta;
-                                      if (_cart[idx].quantity <= 0) _cart.removeAt(idx);
-                                    }
-                                  });
-                                },
-                                onClearCart: () => setState(() => _cart.clear()),
-                              ),
-                            ),
-                          );
-                        },
-                        child: SizedBox(
-                          width: 44,
-                          height: 44,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              HugeIcon(
-                                icon: HugeIcons.strokeRoundedShoppingBag01,
-                                color: isDark ? Colors.white : const Color(0xFF1C1C1E),
-                                size: 22,
-                                strokeWidth: 2.0,
-                              ),
-                              if (_cartItemCount > 0)
-                                Positioned(
-                                  right: 6,
-                                  top: 6,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(3),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.blue,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                                    child: Text(
-                                      '$_cartItemCount',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
-    ),
-  ),
-);
+    );
   }
 
   // ── Sub-widgets ──────────────────────────────────────────────
