@@ -45,6 +45,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   bool _isMuted = _persistedIsMuted; // Unmuted by default so videos play with full sound!
   bool _isModalOrRouteOpen = false;
   bool _isVideoPlaying = true;
+  Map<String, dynamic>? _desktopCommentsPost; // TikTok/IG desktop right-side comments panel
 
   // Double-tap heart animation items
   final List<_FloatingHeart> _hearts = [];
@@ -482,6 +483,9 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     setState(() {
       _currentPage = index;
       _isVideoPlaying = true;
+      if (_desktopCommentsPost != null && index >= 0 && index < _posts.length) {
+        _desktopCommentsPost = _posts[index];
+      }
     });
     if (index >= 0 && index < _posts.length) {
       final post = _posts[index];
@@ -734,10 +738,14 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           ..._hearts,
 
           // 3. TOP NAVIGATION OVERLAY (Header + FYP & Nearby Tabs)
-          Positioned(
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
             top: safeTop > 0 ? safeTop + 6 : 14,
             left: 0,
-            right: 0,
+            right: (isDesktopLandscape && _desktopCommentsPost != null)
+                ? (screenWidth * 0.32).clamp(380.0, 460.0)
+                : 0,
             child: Center(
               child: ConstrainedBox(
                 constraints: BoxConstraints(
@@ -814,7 +822,10 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                           children: [
                             GestureDetector(
                               onTap: () {
-                                setState(() => _activeTopTab = 0);
+                                setState(() {
+                                  _activeTopTab = 0;
+                                  _desktopCommentsPost = null;
+                                });
                                 showGlassToast(
                                   context,
                                   'Menapis pos dalam radius 10KM',
@@ -854,7 +865,10 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                             ),
                             GestureDetector(
                               onTap: () {
-                                setState(() => _activeTopTab = 1);
+                                setState(() {
+                                  _activeTopTab = 1;
+                                  _desktopCommentsPost = null;
+                                });
                                 showGlassToast(
                                   context,
                                   'Memaparkan pos paling trending',
@@ -929,8 +943,12 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
 
           // 4. DESKTOP NAVIGATION ARROWS (TIKTOK STYLE)
           if (isDesktopLandscape && _posts.length > 1)
-            Positioned(
-              right: 28,
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutCubic,
+              right: (_desktopCommentsPost != null
+                  ? ((screenWidth * 0.32).clamp(380.0, 460.0) + 20)
+                  : 28),
               top: 0,
               bottom: 0,
               child: Center(
@@ -965,6 +983,56 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                   ],
                 ),
               ),
+            ),
+
+          // 5. DESKTOP RIGHT-SIDE SLIDING COMMENTS PANEL (TIKTOK & INSTAGRAM REELS STYLE)
+          if (isDesktopLandscape)
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutCubic,
+              top: 0,
+              bottom: 0,
+              right: _desktopCommentsPost != null
+                  ? 0
+                  : -((screenWidth * 0.32).clamp(380.0, 460.0) + 30),
+              width: (screenWidth * 0.32).clamp(380.0, 460.0),
+              child: _desktopCommentsPost != null
+                  ? Container(
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF10141B) : Colors.white,
+                        border: Border(
+                          left: BorderSide(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.1)
+                                : Colors.black.withValues(alpha: 0.08),
+                            width: 1.2,
+                          ),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isDark
+                                ? Colors.black.withValues(alpha: 0.5)
+                                : Colors.black.withValues(alpha: 0.12),
+                            blurRadius: 24,
+                            offset: const Offset(-8, 0),
+                          ),
+                        ],
+                      ),
+                      child: _FeedCommentsView(
+                        key: ValueKey('desktop_comments_${_desktopCommentsPost!['id']}'),
+                        post: _desktopCommentsPost!,
+                        isDesktop: true,
+                        onClose: () => setState(() => _desktopCommentsPost = null),
+                        onCommentCountChanged: (count) {
+                          if (mounted) {
+                            setState(() {
+                              _desktopCommentsPost!['comments'] = count;
+                            });
+                          }
+                        },
+                      ),
+                    )
+                  : const SizedBox.shrink(),
             ),
         ],
       ),
@@ -1001,7 +1069,12 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       final double bottomOffset = 10.0;
       final double availableHeight = screenHeight - topNavOffset - bottomOffset;
       final double cardHeight = availableHeight.clamp(480.0, 1150.0);
-      final double cardWidth = (cardHeight * (9 / 16)).clamp(280.0, screenWidth * 0.52);
+      final double commentsPanelWidth = (screenWidth * 0.32).clamp(380.0, 460.0);
+      final double rightContentOffset = _desktopCommentsPost != null ? commentsPanelWidth : 0.0;
+      final double cardWidth = (cardHeight * (9 / 16)).clamp(
+        280.0,
+        (screenWidth - rightContentOffset) * 0.52,
+      );
 
       final String backdropImageUrl = isVideoMedia
           ? (post['shopAvatar']?.toString() ?? '')
@@ -1010,28 +1083,36 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       return Stack(
         fit: StackFit.expand,
         children: [
-          // 1. Cinematic Ambient Blurred Glow from Store Avatar/Photo
+          // 1. Cinematic Ambient Blurred Glow from Store Avatar/Photo (Tap outside to close comments panel)
           if (backdropImageUrl.isNotEmpty)
             Positioned.fill(
-              child: Opacity(
-                opacity: isDark ? 0.38 : 0.22,
-                child: ImageFiltered(
-                  imageFilter: ui.ImageFilter.blur(sigmaX: 65, sigmaY: 65),
-                  child: CachedNetworkImage(
-                    imageUrl: backdropImageUrl,
-                    fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) => const SizedBox.shrink(),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _desktopCommentsPost != null
+                    ? () => setState(() => _desktopCommentsPost = null)
+                    : null,
+                child: Opacity(
+                  opacity: isDark ? 0.38 : 0.22,
+                  child: ImageFiltered(
+                    imageFilter: ui.ImageFilter.blur(sigmaX: 65, sigmaY: 65),
+                    child: CachedNetworkImage(
+                      imageUrl: backdropImageUrl,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                    ),
                   ),
                 ),
               ),
             ),
 
           // 2. Centered Video Card + Action Bar Right Beside It
-          Positioned(
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
             top: topNavOffset,
             bottom: bottomOffset,
             left: 0,
-            right: 0,
+            right: rightContentOffset,
             child: Center(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1434,6 +1515,9 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     final int likes = post['likes'] ?? 0;
     final int comments = post['comments'] ?? 0;
     final double actionSpacing = isShortPhone ? 10 : (isDesktop ? 16 : 14);
+    final bool isCommentsActive = isDesktop &&
+        _desktopCommentsPost != null &&
+        _desktopCommentsPost!['id'] == post['id'];
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -1517,14 +1601,15 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
 
         SizedBox(height: actionSpacing),
 
-        // Comment Action
+        // Comment Action (TikTok & IG Style: Right docked panel on desktop, bottom sheet on mobile)
         _buildRightActionButton(
           hugeIcon: HugeIcons.strokeRoundedComment01,
+          iconColor: isCommentsActive ? const Color(0xFF00E5FF) : Colors.white,
           label: '$comments',
           isCompact: isShortPhone,
           isDesktop: isDesktop,
           isDark: isDark,
-          onTap: () => _showCommentsModal(context, post),
+          onTap: () => _toggleComments(post),
         ),
 
         SizedBox(height: actionSpacing),
@@ -1712,465 +1797,635 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     );
   }
 
-  // --- COMMENTS MODAL SHEET ---
-  Future<void> _showCommentsModal(BuildContext context, Map<String, dynamic> post) async {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final String postId = post['id']?.toString() ?? '';
-    final TextEditingController commentController = TextEditingController();
+  // --- COMMENTS MANAGEMENT (TIKTOK & INSTAGRAM REELS DOCKED RIGHT PANEL ON DESKTOP / BOTTOM SHEET ON MOBILE) ---
+  void _toggleComments(Map<String, dynamic> post) {
+    final double screenWidth = MediaQuery.sizeOf(context).width;
+    final bool isDesktop = screenWidth > 700;
+    if (isDesktop) {
+      setState(() {
+        if (_desktopCommentsPost != null && _desktopCommentsPost!['id'] == post['id']) {
+          _desktopCommentsPost = null; // Tutup panel jika klik pos yang sama
+        } else {
+          _desktopCommentsPost = post; // Buka panel di sebelah kanan ikut TikTok/IG Reels
+        }
+      });
+    } else {
+      _showCommentsBottomSheet(context, post);
+    }
+  }
 
-    // Inisialisasi senarai komen (ambil dari post sedia ada atau senarai kosong)
-    final List<Map<String, dynamic>> comments = List<Map<String, dynamic>>.from(
-      (post['commentList'] as List? ?? []).map((e) => Map<String, dynamic>.from(e as Map)),
-    );
-
-    bool isLoadingLiveComments = false;
-
+  Future<void> _showCommentsBottomSheet(BuildContext context, Map<String, dynamic> post) async {
     setState(() => _isModalOrRouteOpen = true);
-
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            // Muat turun komen masa nyata dari Supabase jika ada ID pos yang sah
-            void fetchLiveComments() async {
-              if (postId.length > 20 && !isLoadingLiveComments && comments.isEmpty) {
-                setModalState(() => isLoadingLiveComments = true);
-                try {
-                  final dbRes = await Supabase.instance.client
-                      .from('feed_comments')
-                      .select()
-                      .eq('post_id', postId)
-                      .order('created_at', ascending: false)
-                      .limit(60);
-
-                  if (dbRes.isNotEmpty) {
-                    final List<Map<String, dynamic>> loadedDb = [];
-                    for (final row in dbRes) {
-                      final rawDate = row['created_at']?.toString() ?? '';
-                      DateTime dt;
-                      if (!rawDate.endsWith('Z') && !rawDate.contains('+') && rawDate.contains('T')) {
-                        dt = DateTime.tryParse('${rawDate}Z')?.toLocal() ?? DateTime.now();
-                      } else {
-                        dt = DateTime.tryParse(rawDate)?.toLocal() ?? DateTime.now();
-                      }
-                      final diff = DateTime.now().difference(dt);
-                      String timeAgo;
-                      if (diff.inSeconds < 60) {
-                        timeAgo = 'Baru saja';
-                      } else if (diff.inMinutes < 60) {
-                        timeAgo = '${diff.inMinutes}m lepas';
-                      } else if (diff.inHours < 24) {
-                        timeAgo = '${diff.inHours}j lepas';
-                      } else {
-                        timeAgo = '${dt.day}/${dt.month}';
-                      }
-
-                      loadedDb.add({
-                        'id': row['id']?.toString(),
-                        'user': row['user_name'] ?? 'Pelanggan Ngam',
-                        'avatar': row['user_avatar'] ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150',
-                        'text': row['comment_text'] ?? '',
-                        'time': timeAgo,
-                        'likes': (row['likes_count'] as num?)?.toInt() ?? 0,
-                        'isLiked': false,
-                      });
-                    }
-                    if (context.mounted) {
-                      setModalState(() {
-                        comments.clear();
-                        comments.addAll(loadedDb);
-                        isLoadingLiveComments = false;
-                        post['commentList'] = comments;
-                        post['comments'] = comments.length;
-                      });
-                    }
-                  } else {
-                    if (context.mounted) {
-                      setModalState(() => isLoadingLiveComments = false);
-                    }
-                  }
-                } catch (e) {
-                  debugPrint('[CustomerFeedScreen] Feed comments table fetch notice: $e');
-                  if (context.mounted) {
-                    setModalState(() => isLoadingLiveComments = false);
-                  }
-                }
+        final bool isDark = Theme.of(context).brightness == Brightness.dark;
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.72,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF10141B) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border.all(
+              color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.08),
+            ),
+          ),
+          child: _FeedCommentsView(
+            post: post,
+            isDesktop: false,
+            onClose: () => Navigator.pop(ctx),
+            onCommentCountChanged: (count) {
+              if (mounted) {
+                setState(() => post['comments'] = count);
               }
-            }
+            },
+          ),
+        );
+      },
+    );
+    if (mounted) {
+      setState(() => _isModalOrRouteOpen = false);
+    }
+  }
+}
 
-            // Panggil sekali sewaktu modal dibuka
-            fetchLiveComments();
+// =============================================================================
+// REUSABLE FEED COMMENTS VIEW (TIKTOK & INSTAGRAM REELS ADAPTIVE)
+// Used in right side sliding panel on Desktop, and bottom sheet on Mobile.
+// =============================================================================
+class _FeedCommentsView extends StatefulWidget {
+  final Map<String, dynamic> post;
+  final bool isDesktop;
+  final VoidCallback onClose;
+  final void Function(int newCount)? onCommentCountChanged;
 
-            void handleSendComment() async {
-              final text = commentController.text.trim();
-              if (text.isEmpty) return;
+  const _FeedCommentsView({
+    super.key,
+    required this.post,
+    required this.isDesktop,
+    required this.onClose,
+    this.onCommentCountChanged,
+  });
 
-              HapticFeedback.lightImpact();
-              final currentUser = Supabase.instance.client.auth.currentUser;
-              final userName = (currentUser?.userMetadata?['full_name'] as String?) ??
-                  (currentUser?.userMetadata?['name'] as String?) ??
-                  (currentUser?.email?.split('@').first) ??
-                  'Pelanggan Ngam';
-              final userAvatar = (currentUser?.userMetadata?['avatar_url'] as String?) ??
-                  'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150';
+  @override
+  State<_FeedCommentsView> createState() => _FeedCommentsViewState();
+}
 
-              final newEntry = {
-                'user': userName,
-                'avatar': userAvatar,
-                'text': text,
-                'time': 'Baru saja',
-                'likes': 0,
-                'isLiked': false,
-              };
+class _FeedCommentsViewState extends State<_FeedCommentsView> {
+  late TextEditingController _commentController;
+  final List<Map<String, dynamic>> _comments = [];
+  bool _isLoading = false;
+  String? _loadedPostId;
 
-              setModalState(() {
-                comments.insert(0, newEntry);
-                post['commentList'] = comments;
-                post['comments'] = (post['comments'] as int? ?? 0) + 1;
-              });
+  @override
+  void initState() {
+    super.initState();
+    _commentController = TextEditingController();
+    _initAndFetchComments();
+  }
 
-              commentController.clear();
-              if (mounted) setState(() {});
+  @override
+  void didUpdateWidget(covariant _FeedCommentsView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.post['id'] != oldWidget.post['id']) {
+      _initAndFetchComments();
+    }
+  }
 
-              // Simpan ke Supabase jika pos mempunyai UUID sebenar
-              if (postId.length > 20) {
-                try {
-                  await Supabase.instance.client.from('feed_comments').insert({
-                    'post_id': postId,
-                    'user_id': currentUser?.id,
-                    'user_name': userName,
-                    'user_avatar': userAvatar,
-                    'comment_text': text,
-                  });
-                } catch (err) {
-                  debugPrint('[CustomerFeedScreen] DB insert comment note: $err');
-                }
-              }
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
 
-              if (context.mounted) {
-                showGlassToast(
-                  context,
-                  'Komen berjaya dihantar!',
-                  icon: HugeIcons.strokeRoundedCheckmarkCircle02,
-                );
-              }
-            }
+  void _initAndFetchComments() {
+    final String postId = widget.post['id']?.toString() ?? '';
+    _loadedPostId = postId;
+    _comments.clear();
+    final rawList = widget.post['commentList'] as List?;
+    if (rawList != null && rawList.isNotEmpty) {
+      _comments.addAll(rawList.map((e) => Map<String, dynamic>.from(e as Map)));
+    }
 
-            return Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 540),
-                child: Container(
-                  height: MediaQuery.of(context).size.height * 0.68,
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF141920) : Colors.white,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-                    border: Border.all(
-                      color: isDark
-                          ? Colors.white10
-                          : Colors.black.withValues(alpha: 0.08),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDark
-                            ? Colors.black54
-                            : Colors.black.withValues(alpha: 0.12),
-                        blurRadius: 20,
-                        offset: const Offset(0, -5),
-                      ),
-                    ],
-                  ),
+    if (postId.length > 20 && _comments.isEmpty) {
+      _fetchLiveComments(postId);
+    }
+  }
+
+  Future<void> _fetchLiveComments(String postId) async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
+    try {
+      final dbRes = await Supabase.instance.client
+          .from('feed_comments')
+          .select()
+          .eq('post_id', postId)
+          .order('created_at', ascending: false)
+          .limit(60);
+
+      if (!mounted || _loadedPostId != postId) return;
+
+      if (dbRes.isNotEmpty) {
+        final List<Map<String, dynamic>> loadedDb = [];
+        for (final row in dbRes) {
+          final rawDate = row['created_at']?.toString() ?? '';
+          DateTime dt;
+          if (!rawDate.endsWith('Z') && !rawDate.contains('+') && rawDate.contains('T')) {
+            dt = DateTime.tryParse('${rawDate}Z')?.toLocal() ?? DateTime.now();
+          } else {
+            dt = DateTime.tryParse(rawDate)?.toLocal() ?? DateTime.now();
+          }
+          final diff = DateTime.now().difference(dt);
+          String timeAgo;
+          if (diff.inSeconds < 60) {
+            timeAgo = 'Baru saja';
+          } else if (diff.inMinutes < 60) {
+            timeAgo = '${diff.inMinutes}m lepas';
+          } else if (diff.inHours < 24) {
+            timeAgo = '${diff.inHours}j lepas';
+          } else {
+            timeAgo = '${dt.day}/${dt.month}';
+          }
+
+          loadedDb.add({
+            'id': row['id']?.toString(),
+            'user': row['user_name'] ?? 'Pelanggan Ngam',
+            'avatar': row['user_avatar'] ??
+                'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150',
+            'text': row['comment_text'] ?? '',
+            'time': timeAgo,
+            'likes': (row['likes_count'] as num?)?.toInt() ?? 0,
+            'isLiked': false,
+          });
+        }
+        setState(() {
+          _comments.clear();
+          _comments.addAll(loadedDb);
+          _isLoading = false;
+        });
+        widget.post['commentList'] = _comments;
+        widget.post['comments'] = _comments.length;
+        widget.onCommentCountChanged?.call(_comments.length);
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      debugPrint('[FeedCommentsView] Fetch error: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _handleSendComment() async {
+    final text = _commentController.text.trim();
+    if (text.isEmpty) return;
+
+    HapticFeedback.lightImpact();
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    final userName = (currentUser?.userMetadata?['full_name'] as String?) ??
+        (currentUser?.userMetadata?['name'] as String?) ??
+        (currentUser?.email?.split('@').first) ??
+        'Pelanggan Ngam';
+    final userAvatar = (currentUser?.userMetadata?['avatar_url'] as String?) ??
+        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150';
+
+    final newEntry = {
+      'user': userName,
+      'avatar': userAvatar,
+      'text': text,
+      'time': 'Baru saja',
+      'likes': 0,
+      'isLiked': false,
+    };
+
+    setState(() {
+      _comments.insert(0, newEntry);
+    });
+    widget.post['commentList'] = _comments;
+    widget.post['comments'] = _comments.length;
+    widget.onCommentCountChanged?.call(_comments.length);
+
+    _commentController.clear();
+
+    final String postId = widget.post['id']?.toString() ?? '';
+    if (postId.length > 20) {
+      try {
+        await Supabase.instance.client.from('feed_comments').insert({
+          'post_id': postId,
+          'user_id': currentUser?.id,
+          'user_name': userName,
+          'user_avatar': userAvatar,
+          'comment_text': text,
+        });
+      } catch (err) {
+        debugPrint('[FeedCommentsView] DB insert note: $err');
+      }
+    }
+
+    if (mounted) {
+      showGlassToast(
+        context,
+        'Komen berjaya dihantar!',
+        icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final shopName = widget.post['shopName']?.toString() ?? 'Ngam Feed';
+    final shopHandle = widget.post['shopHandle']?.toString() ?? '';
+    final shopAvatar = widget.post['shopAvatar']?.toString() ?? '';
+    final caption = widget.post['caption']?.toString() ?? widget.post['title']?.toString() ?? '';
+
+    return Column(
+      children: [
+        // 1. Mobile Drag Handle (Only on bottom sheet)
+        if (!widget.isDesktop)
+          Container(
+            margin: const EdgeInsets.only(top: 10, bottom: 6),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white24 : Colors.black12,
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+
+        // 2. Creator Info Snippet (Desktop signature header - TikTok/IG style)
+        if (widget.isDesktop)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 12, 12),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundImage: shopAvatar.isNotEmpty ? NetworkImage(shopAvatar) : null,
+                  backgroundColor: const Color(0xFF00E5FF).withValues(alpha: 0.15),
+                  child: shopAvatar.isEmpty
+                      ? const HugeIcon(icon: HugeIcons.strokeRoundedStore01, color: Color(0xFF00E5FF), size: 18)
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Handle Bar
-                      Container(
-                        margin: const EdgeInsets.only(top: 10, bottom: 8),
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white24 : Colors.black12,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-
-                      // Header Komen
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(18, 4, 18, 12),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Komen (${comments.length})',
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              shopName,
                               style: TextStyle(
                                 color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                fontSize: 15,
-                                fontWeight: FontWeight.w900,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
                               ),
-                            ),
-                            GestureDetector(
-                              onTap: () => Navigator.pop(ctx),
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: HugeIcon(
-                                  icon: HugeIcons.strokeRoundedCancel01,
-                                  color: isDark ? Colors.white70 : const Color(0xFF64748B),
-                                  size: 18,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      Divider(
-                        color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.08),
-                        height: 1,
-                      ),
-
-                      // Senarai Komen
-                      Expanded(
-                        child: isLoadingLiveComments
-                            ? const Center(
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Color(0xFF00E5FF),
-                                ),
-                              )
-                            : comments.isEmpty
-                                ? Center(
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Container(
-                                          width: 56,
-                                          height: 56,
-                                          decoration: BoxDecoration(
-                                            color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Center(
-                                            child: HugeIcon(
-                                              icon: HugeIcons.strokeRoundedComment01,
-                                              color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
-                                              size: 26,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 12),
-                                        Text(
-                                          'Belum ada komen lagi.',
-                                          style: TextStyle(
-                                            color: isDark ? Colors.white70 : const Color(0xFF1E293B),
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'Jadilah yang pertama berkongsi pandangan!',
-                                          style: TextStyle(
-                                            color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  )
-                                : ListView.separated(
-                                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                                    itemCount: comments.length,
-                                    separatorBuilder: (_, __) => const SizedBox(height: 16),
-                                    itemBuilder: (_, idx) {
-                                      final c = comments[idx];
-                                      final bool isCommentLiked = c['isLiked'] == true;
-                                      final int commentLikes = (c['likes'] as num?)?.toInt() ?? 0;
-
-                                      return Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          CircleAvatar(
-                                            radius: 18,
-                                            backgroundImage: NetworkImage(
-                                              c['avatar']?.toString() ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150',
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    Text(
-                                                      c['user']?.toString() ?? 'Pelanggan',
-                                                      style: TextStyle(
-                                                        color: isDark
-                                                            ? Colors.white70
-                                                            : const Color(0xFF1E293B),
-                                                        fontSize: 12,
-                                                        fontWeight: FontWeight.w700,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 8),
-                                                    Text(
-                                                      c['time']?.toString() ?? '',
-                                                      style: TextStyle(
-                                                        color: isDark
-                                                            ? Colors.white38
-                                                            : const Color(0xFF94A3B8),
-                                                        fontSize: 11,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 3),
-                                                Text(
-                                                  c['text']?.toString() ?? '',
-                                                  style: TextStyle(
-                                                    color: isDark
-                                                        ? Colors.white
-                                                        : const Color(0xFF0F172A),
-                                                    fontSize: 13,
-                                                    height: 1.35,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          GestureDetector(
-                                            onTap: () {
-                                              HapticFeedback.lightImpact();
-                                              setModalState(() {
-                                                c['isLiked'] = !isCommentLiked;
-                                                c['likes'] = commentLikes + (isCommentLiked ? -1 : 1);
-                                              });
-                                            },
-                                            child: Column(
-                                              children: [
-                                                Icon(
-                                                  isCommentLiked ? Icons.favorite : Icons.favorite_border_rounded,
-                                                  size: 16,
-                                                  color: isCommentLiked
-                                                      ? const Color(0xFFFE2C55)
-                                                      : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  '${c['likes'] ?? 0}',
-                                                  style: TextStyle(
-                                                    color: isCommentLiked
-                                                        ? const Color(0xFFFE2C55)
-                                                        : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                      ),
-
-                      // Input Bar Komen di Bawah
-                      Container(
-                        padding: EdgeInsets.fromLTRB(
-                          14,
-                          10,
-                          14,
-                          MediaQuery.of(context).viewInsets.bottom + 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0xFF0F1318)
-                              : const Color(0xFFF8FAFC),
-                          border: Border(
-                            top: BorderSide(
-                              color: isDark
-                                  ? Colors.white10
-                                  : Colors.black.withValues(alpha: 0.08),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.verified_rounded, size: 14, color: Color(0xFF00E5FF)),
+                        ],
+                      ),
+                      if (shopHandle.isNotEmpty)
+                        Text(
+                          shopHandle,
+                          style: TextStyle(
+                            color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                            fontSize: 12,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        child: Row(
+                    ],
+                  ),
+                ),
+                // Close button
+                GestureDetector(
+                  onTap: widget.onClose,
+                  child: Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: HugeIcon(
+                        icon: HugeIcons.strokeRoundedCancel01,
+                        color: isDark ? Colors.white70 : const Color(0xFF64748B),
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        // Post Caption Preview (if on desktop)
+        if (widget.isDesktop && caption.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                caption,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: isDark ? Colors.white70 : const Color(0xFF334155),
+                  fontSize: 12.5,
+                  height: 1.35,
+                ),
+              ),
+            ),
+          ),
+
+        // Divider
+        Divider(
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.08),
+          height: 1,
+        ),
+
+        // 3. Comments Title Bar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 12, 16, 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'Komen',
+                    style: TextStyle(
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00E5FF).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${_comments.length}',
+                      style: const TextStyle(
+                        color: Color(0xFF00E5FF),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (!widget.isDesktop)
+                GestureDetector(
+                  onTap: widget.onClose,
+                  child: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                      shape: BoxShape.circle,
+                    ),
+                    child: HugeIcon(
+                      icon: HugeIcons.strokeRoundedCancel01,
+                      color: isDark ? Colors.white70 : const Color(0xFF64748B),
+                      size: 16,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+
+        Divider(
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.08),
+          height: 1,
+        ),
+
+        // 4. Comments List
+        Expanded(
+          child: _isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Color(0xFF00E5FF),
+                  ),
+                )
+              : _comments.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 54,
+                            height: 54,
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : Colors.black.withValues(alpha: 0.04),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: HugeIcon(
+                                icon: HugeIcons.strokeRoundedComment01,
+                                color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                                size: 24,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Belum ada komen lagi.',
+                            style: TextStyle(
+                              color: isDark ? Colors.white70 : const Color(0xFF1E293B),
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Jadilah yang pertama berkongsi pandangan!',
+                            style: TextStyle(
+                              color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                              fontSize: 11.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                      itemCount: _comments.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 14),
+                      itemBuilder: (_, idx) {
+                        final c = _comments[idx];
+                        final bool isCommentLiked = c['isLiked'] == true;
+                        final int commentLikes = (c['likes'] as num?)?.toInt() ?? 0;
+
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            CircleAvatar(
+                              radius: 17,
+                              backgroundImage: NetworkImage(
+                                c['avatar']?.toString() ??
+                                    'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150',
+                              ),
+                            ),
+                            const SizedBox(width: 10),
                             Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14),
-                                decoration: BoxDecoration(
-                                  color: isDark
-                                      ? Colors.white.withValues(alpha: 0.08)
-                                      : Colors.black.withValues(alpha: 0.05),
-                                  borderRadius: BorderRadius.circular(24),
-                                ),
-                                child: TextField(
-                                  controller: commentController,
-                                  onSubmitted: (_) => handleSendComment(),
-                                  style: TextStyle(
-                                    color: isDark
-                                        ? Colors.white
-                                        : const Color(0xFF0F172A),
-                                    fontSize: 13,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        c['user']?.toString() ?? 'Pelanggan',
+                                        style: TextStyle(
+                                          color: isDark ? Colors.white70 : const Color(0xFF1E293B),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        c['time']?.toString() ?? '',
+                                        style: TextStyle(
+                                          color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  decoration: InputDecoration(
-                                    hintText: 'Tulis komen anda...',
-                                    hintStyle: TextStyle(
-                                      color: isDark
-                                          ? Colors.white38
-                                          : const Color(0xFF94A3B8),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    c['text']?.toString() ?? '',
+                                    style: TextStyle(
+                                      color: isDark ? Colors.white : const Color(0xFF0F172A),
                                       fontSize: 13,
+                                      height: 1.35,
                                     ),
-                                    border: InputBorder.none,
                                   ),
-                                ),
+                                ],
                               ),
                             ),
                             const SizedBox(width: 8),
                             GestureDetector(
-                              onTap: handleSendComment,
-                              child: Container(
-                                width: 38,
-                                height: 38,
-                                decoration: const BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [Color(0xFF00E5FF), Color(0xFF0284C7)],
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                                setState(() {
+                                  c['isLiked'] = !isCommentLiked;
+                                  c['likes'] = commentLikes + (isCommentLiked ? -1 : 1);
+                                });
+                              },
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    isCommentLiked ? Icons.favorite : Icons.favorite_border_rounded,
+                                    size: 16,
+                                    color: isCommentLiked
+                                        ? const Color(0xFFFE2C55)
+                                        : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
                                   ),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Center(
-                                  child: HugeIcon(
-                                    icon: HugeIcons.strokeRoundedArrowUp01,
-                                    color: Colors.black,
-                                    size: 20,
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${c['likes'] ?? 0}',
+                                    style: TextStyle(
+                                      color: isCommentLiked
+                                          ? const Color(0xFFFE2C55)
+                                          : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
                             ),
                           ],
-                        ),
+                        );
+                      },
+                    ),
+        ),
+
+        // 5. Sticky Bottom Input Field
+        Container(
+          padding: EdgeInsets.fromLTRB(
+            14,
+            10,
+            14,
+            widget.isDesktop ? 16 : (MediaQuery.of(context).viewInsets.bottom + 12),
+          ),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF0F1318) : const Color(0xFFF8FAFC),
+            border: Border(
+              top: BorderSide(
+                color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.08),
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: TextField(
+                    controller: _commentController,
+                    onSubmitted: (_) => _handleSendComment(),
+                    style: TextStyle(
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      fontSize: 13,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Tulis komen anda...',
+                      hintStyle: TextStyle(
+                        color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                        fontSize: 13,
                       ),
-                    ],
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 11),
+                    ),
                   ),
                 ),
               ),
-            );
-          },
-        );
-      },
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: _handleSendComment,
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF00E5FF), Color(0xFF0284C7)],
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: HugeIcon(
+                      icon: HugeIcons.strokeRoundedArrowUp01,
+                      color: Colors.black,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
-
-    if (mounted) {
-      setState(() => _isModalOrRouteOpen = false);
-    }
   }
 }
 

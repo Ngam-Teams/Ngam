@@ -1251,20 +1251,12 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                       // FIX: Drops the keyboard and safely clears the advanced search state!
                       _killFocus();
                       _clearSearch();
-                      if (isDesktop && _isProfileOpen) {
-                        setState(() => _isProfileOpen = false);
-                        if (_selectedShop != null) {
-                          double currentZoom = _mapController.camera.zoom;
-                          LatLng newCenter = _getDynamicCenterOffset(_selectedShop!, currentZoom, panelOpen: false);
-                          _animatedMapMove(newCenter, currentZoom);
-                        }
-                      }
                     },
                     onPositionChanged: (pos, hasGesture) {
                       if (hasGesture) {
                         _onMapInteractionStart();
-                        // Dismiss the bottom sheet if it's open — carousel will slide back up
-                        if (_isProfileOpen) {
+                        // Dismiss the bottom sheet if it's open ONLY on mobile modal sheets
+                        if (!isDesktop && _isProfileOpen && Navigator.of(context).canPop()) {
                           _isProfileOpen = false;
                           Navigator.of(context).pop();
                         }
