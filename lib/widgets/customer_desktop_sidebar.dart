@@ -53,47 +53,28 @@ class CustomerDesktopSidebar extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(28),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+              filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
                 curve: Curves.easeInOutCubic,
-                width: isExpanded ? 240 : 72,
+                width: isExpanded ? 260 : 72,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: isDark
-                        ? [
-                            Colors.white.withValues(alpha: 0.16),
-                            const Color(0xFF161628).withValues(alpha: 0.65),
-                            const Color(0xFF0C0C16).withValues(alpha: 0.85),
-                          ]
-                        : [
-                            Colors.white.withValues(alpha: 0.90),
-                            Colors.white.withValues(alpha: 0.65),
-                          ],
-                    stops: isDark ? const [0.0, 0.40, 1.0] : null,
-                  ),
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.white.withValues(alpha: 0.85),
                   borderRadius: BorderRadius.circular(28),
                   border: Border.all(
                     color: isDark
-                        ? Colors.white.withValues(alpha: 0.24)
-                        : Colors.white.withValues(alpha: 0.80),
-                    width: 1.5,
+                        ? Colors.white.withValues(alpha: 0.12)
+                        : Colors.black.withValues(alpha: 0.08),
+                    width: 1.2,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
-                      blurRadius: 32,
-                      offset: const Offset(0, 10),
+                      color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
                     ),
-                    if (isDark)
-                      BoxShadow(
-                        color: const Color(0xFF2196F3).withValues(alpha: 0.14),
-                        blurRadius: 30,
-                        spreadRadius: 1,
-                        offset: const Offset(0, 2),
-                      ),
                   ],
                 ),
                 child: Column(
@@ -110,17 +91,17 @@ class CustomerDesktopSidebar extends StatelessWidget {
                               borderRadius: BorderRadius.circular(10),
                               child: Image.asset(
                                 'assets/app.png',
-                                width: 34,
-                                height: 34,
+                                width: 36,
+                                height: 36,
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => Image.asset(
                                   'assets/splash.png',
-                                  width: 34,
-                                  height: 34,
+                                  width: 36,
+                                  height: 36,
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => Container(
-                                    width: 34,
-                                    height: 34,
+                                    width: 36,
+                                    height: 36,
                                     decoration: BoxDecoration(
                                       color: const Color(0xFF2196F3),
                                       borderRadius: BorderRadius.circular(10),
@@ -149,7 +130,7 @@ class CustomerDesktopSidebar extends StatelessWidget {
                                     style: TextStyle(
                                       color: isDark ? Colors.white : Colors.black87,
                                       fontSize: 16.5,
-                                      fontWeight: FontWeight.w800,
+                                      fontWeight: FontWeight.w700,
                                       letterSpacing: -0.3,
                                     ),
                                     maxLines: 1,
@@ -158,7 +139,7 @@ class CustomerDesktopSidebar extends StatelessWidget {
                                   const Text(
                                     'Komuniti',
                                     style: TextStyle(
-                                      color: Color(0xFF2196F3),
+                                      color: Color(0xFF42A5F5),
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
                                       letterSpacing: 1.2,
@@ -186,7 +167,7 @@ class CustomerDesktopSidebar extends StatelessWidget {
                     // ─── 2. Profil Pengguna / Kad Tetamu ─────────────────
                     if (isExpanded)
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
                         child: InkWell(
                           onTap: () {
                             if (user != null) {
@@ -195,48 +176,41 @@ class CustomerDesktopSidebar extends StatelessWidget {
                               Navigator.pushNamed(context, '/login');
                             }
                           },
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
+                          hoverColor: Colors.white.withValues(alpha: 0.08),
                           child: Container(
-                            padding: const EdgeInsets.all(10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: isDark
-                                    ? [
-                                        Colors.white.withValues(alpha: 0.10),
-                                        Colors.white.withValues(alpha: 0.03),
-                                      ]
-                                    : [
-                                        Colors.white.withValues(alpha: 0.70),
-                                        Colors.white.withValues(alpha: 0.40),
-                                      ],
-                              ),
-                              borderRadius: BorderRadius.circular(16),
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : Colors.black.withValues(alpha: 0.03),
+                              borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: isDark
-                                    ? Colors.white.withValues(alpha: 0.16)
-                                    : Colors.white.withValues(alpha: 0.50),
-                                width: 1.0,
+                                    ? Colors.white.withValues(alpha: 0.08)
+                                    : Colors.black.withValues(alpha: 0.06),
                               ),
                             ),
                             child: Row(
                               children: [
                                 CircleAvatar(
                                   radius: 17,
-                                  backgroundColor: const Color(0xFF2196F3).withValues(alpha: 0.2),
+                                  backgroundColor: const Color(0xFF42A5F5).withValues(alpha: 0.2),
                                   backgroundImage: user?.userAvatarUrl != null
                                       ? CachedNetworkImageProvider(user!.userAvatarUrl!)
                                       : null,
                                   child: user?.userAvatarUrl == null
                                       ? const HugeIcon(
                                           icon: HugeIcons.strokeRoundedUser,
-                                          color: Color(0xFF2196F3),
+                                          color: Color(0xFF42A5F5),
                                           size: 16,
                                         )
                                       : null,
                                 ),
-                                const SizedBox(width: 9),
+                                const SizedBox(width: 10),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -250,27 +224,30 @@ class CustomerDesktopSidebar extends StatelessWidget {
                                             : 'Akaun Tetamu',
                                         style: TextStyle(
                                           color: isDark ? Colors.white : Colors.black87,
-                                          fontSize: 13,
+                                          fontSize: 12.5,
                                           fontWeight: FontWeight.w700,
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
-                                      const SizedBox(height: 1),
+                                      const SizedBox(height: 1.5),
                                       Text(
                                         user != null ? 'Ahli Ngam' : 'Log Masuk Segera',
                                         style: TextStyle(
-                                          color: user != null
-                                              ? const Color(0xFF2196F3)
-                                              : (isDark ? Colors.white54 : Colors.black45),
+                                          color: isDark ? Colors.white.withValues(alpha: 0.45) : Colors.black45,
                                           fontSize: 10.5,
-                                          fontWeight: FontWeight.w600,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
                                   ),
+                                ),
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 16,
+                                  color: isDark ? Colors.white.withValues(alpha: 0.3) : Colors.black26,
                                 ),
                               ],
                             ),
@@ -292,15 +269,15 @@ class CustomerDesktopSidebar extends StatelessWidget {
                           },
                           borderRadius: BorderRadius.circular(14),
                           child: CircleAvatar(
-                            radius: 18,
-                            backgroundColor: const Color(0xFF2196F3).withValues(alpha: 0.2),
+                            radius: 19,
+                            backgroundColor: const Color(0xFF42A5F5).withValues(alpha: 0.2),
                             backgroundImage: user?.userAvatarUrl != null
                                 ? CachedNetworkImageProvider(user!.userAvatarUrl!)
                                 : null,
                             child: user?.userAvatarUrl == null
                                 ? const HugeIcon(
                                     icon: HugeIcons.strokeRoundedUser,
-                                    color: Color(0xFF2196F3),
+                                    color: Color(0xFF42A5F5),
                                     size: 18,
                                   )
                                 : null,
@@ -521,17 +498,17 @@ class _LogoExpandButtonState extends State<_LogoExpandButton> {
                       borderRadius: BorderRadius.circular(10),
                       child: Image.asset(
                         'assets/app.png',
-                        width: 34,
-                        height: 34,
+                        width: 36,
+                        height: 36,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => Image.asset(
                           'assets/splash.png',
-                          width: 34,
-                          height: 34,
+                          width: 36,
+                          height: 36,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => Container(
-                            width: 34,
-                            height: 34,
+                            width: 36,
+                            height: 36,
                             decoration: BoxDecoration(
                               color: const Color(0xFF2196F3),
                               borderRadius: BorderRadius.circular(10),
@@ -574,6 +551,7 @@ class _CollapseSidebarButtonState extends State<_CollapseSidebarButton> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Tooltip(
       message: 'Kecilkan Sidebar',
       waitDuration: const Duration(milliseconds: 300),
@@ -586,25 +564,25 @@ class _CollapseSidebarButtonState extends State<_CollapseSidebarButton> {
           behavior: HitTestBehavior.opaque,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
-            width: 32,
-            height: 32,
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
               color: _isHovered
-                  ? Colors.white.withValues(alpha: 0.12)
-                  : Colors.white.withValues(alpha: 0.05),
+                  ? (isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.08))
+                  : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: _isHovered
-                    ? Colors.white.withValues(alpha: 0.18)
-                    : Colors.white.withValues(alpha: 0.08),
+                    ? (isDark ? Colors.white.withValues(alpha: 0.18) : Colors.black12)
+                    : (isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05)),
                 width: 1,
               ),
             ),
-            child: const Center(
+            child: Center(
               child: HugeIcon(
                 icon: HugeIcons.strokeRoundedSidebarLeft,
-                color: Colors.white70,
-                size: 17,
+                color: isDark ? Colors.white70 : Colors.black87,
+                size: 18,
                 strokeWidth: 2.0,
               ),
             ),
@@ -638,7 +616,7 @@ class _SidebarNavItem extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (!isExpanded) {
-      // Shrunk mode: Icon only with Tooltip
+      // Shrunk mode: Icon only with Tooltip (Identical to Ngam Business)
       return Tooltip(
         message: label,
         waitDuration: const Duration(milliseconds: 300),
@@ -648,42 +626,27 @@ class _SidebarNavItem extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              width: 46,
-              height: 46,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-                gradient: selected
-                    ? LinearGradient(
-                        colors: [
-                          const Color(0xFF2196F3).withValues(alpha: 0.28),
-                          const Color(0xFF2196F3).withValues(alpha: 0.12),
-                        ],
-                      )
-                    : null,
-                color: selected ? null : Colors.transparent,
+                color: selected
+                    ? const Color(0xFF42A5F5).withValues(alpha: 0.18)
+                    : Colors.transparent,
                 border: Border.all(
                   color: selected
-                      ? const Color(0xFF2196F3).withValues(alpha: 0.50)
+                      ? const Color(0xFF42A5F5).withValues(alpha: 0.35)
                       : Colors.transparent,
-                  width: 1.2,
+                  width: 1,
                 ),
-                boxShadow: selected
-                    ? [
-                        BoxShadow(
-                          color: const Color(0xFF2196F3).withValues(alpha: 0.25),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
-                      ]
-                    : null,
               ),
               child: Center(
                 child: HugeIcon(
                   icon: icon,
                   color: selected
-                      ? const Color(0xFF2196F3)
+                      ? const Color(0xFF42A5F5)
                       : (isDark ? Colors.white38 : Colors.black45),
-                  size: 21,
+                  size: 22,
                   strokeWidth: selected ? 2.3 : 1.9,
                 ),
               ),
@@ -693,49 +656,32 @@ class _SidebarNavItem extends StatelessWidget {
       );
     }
 
-    // Expanded mode: Icon + Label
+    // Expanded mode: Icon + Label (Identical to Ngam Business)
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 2.5),
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          gradient: selected
-              ? LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    const Color(0xFF2196F3).withValues(alpha: 0.25),
-                    const Color(0xFF2196F3).withValues(alpha: 0.10),
-                  ],
-                )
-              : null,
-          color: selected ? null : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          color: selected
+              ? const Color(0xFF42A5F5).withValues(alpha: 0.18)
+              : Colors.transparent,
           border: Border.all(
             color: selected
-                ? const Color(0xFF2196F3).withValues(alpha: 0.45)
+                ? const Color(0xFF42A5F5).withValues(alpha: 0.35)
                 : Colors.transparent,
-            width: 1.2,
+            width: 1,
           ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFF2196F3).withValues(alpha: 0.18),
-                    blurRadius: 12,
-                    offset: const Offset(0, 3),
-                  ),
-                ]
-              : null,
         ),
         child: Row(
           children: [
             HugeIcon(
               icon: icon,
               color: selected
-                  ? const Color(0xFF2196F3)
-                  : (isDark ? Colors.white54 : Colors.black45),
+                  ? const Color(0xFF42A5F5)
+                  : (isDark ? Colors.white38 : Colors.black45),
               size: 20,
               strokeWidth: selected ? 2.3 : 1.9,
             ),
@@ -746,9 +692,9 @@ class _SidebarNavItem extends StatelessWidget {
                 style: TextStyle(
                   color: selected
                       ? (isDark ? Colors.white : const Color(0xFF1976D2))
-                      : (isDark ? Colors.white70 : Colors.black87),
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  fontSize: 13.5,
+                      : (isDark ? Colors.white54 : Colors.black87),
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                  fontSize: 14,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

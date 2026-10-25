@@ -50,7 +50,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     return ValueListenableBuilder<bool>(
       valueListenable: CustomerDesktopSidebar.isExpandedNotifier,
       builder: (context, isExpanded, _) {
-        final double sidebarWidth = isExpanded ? 256.0 : 88.0;
+        final double sidebarWidth = isExpanded ? 276.0 : 88.0;
         return AnimatedPadding(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeInOutCubic,
