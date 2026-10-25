@@ -22,6 +22,7 @@ import 'qr_scanner_screen.dart';
 import '../shared/my_queue_ticket_screen.dart';
 import '../../widgets/ngam_maps_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../widgets/customer_desktop_sidebar.dart';
 
 enum ShopStatus { open, closingSoon, closed }
 
@@ -62,6 +63,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
   // --- 1. CONTROLLERS & TIMERS ---
   late PageController _pageController;
+  late ScrollController _desktopCarouselController;
   Timer? _snapBackTimer;
   Timer? _debounce;
   StreamSubscription<Position>? _positionStream;
@@ -212,6 +214,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
     //  1. Initialize the PageController for your bottom carousel
     _pageController = PageController(viewportFraction: 0.85);
+    _desktopCarouselController = ScrollController();
 
     //  2. Attach the listener for the search bar focus
     _searchFocus.addListener(_onSearchFocusChanged);
@@ -331,6 +334,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     _minuteTicker?.cancel();
     _snapBackTimer?.cancel();
     _pageController.dispose();
+    _desktopCarouselController.dispose();
     _positionStream?.cancel();
     _debounce?.cancel();
     _searchFocus.removeListener(_onSearchFocusChanged);
@@ -435,6 +439,14 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       if (_pageController.hasClients) {
         _pageController.animateToPage(index, duration: const Duration(milliseconds: 500), curve: Curves.easeInOut);
       }
+      if (_desktopCarouselController.hasClients) {
+        final double targetScroll = (index * 324.0).clamp(0.0, _desktopCarouselController.position.maxScrollExtent);
+        _desktopCarouselController.animateTo(
+          targetScroll,
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeInOutCubic,
+        );
+      }
 
       double currentZoom = targetZoom ?? _mapController.camera.zoom;
       LatLng offsetLocation = _getDynamicCenterOffset(shop, currentZoom);
@@ -446,6 +458,57 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     Future.delayed(const Duration(milliseconds: 1000), () {
       if (mounted) _isMapLocked = false;
     });
+  }
+
+  void _onCarouselCardTapped(Map<String, dynamic> shop, int index, bool isDesktop) {
+    if (!isDesktop) {
+      _onMapPinTapped(shop, index);
+      return;
+    }
+
+    final bool isAlreadySelected = _selectedShop != null && _selectedShop!['name'] == shop['name'];
+
+    if (isAlreadySelected) {
+      // Klik kali kedua pada kad terpilih membuka helaian maklumat penuh
+      _showBusinessProfile(context, shop);
+    } else {
+      // Klik pertama: pilih & halakan peta ke kedai secara lancar
+      _killFocus();
+      _isMapLocked = true;
+      setState(() {
+        _selectedShop = shop;
+        _followUser = false;
+      });
+
+      if (_desktopCarouselController.hasClients) {
+        final double targetScroll = (index * 324.0).clamp(0.0, _desktopCarouselController.position.maxScrollExtent);
+        _desktopCarouselController.animateTo(
+          targetScroll,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOutCubic,
+        );
+      }
+
+      double currentZoom = _mapController.camera.zoom;
+      LatLng offsetLocation = _getDynamicCenterOffset(shop, currentZoom);
+      _animatedMapMove(offsetLocation, currentZoom);
+
+      Future.delayed(const Duration(milliseconds: 600), () {
+        if (mounted) _isMapLocked = false;
+      });
+    }
+  }
+
+  void _scrollDesktopCarousel({required bool forward}) {
+    if (!_desktopCarouselController.hasClients) return;
+    final double scrollDelta = forward ? 648.0 : -648.0;
+    final double target = (_desktopCarouselController.offset + scrollDelta)
+        .clamp(0.0, _desktopCarouselController.position.maxScrollExtent);
+    _desktopCarouselController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOutCubic,
+    );
   }
 
   void _executeCategorySearch(String categoryId, String categoryLabel, {bool isGroup = false}) {
@@ -478,6 +541,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_pageController.hasClients) {
           _pageController.jumpToPage(0);
+        }
+        if (_desktopCarouselController.hasClients) {
+          _desktopCarouselController.jumpTo(0.0);
         }
       });
       Future.delayed(const Duration(milliseconds: 50), () {
@@ -1050,9 +1116,16 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   Widget build(BuildContext context) {
     super.build(context);
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isDesktop = MediaQuery.of(context).size.width >= 800;
     final bool isSearchActive = _isSearchPanelOpen;
     final bool hideBottomPanel = isSearchActive || _isProfileOpen;
-    final double bottomPosition = hideBottomPanel ? -500 : (MediaQuery.of(context).viewInsets.bottom > 0 ? MediaQuery.of(context).viewInsets.bottom + 20 : 105);
+    final double bottomPosition = hideBottomPanel
+        ? -500
+        : (isDesktop
+            ? 24.0
+            : (MediaQuery.of(context).viewInsets.bottom > 0
+                ? MediaQuery.of(context).viewInsets.bottom + 20
+                : 105.0));
 
     return PopScope(
       canPop: !_searchFocus.hasFocus && _searchController.text.isEmpty,
@@ -1236,34 +1309,59 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                   ],
                 ),
               ),
-              Positioned(
-                // TWEAK THIS: Change the `+ 8` to move the search bar up or down.
-                top: MediaQuery.of(context).padding.top + 6, 
-                left: 0, 
-                right: 0, 
-                child: _buildSearchRow(isDark)
+              ValueListenableBuilder<bool>(
+                valueListenable: CustomerDesktopSidebar.isExpandedNotifier,
+                builder: (context, isSidebarExpanded, _) {
+                  final double sidebarWidth = isDesktop ? (isSidebarExpanded ? 256.0 : 88.0) : 0.0;
+                  return AnimatedPositioned(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOutCubic,
+                    top: isDesktop ? 16.0 : (MediaQuery.of(context).padding.top + 6),
+                    left: isDesktop ? (sidebarWidth + 8.0) : 0.0,
+                    width: isDesktop ? 480.0 : null,
+                    right: isDesktop ? null : 0.0,
+                    child: _buildSearchRow(isDark),
+                  );
+                },
               ),
-              Positioned(
-                // TWEAK THIS: Match the spacing for the search results dropdown below the search bar (e.g., + 68)
-                top: MediaQuery.of(context).padding.top + 68, 
-                left: 24, 
-                right: 24,
-                  child: AnimatedOpacity(
+              ValueListenableBuilder<bool>(
+                valueListenable: CustomerDesktopSidebar.isExpandedNotifier,
+                builder: (context, isSidebarExpanded, _) {
+                  final double sidebarWidth = isDesktop ? (isSidebarExpanded ? 256.0 : 88.0) : 0.0;
+                  return AnimatedPositioned(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOutCubic,
+                    top: isDesktop ? 72.0 : (MediaQuery.of(context).padding.top + 68),
+                    left: isDesktop ? (sidebarWidth + 8.0 + 16.0) : 24.0,
+                    width: isDesktop ? (480.0 - 32.0) : null,
+                    right: isDesktop ? null : 24.0,
+                    child: AnimatedOpacity(
                       duration: const Duration(milliseconds: 300),
                       opacity: isSearchActive ? 1.0 : 0.0,
-                      child: isSearchActive ? _buildResultsGlass(isDark) : const SizedBox.shrink())),
+                      child: isSearchActive ? _buildResultsGlass(isDark) : const SizedBox.shrink(),
+                    ),
+                  );
+                },
+              ),
 
-              AnimatedPositioned(
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeInOutBack,
-                  bottom: bottomPosition,
-                  left: 0,
-                  right: 0,
-                  child: AnimatedOpacity(
+              ValueListenableBuilder<bool>(
+                valueListenable: CustomerDesktopSidebar.isExpandedNotifier,
+                builder: (context, isSidebarExpanded, _) {
+                  final double sidebarWidth = isDesktop ? (isSidebarExpanded ? 256.0 : 88.0) : 0.0;
+                  return AnimatedPositioned(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOutCubic,
+                    bottom: bottomPosition,
+                    left: sidebarWidth,
+                    right: 0.0,
+                    child: AnimatedOpacity(
                       duration: const Duration(milliseconds: 200),
-                      // --- UPDATED THIS LINE ---
                       opacity: hideBottomPanel ? 0.0 : 1.0,
-                      child: _buildBottomGlassPanel(isDark))),
+                      child: _buildBottomGlassPanel(isDark),
+                    ),
+                  );
+                },
+              ),
             ],
           ),
         ),
@@ -1640,84 +1738,184 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     );
   }
 
-  Widget _buildBottomGlassPanel(bool isDark) =>
-      Column(mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-                padding: EdgeInsets.only(
-                    left: (MediaQuery.of(context).size.width * 0.075) + 8,
-                    right: 24,
-                    bottom: 8
+  Widget _buildScrollArrowButton(dynamic icon, VoidCallback onTap, bool isDark) {
+    return _AnimatedPressable(
+      onTap: onTap,
+      child: GlassContainer(
+        useOwnLayer: true,
+        quality: GlassQuality.standard,
+        shape: const LiquidRoundedSuperellipse(borderRadius: 100.0),
+        settings: _getGlassSettings(isDark),
+        child: Container(
+          height: 38,
+          width: 38,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(100),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
+              width: 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Center(
+            child: HugeIcon(
+              icon: icon,
+              color: isDark ? Colors.white70 : _lightModeGray,
+              size: 18,
+              strokeWidth: 2.0,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomGlassPanel(bool isDark) {
+    final bool isDesktop = MediaQuery.of(context).size.width >= 800;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(
+            left: isDesktop ? 16.0 : ((MediaQuery.of(context).size.width * 0.075) + 8),
+            right: 24.0,
+            bottom: 8.0,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                _activeSearchQuery == null
+                    ? AppLocalizations.of(context)!.nearby
+                    : (_displayedShops.isNotEmpty
+                        ? AppLocalizations.of(context)!.resultsFor(_activeSearchQuery!)
+                        : AppLocalizations.of(context)!.noResultsFoundTitle),
+                // --- APPLIED GRAY TEXT ---
+                style: TextStyle(
+                  color: isDark ? Colors.white : _lightModeGray,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
-                child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (isDesktop && _displayedShops.length > 2) ...[
+                    _buildScrollArrowButton(
+                      HugeIcons.strokeRoundedArrowLeft01,
+                      () => _scrollDesktopCarousel(forward: false),
+                      isDark,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildScrollArrowButton(
+                      HugeIcons.strokeRoundedArrowRight01,
+                      () => _scrollDesktopCarousel(forward: true),
+                      isDark,
+                    ),
+                    const SizedBox(width: 14),
+                  ],
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                        Text(
-                            _activeSearchQuery == null
-                                ? AppLocalizations.of(context)!.nearby
-                                : (_displayedShops.isNotEmpty
-                                ? AppLocalizations.of(context)!.resultsFor(_activeSearchQuery!)
-                                : AppLocalizations.of(context)!.noResultsFoundTitle),
-                            // --- APPLIED GRAY TEXT ---
-                            style: TextStyle(
-                                color: isDark ? Colors.white : _lightModeGray,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold)
-                        ),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            _AnimatedPressable(
-                              onTap: _onGpsButtonPressed,
-                              child: GlassContainer(
-                                useOwnLayer: true,
-                                quality: GlassQuality.standard,
-                                shape: const LiquidRoundedSuperellipse(borderRadius: 100.0),
-                                settings: _getGlassSettings(isDark),
-                                child: Container(
-                                  height: 44,
-                                  width: 44,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(100),
-                                    border: Border.all(
-                                      color: Colors.white.withValues(
-                                          alpha: isDark ? 0.15 : 0.4),
-                                      width: 1.0,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                            alpha: isDark ? 0.2 : 0.05),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Center(
-                                    child: HugeIcon(
-                                      icon: HugeIcons.strokeRoundedLocationShare02,
-                                      color: _followUser
-                                          ? Colors.blue
-                                          : (isDark ? Colors.white70 : _lightModeGray),
-                                      size: 20,
-                                      strokeWidth: 2.0,
-                                    ),
-                                  ),
+                      _AnimatedPressable(
+                        onTap: _onGpsButtonPressed,
+                        child: GlassContainer(
+                          useOwnLayer: true,
+                          quality: GlassQuality.standard,
+                          shape: const LiquidRoundedSuperellipse(borderRadius: 100.0),
+                          settings: _getGlassSettings(isDark),
+                          child: Container(
+                            height: 44,
+                            width: 44,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(100),
+                              border: Border.all(
+                                color: Colors.white.withValues(
+                                    alpha: isDark ? 0.15 : 0.4),
+                                width: 1.0,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(
+                                      alpha: isDark ? 0.2 : 0.05),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
                                 ),
+                              ],
+                            ),
+                            child: Center(
+                              child: HugeIcon(
+                                icon: HugeIcons.strokeRoundedLocationShare02,
+                                color: _followUser
+                                    ? Colors.blue
+                                    : (isDark ? Colors.white70 : _lightModeGray),
+                                size: 20,
+                                strokeWidth: 2.0,
                               ),
                             ),
-                            const SizedBox(height: 5),
-                            NgamMapsAttributionBadge(isDark: isDark),
-                          ],
-                        )
-                    ]
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      NgamMapsAttributionBadge(isDark: isDark),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 95,
+          child: isDesktop
+              ? ListView.builder(
+                  controller: _desktopCarouselController,
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _displayedShops.length,
+                  itemBuilder: (context, i) {
+                    final shop = _displayedShops[i];
+                    final isSelected = _selectedShop != null && _selectedShop!['name'] == shop['name'];
+                    return _AnimatedPressable(
+                      onTap: () => _onCarouselCardTapped(shop, i, true),
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 14),
+                        child: SizedBox(
+                          width: 310,
+                          child: _buildCarouselCard(isDark, shop, isSelected: isSelected),
+                        ),
+                      ),
+                    );
+                  },
                 )
-            ),
-            SizedBox(height: 95, child: PageView.builder(controller: _pageController, onPageChanged: _onCarouselPageChanged, physics: const ClampingScrollPhysics(), itemCount: _displayedShops.length, itemBuilder: (context, i) => _AnimatedPressable(onTap: () => _onMapPinTapped(_displayedShops[i], i), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: _buildCarouselCard(isDark, _displayedShops[i]))))),
-          ]);
+              : PageView.builder(
+                  controller: _pageController,
+                  onPageChanged: _onCarouselPageChanged,
+                  physics: const ClampingScrollPhysics(),
+                  itemCount: _displayedShops.length,
+                  itemBuilder: (context, i) => _AnimatedPressable(
+                    onTap: () => _onMapPinTapped(_displayedShops[i], i),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: _buildCarouselCard(isDark, _displayedShops[i]),
+                    ),
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
 
 
   Widget _buildStatusLabel(BuildContext context, Map<String, dynamic> shop) {
@@ -2004,7 +2202,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     );
   }
 
-  Widget _buildCarouselCard(bool isDark, Map<String, dynamic> shop) {
+  Widget _buildCarouselCard(bool isDark, Map<String, dynamic> shop, {bool isSelected = false}) {
     final frostedGlow = [
       Shadow(color: Colors.white.withValues(alpha: 0.5), blurRadius: 8),
       Shadow(color: Colors.black.withValues(alpha: 0.2),
@@ -2042,13 +2240,17 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
-            width: 1.0,
+            color: isSelected
+                ? const Color(0xFF3B82F6)
+                : Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
+            width: isSelected ? 1.8 : 1.0,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-              blurRadius: 12,
+              color: isSelected
+                  ? const Color(0xFF3B82F6).withValues(alpha: 0.3)
+                  : Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+              blurRadius: isSelected ? 16 : 12,
               offset: const Offset(0, 4),
             ),
           ],
@@ -2186,27 +2388,37 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
               ),
               const SizedBox(width: 8),
               // Action button (view profile)
-              GlassContainer(
-                useOwnLayer: true,
-                quality: GlassQuality.standard,
-                shape: const LiquidRoundedSuperellipse(borderRadius: 100.0),
-                settings: _getGlassSettings(isDark),
-                child: Container(
-                  height: 36,
-                  width: 36,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(100),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
-                      width: 1.0,
+              GestureDetector(
+                onTap: () {
+                  _killFocus();
+                  setState(() {
+                    _selectedShop = shop;
+                    _followUser = false;
+                  });
+                  _showBusinessProfile(context, shop);
+                },
+                child: GlassContainer(
+                  useOwnLayer: true,
+                  quality: GlassQuality.standard,
+                  shape: const LiquidRoundedSuperellipse(borderRadius: 100.0),
+                  settings: _getGlassSettings(isDark),
+                  child: Container(
+                    height: 36,
+                    width: 36,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(100),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
+                        width: 1.0,
+                      ),
                     ),
-                  ),
-                  child: Center(
-                    child: HugeIcon(
-                      icon: HugeIcons.strokeRoundedArrowRight01,
-                      color: isDark ? Colors.white70 : _lightModeGray,
-                      size: 16,
-                      strokeWidth: 2.2,
+                    child: Center(
+                      child: HugeIcon(
+                        icon: HugeIcons.strokeRoundedArrowRight01,
+                        color: isDark ? Colors.white70 : _lightModeGray,
+                        size: 16,
+                        strokeWidth: 2.2,
+                      ),
                     ),
                   ),
                 ),
@@ -2266,9 +2478,10 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       enableDrag: false,
       (context) {
         return LayoutBuilder(builder: (context, constraints) {
+          final bool isDesktop = constraints.maxWidth >= 800;
           final String shopName = shop['name'] ?? '';
 
-          double textAvailableWidth = constraints.maxWidth - 108;
+          double textAvailableWidth = (isDesktop ? math.min(constraints.maxWidth, 620.0) : constraints.maxWidth) - 108;
           final TextPainter textPainter = TextPainter(
             text: TextSpan(
                 text: shopName,
@@ -2282,7 +2495,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           double adaptiveInitialSize = (baseHeight + bottomSafeArea) / screenHeight;
           adaptiveInitialSize = adaptiveInitialSize.clamp(0.40, 0.85);
 
-          return DraggableScrollableSheet(
+          final Widget sheet = DraggableScrollableSheet(
             controller: _sheetController,
             initialChildSize: adaptiveInitialSize,
             minChildSize: 0.0,
