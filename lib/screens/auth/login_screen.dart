@@ -709,8 +709,8 @@ class _LoginScreenState extends State<LoginScreen>
               ),
               const SizedBox(height: 16),
 
-              // Terokai Tanpa Log Masuk (Guest Mode Button)
-              OutlinedButton.icon(
+              // Terokai Tanpa Log Masuk (Guest Mode Button - Clean Minimalist)
+              OutlinedButton(
                 onPressed: () {
                   if (Navigator.of(context).canPop()) {
                     Navigator.of(context).pop();
@@ -718,24 +718,20 @@ class _LoginScreenState extends State<LoginScreen>
                     Navigator.of(context).pushReplacementNamed('/customer-home');
                   }
                 },
-                icon: const HugeIcon(
-                  icon: HugeIcons.strokeRoundedCompass01,
-                  size: 18,
-                  color: Colors.white70,
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.18)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  backgroundColor: Colors.white.withValues(alpha: 0.04),
                 ),
-                label: Text(
+                child: Text(
                   'Terokai Sebagai Tetamu (Guest)',
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    letterSpacing: 0.3,
+                    color: Colors.white.withValues(alpha: 0.9),
                   ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: Colors.white.withValues(alpha: 0.18)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  backgroundColor: Colors.white.withValues(alpha: 0.04),
                 ),
               ),
             ],
