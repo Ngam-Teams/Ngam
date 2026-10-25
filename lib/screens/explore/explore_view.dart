@@ -466,37 +466,30 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       return;
     }
 
-    final bool isAlreadySelected = _selectedShop != null && _selectedShop!['name'] == shop['name'];
+    _killFocus();
+    _isMapLocked = true;
+    setState(() {
+      _selectedShop = shop;
+      _followUser = false;
+      _isProfileOpen = true; // Popup kedai dibuka terus di sebelah kiri
+    });
 
-    if (isAlreadySelected) {
-      // Klik kali kedua pada kad terpilih membuka helaian maklumat penuh
-      _showBusinessProfile(context, shop);
-    } else {
-      // Klik pertama: pilih & halakan peta ke kedai secara lancar
-      _killFocus();
-      _isMapLocked = true;
-      setState(() {
-        _selectedShop = shop;
-        _followUser = false;
-      });
-
-      if (_desktopCarouselController.hasClients) {
-        final double targetScroll = (index * 324.0).clamp(0.0, _desktopCarouselController.position.maxScrollExtent);
-        _desktopCarouselController.animateTo(
-          targetScroll,
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeInOutCubic,
-        );
-      }
-
-      double currentZoom = _mapController.camera.zoom;
-      LatLng offsetLocation = _getDynamicCenterOffset(shop, currentZoom);
-      _animatedMapMove(offsetLocation, currentZoom);
-
-      Future.delayed(const Duration(milliseconds: 600), () {
-        if (mounted) _isMapLocked = false;
-      });
+    if (_desktopCarouselController.hasClients) {
+      final double targetScroll = (index * 324.0).clamp(0.0, _desktopCarouselController.position.maxScrollExtent);
+      _desktopCarouselController.animateTo(
+        targetScroll,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOutCubic,
+      );
     }
+
+    double currentZoom = _mapController.camera.zoom;
+    LatLng offsetLocation = _getDynamicCenterOffset(shop, currentZoom);
+    _animatedMapMove(offsetLocation, currentZoom);
+
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) _isMapLocked = false;
+    });
   }
 
   void _scrollDesktopCarousel({required bool forward}) {
@@ -1117,8 +1110,12 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     super.build(context);
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isDesktop = MediaQuery.of(context).size.width >= 800;
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double searchWidth = (screenWidth * 0.40).clamp(340.0, 540.0);
+    final double panelWidth = (screenWidth * 0.30).clamp(350.0, 440.0);
     final bool isSearchActive = _isSearchPanelOpen;
-    final bool hideBottomPanel = isSearchActive || _isProfileOpen;
+    // Di desktop, carousel tidak ditutup apabila panel kedai terbuka (ia cuma beralih ke kanan)
+    final bool hideBottomPanel = isSearchActive || (!isDesktop && _isProfileOpen);
     final double bottomPosition = hideBottomPanel
         ? -500
         : (isDesktop
@@ -1182,6 +1179,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                       // FIX: Drops the keyboard and safely clears the advanced search state!
                       _killFocus();
                       _clearSearch();
+                      if (isDesktop && _isProfileOpen) {
+                        setState(() => _isProfileOpen = false);
+                      }
                     },
                     onPositionChanged: (pos, hasGesture) {
                       if (hasGesture) {
@@ -1309,54 +1309,76 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                   ],
                 ),
               ),
-              ValueListenableBuilder<bool>(
-                valueListenable: CustomerDesktopSidebar.isExpandedNotifier,
-                builder: (context, isSidebarExpanded, _) {
-                  final double sidebarWidth = isDesktop ? (isSidebarExpanded ? 256.0 : 88.0) : 0.0;
-                  return AnimatedPositioned(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeInOutCubic,
-                    top: isDesktop ? 16.0 : (MediaQuery.of(context).padding.top + 6),
-                    left: isDesktop ? (sidebarWidth + 8.0) : 0.0,
-                    width: isDesktop ? 480.0 : null,
-                    right: isDesktop ? null : 0.0,
-                    child: _buildSearchRow(isDark),
-                  );
-                },
-              ),
-              ValueListenableBuilder<bool>(
-                valueListenable: CustomerDesktopSidebar.isExpandedNotifier,
-                builder: (context, isSidebarExpanded, _) {
-                  final double sidebarWidth = isDesktop ? (isSidebarExpanded ? 256.0 : 88.0) : 0.0;
-                  return AnimatedPositioned(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeInOutCubic,
-                    top: isDesktop ? 72.0 : (MediaQuery.of(context).padding.top + 68),
-                    left: isDesktop ? (sidebarWidth + 8.0 + 16.0) : 24.0,
-                    width: isDesktop ? (480.0 - 32.0) : null,
-                    right: isDesktop ? null : 24.0,
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 300),
-                      opacity: isSearchActive ? 1.0 : 0.0,
-                      child: isSearchActive ? _buildResultsGlass(isDark) : const SizedBox.shrink(),
-                    ),
-                  );
-                },
+              // 1. Search Bar (Hadkan 40% dari kanan di desktop)
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOutCubic,
+                top: isDesktop ? 16.0 : (MediaQuery.of(context).padding.top + 6),
+                right: isDesktop ? 24.0 : 0.0,
+                left: isDesktop ? null : 0.0,
+                width: isDesktop ? searchWidth : null,
+                child: _buildSearchRow(isDark, isDesktop: isDesktop),
               ),
 
+              // 2. Search Results Dropdown (Berada di sebelah kanan di bawah search bar)
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOutCubic,
+                top: isDesktop ? 72.0 : (MediaQuery.of(context).padding.top + 68),
+                right: 24.0,
+                left: isDesktop ? null : 24.0,
+                width: isDesktop ? searchWidth : null,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 300),
+                  opacity: isSearchActive ? 1.0 : 0.0,
+                  child: isSearchActive ? _buildResultsGlass(isDark) : const SizedBox.shrink(),
+                ),
+              ),
+
+              // 3. Desktop Store Detail Panel (Google Maps style sebelah kiri, tinggi sama sidebar)
+              if (isDesktop)
+                ValueListenableBuilder<bool>(
+                  valueListenable: CustomerDesktopSidebar.isExpandedNotifier,
+                  builder: (context, isSidebarExpanded, _) {
+                    final double sidebarOffset = isSidebarExpanded ? 256.0 : 88.0;
+                    final bool showDesktopPanel = _isProfileOpen && _selectedShop != null;
+                    return AnimatedPositioned(
+                      duration: const Duration(milliseconds: 320),
+                      curve: Curves.easeInOutCubic,
+                      top: 16.0,
+                      bottom: 16.0,
+                      left: showDesktopPanel ? (sidebarOffset + 14.0) : (-panelWidth - 50.0),
+                      width: panelWidth,
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 250),
+                        opacity: showDesktopPanel ? 1.0 : 0.0,
+                        child: showDesktopPanel
+                            ? _buildDesktopStorePanel(isDark, _selectedShop!)
+                            : const SizedBox.shrink(),
+                      ),
+                    );
+                  },
+                ),
+
+              // 4. Bottom Glass Panel (Carousel kad)
               ValueListenableBuilder<bool>(
                 valueListenable: CustomerDesktopSidebar.isExpandedNotifier,
                 builder: (context, isSidebarExpanded, _) {
-                  final double sidebarWidth = isDesktop ? (isSidebarExpanded ? 256.0 : 88.0) : 0.0;
+                  final double sidebarOffset = isSidebarExpanded ? 256.0 : 88.0;
+                  final bool showDesktopPanel = isDesktop && _isProfileOpen && _selectedShop != null;
+                  final double carouselLeft = isDesktop
+                      ? (showDesktopPanel ? (sidebarOffset + 14.0 + panelWidth + 14.0) : (sidebarOffset + 14.0))
+                      : 0.0;
+
                   return AnimatedPositioned(
-                    duration: const Duration(milliseconds: 250),
+                    duration: const Duration(milliseconds: 280),
                     curve: Curves.easeInOutCubic,
                     bottom: bottomPosition,
-                    left: sidebarWidth,
+                    left: carouselLeft,
                     right: 0.0,
                     child: AnimatedOpacity(
                       duration: const Duration(milliseconds: 200),
-                      opacity: hideBottomPanel ? 0.0 : 1.0,
+                      opacity: (hideBottomPanel && !isDesktop) ? 0.0 : 1.0,
                       child: _buildBottomGlassPanel(isDark),
                     ),
                   );
@@ -1372,9 +1394,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   // --- 4. UI BUILDERS ---
 
 
-  Widget _buildSearchRow(bool isDark) =>
+  Widget _buildSearchRow(bool isDark, {bool isDesktop = false}) =>
       Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: EdgeInsets.symmetric(horizontal: isDesktop ? 0 : 24),
         child: Row(children: [
           Expanded(
             child: GlassContainer(
@@ -2429,13 +2451,342 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     );
   }
 
+  Widget _buildStorePlaceholder(bool isDark) {
+    return Container(
+      height: 160,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.blue.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Center(
+        child: HugeIcon(
+          icon: HugeIcons.strokeRoundedStore01,
+          color: isDark ? Colors.white38 : Colors.blue.withValues(alpha: 0.6),
+          size: 44,
+          strokeWidth: 1.8,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopStorePanel(bool isDark, Map<String, dynamic> shop) {
+    final String shopName = shop['name'] ?? '';
+    final ShopStatus status = _getShopStatus(shop);
+    Color statusColor;
+    String statusText;
+
+    final int closeH = shop['closeHour'] ?? 22;
+    final int closeM = shop['closeMinute'] ?? 0;
+    final DateTime now = DateTime.now();
+    DateTime closeTime = DateTime(now.year, now.month, now.day, closeH, closeM);
+
+    if (closeTime.isBefore(now) && status != ShopStatus.closed) {
+      closeTime = closeTime.add(const Duration(days: 1));
+    }
+
+    final int minutesLeft = closeTime.difference(now).inMinutes;
+
+    switch (status) {
+      case ShopStatus.open:
+        statusColor = Colors.blue;
+        statusText = AppLocalizations.of(context)!.statusOpenCaps;
+        break;
+      case ShopStatus.closingSoon:
+        statusColor = Colors.orange;
+        statusText = AppLocalizations.of(context)!.closingIn(minutesLeft);
+        break;
+      case ShopStatus.closed:
+        statusColor = Colors.red;
+        statusText = AppLocalizations.of(context)!.statusClosedCaps;
+        break;
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(28),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.07)
+                : Colors.white.withValues(alpha: 0.90),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.14)
+                  : Colors.black.withValues(alpha: 0.08),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Header bar dengan butang tutup (X)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 16, 12),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: statusColor.withValues(alpha: 0.4)),
+                      ),
+                      child: Text(
+                        statusText,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: statusColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        (shop['category'] ?? '').toString().toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.blue,
+                          letterSpacing: 0.8,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const Spacer(),
+                    _AnimatedPressable(
+                      onTap: () => setState(() => _isProfileOpen = false),
+                      child: Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
+                        ),
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedCancel01,
+                          color: isDark ? Colors.white70 : _lightModeGray,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Scrollable Body
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Store Image
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: shop['image'] != null && shop['image'].toString().isNotEmpty
+                            ? Image.network(
+                                shop['image'],
+                                height: 160,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _buildStorePlaceholder(isDark),
+                              )
+                            : _buildStorePlaceholder(isDark),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Store Name
+                      Text(
+                        shopName,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : _lightModeGray,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Stat Card (Rating, Reviews, Distance)
+                      _buildInnerGlassCard(
+                        isDark: isDark,
+                        radius: 18.0,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            Expanded(child: _buildStatItem(HugeIcons.strokeRoundedStar, shop['rating']?.toString() ?? '5.0', AppLocalizations.of(context)!.rating, isDark)),
+                            _buildVerticalDivider(isDark),
+                            Expanded(child: _buildStatItem(HugeIcons.strokeRoundedComment01, shop['reviews']?.toString() ?? '0', AppLocalizations.of(context)!.reviews, isDark)),
+                            _buildVerticalDivider(isDark),
+                            Expanded(child: _buildStatItem(HugeIcons.strokeRoundedLocation01, _getDistanceString(shop['location']), AppLocalizations.of(context)!.away, isDark)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Quick Action Buttons (Call, Message, Directions)
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 1,
+                            child: _buildActionButton(
+                              HugeIcons.strokeRoundedCall,
+                              null,
+                              isDark,
+                              false,
+                              onTap: _makeCall,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 1,
+                            child: _buildActionButton(
+                              HugeIcons.strokeRoundedMessage02,
+                              null,
+                              isDark,
+                              false,
+                              onTap: () => _showMessageOptions(context, isDark),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 2,
+                            child: _buildActionButton(
+                              HugeIcons.strokeRoundedRoute01,
+                              AppLocalizations.of(context)!.directions,
+                              isDark,
+                              true,
+                              onTap: () => _getDirections(shop),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Primary Action Buttons
+                      Row(
+                        children: [
+                          // Button 1: View Store Profile
+                          Expanded(
+                            child: _AnimatedPressable(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => BusinessStoreView(shop: shop),
+                                  ),
+                                );
+                              },
+                              child: _buildInnerGlassCard(
+                                isDark: isDark,
+                                radius: 16.0,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                child: Center(
+                                  child: Text(
+                                    AppLocalizations.of(context)!.btnViewProfile,
+                                    style: TextStyle(
+                                      color: isDark ? Colors.white : Colors.black87,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+
+                          // Button 2: Book / Queue (With Auth Guard)
+                          Expanded(
+                            child: _AnimatedPressable(
+                              onTap: () {
+                                if (Supabase.instance.client.auth.currentUser != null) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => BookingsView(
+                                        shopId: shop["id"].toString(),
+                                        shopName: shop["name"] ?? "Unknown Shop",
+                                        category: shop["category"]?.toString().toUpperCase() ?? "SERVICE",
+                                        shopImage: shop["image"] ?? "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400",
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  showGlassToast(
+                                    context,
+                                    "Please sign in or register to make a booking.",
+                                    isError: true,
+                                  );
+                                  Navigator.pushNamed(context, '/login');
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.blue.withValues(alpha: 0.35),
+                                      blurRadius: 14,
+                                      offset: const Offset(0, 5),
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    AppLocalizations.of(context)!.bookNow,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // --- 5. BOTTOM SHEET MODAL ---
 
   void _showBusinessProfile(BuildContext context, Map<String, dynamic> shop) {
     //  SAFELY set local state here, outside the sheet builder!
     setState(() {
+      _selectedShop = shop;
       _isProfileOpen = true;
     });
+
+    final bool isDesktop = MediaQuery.of(context).size.width >= 800;
+    if (isDesktop) {
+      // Pada desktop, panel sisi Google Maps diaktifkan melalui state _isProfileOpen di dalam Stack!
+      return;
+    }
+
     BottomNavCustomer.isVisible.value = false;
 
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
