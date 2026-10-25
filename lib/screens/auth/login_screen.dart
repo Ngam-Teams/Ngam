@@ -189,6 +189,44 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             ),
 
+            // ─── Top-Left Back to Home Button (Guest Mode) ───
+            Positioned(
+              top: 24,
+              left: 28,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        width: 1,
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: IconButton(
+                      tooltip: 'Laman Utama (Home)',
+                      icon: const HugeIcon(
+                        icon: HugeIcons.strokeRoundedHome01,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      onPressed: () {
+                        if (Navigator.of(context).canPop()) {
+                          Navigator.of(context).pop();
+                        } else {
+                          Navigator.of(context).pushReplacementNamed('/customer-home');
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
             // ─── 3. Top-Right Language & Theme Control ───
             Positioned(
               top: 24,
@@ -668,6 +706,37 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+
+              // Terokai Tanpa Log Masuk (Guest Mode Button)
+              OutlinedButton.icon(
+                onPressed: () {
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  } else {
+                    Navigator.of(context).pushReplacementNamed('/customer-home');
+                  }
+                },
+                icon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedCompass01,
+                  size: 18,
+                  color: Colors.white70,
+                ),
+                label: Text(
+                  'Terokai Sebagai Tetamu (Guest)',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.18)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  backgroundColor: Colors.white.withValues(alpha: 0.04),
+                ),
               ),
             ],
           ),

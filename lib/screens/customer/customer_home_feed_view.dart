@@ -634,6 +634,41 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
 
         const SizedBox(width: 12),
 
+        // Optional Quick Login Pill for Guests
+        if (Supabase.instance.client.auth.currentUser == null) ...[
+          GestureDetector(
+            onTap: () => Navigator.of(context).pushNamed('/login'),
+            child: Container(
+              height: 38,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                color: const Color(0xFF2196F3).withValues(alpha: 0.15),
+                border: Border.all(
+                  color: const Color(0xFF2196F3).withValues(alpha: 0.4),
+                  width: 1,
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.login_rounded, size: 15, color: Color(0xFF64B5F6)),
+                  SizedBox(width: 5),
+                  Text(
+                    'Log Masuk',
+                    style: TextStyle(
+                      color: Color(0xFF64B5F6),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+
         // Right: Connected Twin Glass Pill (QR Scan + Divider + Notification)
         GlassContainer(
           useOwnLayer: true,

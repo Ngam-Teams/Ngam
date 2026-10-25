@@ -72,9 +72,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = authProvider.user;
     final isDark = themeProvider.isDarkMode;
 
-    if (user == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -92,7 +89,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         const SizedBox(height: 20),
 
-                        // ─── Header Profil ───────────────────────────
+                        // ─── Header Profil (Tetamu atau Log Masuk) ───
                         Center(
                           child: Column(
                             children: [
@@ -112,10 +109,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   backgroundColor: isDark
                                       ? Colors.white10
                                       : Colors.black12,
-                                  backgroundImage: user.userAvatarUrl != null 
-                                      ? CachedNetworkImageProvider(user.userAvatarUrl!) 
+                                  backgroundImage: user?.userAvatarUrl != null 
+                                      ? CachedNetworkImageProvider(user!.userAvatarUrl!) 
                                       : null,
-                                  child: user.userAvatarUrl == null 
+                                  child: user?.userAvatarUrl == null 
                                       ? HugeIcon(
                                           icon: HugeIcons.strokeRoundedUser,
                                           color: isDark
@@ -128,7 +125,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                (user.userName?.isNotEmpty ?? false) ? user.userName! : 'User',
+                                user != null
+                                    ? ((user.userName?.isNotEmpty ?? false) ? user.userName! : 'User')
+                                    : 'Tetamu (Guest)',
                                 style: GoogleFonts.outfit(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w900,
@@ -145,15 +144,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.primary,
+                                  color: user != null ? AppTheme.primary : Colors.white.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(12),
+                                  border: user == null ? Border.all(color: Colors.white24, width: 0.8) : null,
                                 ),
                                 child: Text(
-                                  user.role == UserRole.customer
-                                      ? "CUSTOMER"
-                                      : "CUSTOMER",
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  user != null
+                                      ? (user.role == UserRole.customer
+                                          ? "CUSTOMER"
+                                          : "CUSTOMER")
+                                      : "GUEST ACCOUNT",
+                                  style: TextStyle(
+                                    color: user != null ? Colors.white : Colors.white70,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w900,
                                     letterSpacing: 1,
@@ -162,128 +164,156 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                user.userEmail ?? '',
+                                user != null
+                                    ? (user.userEmail ?? '')
+                                    : 'Log masuk untuk mengurus pesanan dan ganjaran anda.',
                                 style: TextStyle(
                                   color: isDark ? Colors.white70 : Colors.grey,
                                   fontSize: 14,
                                 ),
                                 textAlign: TextAlign.center,
-                                maxLines: 1,
+                                maxLines: user != null ? 1 : 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
+                              if (user == null) ...[
+                                const SizedBox(height: 14),
+                                ElevatedButton.icon(
+                                  onPressed: () => Navigator.pushNamed(context, '/login'),
+                                  icon: const HugeIcon(
+                                    icon: HugeIcons.strokeRoundedLogin02,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                  label: const Text(
+                                    'Log Masuk / Daftar',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.primary,
+                                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                    elevation: 0,
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 12),
                             ],
                           ),
                         ),
                         const SizedBox(height: 32),
 
-
-                        // ─── Bahagian Stat / Statistik ───────────────
-                        _buildSectionHeader('profile.statistics'.tr()),
-                        Row(
-                          children: [
-                            _StatCardGlass(
-                              isDark: isDark,
-                              label: 'profile.tasks_posted'.tr(),
-                              value: '$_tasksPosted',
-                              icon: HugeIcons.strokeRoundedUpload01,
-                            ),
-                            const SizedBox(width: 12),
-                            _StatCardGlass(
-                              isDark: isDark,
-                              label: 'profile.completed'.tr(),
-                              value: '$_tasksCompleted',
-                              icon: HugeIcons.strokeRoundedTick01,
-                            ),
-                            const SizedBox(width: 12),
-                            _StatCardGlass(
-                              isDark: isDark,
-                              label: 'profile.rating'.tr(),
-                              value: _rating > 0
-                                  ? _rating.toStringAsFixed(1)
-                                  : 'profile.new_rating'.tr(),
-                              icon: HugeIcons.strokeRoundedStar,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-
-                        // ─── Akaun ───────────────────────────────────────────
-                        _buildSectionHeader("profile.account".tr()),
-                        _buildGlassSection(
-                          isDark,
-                          Column(
+                        // ─── Bahagian Stat / Statistik (Hanya jika Log Masuk) ───
+                        if (user != null) ...[
+                          _buildSectionHeader('profile.statistics'.tr()),
+                          Row(
                             children: [
-                              _buildSettingsTile(
-                                isDark,
-                                HugeIcons.strokeRoundedUserEdit01,
-                                "profile.account_details".tr(),
-                                trailing: _buildArrow(),
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const AccountDetailsScreen(),
-                                  ),
-                                ),
+                              _StatCardGlass(
+                                isDark: isDark,
+                                label: 'profile.tasks_posted'.tr(),
+                                value: '$_tasksPosted',
+                                icon: HugeIcons.strokeRoundedUpload01,
                               ),
-                              _buildDivider(isDark),
-                              _buildSettingsTile(
-                                isDark,
-                                HugeIcons.strokeRoundedCreditCard,
-                                "wallet.title".tr(),
-                                trailing: _buildArrow(),
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const WalletScreen(),
-                                  ),
-                                ),
+                              const SizedBox(width: 12),
+                              _StatCardGlass(
+                                isDark: isDark,
+                                label: 'profile.completed'.tr(),
+                                value: '$_tasksCompleted',
+                                icon: HugeIcons.strokeRoundedTick01,
                               ),
-                              _buildDivider(isDark),
-                              _buildSettingsTile(
-                                isDark,
-                                HugeIcons.strokeRoundedLoyaltyCard,
-                                "Kad Cop Ganjaran (Stamps)",
-                                trailing: _buildArrow(),
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const MyStampCardsScreen(),
-                                  ),
-                                ),
-                              ),
-                              _buildDivider(isDark),
-                              _buildSettingsTile(
-                                isDark,
-                                HugeIcons.strokeRoundedTicket01,
-                                "Tiket Giliran Walk-In (Live Queue)",
-                                trailing: _buildArrow(),
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const MyQueueTicketScreen(),
-                                  ),
-                                ),
-                              ),
-                              _buildDivider(isDark),
-                              _buildSettingsTile(
-                                isDark,
-                                HugeIcons.strokeRoundedShield01,
-                                "profile.privacy_security".tr(),
-                                trailing: _buildArrow(),
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const PrivacySecurityScreen(),
-                                  ),
-                                ),
+                              const SizedBox(width: 12),
+                              _StatCardGlass(
+                                isDark: isDark,
+                                label: 'profile.rating'.tr(),
+                                value: _rating > 0
+                                    ? _rating.toStringAsFixed(1)
+                                    : 'profile.new_rating'.tr(),
+                                icon: HugeIcons.strokeRoundedStar,
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 24),
+                          const SizedBox(height: 24),
+
+                          // ─── Akaun ───────────────────────────────────────────
+                          _buildSectionHeader("profile.account".tr()),
+                          _buildGlassSection(
+                            isDark,
+                            Column(
+                              children: [
+                                _buildSettingsTile(
+                                  isDark,
+                                  HugeIcons.strokeRoundedUserEdit01,
+                                  "profile.account_details".tr(),
+                                  trailing: _buildArrow(),
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const AccountDetailsScreen(),
+                                    ),
+                                  ),
+                                ),
+                                _buildDivider(isDark),
+                                _buildSettingsTile(
+                                  isDark,
+                                  HugeIcons.strokeRoundedCreditCard,
+                                  "wallet.title".tr(),
+                                  trailing: _buildArrow(),
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const WalletScreen(),
+                                    ),
+                                  ),
+                                ),
+                                _buildDivider(isDark),
+                                _buildSettingsTile(
+                                  isDark,
+                                  HugeIcons.strokeRoundedLoyaltyCard,
+                                  "Kad Cop Ganjaran (Stamps)",
+                                  trailing: _buildArrow(),
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const MyStampCardsScreen(),
+                                    ),
+                                  ),
+                                ),
+                                _buildDivider(isDark),
+                                _buildSettingsTile(
+                                  isDark,
+                                  HugeIcons.strokeRoundedTicket01,
+                                  "Tiket Giliran Walk-In (Live Queue)",
+                                  trailing: _buildArrow(),
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const MyQueueTicketScreen(),
+                                    ),
+                                  ),
+                                ),
+                                _buildDivider(isDark),
+                                _buildSettingsTile(
+                                  isDark,
+                                  HugeIcons.strokeRoundedShield01,
+                                  "profile.privacy_security".tr(),
+                                  trailing: _buildArrow(),
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const PrivacySecurityScreen(),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
 
                         // ─── Pilihan ──────────────────────────────────────────
                         _buildSectionHeader("profile.preferences".tr()),
@@ -458,26 +488,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(height: 32),
 
-                        // ─── Butang Log Keluar ───────────────────────────────
-                        _buildGlassButton(
-                          isDark,
-                          'profile.logout'.tr(),
-                          AppTheme.error,
-                          () async {
-                            await authProvider.signOut();
-                            if (context.mounted) {
-                              showGlassToast(
-                                context,
-                                'profile.logout_success'.tr(),
-                              );
-                              Navigator.pushNamedAndRemoveUntil(
-                                context,
-                                '/login',
-                                (route) => false,
-                              );
-                            }
-                          },
-                        ),
+                        // ─── Butang Log Keluar (Hanya jika Log Masuk) ───────
+                        if (user != null)
+                          _buildGlassButton(
+                            isDark,
+                            'profile.logout'.tr(),
+                            AppTheme.error,
+                            () async {
+                              await authProvider.signOut();
+                              if (context.mounted) {
+                                showGlassToast(
+                                  context,
+                                  'profile.logout_success'.tr(),
+                                );
+                                Navigator.pushNamedAndRemoveUntil(
+                                  context,
+                                  '/customer-home',
+                                  (route) => false,
+                                );
+                              }
+                            },
+                          ),
                         const SizedBox(height: 120),
                       ],
                     ),

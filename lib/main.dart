@@ -258,7 +258,7 @@ class NgamApp extends StatelessWidget {
                 );
               }
 
-              // 4. Default / Home Fallback
+              // 4. Default / Home Fallback (Allows public & guest access to satisfy Google OAuth Branding Verification)
               return MaterialPageRoute(
                 settings: settings,
                 builder: (_) => Consumer<AuthProvider>(
@@ -273,9 +273,6 @@ class NgamApp extends StatelessWidget {
                           ),
                         ),
                       );
-                    }
-                    if (!auth.isLoggedIn) {
-                      return const LoginScreen();
                     }
                     return const CustomerHomeScreen();
                   },
