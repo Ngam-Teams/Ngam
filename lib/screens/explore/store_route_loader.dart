@@ -158,6 +158,7 @@ class _StoreRouteLoaderState extends State<StoreRouteLoader> {
       final formattedShop = <String, dynamic>{
         'id': row['id'],
         'name': row['business_name'] ?? 'Peniaga Ngam',
+        'business_name': row['business_name'] ?? 'Peniaga Ngam',
         'category': row['business_industry'] ?? 'fnb',
         'location': LatLng(
           (row['latitude'] as num?)?.toDouble() ?? 3.1390,
@@ -166,7 +167,13 @@ class _StoreRouteLoaderState extends State<StoreRouteLoader> {
         'image': (row['business_logo_url'] as String?)?.isNotEmpty == true
             ? row['business_logo_url']
             : '',
+        'business_logo_url': (row['business_logo_url'] as String?)?.isNotEmpty == true
+            ? row['business_logo_url']
+            : '',
         'cover': (row['business_cover_url'] as String?)?.isNotEmpty == true
+            ? row['business_cover_url']
+            : '',
+        'business_cover_url': (row['business_cover_url'] as String?)?.isNotEmpty == true
             ? row['business_cover_url']
             : '',
         'phone': row['business_phone'] ?? '',

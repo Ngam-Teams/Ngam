@@ -1445,8 +1445,8 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
         separatorBuilder: (_, __) => const SizedBox(width: 14),
         itemBuilder: (context, index) {
           final shop = displayList[index];
-          final String name = shop['name'] ?? 'Kedai Servis';
-          final String cat = shop['category']?.toString().toUpperCase() ?? 'BARBER';
+          final String name = (shop['business_name'] ?? shop['name']) ?? 'Kedai Servis';
+          final String cat = (shop['business_industry'] ?? shop['category'])?.toString().toUpperCase() ?? 'BARBER';
           final Color catAccent = _getCategoryColor(cat);
           final String rating = shop['rating']?.toString() ?? '4.9';
           final String dist = _formatDistance(shop['distanceKm']);

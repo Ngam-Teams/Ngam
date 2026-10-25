@@ -51,35 +51,62 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
   int? _syncedCloseHour;
   int? _syncedCloseMinute;
   String? _syncedCoverUrl;
+  String? _syncedLogoUrl;
+  String? _syncedName;
   Map<String, dynamic>? _syncedOperatingHours;
   bool? _syncedIsOpen;
   List<Map<String, dynamic>> _syncedWeeklySchedule = [];
   List<Map<String, dynamic>> _syncedSpecialHolidays = [];
   String? _activeHolidayName;
 
+  String get _shopName {
+    if (_syncedName != null && _syncedName!.trim().isNotEmpty) {
+      return _syncedName!.trim();
+    }
+    final n = (widget.shop['business_name'] ?? widget.shop['name'])?.toString().trim();
+    if (n != null && n.isNotEmpty) return n;
+    return 'Store';
+  }
+
   int get _openHour => _syncedOpenHour ?? widget.shop['openHour'] ?? 9;
   int get _openMinute => _syncedOpenMinute ?? widget.shop['openMinute'] ?? 0;
   int get _closeHour => _syncedCloseHour ?? widget.shop['closeHour'] ?? 22;
   int get _closeMinute => _syncedCloseMinute ?? widget.shop['closeMinute'] ?? 0;
-  String get _coverUrl {
-    if (_syncedCoverUrl != null && _syncedCoverUrl!.trim().isNotEmpty) {
-      final s = _syncedCoverUrl!.trim();
+
+  String get _logoUrl {
+    if (_syncedLogoUrl != null && _syncedLogoUrl!.trim().isNotEmpty) {
+      final s = _syncedLogoUrl!.trim();
       if (!s.contains('photo-1503951914875-452162b0f3f1')) return s;
     }
-    final c = widget.shop['cover'] ?? widget.shop['business_cover_url'];
-    if (c != null && c.toString().trim().isNotEmpty) {
-      final s = c.toString().trim();
-      if (!s.contains('photo-1503951914875-452162b0f3f1')) return s;
+    final l = (widget.shop['business_logo_url'] ?? widget.shop['logo_url'] ?? widget.shop['image'])?.toString().trim();
+    if (l != null && l.isNotEmpty) {
+      if (!l.contains('photo-1503951914875-452162b0f3f1')) return l;
     }
     return '';
   }
 
-  String get _logoUrl {
-    final l = widget.shop['business_logo_url'] ?? widget.shop['logo_url'] ?? widget.shop['image'];
-    if (l != null && l.toString().trim().isNotEmpty) {
-      final s = l.toString().trim();
-      if (!s.contains('photo-1503951914875-452162b0f3f1')) return s;
+  String get _coverUrl {
+    final logo = _logoUrl.trim();
+
+    // 1. Check synced cover from Supabase 'businesses.business_cover_url'
+    if (_syncedCoverUrl != null && _syncedCoverUrl!.trim().isNotEmpty) {
+      final s = _syncedCoverUrl!.trim();
+      // Strict guard: NEVER display logo as cover!
+      if (!s.contains('photo-1503951914875-452162b0f3f1') && (logo.isEmpty || s != logo)) {
+        return s;
+      }
     }
+
+    // 2. Check widget.shop passed data (strictly prioritize 'business_cover_url' over legacy 'cover')
+    final c = (widget.shop['business_cover_url'] ?? widget.shop['cover'])?.toString().trim();
+    if (c != null && c.isNotEmpty) {
+      // Strict guard: NEVER display logo as cover!
+      if (!c.contains('photo-1503951914875-452162b0f3f1') && (logo.isEmpty || c != logo)) {
+        return c;
+      }
+    }
+
+    // Never enlarge or fall back to the logo! Always return empty string to use clean cover fallback.
     return '';
   }
 
@@ -349,18 +376,28 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
     try {
       final biz = await Supabase.instance.client
           .from('businesses')
-          .select('business_cover_url, business_logo_url, is_open')
+          .select('business_name, business_cover_url, business_logo_url, is_open')
           .eq('id', shopId)
           .maybeSingle();
 
       if (biz != null && mounted) {
         final cover = biz['business_cover_url'] as String?;
-        if (cover != null && cover.isNotEmpty) {
-          _syncedCoverUrl = cover;
+        if (cover != null && cover.trim().isNotEmpty) {
+          _syncedCoverUrl = cover.trim();
+        }
+        final logo = biz['business_logo_url'] as String?;
+        if (logo != null && logo.trim().isNotEmpty) {
+          _syncedLogoUrl = logo.trim();
+        }
+        final name = biz['business_name'] as String?;
+        if (name != null && name.trim().isNotEmpty) {
+          _syncedName = name.trim();
         }
         if (biz['is_open'] != null) {
           _syncedIsOpen = biz['is_open'] == true;
         }
+        // Immediately notify UI of cover, logo, name and status updates
+        setState(() {});
       }
 
       final settings = await Supabase.instance.client
@@ -524,7 +561,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
       MaterialPageRoute(
         builder: (_) => BookingsView(
           shopId: widget.shop['id']?.toString() ?? '1',
-          shopName: widget.shop['name'] ?? 'Store',
+          shopName: _shopName,
           category: widget.shop['category']?.toString().toUpperCase() ?? 'SERVICE',
           shopImage: widget.shop['image'] ?? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400',
         ),
@@ -666,7 +703,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                           MaterialPageRoute(
                             builder: (_) => BusinessProductsView(
                               shopId: widget.shop['id']?.toString() ?? 'unknown',
-                              shopName: widget.shop['name'] ?? 'Store',
+                              shopName: _shopName,
                               initialSearchQuery: val,
                             ),
                           ),
@@ -975,7 +1012,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    widget.shop['name'] ?? 'Business',
+                    _shopName,
                     style: TextStyle(
                       color: textPrimary,
                       fontSize: 22,
@@ -1236,7 +1273,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          widget.shop['name'] ?? 'Business',
+                          _shopName,
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 20,
@@ -1634,7 +1671,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
   // ── Sub-widgets ──────────────────────────────────────────────
 
   Widget _logoFallback(bool isDark) {
-    final name = (widget.shop['name'] ?? widget.shop['business_name'] ?? 'Store').toString().trim();
+    final name = _shopName.trim();
     final initial = name.isNotEmpty ? name[0].toUpperCase() : 'N';
 
     return Container(
@@ -2082,7 +2119,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                          MaterialPageRoute(
                                            builder: (_) => BookingsView(
                                              shopId: widget.shop['id']?.toString() ?? '1',
-                                             shopName: widget.shop['name'] ?? 'Store',
+                                             shopName: _shopName,
                                              category: widget.shop['category']?.toString().toUpperCase() ?? 'SERVICE',
                                              shopImage: widget.shop['image'] ?? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400',
                                            ),

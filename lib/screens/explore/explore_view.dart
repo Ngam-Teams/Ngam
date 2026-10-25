@@ -304,6 +304,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         return {
           'id': row['id'],
           'name': row['business_name'] ?? 'Unknown Business',
+          'business_name': row['business_name'] ?? 'Unknown Business',
           'category': row['business_industry'] ?? 'service',
           'location': LatLng(
               (row['latitude'] as num?)?.toDouble() ?? 0.0,
@@ -312,7 +313,13 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           'image': (row['business_logo_url'] as String?)?.isNotEmpty == true
               ? row['business_logo_url']
               : '',
+          'business_logo_url': (row['business_logo_url'] as String?)?.isNotEmpty == true
+              ? row['business_logo_url']
+              : '',
           'cover': (row['business_cover_url'] as String?)?.isNotEmpty == true
+              ? row['business_cover_url']
+              : '',
+          'business_cover_url': (row['business_cover_url'] as String?)?.isNotEmpty == true
               ? row['business_cover_url']
               : '',
           'phone': row['business_phone'] ?? '',

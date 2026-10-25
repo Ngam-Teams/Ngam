@@ -283,6 +283,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
               business_name,
               business_handle,
               business_logo_url,
+              business_cover_url,
               business_industry,
               business_city,
               state
@@ -393,6 +394,9 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
               'business_handle': shopHandle,
               'logo_url': shopAvatar,
               'image': shopAvatar,
+              'business_logo_url': shopAvatar,
+              'cover': (biz['business_cover_url'] as String?)?.trim() ?? '',
+              'business_cover_url': (biz['business_cover_url'] as String?)?.trim() ?? '',
               'category':
                   biz['business_industry'] ?? row['category'] ?? 'general',
               'rating': 4.9,
