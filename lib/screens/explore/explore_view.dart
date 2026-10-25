@@ -137,7 +137,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     ];
   }
 
-  LatLng _getDynamicCenterOffset(Map<String, dynamic> shop, double targetZoom) {
+  LatLng _getDynamicCenterOffset(Map<String, dynamic> shop, double targetZoom, {bool? panelOpen}) {
     final double screenHeight = MediaQuery.of(context).size.height;
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isDesktop = screenWidth >= 800;
@@ -146,27 +146,35 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     double scale = pow(2, 14.0 - targetZoom).toDouble();
 
     if (isDesktop) {
-      // 1. Ruang di sebelah kiri yang dihalang oleh Sidebar + Panel Maklumat Kedai
+      // 1. Dapatkan kelebaran sebenar sidebar mengikut status kembang (276px) atau kecil (88px)
       final bool isSidebarExpanded = CustomerDesktopSidebar.isExpandedNotifier.value;
-      final double sidebarOffset = isSidebarExpanded ? 256.0 : 88.0;
-      final double panelWidth = (screenWidth * 0.30).clamp(350.0, 440.0);
-      final double leftObstruction = sidebarOffset + 14.0 + panelWidth + 14.0;
+      final double sidebarWidth = isSidebarExpanded ? 276.0 : 88.0;
+      final double gap = 18.0;
 
-      // 2. Pusat mendatar bagi kawasan peta yang TERBUKA di sebelah kanan
-      final double visibleMapWidth = screenWidth - leftObstruction;
-      final double visibleCenterX = leftObstruction + (visibleMapWidth / 2.0);
+      // 2. Ruang di sebelah kiri yang dihalang oleh Sidebar (+ Panel Maklumat Kedai jika aktif)
+      final bool isPanelActive = panelOpen ?? (_isProfileOpen);
+      final double leftObstruction;
+      if (isPanelActive) {
+        final double panelWidth = (screenWidth * 0.30).clamp(350.0, 440.0);
+        leftObstruction = sidebarWidth + gap + panelWidth;
+      } else {
+        leftObstruction = sidebarWidth;
+      }
 
-      // 3. Pusat menegak bagi kawasan peta (tolak ketinggian carousel di bawah ~140px)
+      // 3. Titik tengah bagi kawasan peta yang TERBUKA di sebelah kanan
+      final double visibleCenterX = (leftObstruction + gap + screenWidth) / 2.0;
+
+      // 4. Titik tengah menegak bagi kawasan peta (tolak ketinggian carousel di bawah ~140px)
       final double bottomObstruction = 140.0;
       final double visibleMapHeight = screenHeight - bottomObstruction;
       // Anjakan 28px ke bawah supaya keseluruhan blok (marker pin + popup label) betul-betul di tengah
       final double visibleCenterY = (visibleMapHeight / 2.0) + 28.0;
 
-      // 4. Hitung anjakan piksel dari titik tengah fizikal skrin
+      // 5. Hitung anjakan piksel dari titik tengah fizikal skrin
       final double dx = visibleCenterX - (screenWidth / 2.0);
       final double dy = visibleCenterY - (screenHeight / 2.0);
 
-      // 5. Tukar beza piksel kepada koordinat Latitud & Longitud offset
+      // 6. Tukar beza piksel kepada koordinat Latitud & Longitud offset
       final double latOffset = dy * degreesPerPixelAtZoom14 * scale;
       final double lonOffset = dx * degreesPerPixelAtZoom14 * scale;
 
@@ -224,6 +232,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
     //  2. Attach the listener for the search bar focus
     _searchFocus.addListener(_onSearchFocusChanged);
+    CustomerDesktopSidebar.isExpandedNotifier.addListener(_onSidebarExpandedChanged);
 
     //  3. Load cached location immediately for instant startup
     _loadCachedLocation();
@@ -343,11 +352,29 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     _desktopCarouselController.dispose();
     _positionStream?.cancel();
     _debounce?.cancel();
+    CustomerDesktopSidebar.isExpandedNotifier.removeListener(_onSidebarExpandedChanged);
     _searchFocus.removeListener(_onSearchFocusChanged);
     _searchFocus.dispose();
     _searchController.dispose();
     _sheetController.dispose();
     super.dispose();
+  }
+
+  void _onSidebarExpandedChanged() {
+    if (!mounted) return;
+    final bool isDesktop = MediaQuery.of(context).size.width >= 800;
+    if (!isDesktop) return;
+
+    setState(() {}); // Kemas kini anjakan komponen desktop mengikut kelebaran sidebar
+
+    // Kira semula titik tengah peta dan gerakkan kamera secara lancar
+    if (_selectedShop != null && _isProfileOpen) {
+      double currentZoom = _mapController.camera.zoom;
+      LatLng newCenter = _getDynamicCenterOffset(_selectedShop!, currentZoom);
+      _animatedMapMove(newCenter, currentZoom);
+    } else if (_followUser) {
+      _recenterMapOnUser(animated: true);
+    }
   }
 
   // --- 3. CORE LOGIC ---
@@ -839,14 +866,14 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       final double screenWidth = MediaQuery.of(context).size.width;
       final double screenHeight = MediaQuery.of(context).size.height;
       final bool isSidebarExpanded = CustomerDesktopSidebar.isExpandedNotifier.value;
-      final double sidebarOffset = isSidebarExpanded ? 256.0 : 88.0;
+      final double sidebarWidth = isSidebarExpanded ? 276.0 : 88.0;
+      final double gap = 18.0;
       final double panelWidth = (screenWidth * 0.30).clamp(350.0, 440.0);
       final double leftObstruction = (_isProfileOpen && _selectedShop != null)
-          ? (sidebarOffset + 14.0 + panelWidth + 14.0)
-          : (sidebarOffset + 14.0);
+          ? (sidebarWidth + gap + panelWidth)
+          : (sidebarWidth);
 
-      final double visibleMapWidth = screenWidth - leftObstruction;
-      final double visibleCenterX = leftObstruction + (visibleMapWidth / 2.0);
+      final double visibleCenterX = (leftObstruction + gap + screenWidth) / 2.0;
       final double visibleMapHeight = screenHeight - 140.0;
       final double visibleCenterY = (visibleMapHeight / 2.0);
 

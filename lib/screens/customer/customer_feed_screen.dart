@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import 'dart:math' as math;
@@ -36,13 +35,14 @@ class CustomerFeedScreen extends StatefulWidget {
 class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   static int _persistedPageIndex = 0;
+  static bool _persistedIsMuted = false;
 
   late PageController _pageController;
   late AnimationController _discAnimController;
 
   int _activeTopTab = 1; // 0: 'Berhampiran', 1: 'Untuk Anda'
   int _currentPage = 0;
-  bool _isMuted = kIsWeb; // Web browsers block unmuted autoplay; default muted on Web ensures instant autoplay!
+  bool _isMuted = _persistedIsMuted; // Unmuted by default so videos play with full sound!
   bool _isModalOrRouteOpen = false;
   bool _isVideoPlaying = true;
 
@@ -499,6 +499,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   void _toggleMute() {
     setState(() {
       _isMuted = !_isMuted;
+      _persistedIsMuted = _isMuted;
     });
     showGlassToast(
       context,
@@ -1564,14 +1565,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             isCompact: isShortPhone,
             isDesktop: isDesktop,
             isDark: isDark,
-            onTap: () {
-              _toggleMute();
-              showGlassToast(
-                context,
-                _isMuted ? 'Audio dibisukan' : 'Audio dibuka',
-                icon: _isMuted ? HugeIcons.strokeRoundedVolumeOff : HugeIcons.strokeRoundedVolumeHigh,
-              );
-            },
+            onTap: _toggleMute,
           ),
         ],
       ],
@@ -2345,20 +2339,17 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
       _controller.addListener(_videoListener);
       _controller.setLooping(true);
 
-      // On Web, start at 0.0 volume for instant autoplay compliance without user gesture
-      final double initialVolume = widget.isMuted ? 0.0 : (kIsWeb ? 0.0 : 1.0);
+      // Initial volume: 0.0 if muted, otherwise 1.0 (unmuted)
+      final double initialVolume = widget.isMuted ? 0.0 : 1.0;
       _controller.setVolume(initialVolume).catchError((_) {});
 
       if (widget.isCurrentPage && !widget.isPausedExternally && !_isUserPaused) {
         _controller.play().then((_) {
           if (mounted) {
             widget.onPlayStateChanged?.call(true);
-            if (!widget.isMuted && initialVolume == 0.0) {
-              _controller.setVolume(1.0).catchError((_) {});
-            }
           }
         }).catchError((playErr) {
-          debugPrint('[FeedVideoPlayer] Autoplay blocked, muted retry: $playErr');
+          debugPrint('[FeedVideoPlayer] Unmuted autoplay blocked by browser policy, falling back to muted: $playErr');
           _controller.setVolume(0.0).then((_) {
             return _controller.play().then((_) {
               if (mounted) widget.onPlayStateChanged?.call(true);
@@ -2420,7 +2411,10 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
         }
       } else {
         if (!_controller.value.isPlaying) {
-          _controller.play().catchError((_) {
+          if (!widget.isMuted && _controller.value.volume == 0.0) {
+            _controller.setVolume(1.0).catchError((_) {});
+          }
+          _controller.play().catchError((playErr) {
             _controller.setVolume(0.0).then((_) => _controller.play()).catchError((_) {});
           });
           widget.onPlayStateChanged?.call(true);
@@ -2462,6 +2456,9 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
           });
         }
       } else {
+        if (!widget.isMuted && _controller.value.volume == 0.0) {
+          await _controller.setVolume(1.0).catchError((_) {});
+        }
         await _controller.play();
         if (mounted) {
           setState(() {
@@ -2631,8 +2628,18 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
             Positioned.fill(
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: _togglePlayPause,
-                onDoubleTapDown: (details) => widget.onDoubleTap?.call(details.globalPosition),
+                onTap: () {
+                  if (!widget.isMuted && _controller.value.volume == 0.0) {
+                    _controller.setVolume(1.0).catchError((_) {});
+                  }
+                  _togglePlayPause();
+                },
+                onDoubleTapDown: (details) {
+                  if (!widget.isMuted && _controller.value.volume == 0.0) {
+                    _controller.setVolume(1.0).catchError((_) {});
+                  }
+                  widget.onDoubleTap?.call(details.globalPosition);
+                },
                 onLongPressStart: (_) => _setSpeed(2.0),
                 onLongPressEnd: (_) => _setSpeed(1.0),
                 onLongPressCancel: () => _setSpeed(1.0),
@@ -2907,10 +2914,12 @@ class _LandscapeVideoFullscreenDialogState
   bool _is2x = false;
   Timer? _hideControlsTimer;
   double _buttonScale = 1.0;
+  late bool _isMuted;
 
   @override
   void initState() {
     super.initState();
+    _isMuted = widget.isMuted || widget.controller.value.volume == 0.0;
     widget.controller.addListener(_listener);
     // Auto-hide controls after 2.5 seconds upon entering landscape
     _startHideControlsTimer(milliseconds: 2500);
@@ -2951,6 +2960,9 @@ class _LandscapeVideoFullscreenDialogState
       if (widget.controller.value.isPlaying) {
         widget.controller.pause();
       } else {
+        if (!_isMuted && widget.controller.value.volume == 0.0) {
+          widget.controller.setVolume(1.0).catchError((_) {});
+        }
         widget.controller.play();
       }
     });
@@ -3119,7 +3131,7 @@ class _LandscapeVideoFullscreenDialogState
                         const SizedBox(width: 10),
                         IconButton(
                           icon: HugeIcon(
-                            icon: widget.isMuted
+                            icon: _isMuted
                                 ? HugeIcons.strokeRoundedVolumeOff
                                 : HugeIcons.strokeRoundedVolumeHigh,
                             color: Colors.white,
@@ -3127,10 +3139,14 @@ class _LandscapeVideoFullscreenDialogState
                           ),
                           style: IconButton.styleFrom(backgroundColor: Colors.black54),
                           onPressed: () {
+                            setState(() {
+                              _isMuted = !_isMuted;
+                              widget.controller.setVolume(_isMuted ? 0.0 : 1.0).catchError((_) {});
+                            });
                             widget.onToggleMute();
                             _startHideControlsTimer();
                           },
-                          tooltip: widget.isMuted ? 'Buka Suara' : 'Senyap',
+                          tooltip: _isMuted ? 'Buka Suara' : 'Senyap',
                         ),
                       ],
                     ),
