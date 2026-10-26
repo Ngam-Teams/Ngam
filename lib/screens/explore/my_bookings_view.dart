@@ -383,35 +383,118 @@ class _MyBookingsViewState extends State<MyBookingsView> {
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             child: Row(
               children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () async {
-                      bool confirm = await showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          backgroundColor: isDark ? const Color(0xFF1E242B) : Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                          title: Text("Cancel Booking?", style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.bold)),
-                          content: Text("Are you sure you want to cancel this booking?", style: TextStyle(color: isDark ? Colors.white70 : Colors.black87)),
-                          actions: [
-                            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("No, Keep it", style: TextStyle(color: Colors.grey))),
-                            Container(decoration: BoxDecoration(color: Colors.redAccent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Yes, Cancel", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)))),
-                          ],
-                        ),
-                      ) ?? false;
-
-                      if (!confirm) return;
-
-                      await Supabase.instance.client.from('bookings').update({'status': 'cancelled'}).eq('id', item["db_id"]);
-                    },
-                    behavior: HitTestBehavior.opaque,
+                if (status == 'disputed')
+                  Expanded(
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(color: Colors.redAccent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16)),
-                      child: Center(child: Text(loc?.cancelBtn ?? "Cancel", style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14))),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade900.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.amber.shade600.withValues(alpha: 0.4)),
+                      ),
+                      child: Center(
+                        child: Text(
+                          "Dalam Pertikaian",
+                          style: TextStyle(color: Colors.amber.shade400, fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () async {
+                        String selectedReason = 'Tersalah pilih masa / tarikh';
+                        bool confirm = await showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            backgroundColor: isDark ? const Color(0xFF1E242B) : Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            title: Text("Batal Tempahan?", style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.bold)),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Adakah anda pasti mahu membatalkan slot tempahan ini? Baki bayaran akan dipulangkan ke Ngam Wallet anda.",
+                                  style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 13),
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Simpan Slot", style: TextStyle(color: Colors.grey))),
+                              Container(
+                                decoration: BoxDecoration(color: Colors.redAccent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                                child: TextButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: const Text("Ya, Batalkan", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ) ?? false;
+
+                        if (!confirm) return;
+
+                        final bookingDbId = item["db_id"];
+                        final rawPrice = item['totalPrice']?.toString() ?? '0';
+                        final price = double.tryParse(rawPrice.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+                        final user = Supabase.instance.client.auth.currentUser;
+
+                        await Supabase.instance.client.from('bookings').update({
+                          'status': 'cancelled',
+                          'booking_metadata': {
+                            'cancellation_reason': selectedReason,
+                            'cancelled_at': DateTime.now().toIso8601String(),
+                            'cancelled_by': user?.id,
+                          }
+                        }).eq('id', bookingDbId);
+
+                        if (price > 0 && user != null) {
+                          try {
+                            await Supabase.instance.client.from('wallet_transactions').insert({
+                              'user_id': user.id,
+                              'type': 'refund',
+                              'amount': price,
+                              'reference_id': item['id']?.toString() ?? '',
+                              'description': 'Bayaran balik tempahan: ${item['title']} (${item['category']})'
+                            });
+
+                            final uData = await Supabase.instance.client
+                                .from('users')
+                                .select('wallet_balance')
+                                .eq('id', user.id)
+                                .maybeSingle();
+                            final curBal = (uData?['wallet_balance'] as num?)?.toDouble() ?? 0.0;
+                            await Supabase.instance.client.from('users').update({
+                              'wallet_balance': curBal + price
+                            }).eq('id', user.id);
+                          } catch (we) {
+                            debugPrint('Refund log error: $we');
+                          }
+                        }
+
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                price > 0
+                                    ? 'Tempahan dibatalkan. RM ${price.toStringAsFixed(2)} dikreditkan ke Wallet anda.'
+                                    : 'Tempahan berjaya dibatalkan.',
+                              ),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+                        }
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(color: Colors.redAccent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16)),
+                        child: Center(child: Text(loc?.cancelBtn ?? "Cancel", style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14))),
+                      ),
                     ),
                   ),
-                ),
                 const SizedBox(width: 12),
                 Expanded(
                   flex: 2,
@@ -473,6 +556,16 @@ class _MyBookingsViewState extends State<MyBookingsView> {
         label = 'Sedia';
         icon = HugeIcons.strokeRoundedShoppingBag01;
         break;
+      case 'disputed':
+        color = const Color(0xFFF97316);
+        label = 'Pertikaian';
+        icon = HugeIcons.strokeRoundedAlert02;
+        break;
+      case 'cancelled':
+        color = const Color(0xFFEF4444);
+        label = 'Dibatalkan';
+        icon = HugeIcons.strokeRoundedCancel01;
+        break;
       case 'confirmed':
       default:
         color = const Color(0xFF3B82F6);
@@ -503,6 +596,27 @@ class _MyBookingsViewState extends State<MyBookingsView> {
   }
 
   Widget _buildMiniProgressTracker(String status, bool isDark) {
+    if (status == 'disputed') {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.amber.shade900.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.amber.shade400, size: 14),
+            const SizedBox(width: 6),
+            Text(
+              "Aduan pertikaian sedang disiasat oleh Sokongan Ngam",
+              style: TextStyle(fontSize: 11, color: Colors.amber.shade400, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      );
+    }
+
     int activeStep = 0;
     if (status == 'confirmed' || status == 'preparing' || status == 'in_progress') {
       activeStep = 1;

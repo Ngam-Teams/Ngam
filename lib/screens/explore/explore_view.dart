@@ -1218,12 +1218,26 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         },
         child: Scaffold(
           key: _scaffoldKey,
+          backgroundColor: isDark ? const Color(0xFF181D24) : const Color(0xFFEDE8DF),
           resizeToAvoidBottomInset: false,
           body: Stack(
             children: [
               Listener(
                 onPointerDown: (_) => _onMapInteractionStart(),
-                child: FlutterMap(
+                child: Stack(
+                  children: [
+                    // Base Map Land Background with subtle cartographic grid (Apple Maps / Waze style)
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF181D24) : const Color(0xFFEDE8DF),
+                        ),
+                        child: CustomPaint(
+                          painter: _MapGridPlaceholderPainter(isDark: isDark),
+                        ),
+                      ),
+                    ),
+                    FlutterMap(
                   mapController: _mapController,
                   options: MapOptions(
                     initialCenter: _currentLocation,
@@ -1278,26 +1292,37 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                           'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
                       subdomains: const ['0', '1', '2', '3'],
                       userAgentPackageName: 'com.ngam.app',
-
-                      //  PERFECT FIX: Has (context), but NO 'const' keyword!
                       retinaMode: RetinaMode.isHighDensity(context),
+                      tileDisplay: const TileDisplay.fadeIn(
+                        duration: Duration(milliseconds: 140),
+                        startOpacity: 0.0,
+                      ),
+                      keepBuffer: 3,
+                      panBuffer: 1,
 
                       tileBuilder: (context, tileWidget, tile) {
-                        if (!isDark) return tileWidget;
-                        return ColorFiltered(
-                          colorFilter: const ColorFilter.matrix([
-                            // Google Maps Official Dark Mode Color Matrix:
-                            // Land: Deep Slate Navy (#1a212c)
-                            // Water: Dark Midnight Indigo (#193c4c)
-                            // Forests/Parks/Hills: Rich Dark Teal-Emerald (#13372b)
-                            // Roads: Soft Steel-Slate Lines (#111620)
-                            // Text/Labels: Crisp Clean Silver-White (#b5bed0)
-                             0.674, -1.406, -0.142, 0.0, 240.0,
-                            -0.419, -0.314, -0.142, 0.0, 245.0,
-                            -0.419, -1.406,  0.951, 0.0, 255.0,
-                             0.0,    0.0,    0.0,   1.0,   0.0,
-                          ]),
-                          child: tileWidget,
+                        final Widget themedTile = isDark
+                            ? ColorFiltered(
+                                colorFilter: const ColorFilter.matrix([
+                                  // Google Maps Official Dark Mode Color Matrix:
+                                  // Land: Deep Slate Navy (#1a212c)
+                                  // Water: Dark Midnight Indigo (#193c4c)
+                                  // Forests/Parks/Hills: Rich Dark Teal-Emerald (#13372b)
+                                  // Roads: Soft Steel-Slate Lines (#111620)
+                                  // Text/Labels: Crisp Clean Silver-White (#b5bed0)
+                                   0.674, -1.406, -0.142, 0.0, 240.0,
+                                  -0.419, -0.314, -0.142, 0.0, 245.0,
+                                  -0.419, -1.406,  0.951, 0.0, 255.0,
+                                   0.0,    0.0,    0.0,   1.0,   0.0,
+                                ]),
+                                child: tileWidget,
+                              )
+                            : tileWidget;
+
+                        // Seamless land background so unloaded or fading tiles never flash white
+                        return ColoredBox(
+                          color: isDark ? const Color(0xFF181D24) : const Color(0xFFEDE8DF),
+                          child: themedTile,
                         );
                       },
                     ),
@@ -1382,6 +1407,8 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                             )
                         ),
                     ]),
+                  ],
+                ),
                   ],
                 ),
               ),
@@ -2604,70 +2631,49 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
               ),
             ],
           ),
-          child: Column(
+          child: Stack(
             children: [
-              // Header bar dengan butang tutup (X)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 16, 12),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: statusColor.withValues(alpha: 0.4)),
-                      ),
-                      child: Text(
-                        statusText,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: statusColor,
+              Column(
+                children: [
+                  // Header bar dengan status kedai & kategori (diberi ruang kanan untuk butang X)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 56, 12),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: statusColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: statusColor.withValues(alpha: 0.4)),
+                          ),
+                          child: Text(
+                            statusText,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: statusColor,
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            (shop['category'] ?? '').toString().toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.blue,
+                              letterSpacing: 0.8,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        (shop['category'] ?? '').toString().toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.blue,
-                          letterSpacing: 0.8,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const Spacer(),
-                    _AnimatedPressable(
-                      onTap: () {
-                        setState(() => _isProfileOpen = false);
-                        if (_selectedShop != null) {
-                          double currentZoom = _mapController.camera.zoom;
-                          LatLng newCenter = _getDynamicCenterOffset(_selectedShop!, currentZoom, panelOpen: false);
-                          _animatedMapMove(newCenter, currentZoom);
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(7),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
-                        ),
-                        child: HugeIcon(
-                          icon: HugeIcons.strokeRoundedCancel01,
-                          color: isDark ? Colors.white70 : _lightModeGray,
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                  ),
 
-              // Scrollable Body
+                  // Scrollable Body
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
@@ -2852,9 +2858,53 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
               ),
             ],
           ),
-        ),
+
+          // Butang Tutup (X) diletakkan kemas di bucu atas-kanan kad (gaya Google Maps / Apple Maps)
+          Positioned(
+            top: 14,
+            right: 14,
+            child: _AnimatedPressable(
+              onTap: () {
+                setState(() => _isProfileOpen = false);
+                if (_selectedShop != null) {
+                  double currentZoom = _mapController.camera.zoom;
+                  LatLng newCenter = _getDynamicCenterOffset(_selectedShop!, currentZoom, panelOpen: false);
+                  _animatedMapMove(newCenter, currentZoom);
+                }
+              },
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isDark ? Colors.white.withValues(alpha: 0.14) : Colors.black.withValues(alpha: 0.07),
+                  border: Border.all(
+                    color: isDark ? Colors.white.withValues(alpha: 0.16) : Colors.black.withValues(alpha: 0.08),
+                    width: 1.0,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedCancel01,
+                    color: isDark ? Colors.white70 : _lightModeGray,
+                    size: 16,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
-    );
+    ),
+  ),
+);
   }
 
   // --- 5. BOTTOM SHEET MODAL ---
@@ -3420,4 +3470,29 @@ class _PulsingUserMarkerState extends State<_PulsingUserMarker> with SingleTicke
       Container(width: 30, height: 30, decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), shape: BoxShape.circle, border: Border.all(color: Colors.blue.withValues(alpha: 0.2), width: 1.5)), child: const Center(child: HugeIcon(icon: HugeIcons.strokeRoundedLocationUser01, color: Colors.blue, size: 20, strokeWidth: 2.5))),
     ]);
   }
+}
+
+/// Pelukis grid kartografi halus (Apple Maps / Waze style) semasa jubin peta dimuat turun
+class _MapGridPlaceholderPainter extends CustomPainter {
+  final bool isDark;
+  const _MapGridPlaceholderPainter({required this.isDark});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = (isDark ? Colors.white : Colors.black).withValues(alpha: isDark ? 0.035 : 0.04)
+      ..strokeWidth = 1.0;
+
+    const double step = 64.0;
+    for (double x = 0; x < size.width; x += step) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    for (double y = 0; y < size.height; y += step) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MapGridPlaceholderPainter oldDelegate) =>
+      oldDelegate.isDark != isDark;
 }

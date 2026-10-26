@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ngam/l10n/generated/app_localizations.dart';
+import '../../utils/glass_toast.dart';
 import 'bookings_view.dart';
 
 class BookingTicketScreen extends StatefulWidget {
@@ -360,6 +361,421 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
     }
   }
 
+  void _showCancellationModal() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    String selectedReason = 'Tersalah pilih tarikh / masa';
+    final customReasonCtrl = TextEditingController();
+    bool isSubmitting = false;
+
+    final reasons = [
+      'Tersalah pilih tarikh / masa',
+      'Kecemasan peribadi / Tidak dapat hadir',
+      'Peniaga / Staf meminta batal',
+      'Perkhidmatan tidak lagi diperlukan',
+      'Lain-lain sebab',
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E242B) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const HugeIcon(icon: HugeIcons.strokeRoundedCancel01, color: Colors.redAccent, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Batal Tempahan Slot',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Sila nyatakan sebab pembatalan slot ini. Baki bayaran akan dikreditkan kembali ke Ngam Wallet anda secara automatik.',
+                style: TextStyle(fontSize: 13, color: isDark ? Colors.white60 : Colors.black54),
+              ),
+              const SizedBox(height: 16),
+              ...reasons.map((r) => RadioListTile<String>(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                value: r,
+                groupValue: selectedReason,
+                title: Text(r, style: TextStyle(fontSize: 14, color: isDark ? Colors.white : Colors.black87)),
+                activeColor: Colors.redAccent,
+                onChanged: (val) {
+                  if (val != null) setModalState(() => selectedReason = val);
+                },
+              )),
+              if (selectedReason == 'Lain-lain sebab') ...[
+                const SizedBox(height: 8),
+                TextField(
+                  controller: customReasonCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'Nyatakan sebab pembatalan...',
+                    hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.black38, fontSize: 13),
+                    filled: true,
+                    fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: isSubmitting ? null : () async {
+                    setModalState(() => isSubmitting = true);
+                    final finalReason = selectedReason == 'Lain-lain sebab' && customReasonCtrl.text.trim().isNotEmpty
+                        ? customReasonCtrl.text.trim()
+                        : selectedReason;
+
+                    await _executeCancellation(finalReason);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: isSubmitting
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text('Sahkan Pembatalan & Pulang Wang', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _executeCancellation(String reason) async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      final targetId = widget.bookingDbId;
+      double price = double.tryParse(widget.totalPrice.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+
+      if (targetId != null && targetId.isNotEmpty) {
+        await Supabase.instance.client.from('bookings').update({
+          'status': 'cancelled',
+          'booking_metadata': {
+            'cancellation_reason': reason,
+            'cancelled_at': DateTime.now().toIso8601String(),
+            'cancelled_by': user?.id,
+          }
+        }).eq('id', targetId);
+      } else {
+        await Supabase.instance.client.from('bookings').update({
+          'status': 'cancelled',
+          'booking_metadata': {
+            'cancellation_reason': reason,
+            'cancelled_at': DateTime.now().toIso8601String(),
+            'cancelled_by': user?.id,
+          }
+        }).eq('booking_metadata->>booking_id', widget.bookingId);
+      }
+
+      if (price > 0 && user != null) {
+        try {
+          await Supabase.instance.client.from('wallet_transactions').insert({
+            'user_id': user.id,
+            'type': 'refund',
+            'amount': price,
+            'reference_id': widget.bookingId,
+            'description': 'Bayaran balik tempahan: ${widget.shopName} (${widget.category})'
+          });
+
+          final userData = await Supabase.instance.client
+              .from('users')
+              .select('wallet_balance')
+              .eq('id', user.id)
+              .maybeSingle();
+          final currentBal = (userData?['wallet_balance'] as num?)?.toDouble() ?? 0.0;
+          await Supabase.instance.client.from('users').update({
+            'wallet_balance': currentBal + price
+          }).eq('id', user.id);
+        } catch (we) {
+          debugPrint('Wallet refund notice: $we');
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _currentStatus = 'cancelled';
+        });
+        showGlassToast(
+          context,
+          price > 0
+              ? 'Tempahan dibatalkan. RM ${price.toStringAsFixed(2)} telah dikembalikan ke Wallet anda.'
+              : 'Tempahan telah berjaya dibatalkan.',
+          type: GlassToastType.success,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showGlassToast(context, 'Gagal membatalkan tempahan: $e', isError: true);
+      }
+    }
+  }
+
+  void _showDisputeModal() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    String selectedDisputeType = 'no_show';
+    final notesCtrl = TextEditingController();
+    bool isSubmitting = false;
+
+    final disputeTypes = [
+      {'key': 'no_show', 'label': 'Peniaga / Staf Tidak Muncul (No-show)'},
+      {'key': 'shop_closed', 'label': 'Kedai Tutup / Tidak Beroperasi'},
+      {'key': 'poor_service', 'label': 'Servis Sangat Lemah / Cuai'},
+      {'key': 'overcharged', 'label': 'Caj Tambahan Tanpa Persetujuan'},
+      {'key': 'other', 'label': 'Lain-lain Isu Servis'},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E242B) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade700.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.amber.shade700, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Laporkan Isu / Pertikaian',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        Text(
+                          'Dana bayaran akan dibekukan serta-merta',
+                          style: TextStyle(fontSize: 12, color: Colors.amber.shade700, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Pihak pengurusan Ngam akan menyiasat laporan anda. Sila nyatakan masalah yang berlaku secara telus:',
+                style: TextStyle(fontSize: 13, color: isDark ? Colors.white60 : Colors.black54),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: selectedDisputeType,
+                dropdownColor: isDark ? const Color(0xFF252D37) : Colors.white,
+                decoration: InputDecoration(
+                  labelText: 'Kategori Masalah',
+                  labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 13),
+                  filled: true,
+                  fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+                items: disputeTypes.map((dt) {
+                  return DropdownMenuItem<String>(
+                    value: dt['key'],
+                    child: Text(dt['label']!, style: TextStyle(fontSize: 13, color: isDark ? Colors.white : Colors.black87)),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) setModalState(() => selectedDisputeType = val);
+                },
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: notesCtrl,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: 'Penerangan Masalah',
+                  hintText: 'Contoh: Saya sudah hadir di kedai tetapi tiada staf dan pintu kedai terkunci...',
+                  labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 13),
+                  hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.black38, fontSize: 12),
+                  filled: true,
+                  fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: isSubmitting ? null : () async {
+                    if (notesCtrl.text.trim().isEmpty) {
+                      showGlassToast(context, 'Sila masukkan penerangan masalah terlebih dahulu', isError: true);
+                      return;
+                    }
+                    setModalState(() => isSubmitting = true);
+                    await _executeDispute(selectedDisputeType, notesCtrl.text.trim());
+                    if (ctx.mounted) Navigator.pop(ctx);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amber.shade700,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: isSubmitting
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text('Hantar Aduan & Bekukan Bayaran', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _executeDispute(String disputeType, String reason) async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      final targetId = widget.bookingDbId;
+      double price = double.tryParse(widget.totalPrice.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+
+      bool rpcSuccess = false;
+      if (targetId != null && targetId.isNotEmpty) {
+        try {
+          final res = await Supabase.instance.client.rpc('submit_booking_dispute', params: {
+            'p_booking_id': targetId,
+            'p_dispute_type': disputeType,
+            'p_dispute_reason': reason,
+            'p_refund_amount': price,
+          });
+          if (res != null && res['success'] == true) {
+            rpcSuccess = true;
+          }
+        } catch (rpcErr) {
+          debugPrint('RPC notice: $rpcErr');
+        }
+      }
+
+      if (!rpcSuccess) {
+        if (targetId != null && targetId.isNotEmpty) {
+          await Supabase.instance.client.from('bookings').update({
+            'status': 'disputed',
+            'booking_metadata': {
+              'is_disputed': true,
+              'dispute_type': disputeType,
+              'dispute_reason': reason,
+              'dispute_date': DateTime.now().toIso8601String(),
+            }
+          }).eq('id', targetId);
+        } else {
+          await Supabase.instance.client.from('bookings').update({
+            'status': 'disputed',
+            'booking_metadata': {
+              'is_disputed': true,
+              'dispute_type': disputeType,
+              'dispute_reason': reason,
+              'dispute_date': DateTime.now().toIso8601String(),
+            }
+          }).eq('booking_metadata->>booking_id', widget.bookingId);
+        }
+
+        try {
+          await Supabase.instance.client.from('booking_disputes').insert({
+            'booking_id': targetId ?? widget.bookingId,
+            'business_id': widget.shopId,
+            'customer_id': user?.id,
+            'customer_name': widget.providerName,
+            'service_name': widget.category,
+            'dispute_type': disputeType,
+            'dispute_reason': reason,
+            'refund_amount': price,
+            'status': 'open',
+          });
+        } catch (insertErr) {
+          debugPrint('booking_disputes insert notice: $insertErr');
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _currentStatus = 'disputed';
+        });
+        showGlassToast(
+          context,
+          'Aduan pertikaian telah dihantar. Bayaran dibekukan sehingga semakan selesai.',
+          type: GlassToastType.warning,
+          color: Colors.amber.shade700,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showGlassToast(context, 'Gagal menghantar pertikaian: $e', isError: true);
+      }
+    }
+  }
+
   String get _providerLabel {
     final cat = widget.category.toLowerCase();
     if (cat.contains('food') || cat.contains('restaurant') || cat.contains('cafe') || cat.contains('makan')) {
@@ -451,6 +867,58 @@ Disahkan melalui aplikasi *Ngam*.
             ),
             onPressed: _shareTicketToWhatsApp,
           ),
+          PopupMenuButton<String>(
+            icon: HugeIcon(
+              icon: HugeIcons.strokeRoundedMoreHorizontal,
+              color: isDark ? Colors.white : Colors.black,
+              size: 22.0,
+            ),
+            color: isDark ? const Color(0xFF1E242B) : Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            onSelected: (value) {
+              if (value == 'cancel') {
+                _showCancellationModal();
+              } else if (value == 'dispute') {
+                _showDisputeModal();
+              } else if (value == 'share') {
+                _shareTicketToWhatsApp();
+              }
+            },
+            itemBuilder: (context) => [
+              if (_currentStatus != 'cancelled' && _currentStatus != 'completed' && _currentStatus != 'disputed')
+                const PopupMenuItem(
+                  value: 'cancel',
+                  child: Row(
+                    children: [
+                      HugeIcon(icon: HugeIcons.strokeRoundedCancel01, color: Colors.redAccent, size: 18),
+                      SizedBox(width: 10),
+                      Text('Batal Tempahan', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              if (_currentStatus != 'cancelled' && _currentStatus != 'disputed')
+                const PopupMenuItem(
+                  value: 'dispute',
+                  child: Row(
+                    children: [
+                      HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.orangeAccent, size: 18),
+                      SizedBox(width: 10),
+                      Text('Laporkan Isu / Pertikaian', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              const PopupMenuItem(
+                value: 'share',
+                child: Row(
+                  children: [
+                    HugeIcon(icon: HugeIcons.strokeRoundedShare01, color: Colors.blueAccent, size: 18),
+                    SizedBox(width: 10),
+                    Text('Kongsi Slip Tempahan', style: TextStyle(fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       //  CHANGED: We now use a Column to separate the Scrollable Ticket from the Sticky Bottom Buttons
@@ -479,6 +947,39 @@ Disahkan melalui aplikasi *Ngam*.
                           const HugeIcon(icon: HugeIcons.strokeRoundedCancel01, color: Colors.redAccent, size: 22),
                           const SizedBox(width: 12),
                           Flexible(child: Text("This booking was cancelled", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isDark ? Colors.redAccent : Colors.red.shade700))),
+                        ],
+                      ),
+                    )
+                  else if (_currentStatus == 'disputed')
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 20),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                          color: Colors.amber.shade900.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.amber.shade600)
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.amber.shade400, size: 24),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Pertikaian Sedang Disemak", 
+                                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.amber.shade400)
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "Aduan anda sedang disiasat oleh Sokongan Ngam. Dana selamat dalam pegangan amanah sehingga semakan selesai.",
+                                  style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     )
@@ -636,6 +1137,25 @@ Disahkan melalui aplikasi *Ngam*.
                       ],
                     ),
                   ),
+                  if (_currentStatus != 'cancelled' && _currentStatus != 'disputed') ...[
+                    const SizedBox(height: 16),
+                    TextButton.icon(
+                      onPressed: _showDisputeModal,
+                      icon: const HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.orangeAccent, size: 16),
+                      label: const Text(
+                        "Ada Masalah dengan Servis? Buka Pertikaian",
+                        style: TextStyle(color: Colors.orangeAccent, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    if (_currentStatus != 'completed')
+                      TextButton(
+                        onPressed: _showCancellationModal,
+                        child: const Text(
+                          "Batal Tempahan Slot",
+                          style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                  ],
                 ],
               ),
             ),

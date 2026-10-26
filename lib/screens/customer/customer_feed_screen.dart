@@ -313,7 +313,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
               biz['logo_url']?.toString();
           final shopAvatar = (logoUrl != null && logoUrl.trim().isNotEmpty)
               ? logoUrl.trim()
-              : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200';
+              : '';
 
           final locParts = [biz['business_city'], biz['state']]
               .where((s) => s != null && s.toString().trim().isNotEmpty)
