@@ -1,5 +1,4 @@
 import '../l10n/generated/app_localizations.dart';
-import 'package:easy_localization/easy_localization.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -7,7 +6,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
-import '../providers/theme_provider.dart';
 import '../utils/app_theme.dart';
 import '../utils/glass_toast.dart';
 
@@ -44,7 +42,6 @@ class CustomerDesktopSidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final authProvider = context.watch<AuthProvider>();
-    final themeProvider = context.watch<ThemeProvider>();
     final user = authProvider.user;
     final l10n = AppLocalizations.of(context);
 
@@ -352,28 +349,7 @@ class CustomerDesktopSidebar extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
 
-                    // ─── 4. Butang Bawah (Tukar Bahasa / Tema / Log Keluar) ──
-                    _SidebarNavItem(
-                      icon: HugeIcons.strokeRoundedLanguageSquare,
-                      label: context.locale.languageCode == 'ms' ? 'English (EN)' : 'Bahasa Melayu (MS)',
-                      selected: false,
-                      isExpanded: isExpanded,
-                      onTap: () async {
-                        final nextCode = context.locale.languageCode == 'ms' ? 'en' : 'ms';
-                        await context.setLocale(Locale(nextCode));
-                      },
-                    ),
-
-                    _SidebarNavItem(
-                      icon: isDark
-                          ? HugeIcons.strokeRoundedSun01
-                          : HugeIcons.strokeRoundedMoon02,
-                      label: isDark ? (l10n?.lightMode ?? 'Mod Cerah') : (l10n?.darkMode ?? 'Mod Gelap'),
-                      selected: false,
-                      isExpanded: isExpanded,
-                      onTap: () => themeProvider.toggleTheme(),
-                    ),
-
+                    // ─── 4. Butang Bawah (Log Keluar / Log Masuk) ──
                     if (user != null)
                       _SidebarNavItem(
                         icon: HugeIcons.strokeRoundedLogout02,
