@@ -360,17 +360,48 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
     }
   }
 
+  String get _providerLabel {
+    final cat = widget.category.toLowerCase();
+    if (cat.contains('food') || cat.contains('restaurant') || cat.contains('cafe') || cat.contains('makan')) {
+      return "Zon / Meja";
+    }
+    if (cat.contains('auto') || cat.contains('workshop') || cat.contains('bengkel') || cat.contains('wash')) {
+      return "Stesen / Servis";
+    }
+    if (cat.contains('health') || cat.contains('clinic') || cat.contains('klinik') || cat.contains('dental')) {
+      return "Doktor / Pakar";
+    }
+    if (cat.contains('court') || cat.contains('sport') || cat.contains('badminton') || cat.contains('futsal')) {
+      return "Gelanggang / Bilik";
+    }
+    return AppLocalizations.of(context)?.ticketProvider ?? "Pakar / Staf";
+  }
+
   Future<void> _shareTicketToWhatsApp() async {
+    final cat = widget.category.toLowerCase();
+    String itemType = "Pakar/Staf";
+    if (cat.contains('food') || cat.contains('restaurant') || cat.contains('cafe') || cat.contains('makan')) {
+      itemType = "Zon/Meja";
+    } else if (cat.contains('auto') || cat.contains('workshop') || cat.contains('bengkel') || cat.contains('wash')) {
+      itemType = "Stesen/Servis";
+    } else if (cat.contains('health') || cat.contains('clinic') || cat.contains('dental')) {
+      itemType = "Doktor/Pakar";
+    } else if (cat.contains('court') || cat.contains('sport') || cat.contains('badminton')) {
+      itemType = "Gelanggang";
+    }
+
+    final String displayPrice = widget.totalPrice.startsWith('RM') ? widget.totalPrice : 'RM ${widget.totalPrice}';
+
     final text = '''
 *NGAM — RESIT TEMPAHAN DIGITAL*
 --------------------------------
 *No. Tempahan:* ${widget.bookingId}
 *Kedai:* ${widget.shopName}
-*Perkhidmatan:* ${widget.category}
-*Staf/Pakar:* ${widget.providerName}
+*Kategori:* ${widget.category}
+*$itemType:* ${widget.providerName}
 *Tarikh:* ${widget.date}
 *Masa:* ${widget.time}
-*Jumlah:* RM ${widget.totalPrice}
+*Jumlah:* $displayPrice
 *Status:* ${_currentStatus.toUpperCase()}
 
 Disahkan melalui aplikasi *Ngam*.
@@ -561,7 +592,7 @@ Disahkan melalui aplikasi *Ngam*.
                           padding: const EdgeInsets.all(20),
                           child: Column(
                             children: [
-                              _buildDetailRow(l10n.ticketProvider, widget.providerName, isDark),
+                              _buildDetailRow(_providerLabel, widget.providerName, isDark),
                               const SizedBox(height: 12),
                               _buildDetailRow(l10n.ticketDate, widget.date, isDark),
                               const SizedBox(height: 12),
