@@ -59,6 +59,16 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
   List<Map<String, dynamic>> _syncedWeeklySchedule = [];
   List<Map<String, dynamic>> _syncedSpecialHolidays = [];
   String? _activeHolidayName;
+  String? _syncedIndustry;
+
+  String get _shopCategory {
+    if (_syncedIndustry != null && _syncedIndustry!.trim().isNotEmpty) {
+      return _syncedIndustry!.trim();
+    }
+    final c = (widget.shop['business_industry'] ?? widget.shop['category'])?.toString().trim();
+    if (c != null && c.isNotEmpty) return c;
+    return 'SERVICE';
+  }
 
   String get _shopName {
     if (_syncedName != null && _syncedName!.trim().isNotEmpty) {
@@ -377,7 +387,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
     try {
       final biz = await Supabase.instance.client
           .from('businesses')
-          .select('business_name, business_cover_url, business_logo_url, is_open')
+          .select('business_name, business_cover_url, business_logo_url, is_open, business_industry')
           .eq('id', shopId)
           .maybeSingle();
 
@@ -396,6 +406,9 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
         }
         if (biz['is_open'] != null) {
           _syncedIsOpen = biz['is_open'] == true;
+        }
+        if (biz['business_industry'] != null && biz['business_industry'].toString().trim().isNotEmpty) {
+          _syncedIndustry = biz['business_industry'].toString().trim();
         }
         // Immediately notify UI of cover, logo, name and status updates
         setState(() {});
@@ -563,8 +576,8 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
         builder: (_) => BookingsView(
           shopId: widget.shop['id']?.toString() ?? '1',
           shopName: _shopName,
-          category: widget.shop['category']?.toString().toUpperCase() ?? 'SERVICE',
-          shopImage: widget.shop['image'] ?? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400',
+          category: _shopCategory,
+          shopImage: _coverUrl.isNotEmpty ? _coverUrl : (_logoUrl.isNotEmpty ? _logoUrl : (widget.shop['image'] ?? '')),
         ),
       ),
     );
@@ -2169,8 +2182,8 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                            builder: (_) => BookingsView(
                                              shopId: widget.shop['id']?.toString() ?? '1',
                                              shopName: _shopName,
-                                             category: widget.shop['category']?.toString().toUpperCase() ?? 'SERVICE',
-                                             shopImage: widget.shop['image'] ?? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400',
+                                             category: _shopCategory,
+                                             shopImage: _coverUrl.isNotEmpty ? _coverUrl : (_logoUrl.isNotEmpty ? _logoUrl : (widget.shop['image'] ?? '')),
                                            ),
                                          ),
                                        );

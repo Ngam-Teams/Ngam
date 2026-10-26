@@ -67,40 +67,138 @@ class _BookingsViewState extends State<BookingsView> {
   List<Map<String, String>> _servicesList = [];
   List<Map<String, String>> _addonsList = [];
 
-  BookingType _detectBookingType() {
-    final cat = widget.category.toLowerCase();
-    final name = widget.shopName.toLowerCase();
+  BookingType _detectBookingType([String? overrideCategory, String? overrideName]) {
+    final cat = (overrideCategory ?? widget.category).toLowerCase().trim();
+    final name = (overrideName ?? widget.shopName).toLowerCase().trim();
 
-    if (cat.contains('food') || cat.contains('restaurant') || cat.contains('cafe') ||
-        cat.contains('makan') || cat.contains('dining') || cat.contains('coffee') ||
-        name.contains('cafe') || name.contains('restoran') || name.contains('coffee') ||
-        name.contains('bistro') || name.contains('kitchen') || name.contains('warung') ||
-        name.contains('burger') || name.contains('steamboat')) {
+    // 1. DINING / KEDAI MAKAN / RESTORAN / F&B
+    if (cat == 'fnb' ||
+        cat.contains('fnb') ||
+        cat.contains('f&b') ||
+        cat.contains('food') ||
+        cat.contains('makan') ||
+        cat.contains('restaurant') ||
+        cat.contains('restoran') ||
+        cat.contains('cafe') ||
+        cat.contains('kafe') ||
+        cat.contains('dining') ||
+        cat.contains('coffee') ||
+        cat.contains('kopi') ||
+        cat.contains('kopitiam') ||
+        cat.contains('warung') ||
+        cat.contains('dapur') ||
+        cat.contains('bistro') ||
+        cat.contains('kitchen') ||
+        cat.contains('bakery') ||
+        cat.contains('pastry') ||
+        cat.contains('burger') ||
+        cat.contains('steamboat') ||
+        cat.contains('satay') ||
+        cat.contains('sate') ||
+        cat.contains('nasi') ||
+        cat.contains('mee') ||
+        cat.contains('ayam') ||
+        cat.contains('seafood') ||
+        cat.contains('mamak') ||
+        cat.contains('tomyam') ||
+        cat.contains('beverage') ||
+        cat.contains('minuman') ||
+        cat.contains('dessert') ||
+        name.contains('cafe') ||
+        name.contains('kafe') ||
+        name.contains('restoran') ||
+        name.contains('restaurant') ||
+        name.contains('coffee') ||
+        name.contains('kopi') ||
+        name.contains('kopitiam') ||
+        name.contains('bistro') ||
+        name.contains('kitchen') ||
+        name.contains('dapur') ||
+        name.contains('warung') ||
+        name.contains('burger') ||
+        name.contains('steamboat') ||
+        name.contains('nasi') ||
+        name.contains('mee') ||
+        name.contains('ayam') ||
+        name.contains('satay') ||
+        name.contains('sate') ||
+        name.contains('seafood') ||
+        name.contains('bakery') ||
+        name.contains('roti') ||
+        name.contains('mamak') ||
+        name.contains('tomyam') ||
+        name.contains('makan') ||
+        name.contains('cendol') ||
+        name.contains('laksa')) {
       return BookingType.dining;
     }
 
-    if (cat.contains('workshop') || cat.contains('auto') || cat.contains('car') ||
-        cat.contains('motor') || cat.contains('bengkel') || cat.contains('wash') ||
-        name.contains('auto') || name.contains('car wash') || name.contains('bengkel') ||
-        name.contains('tyre') || name.contains('motor') || name.contains('garage') ||
+    // 2. AUTOMOTIVE / BENGKEL
+    if (cat.contains('workshop') ||
+        cat.contains('auto') ||
+        cat.contains('car') ||
+        cat.contains('motor') ||
+        cat.contains('bengkel') ||
+        cat.contains('wash') ||
+        cat.contains('cucian') ||
+        cat.contains('tyre') ||
+        cat.contains('tayar') ||
+        cat.contains('garage') ||
+        cat.contains('detailing') ||
+        name.contains('auto') ||
+        name.contains('car wash') ||
+        name.contains('cucian') ||
+        name.contains('bengkel') ||
+        name.contains('tyre') ||
+        name.contains('tayar') ||
+        name.contains('motor') ||
+        name.contains('garage') ||
         name.contains('detailing')) {
       return BookingType.automotive;
     }
 
-    if (cat.contains('health') || cat.contains('clinic') || cat.contains('dental') ||
-        cat.contains('perubatan') || cat.contains('klinik') || cat.contains('farmasi') ||
-        name.contains('clinic') || name.contains('klinik') || name.contains('dental') ||
-        name.contains('poliklinik') || name.contains('dr.')) {
+    // 3. HEALTH / KLINIK / PERUBATAN
+    if (cat.contains('health') ||
+        cat.contains('clinic') ||
+        cat.contains('klinik') ||
+        cat.contains('dental') ||
+        cat.contains('gigi') ||
+        cat.contains('perubatan') ||
+        cat.contains('farmasi') ||
+        cat.contains('pharmacy') ||
+        cat.contains('poliklinik') ||
+        cat.contains('doktor') ||
+        name.contains('clinic') ||
+        name.contains('klinik') ||
+        name.contains('dental') ||
+        name.contains('gigi') ||
+        name.contains('poliklinik') ||
+        name.contains('farmasi') ||
+        name.contains('dr.')) {
       return BookingType.health;
     }
 
-    if (cat.contains('sport') || cat.contains('court') || cat.contains('futsal') ||
-        cat.contains('badminton') || cat.contains('kemudahan') || cat.contains('arena') ||
-        name.contains('futsal') || name.contains('badminton') || name.contains('court') ||
-        name.contains('arena') || name.contains('gym')) {
+    // 4. FACILITY / COURT / SUKAN
+    if (cat.contains('sport') ||
+        cat.contains('sukan') ||
+        cat.contains('court') ||
+        cat.contains('gelanggang') ||
+        cat.contains('futsal') ||
+        cat.contains('badminton') ||
+        cat.contains('kemudahan') ||
+        cat.contains('arena') ||
+        cat.contains('gym') ||
+        cat.contains('padang') ||
+        name.contains('futsal') ||
+        name.contains('badminton') ||
+        name.contains('court') ||
+        name.contains('arena') ||
+        name.contains('gym') ||
+        name.contains('padang')) {
       return BookingType.facility;
     }
 
+    // 5. SERVICE / BARBER
     return BookingType.service;
   }
 
@@ -466,6 +564,30 @@ class _BookingsViewState extends State<BookingsView> {
   }
 
   Future<void> _fetchMerchantLiveConfig() async {
+    if (widget.shopId.isNotEmpty) {
+      // 0. Auto-heal: Query industry sebenar dari table businesses Supabase
+      try {
+        final biz = await Supabase.instance.client
+            .from('businesses')
+            .select('id, business_name, business_industry')
+            .eq('id', widget.shopId)
+            .maybeSingle();
+
+        if (biz != null) {
+          final realIndustry = biz['business_industry']?.toString() ?? '';
+          final realName = biz['business_name']?.toString() ?? widget.shopName;
+          final detected = _detectBookingType(realIndustry, realName);
+          if (detected != _bookingType) {
+            _bookingType = detected;
+            _initCategoryTemplate();
+            if (mounted) setState(() {});
+          }
+        }
+      } catch (e) {
+        debugPrint('Error fetching business info in booking: $e');
+      }
+    }
+
     // 1. Dapatkan waktu operasi sebenar dari business_settings
     try {
       final settings = await Supabase.instance.client
@@ -687,7 +809,7 @@ class _BookingsViewState extends State<BookingsView> {
                           _buildGlassIconBox(HugeIcons.strokeRoundedArrowLeft01, isDark, onTap: () => Navigator.pop(context)),
                           Row(
                             children: [
-                              _buildGlassIconBox(HugeIcons.strokeRoundedSettings04, isDark, onTap: () {}),
+                              _buildGlassIconBox(_providerSummaryIcon, isDark, onTap: () {}),
                               const SizedBox(width: 12),
                               _buildGlassBadge("82", isDark),
                             ],

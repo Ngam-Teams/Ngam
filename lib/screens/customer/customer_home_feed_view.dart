@@ -1822,7 +1822,7 @@ class _NearbyRadarCardItemState extends State<_NearbyRadarCardItem>
     final isDark = widget.isDark;
 
     final String name = (shop['business_name'] ?? shop['name']) ?? 'Kedai Servis';
-    final String cat = (shop['business_industry'] ?? shop['category'])?.toString().toUpperCase() ?? 'BARBER';
+    final String cat = (shop['business_industry'] ?? shop['category'] ?? 'FNB').toString().toUpperCase();
     final Color catAccent = _getCategoryColor(cat);
     final String rating = shop['rating']?.toString() ?? '4.9';
     final String dist = _formatDistance(shop['distanceKm']);
@@ -1838,9 +1838,14 @@ class _NearbyRadarCardItemState extends State<_NearbyRadarCardItem>
 
     return GestureDetector(
       onTap: () {
+        final shopWithCat = {
+          ...shop,
+          'category': cat,
+          'business_industry': shop['business_industry'] ?? cat,
+        };
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => BusinessStoreView(shop: shop)),
+          MaterialPageRoute(builder: (_) => BusinessStoreView(shop: shopWithCat)),
         );
       },
       child: Container(

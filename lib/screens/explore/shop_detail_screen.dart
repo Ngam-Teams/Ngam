@@ -15,7 +15,7 @@ class ShopDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final String shopName = shop["name"] ?? "Unknown Shop";
-    final String category = shop["category"]?.toString().toUpperCase() ?? "SERVICE";
+    final String category = (shop["business_industry"] ?? shop["category"] ?? "SERVICE").toString();
     final String rating = shop["rating"]?.toString() ?? "0.0";
     final String reviews = shop["reviews"]?.toString() ?? "0";
     final String imgUrl = shop["image"] ?? "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400";

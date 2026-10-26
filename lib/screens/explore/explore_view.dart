@@ -3298,7 +3298,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                       builder: (context) => BookingsView(
                                         shopId: shop["id"].toString(),
                                         shopName: shop["name"] ?? "Unknown Shop",
-                                        category: shop["category"]?.toString().toUpperCase() ?? "SERVICE",
+                                        category: (shop["business_industry"] ?? shop["category"] ?? "SERVICE").toString(),
                                         shopImage: (shop["cover"] ?? shop["business_cover_url"] ?? shop["image"] ?? "").toString(),
                                       ),
                                     ),
@@ -3751,7 +3751,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                             Navigator.push(context, MaterialPageRoute(builder: (context) => BookingsView(
                                               shopId: shop["id"].toString(),
                                               shopName: shop["name"] ?? "Unknown Shop",
-                                              category: shop["category"]?.toString().toUpperCase() ?? "SERVICE",
+                                              category: (shop["business_industry"] ?? shop["category"] ?? "SERVICE").toString(),
                                               shopImage: (shop["cover"] ?? shop["business_cover_url"] ?? shop["image"] ?? "").toString(),
                                             )));
                                           } else {
