@@ -465,6 +465,133 @@ class _BookingsViewState extends State<BookingsView> {
     }
   }
 
+  Future<void> _fetchMerchantLiveConfig() async {
+    // 1. Dapatkan waktu operasi sebenar dari business_settings
+    try {
+      final settings = await Supabase.instance.client
+          .from('business_settings')
+          .select('operating_hours')
+          .eq('business_id', widget.shopId)
+          .maybeSingle();
+
+      if (settings != null && settings['operating_hours'] is Map) {
+        final opHours = settings['operating_hours'] as Map<String, dynamic>;
+        final openStr = opHours['open_time'] as String?;
+        final closeStr = opHours['close_time'] as String?;
+
+        int openH = 9;
+        int closeH = 22;
+
+        if (openStr != null && openStr.contains(':')) {
+          openH = int.tryParse(openStr.split(':')[0]) ?? 9;
+        }
+        if (closeStr != null && closeStr.contains(':')) {
+          closeH = int.tryParse(closeStr.split(':')[0]) ?? 22;
+        }
+
+        List<String> dynamicTimes = [];
+        if (closeH > openH) {
+          for (int h = openH; h < closeH; h++) {
+            dynamicTimes.add('$h:00');
+          }
+        } else if (closeH < openH) {
+          for (int h = openH; h < 24; h++) {
+            dynamicTimes.add('$h:00');
+          }
+          for (int h = 0; h < closeH; h++) {
+            dynamicTimes.add('$h:00');
+          }
+        }
+
+        if (dynamicTimes.isNotEmpty) {
+          _times.clear();
+          _times.addAll(dynamicTimes);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching business_settings in booking: $e');
+    }
+
+    // 2. Dapatkan katalog servis sebenar dari business_products (jika wujud)
+    try {
+      final products = await Supabase.instance.client
+          .from('business_products')
+          .select('id, name, price, duration_minutes, item_type')
+          .eq('shop_id', widget.shopId)
+          .eq('is_active', true);
+
+      if (products.isNotEmpty) {
+        final services = products.where((p) => p['item_type'] == 'service').toList();
+        final effective = services.isNotEmpty ? services : products;
+
+        if (effective.isNotEmpty) {
+          _servicesList = effective.take(8).map<Map<String, String>>((row) {
+            final name = row['name']?.toString() ?? 'Servis';
+            final priceVal = (row['price'] as num?)?.toInt() ?? 0;
+            final dur = (row['duration_minutes'] as num?)?.toInt() ?? 30;
+            return {
+              "id": row['id']?.toString() ?? '',
+              "name": name,
+              "price": "RM$priceVal",
+              "time": "${dur}m",
+            };
+          }).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching business_products in booking: $e');
+    }
+
+    // 3. Dapatkan staf sebenar dari team_members (hanya jika jenis service/health/automotive)
+    if (_bookingType == BookingType.service ||
+        _bookingType == BookingType.health ||
+        _bookingType == BookingType.automotive) {
+      try {
+        final members = await Supabase.instance.client
+            .from('team_members')
+            .select('id, name, designation')
+            .eq('business_id', widget.shopId)
+            .eq('status', 'active');
+
+        if (members.isNotEmpty) {
+          final List<Map<String, String>> dbStaffs = [
+            {
+              "id": "any",
+              "name": "Mana-mana Staf Bertugas",
+              "specialty": "Giliran Slot Paling Cepat",
+              "rating": "5.0",
+              "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=400",
+            }
+          ];
+
+          for (var m in members) {
+            dbStaffs.add({
+              "id": m['id']?.toString() ?? '',
+              "name": m['name']?.toString() ?? 'Pakar',
+              "specialty": m['designation']?.toString() ?? 'Staff Bertugas',
+              "rating": "4.9",
+              "image": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400",
+            });
+          }
+
+          _staffs = dbStaffs;
+        }
+      } catch (e) {
+        debugPrint('Error fetching team_members in booking: $e');
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        if (_selectedTimeIndex >= _times.length) {
+          _selectedTimeIndex = -1;
+          _selectedTime = '';
+        }
+        _selectFirstAvailableSlot();
+      });
+    }
+  }
+
   void _listenToRealtimeBookings() {
     //  Magic Stream: Updates the screen instantly if ANYONE books a slot!
     _timeStream = Supabase.instance.client
@@ -491,6 +618,7 @@ class _BookingsViewState extends State<BookingsView> {
     _selectFirstAvailableSlot();
     _recoverLostDraft();
     _listenToRealtimeBookings();
+    _fetchMerchantLiveConfig();
   }
 
   @override
@@ -888,9 +1016,15 @@ class _BookingsViewState extends State<BookingsView> {
 
                     try {
                       //  UPDATE the existing lock to 'pending' with all the final details!
+                      final String? staffId = (staff["id"] != null && staff["id"] != "any" && staff["id"]!.length > 10)
+                          ? staff["id"]
+                          : null;
+                      final String? serviceId = _servicesList[_selectedServices.first]["id"];
+
                       await Supabase.instance.client.from('bookings').update({
                         'service_name': _servicesList[_selectedServices.first]["name"]!,
                         'status': 'pending',
+                        if (staffId != null) 'staff_id': staffId,
                         'booking_metadata': {
                           'short_ref': shortBookingId, // For your UI
                           'booking_id': shortBookingId, // For the MyBookingsView sync
@@ -898,12 +1032,15 @@ class _BookingsViewState extends State<BookingsView> {
                           'customer_name': UserData.userName.value.isNotEmpty ? UserData.userName.value : 'Pelanggan Ngam',
                           'phone': UserData.userPhone.value.isNotEmpty ? UserData.userPhone.value : '',
                           'provider_name': staff["name"],
+                          if (staffId != null) 'staff_id': staffId,
+                          if (serviceId != null) 'service_id': serviceId,
                           'total_price': "RM$_totalPrice",
                           //  Save Shop details so MyBookingsView can display them directly from the DB!
                           'shop_name': widget.shopName,
                           'shop_image': widget.shopImage,
                           'category': widget.category,
-                          'booking_type': _bookingType.name
+                          'booking_type': _bookingType.name,
+                          'has_allergies_or_notes': _hasAllergies,
                         }
                       }).eq('id', _holdingRecordId!);
 
