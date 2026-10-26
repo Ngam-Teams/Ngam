@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -242,15 +243,6 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
         cos((lat2 - lat1) * p) / 2 +
         cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2;
     return 12742 * asin(sqrt(a));
-  }
-
-  String _formatDistance(dynamic dist) {
-    if (dist == null) return '800 m';
-    final d = (dist is num) ? dist.toDouble() : double.tryParse(dist.toString()) ?? 0.8;
-    if (d < 1.0) {
-      return '${(d * 1000).round()} m';
-    }
-    return '${d.toStringAsFixed(1)} km';
   }
 
   @override
@@ -1409,17 +1401,6 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
     );
   }
 
-  Color _getCategoryColor(String? cat) {
-    final c = cat?.toLowerCase() ?? '';
-    if (c.contains('barber') || c.contains('gunting')) return const Color(0xFFFF6D00);
-    if (c.contains('carwash') || c.contains('cuci') || c.contains('detailing')) return const Color(0xFF2196F3);
-    if (c.contains('cafe') || c.contains('kafe') || c.contains('kopi')) return const Color(0xFFFFB300);
-    if (c.contains('workshop') || c.contains('bengkel') || c.contains('servis')) return const Color(0xFF00C853);
-    if (c.contains('salon') || c.contains('spa')) return const Color(0xFFAA00FF);
-    if (c.contains('health') || c.contains('klinik')) return const Color(0xFFFF1744);
-    return const Color(0xFF2196F3);
-  }
-
   // --- WIDGET 6: LIVE RADAR NEARBY CARDS ---
   Widget _buildNearbyRadarCards(bool isDark) {
     if (_isLoadingShops) {
@@ -1441,265 +1422,17 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
+        cacheExtent: 3000,
+        addAutomaticKeepAlives: true,
         itemCount: displayList.length,
         separatorBuilder: (_, __) => const SizedBox(width: 14),
         itemBuilder: (context, index) {
           final shop = displayList[index];
-          final String name = (shop['business_name'] ?? shop['name']) ?? 'Kedai Servis';
-          final String cat = (shop['business_industry'] ?? shop['category'])?.toString().toUpperCase() ?? 'BARBER';
-          final Color catAccent = _getCategoryColor(cat);
-          final String rating = shop['rating']?.toString() ?? '4.9';
-          final String dist = _formatDistance(shop['distanceKm']);
-          final String rawImg = (shop['image'] ?? shop['business_logo_url'] ?? '').toString();
-          final String img = rawImg.contains('photo-1503951914875-452162b0f3f1') ? '' : rawImg;
-
-          return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => BusinessStoreView(shop: shop)),
-              );
-            },
-            child: Container(
-              width: 250,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(22),
-                color: isDark ? const Color(0xFF161C24) : Colors.white,
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.6),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.07),
-                    blurRadius: 14,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(22),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Top Image with badges
-                    Stack(
-                      children: [
-                        SizedBox(
-                          height: 125,
-                          width: double.infinity,
-                          child: img.isNotEmpty
-                              ? CachedNetworkImage(
-                                  imageUrl: img,
-                                  fit: BoxFit.cover,
-                                  placeholder: (_, __) => Container(
-                                    color: isDark ? Colors.grey.shade900 : Colors.grey.shade300,
-                                  ),
-                                  errorWidget: (_, __, ___) => Container(
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                        colors: isDark
-                                            ? [const Color(0xFF2A2B3D), const Color(0xFF161622)]
-                                            : [const Color(0xFF2563EB), const Color(0xFF1E40AF)],
-                                      ),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : 'S',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 32,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              : Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: isDark
-                                          ? [const Color(0xFF2A2B3D), const Color(0xFF161622)]
-                                          : [const Color(0xFF2563EB), const Color(0xFF1E40AF)],
-                                    ),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : 'S',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 32,
-                                    ),
-                                  ),
-                                ),
-                        ),
-                        // Dark overlay gradient
-                        Container(
-                          height: 125,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.black.withValues(alpha: 0.3),
-                                Colors.transparent,
-                                Colors.black.withValues(alpha: 0.6),
-                              ],
-                            ),
-                          ),
-                        ),
-                        // Queue Status Pill (Ngam Blue)
-                        Positioned(
-                          top: 8,
-                          left: 8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2196F3),
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.25),
-                                  blurRadius: 6,
-                                ),
-                              ],
-                            ),
-                            child: const Row(
-                              children: [
-                                HugeIcon(icon: HugeIcons.strokeRoundedFlash, size: 12, color: Colors.white),
-                                SizedBox(width: 2),
-                                Text(
-                                  'Line Clear (0 Queue)',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        // Distance Pill
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.6),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                HugeIcon(
-                                  icon: HugeIcons.strokeRoundedLocation01,
-                                  color: Colors.white,
-                                  size: 11,
-                                ),
-                                const SizedBox(width: 3),
-                                Text(
-                                  dist,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // Bottom info
-                    Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                cat,
-                                style: TextStyle(
-                                  color: catAccent,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              Row(
-                                children: [
-                                  HugeIcon(icon: HugeIcons.strokeRoundedStar, color: Color(0xFFFFB300), size: 14),
-                                  const SizedBox(width: 2),
-                                  Text(
-                                    rating,
-                                    style: TextStyle(
-                                      color: isDark ? Colors.white : Colors.black87,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: isDark ? Colors.white : const Color(0xFF0F172A),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Buka Sekarang',
-                                style: TextStyle(
-                                  color: isDark ? Colors.white54 : Colors.grey.shade600,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
-                                decoration: BoxDecoration(
-                                  color: catAccent.withValues(alpha: isDark ? 0.16 : 0.12),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: catAccent.withValues(alpha: 0.4),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Ambil Giliran',
-                                  style: TextStyle(
-                                    color: catAccent,
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          final shopId = shop['id']?.toString() ?? index.toString();
+          return _NearbyRadarCardItem(
+            key: ValueKey('radar_shop_$shopId'),
+            shop: shop,
+            isDark: isDark,
           );
         },
       ),
@@ -1781,6 +1514,324 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+// =============================================================================
+// _NearbyRadarCardItem — Kad Radar dengan AutomaticKeepAlive & Image Caching
+// Menjamin imej TIDAK AKAN hilang/menjadi hitam apabila di-scroll ke kiri/kanan
+// =============================================================================
+class _NearbyRadarCardItem extends StatefulWidget {
+  final Map<String, dynamic> shop;
+  final bool isDark;
+
+  const _NearbyRadarCardItem({
+    super.key,
+    required this.shop,
+    required this.isDark,
+  });
+
+  @override
+  State<_NearbyRadarCardItem> createState() => _NearbyRadarCardItemState();
+}
+
+class _NearbyRadarCardItemState extends State<_NearbyRadarCardItem>
+    with AutomaticKeepAliveClientMixin {
+  // Kekalkan state kad dalam memori supaya widget tidak dimusnahkan ketika scroll
+  @override
+  bool get wantKeepAlive => true;
+
+  Color _getCategoryColor(String? cat) {
+    final c = cat?.toLowerCase() ?? '';
+    if (c.contains('barber') || c.contains('gunting')) return const Color(0xFFFF6D00);
+    if (c.contains('carwash') || c.contains('cuci') || c.contains('detailing')) return const Color(0xFF2196F3);
+    if (c.contains('cafe') || c.contains('kafe') || c.contains('kopi')) return const Color(0xFFFFB300);
+    if (c.contains('workshop') || c.contains('bengkel') || c.contains('servis')) return const Color(0xFF00C853);
+    return const Color(0xFF2196F3);
+  }
+
+  String _formatDistance(dynamic dist) {
+    if (dist == null) return '800 m';
+    final d = (dist is num) ? dist.toDouble() : double.tryParse(dist.toString()) ?? 0.8;
+    if (d < 1.0) {
+      return '${(d * 1000).round()} m';
+    }
+    return '${d.toStringAsFixed(1)} km';
+  }
+
+  Widget _buildFallbackBanner(String name, bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [const Color(0xFF2A2B3D), const Color(0xFF161622)]
+              : [const Color(0xFF2563EB), const Color(0xFF1E40AF)],
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : 'S',
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+          fontSize: 32,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCardImage(String imgUrl, String name, bool isDark) {
+    if (imgUrl.isEmpty) {
+      return _buildFallbackBanner(name, isDark);
+    }
+
+    if (kIsWeb) {
+      return Image.network(
+        imgUrl,
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+        errorBuilder: (_, __, ___) => _buildFallbackBanner(name, isDark),
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return _buildFallbackBanner(name, isDark);
+        },
+      );
+    }
+
+    return CachedNetworkImage(
+      imageUrl: imgUrl,
+      fit: BoxFit.cover,
+      useOldImageOnUrlChange: true,
+      placeholder: (_, __) => _buildFallbackBanner(name, isDark),
+      errorWidget: (_, __, ___) => _buildFallbackBanner(name, isDark),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final shop = widget.shop;
+    final isDark = widget.isDark;
+
+    final String name = (shop['business_name'] ?? shop['name']) ?? 'Kedai Servis';
+    final String cat = (shop['business_industry'] ?? shop['category'])?.toString().toUpperCase() ?? 'BARBER';
+    final Color catAccent = _getCategoryColor(cat);
+    final String rating = shop['rating']?.toString() ?? '4.9';
+    final String dist = _formatDistance(shop['distanceKm']);
+
+    // Utamakan gambar cover untuk banner kad mendatar; sekiranya tiada, gunakan logo
+    final String rawImg = (shop['business_cover_url'] ??
+            shop['cover'] ??
+            shop['business_logo_url'] ??
+            shop['image'] ??
+            '')
+        .toString();
+    final String img = rawImg.contains('photo-1503951914875-452162b0f3f1') ? '' : rawImg.trim();
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => BusinessStoreView(shop: shop)),
+        );
+      },
+      child: Container(
+        width: 250,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          color: isDark ? const Color(0xFF161C24) : Colors.white,
+          border: Border.all(
+            color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.6),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.07),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top Image with badges
+              Stack(
+                children: [
+                  SizedBox(
+                    height: 125,
+                    width: double.infinity,
+                    child: _buildCardImage(img, name, isDark),
+                  ),
+                  // Dark overlay gradient
+                  Container(
+                    height: 125,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.25),
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.55),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Queue Status Pill (Ngam Blue)
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2196F3),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.25),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        children: [
+                          HugeIcon(icon: HugeIcons.strokeRoundedFlash, size: 12, color: Colors.white),
+                          SizedBox(width: 2),
+                          Text(
+                            'Line Clear (0 Queue)',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Distance Pill
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const HugeIcon(
+                            icon: HugeIcons.strokeRoundedLocation01,
+                            color: Colors.white,
+                            size: 11,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            dist,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              // Bottom info
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          cat,
+                          style: TextStyle(
+                            color: catAccent,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            const HugeIcon(icon: HugeIcons.strokeRoundedStar, color: Color(0xFFFFB300), size: 14),
+                            const SizedBox(width: 2),
+                            Text(
+                              rating,
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black87,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Buka Sekarang',
+                          style: TextStyle(
+                            color: isDark ? Colors.white54 : Colors.grey.shade600,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
+                          decoration: BoxDecoration(
+                            color: catAccent.withValues(alpha: isDark ? 0.16 : 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: catAccent.withValues(alpha: 0.4),
+                            ),
+                          ),
+                          child: Text(
+                            'Ambil Giliran',
+                            style: TextStyle(
+                              color: catAccent,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
