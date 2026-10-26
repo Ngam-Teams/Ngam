@@ -13,6 +13,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:math'; //  Required for generating the short ID
 import 'dart:async';
 
+enum BookingType {
+  service,
+  dining,
+  automotive,
+  health,
+  facility,
+}
+
 class BookingsView extends StatefulWidget {
   final String shopId; //  ADD THIS
   final String shopName;
@@ -52,29 +60,224 @@ class _BookingsViewState extends State<BookingsView> {
   //  We save the ID here so the success screen can use it
   String _generatedBookingId = "";
 
-  final List<Map<String, String>> _staffs = [
-    {"name": "Adi Mawi", "specialty": "Expert Barber", "rating": "5.0", "image": "https://i.pinimg.com/736x/cc/c9/00/ccc90020bb124a04b0e466657eb7c699.jpg?q=80&w=150"},
-    {"name": "Haris Iqram", "specialty": "Senior Barber", "rating": "4.9", "image": "https://i.pinimg.com/736x/dc/a6/0d/dca60d053ada15f902394178dbe9d4a0.jpg?q=80&w=150"},
-    {"name": "Zabir Kaza", "specialty": "Senior Barber", "rating": "4.8", "image": "https://i.pinimg.com/736x/c5/b0/3a/c5b03a796e2ec3ad8efd12795a393fa6.jpg?q=80&w=150"},
-  ];
-
+  late BookingType _bookingType;
+  List<Map<String, String>> _staffs = [];
   final List<Map<String, String>> _dates = [];
+  final List<String> _times = ["8:00", "9:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00", "19:00", "20:00"];
+  List<Map<String, String>> _servicesList = [];
+  List<Map<String, String>> _addonsList = [];
 
-  final List<String> _times = ["8:00", "9:00", "10:00", "11:00", "12:00", "14:00", "15:00"];
+  BookingType _detectBookingType() {
+    final cat = widget.category.toLowerCase();
+    final name = widget.shopName.toLowerCase();
 
-  final List<Map<String, String>> _servicesList = [
-    {"name": "Premium Haircut", "price": "RM35", "time": "30m"},
-    {"name": "Standard Haircut", "price": "RM25", "time": "20m"},
-    {"name": "Buzz Cut", "price": "RM15", "time": "15m"},
-  ];
+    if (cat.contains('food') || cat.contains('restaurant') || cat.contains('cafe') ||
+        cat.contains('makan') || cat.contains('dining') || cat.contains('coffee') ||
+        name.contains('cafe') || name.contains('restoran') || name.contains('coffee') ||
+        name.contains('bistro') || name.contains('kitchen') || name.contains('warung') ||
+        name.contains('burger') || name.contains('steamboat')) {
+      return BookingType.dining;
+    }
 
-  final List<Map<String, String>> _addonsList = [
-    {"name": "Hot Towel Trim", "price": "+RM20", "time": "+20m"},
-    {"name": "Scalp Massage", "price": "+RM15", "time": "+15m"},
-    {"name": "Hair Wash & Dry", "price": "+RM10", "time": "+10m"},
-    {"name": "Beard Oil Styling", "price": "+RM5", "time": "+5m"},
-    {"name": "Eyebrow Trim", "price": "+RM5", "time": "+5m"},
-  ];
+    if (cat.contains('workshop') || cat.contains('auto') || cat.contains('car') ||
+        cat.contains('motor') || cat.contains('bengkel') || cat.contains('wash') ||
+        name.contains('auto') || name.contains('car wash') || name.contains('bengkel') ||
+        name.contains('tyre') || name.contains('motor') || name.contains('garage') ||
+        name.contains('detailing')) {
+      return BookingType.automotive;
+    }
+
+    if (cat.contains('health') || cat.contains('clinic') || cat.contains('dental') ||
+        cat.contains('perubatan') || cat.contains('klinik') || cat.contains('farmasi') ||
+        name.contains('clinic') || name.contains('klinik') || name.contains('dental') ||
+        name.contains('poliklinik') || name.contains('dr.')) {
+      return BookingType.health;
+    }
+
+    if (cat.contains('sport') || cat.contains('court') || cat.contains('futsal') ||
+        cat.contains('badminton') || cat.contains('kemudahan') || cat.contains('arena') ||
+        name.contains('futsal') || name.contains('badminton') || name.contains('court') ||
+        name.contains('arena') || name.contains('gym')) {
+      return BookingType.facility;
+    }
+
+    return BookingType.service;
+  }
+
+  void _initCategoryTemplate() {
+    _bookingType = _detectBookingType();
+
+    switch (_bookingType) {
+      case BookingType.dining:
+        _staffs = [
+          {
+            "name": "Meja Standard (2-4 Pax)",
+            "specialty": "Zon Dalaman Berhawa Dingin",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400",
+          },
+          {
+            "name": "Meja Keluarga (5-8 Pax)",
+            "specialty": "Ruang Santai & Selesa",
+            "rating": "4.9",
+            "image": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=400",
+          },
+          {
+            "name": "Bilik Privasi / VIP (8-12 Pax)",
+            "specialty": "Ruang Eksklusif & Keraian",
+            "rating": "4.9",
+            "image": "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=400",
+          },
+        ];
+        _servicesList = [
+          {"name": "Tempahan Meja Santai (Walk-in Hold)", "price": "RM0", "time": "90m"},
+          {"name": "Pakej Makan Malam / Lunch Set", "price": "RM50", "time": "90m"},
+          {"name": "Pakej Sambutan Hari Jadi / VIP", "price": "RM80", "time": "120m"},
+        ];
+        _addonsList = [
+          {"name": "Kerusi Bayi (Baby Chair)", "price": "+RM0", "time": "+0m"},
+          {"name": "Dekorasi Meja & Bunga Khas", "price": "+RM30", "time": "+0m"},
+          {"name": "Piring Kek & Lilin Sambutan", "price": "+RM15", "time": "+0m"},
+          {"name": "Pilihan Meja Tepi Tingkap", "price": "+RM0", "time": "+0m"},
+        ];
+        break;
+
+      case BookingType.automotive:
+        _staffs = [
+          {
+            "name": "Stesen Servis Pantas",
+            "specialty": "Semua Juruteknik Bertugas",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?q=80&w=400",
+          },
+          {
+            "name": "Bay Cuci Kereta & Detailing",
+            "specialty": "Pakar Cucian & Salun Kilat",
+            "rating": "4.9",
+            "image": "https://images.unsplash.com/photo-1601362840469-51e4d8d58785?q=80&w=400",
+          },
+          {
+            "name": "Pusat Diagnostik & Tayar",
+            "specialty": "Pakar Mekanikal Bertauliah",
+            "rating": "4.8",
+            "image": "https://images.unsplash.com/photo-1486006920555-c77dce18193b?q=80&w=400",
+          },
+        ];
+        _servicesList = [
+          {"name": "Cuci Kereta & Vacuum Luar Dalam", "price": "RM20", "time": "30m"},
+          {"name": "Servis Minyak Hitam & Filter Asas", "price": "RM120", "time": "45m"},
+          {"name": "Wax & Polish Kilat Premium", "price": "RM70", "time": "60m"},
+          {"name": "Pemeriksaan Keselamatan 21 Titik", "price": "RM30", "time": "25m"},
+        ];
+        _addonsList = [
+          {"name": "Cuci Ruang Enjin (Engine Bay)", "price": "+RM25", "time": "+20m"},
+          {"name": "Sanitasi Anti-Bakteria Kabin", "price": "+RM20", "time": "+15m"},
+          {"name": "Tukar Wiper Blade Depan", "price": "+RM35", "time": "+10m"},
+          {"name": "Top-up Coolant & Minyak Brek", "price": "+RM15", "time": "+10m"},
+        ];
+        break;
+
+      case BookingType.health:
+        _staffs = [
+          {
+            "name": "Dr. Amirul Hakim",
+            "specialty": "Doktor Perubatan Am",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400",
+          },
+          {
+            "name": "Dr. Farah Nadhirah",
+            "specialty": "Pakar Kesihatan Wanita & Kanak-kanak",
+            "rating": "4.9",
+            "image": "https://images.unsplash.com/photo-1594824813590-78531e217277?q=80&w=400",
+          },
+          {
+            "name": "Doktor Bertugas Seterusnya",
+            "specialty": "Paling Cepat / Giliran Segera",
+            "rating": "4.9",
+            "image": "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?q=80&w=400",
+          },
+        ];
+        _servicesList = [
+          {"name": "Konsultasi Am Doktor & Pemeriksaan", "price": "RM40", "time": "20m"},
+          {"name": "Pemeriksaan Kesihatan Komprehensif", "price": "RM85", "time": "40m"},
+          {"name": "Rawatan Ringan & Dressing Luka", "price": "RM35", "time": "25m"},
+        ];
+        _addonsList = [
+          {"name": "Ujian Glukosa & Kolesterol Pantas", "price": "+RM20", "time": "+10m"},
+          {"name": "Ujian Tekanan Darah & ECG", "price": "+RM30", "time": "+15m"},
+          {"name": "Suntikan Vaksin / Vitamin Booster", "price": "+RM45", "time": "+10m"},
+        ];
+        break;
+
+      case BookingType.facility:
+        _staffs = [
+          {
+            "name": "Court 1 (Standard Indoor)",
+            "specialty": "Lantai Getah Rubberized",
+            "rating": "4.9",
+            "image": "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?q=80&w=400",
+          },
+          {
+            "name": "Court 2 (Tournament Grade)",
+            "specialty": "Pencahayaan LED Tanpa Silau",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=400",
+          },
+          {
+            "name": "Court VIP / Berhawa Dingin",
+            "specialty": "Sewa Khas Tertutup",
+            "rating": "4.8",
+            "image": "https://images.unsplash.com/photo-1526676037777-05a232554f77?q=80&w=400",
+          },
+        ];
+        _servicesList = [
+          {"name": "Sesi 1 Jam Permainan", "price": "RM25", "time": "60m"},
+          {"name": "Sesi 2 Jam Kombo", "price": "RM45", "time": "120m"},
+          {"name": "Sesi 3 Jam Latihan Pasukan", "price": "RM65", "time": "180m"},
+        ];
+        _addonsList = [
+          {"name": "Sewa 2x Raket & 1 Tiub Bulu Tangkis", "price": "+RM15", "time": "+0m"},
+          {"name": "Sewa Kasut Sukan (Saiz Biasa)", "price": "+RM8", "time": "+0m"},
+          {"name": "Air Mineral Sejuk (2 Botol)", "price": "+RM5", "time": "+0m"},
+        ];
+        break;
+
+      case BookingType.service:
+        _staffs = [
+          {
+            "name": "Mana-mana Staf (Paling Cepat)",
+            "specialty": "Pakar Bertugas Seterusnya",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=400",
+          },
+          {
+            "name": "Adi Mawi",
+            "specialty": "Pakar Rambut & Gaya Klasik",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400",
+          },
+          {
+            "name": "Haris Iqram",
+            "specialty": "Senior Stylist & Fade Master",
+            "rating": "4.9",
+            "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400",
+          },
+        ];
+        _servicesList = [
+          {"name": "Premium Haircut & Styling", "price": "RM35", "time": "30m"},
+          {"name": "Standard Haircut & Trim", "price": "RM25", "time": "20m"},
+          {"name": "Buzz Cut & Clean Shave", "price": "RM18", "time": "15m"},
+        ];
+        _addonsList = [
+          {"name": "Rawatan Tuala Panas & Trim", "price": "+RM20", "time": "+20m"},
+          {"name": "Urutan Kulit Kepala (Scalp Massage)", "price": "+RM15", "time": "+15m"},
+          {"name": "Cuci Rambut & Blow Dry", "price": "+RM10", "time": "+10m"},
+          {"name": "Minyak Janggut & Styling", "price": "+RM5", "time": "+5m"},
+        ];
+        break;
+    }
+  }
 
   final List<Map<String, dynamic>> _paymentMethods = [
     {"name": "Credit / Debit Card", "icon": HugeIcons.strokeRoundedCreditCard, "type": "card"},
@@ -103,9 +306,93 @@ class _BookingsViewState extends State<BookingsView> {
 
   String get _pageTitle {
     if (_isSubmitted) return "Booking complete!";
-    if (_currentStep == 0) return "Select provider:";
-    if (_currentStep == 1) return "Select Services:";
-    return "Checkout & payment:";
+    switch (_bookingType) {
+      case BookingType.dining:
+        if (_currentStep == 0) return "Pilih saiz meja:";
+        if (_currentStep == 1) return "Pakej & keperluan meja:";
+        return "Sahkan tempahan meja:";
+      case BookingType.automotive:
+        if (_currentStep == 0) return "Pilih stesen servis:";
+        if (_currentStep == 1) return "Pilih pakej kenderaan:";
+        return "Sahkan servis kenderaan:";
+      case BookingType.health:
+        if (_currentStep == 0) return "Pilih doktor / pakar:";
+        if (_currentStep == 1) return "Pilih rawatan & ujian:";
+        return "Sahkan janji temu klinik:";
+      case BookingType.facility:
+        if (_currentStep == 0) return "Pilih gelanggang / court:";
+        if (_currentStep == 1) return "Pilih tempoh & peralatan:";
+        return "Sahkan tempahan court:";
+      case BookingType.service:
+        if (_currentStep == 0) return "Pilih pakar / barber:";
+        if (_currentStep == 1) return "Pilih servis & tambahan:";
+        return "Sahkan tempahan:";
+    }
+  }
+
+  String get _mainServiceTitle {
+    switch (_bookingType) {
+      case BookingType.dining: return "Pilihan Meja / Pakej Makan";
+      case BookingType.automotive: return "Pakej Servis Kenderaan";
+      case BookingType.health: return "Pilihan Rawatan & Konsultasi";
+      case BookingType.facility: return "Tempoh Sesi Permainan";
+      case BookingType.service: return "Servis Utama";
+    }
+  }
+
+  String get _addonsTitle {
+    switch (_bookingType) {
+      case BookingType.dining: return "Permintaan & Kemudahan Khas";
+      case BookingType.automotive: return "Servis Tambahan Pilihan";
+      case BookingType.health: return "Ujian & Rawatan Lanjutan";
+      case BookingType.facility: return "Sewa Peralatan Tambahan";
+      case BookingType.service: return "Servis Tambahan (Add-ons)";
+    }
+  }
+
+  String get _healthToggleTitle {
+    switch (_bookingType) {
+      case BookingType.dining: return "Alergi Makanan / Keperluan Diet Khas?";
+      case BookingType.automotive: return "Kenderaan Saiz Besar (SUV / 4x4 / MPV)?";
+      case BookingType.health: return "Alahan Ubat-ubatan (Drug Allergies)?";
+      case BookingType.facility: return "Perlu Bantuan Fasilitator / Pengadil?";
+      case BookingType.service: return "Alahan Kulit Kepala atau Sensitiviti?";
+    }
+  }
+
+  String get _healthToggleSubtitle {
+    switch (_bookingType) {
+      case BookingType.dining: return "Tandakan jika ada alahan kacang, makanan laut atau gluten";
+      case BookingType.automotive: return "Tandakan jika kenderaan anda memerlukan ruang bay besar";
+      case BookingType.health: return "Tandakan jika ada alahan kepada sebarang jenis ubat";
+      case BookingType.facility: return "Tandakan jika memerlukan bantuan fasilitator perlawanan";
+      case BookingType.service: return "Kulit sensitif terhadap sabun, pencuci atau minyak wangi";
+    }
+  }
+
+  String get _providerSummaryLabel {
+    switch (_bookingType) {
+      case BookingType.dining: return "Pilihan Meja";
+      case BookingType.automotive: return "Stesen / Servis";
+      case BookingType.health: return "Doktor / Pakar";
+      case BookingType.facility: return "Gelanggang / Bilik";
+      case BookingType.service: return "Pakar / Staf";
+    }
+  }
+
+  dynamic get _providerSummaryIcon {
+    switch (_bookingType) {
+      case BookingType.dining:
+        return HugeIcons.strokeRoundedRestaurant01;
+      case BookingType.automotive:
+        return HugeIcons.strokeRoundedCar01;
+      case BookingType.health:
+        return HugeIcons.strokeRoundedHospital02;
+      case BookingType.facility:
+        return HugeIcons.strokeRoundedLocation01;
+      case BookingType.service:
+        return HugeIcons.strokeRoundedUser;
+    }
   }
 
   bool _isTimeValid(String timeStr, int dateIndex) {
@@ -198,6 +485,7 @@ class _BookingsViewState extends State<BookingsView> {
   @override
   void initState() {
     super.initState();
+    _initCategoryTemplate();
     //  CHANGED TO 0.85 so the left and right cards are clearly visible
     _generateUpcomingDates();
     _selectFirstAvailableSlot();
@@ -614,7 +902,8 @@ class _BookingsViewState extends State<BookingsView> {
                           //  Save Shop details so MyBookingsView can display them directly from the DB!
                           'shop_name': widget.shopName,
                           'shop_image': widget.shopImage,
-                          'category': widget.category
+                          'category': widget.category,
+                          'booking_type': _bookingType.name
                         }
                       }).eq('id', _holdingRecordId!);
 
@@ -647,7 +936,11 @@ class _BookingsViewState extends State<BookingsView> {
                   ),
                   child: Center(
                       child: Text(
-                          _currentStep < 2 ? "Continue" : "Confirm & Pay RM$_totalPrice",
+                          _currentStep < 2
+                              ? "Continue"
+                              : (_totalPrice == 0
+                                  ? "Confirm Booking (Free)"
+                                  : "Confirm & Pay RM$_totalPrice"),
                           style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)
                       )
                   ),
@@ -1048,27 +1341,41 @@ class _BookingsViewState extends State<BookingsView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Select Main Service", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
+          Text(_mainServiceTitle, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
           const SizedBox(height: 12),
           Column(children: List.generate(_servicesList.length, (index) => _buildSelectionTile(_servicesList[index], index, isDark, _selectedServices, false))),
 
           const SizedBox(height: 24),
 
-          Text("Extra Add-ons", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
+          Text(_addonsTitle, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
           const SizedBox(height: 12),
           Column(children: List.generate(_addonsList.length, (index) => _buildSelectionTile(_addonsList[index], index, isDark, _selectedAddons, true))),
 
           const SizedBox(height: 24),
-          Text("Health & Safety", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
+          Text("Keperluan & Keselamatan", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
           const SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(child: Text("Skin allergies or sensitivities?", style: TextStyle(fontSize: 14, color: isDark ? Colors.white70 : Colors.black87))),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_healthToggleTitle, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white70 : Colors.black87)),
+                    const SizedBox(height: 2),
+                    Text(_healthToggleSubtitle, style: TextStyle(fontSize: 11, color: isDark ? Colors.white38 : Colors.grey[600])),
+                  ],
+                ),
+              ),
               Transform.scale(
                 scale: 0.85,
                 child: Switch(
-                  value: _hasAllergies, activeColor: Colors.blue, activeTrackColor: Colors.blue.withValues(alpha: 0.3), inactiveThumbColor: isDark ? Colors.grey[400] : Colors.grey[300], inactiveTrackColor: isDark ? Colors.white10 : Colors.black12, onChanged: (val) => setState(() => _hasAllergies = val),
+                  value: _hasAllergies,
+                  activeColor: Colors.blue,
+                  activeTrackColor: Colors.blue.withValues(alpha: 0.3),
+                  inactiveThumbColor: isDark ? Colors.grey[400] : Colors.grey[300],
+                  inactiveTrackColor: isDark ? Colors.white10 : Colors.black12,
+                  onChanged: (val) => setState(() => _hasAllergies = val),
                 ),
               ),
             ],
@@ -1108,7 +1415,7 @@ class _BookingsViewState extends State<BookingsView> {
 
                 _buildSummaryRow("Location", widget.shopName, HugeIcons.strokeRoundedStore01, isDark),
                 const SizedBox(height: 12),
-                _buildSummaryRow("Provider", staff["name"]!, HugeIcons.strokeRoundedUser, isDark),
+                _buildSummaryRow(_providerSummaryLabel, staff["name"]!, _providerSummaryIcon, isDark),
                 const SizedBox(height: 12),
                 _buildSummaryRow("Date", "${_dates[_selectedDateIndex]['day']}, ${_dates[_selectedDateIndex]['date']} ${_dates[_selectedDateIndex]['month']}", HugeIcons.strokeRoundedCalendar03, isDark),                const SizedBox(height: 12),
                 _buildSummaryRow("Time", _times[_selectedTimeIndex], HugeIcons.strokeRoundedClock01, isDark),
