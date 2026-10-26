@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:geolocator/geolocator.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:math';
@@ -36,6 +39,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
   String _userName = 'Pelanggan';
   List<Map<String, dynamic>> _nearbyShops = [];
   bool _isLoadingShops = true;
+  bool _isFetchingLocation = false;
   double? _userLat;
   double? _userLng;
 
@@ -170,20 +174,212 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
         }
       }
 
+      // 1. Muat semula lokasi & nama dari cache SharedPreferences untuk tindak balas pantas
       final prefs = await SharedPreferences.getInstance();
       final cachedLat = prefs.getDouble('cached_user_lat');
       final cachedLng = prefs.getDouble('cached_user_lng');
+      final cachedName = prefs.getString('cached_location_name');
+
+      if (cachedName != null && cachedName.trim().isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _locationName = cachedName.trim();
+          });
+        }
+      }
 
       if (cachedLat != null && cachedLng != null) {
-        setState(() {
-          _userLat = cachedLat;
-          _userLng = cachedLng;
-          _locationName = 'Lokasi Semasa Dikesan';
-        });
+        _userLat = cachedLat;
+        _userLng = cachedLng;
+        _updateShopDistances();
       }
+
+      // 2. Dapatkan lokasi GPS sebenar secara senyap jika pengguna sudah memberi kebenaran (permission)
+      await _fetchAndApplyLiveLocation(silent: true, requestPermission: false);
     } catch (e) {
       debugPrint('Error loading user/location: $e');
     }
+  }
+
+  /// Mendapatkan lokasi GPS sebenar dan mengemas kini nama kawasan & jarak kedai
+  Future<void> _fetchAndApplyLiveLocation({bool silent = false, bool requestPermission = false}) async {
+    try {
+      final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (!silent && mounted) {
+          showGlassToast(
+            context,
+            'Sila hidupkan perkhidmatan GPS / Lokasi pada telefon anda.',
+            type: GlassToastType.warning,
+          );
+        }
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (requestPermission && (permission == LocationPermission.denied)) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      // Jika tiada kebenaran lokasi, berhenti tanpa mengganggu pengguna
+      if (permission != LocationPermission.whileInUse && permission != LocationPermission.always) {
+        if (!silent && mounted) {
+          showGlassToast(
+            context,
+            'Kebenaran lokasi diperlukan untuk mengesan kawasan semasa anda.',
+            type: GlassToastType.warning,
+          );
+        }
+        return;
+      }
+
+      if (mounted) {
+        setState(() => _isFetchingLocation = true);
+      }
+
+      // 1. Guna kedudukan terakhir yang diketahui untuk respons serta-merta jika ada
+      try {
+        final Position? lastPos = await Geolocator.getLastKnownPosition();
+        if (lastPos != null && mounted) {
+          await _applyPosition(lastPos);
+        }
+      } catch (_) {}
+
+      // 2. Dapatkan kedudukan GPS segar yang tepat
+      final Position freshPos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+
+      if (mounted) {
+        await _applyPosition(freshPos);
+        if (!silent && mounted) {
+          showGlassToast(
+            context,
+            'Lokasi dikesan: $_locationName',
+            icon: HugeIcons.strokeRoundedLocation01,
+            type: GlassToastType.success,
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error retrieving live location: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isFetchingLocation = false);
+      }
+    }
+  }
+
+  /// Menyimpan koordinat, mengira semula jarak kedai, dan menyelesaikan nama kawasan (reverse geocoding)
+  Future<void> _applyPosition(Position pos) async {
+    _userLat = pos.latitude;
+    _userLng = pos.longitude;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('cached_user_lat', pos.latitude);
+    await prefs.setDouble('cached_user_lng', pos.longitude);
+
+    _updateShopDistances();
+
+    final resolvedName = await _reverseGeocode(pos.latitude, pos.longitude);
+    if (resolvedName != null && resolvedName.trim().isNotEmpty && mounted) {
+      setState(() {
+        _locationName = resolvedName.trim();
+      });
+      await prefs.setString('cached_location_name', resolvedName.trim());
+    }
+  }
+
+  /// Mengira semula jarak setiap kedai berdasarkan kedudukan GPS terkini
+  void _updateShopDistances() {
+    if (_userLat == null || _userLng == null || _nearbyShops.isEmpty) return;
+    for (var map in _nearbyShops) {
+      if (map['latitude'] != null && map['longitude'] != null) {
+        final dLat = double.tryParse(map['latitude'].toString()) ?? 0.0;
+        final dLng = double.tryParse(map['longitude'].toString()) ?? 0.0;
+        map['distanceKm'] = _calculateDistance(_userLat!, _userLng!, dLat, dLng);
+      }
+    }
+    _nearbyShops.sort((a, b) => ((a['distanceKm'] ?? 999.0) as double).compareTo((b['distanceKm'] ?? 999.0) as double));
+    if (mounted) setState(() {});
+  }
+
+  /// Menyelesaikan koordinat GPS kepada nama tempat/bandar sebenar
+  Future<String?> _reverseGeocode(double lat, double lng) async {
+    // 1. Enjin Utama: BigDataCloud Client Reverse Geocoding (Pantas, tiada had & format kemas)
+    try {
+      final uri = Uri.parse(
+        'https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=$lat&longitude=$lng&localityLanguage=ms',
+      );
+      final response = await http.get(uri).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        final locality = data['locality']?.toString().trim();
+        final city = data['city']?.toString().trim();
+        final state = data['principalSubdivision']?.toString().trim();
+
+        final parts = <String>[];
+        if (locality != null && locality.isNotEmpty && locality != city) {
+          parts.add(locality);
+        } else if (city != null && city.isNotEmpty) {
+          parts.add(city);
+        }
+        if (state != null && state.isNotEmpty) {
+          parts.add(state);
+        }
+        if (parts.isNotEmpty) {
+          return parts.join(', ');
+        }
+      }
+    } catch (e) {
+      debugPrint('BigDataCloud reverse geocode error: $e');
+    }
+
+    // 2. Enjin Sandaran: OpenStreetMap Nominatim
+    try {
+      final uri = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lng&format=json&addressdetails=1',
+      );
+      final response = await http.get(uri, headers: {
+        'User-Agent': 'NgamApp/1.0 (com.ngam.app)',
+      }).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        final addr = data['address'] as Map<String, dynamic>?;
+        if (addr != null) {
+          final sub = addr['suburb'] ??
+              addr['neighbourhood'] ??
+              addr['residential'] ??
+              addr['village'] ??
+              addr['city_district'];
+          final city = addr['city'] ??
+              addr['town'] ??
+              addr['municipality'] ??
+              addr['county'];
+          final state = addr['state'];
+
+          final parts = <String>[];
+          if (sub != null && sub.toString().trim().isNotEmpty) {
+            parts.add(sub.toString().trim());
+          } else if (city != null && city.toString().trim().isNotEmpty) {
+            parts.add(city.toString().trim());
+          }
+          if (state != null && state.toString().trim().isNotEmpty) {
+            parts.add(state.toString().trim());
+          }
+          if (parts.isNotEmpty) {
+            return parts.join(', ');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Nominatim reverse geocode error: $e');
+    }
+
+    return null;
   }
 
   void _fetchShops() {
@@ -590,11 +786,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
               const SizedBox(height: 3),
               GestureDetector(
                 onTap: () {
-                  showGlassToast(
-                    context,
-                    'Lokasi semasa: $_locationName',
-                    icon: HugeIcons.strokeRoundedLocation01,
-                  );
+                  _fetchAndApplyLiveLocation(silent: false, requestPermission: true);
                 },
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -618,11 +810,21 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    HugeIcon(
-                      icon: HugeIcons.strokeRoundedArrowDown01,
-                      color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
-                      size: 13,
-                    ),
+                    if (_isFetchingLocation)
+                      const SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.6,
+                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF5252)),
+                        ),
+                      )
+                    else
+                      HugeIcon(
+                        icon: HugeIcons.strokeRoundedArrowDown01,
+                        color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                        size: 13,
+                      ),
                   ],
                 ),
               ),
