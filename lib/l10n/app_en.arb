@@ -1,247 +1,834 @@
 {
-    "@@locale": "en",
-    "profile": "Profile",
-    "@profile": {
-        "description": "The title shown in the AppBar"
-    },
-    "preferences": "Preferences",
-    "darkMode": "Dark Mode",
-    "language": "Language",
-    "currentLanguage": "English",
-    "account": "Account",
-    "personalInformation": "Personal Information",
-    "paymentMethods": "Payment Methods",
-    "privacySecurity": "Privacy & Security",
-    "logOut": "Log Out",
-    "selectLanguage": "Select Language",
-    "english": "English",
-    "malay": "Bahasa Melayu",
-    "searchHint": "Search",
-    "nearby": "Nearby",
-    "statusOpenCaps": "OPEN",
-    "statusClosingCaps": "CLOSING SOON",
-    "statusClosedCaps": "CLOSED",
-    "statusOpenNow": "Open Now",
-    "statusClosingSoon": "Closing Soon",
-    "statusClosed": "Closed",
-    "closingIn": "CLOSING IN {minutes}M",
-    "@closingIn": {
-        "description": "Countdown for when a shop is closing soon",
-        "placeholders": {
-            "minutes": {
-                "type": "int",
-                "example": "15"
-            }
-        }
-    },
-    "rating": "Rating",
-    "reviews": "Reviews",
-    "away": "Away",
-    "call": "Call",
-    "directions": "Directions",
-    "operatingHours": "Operating Hours",
-    "today": "Today",
-    "todayDay": "Today ({day})",
-    "@todayDay": {
-        "description": "Shows 'Today' along with the day of the week",
-        "placeholders": {
-            "day": {
-                "type": "String",
-                "example": "Mon"
-            }
-        }
-    },
-    "servicesAvailable": "Services Available",
-    "generalService": "General Service",
-    "recentReviews": "Recent Reviews",
-    "noReviewsYet": "No reviews yet.",
-    "user": "User",
-    "rezrvNow": "Book Now",
-    "resultsFor": "Results for '{query}'",
-    "@resultsFor": {
-        "description": "Carousel title shown when search results are found",
-        "placeholders": {
-            "query": {
-                "type": "String",
-                "example": "Haircut"
-            }
-        }
-    },
-    "noResultsFoundTitle": "No results found",
-    "noLocationsMatch": "No locations match your search.",
-    "noMatchesFound": "No matches found",
-    "trySearchingDifferent": "Try searching for a different shop or service.",
-    "clear": "Clear",
-    "locating": "Locating...",
-    "locationDisabled": "Location disabled",
-    "permissionDenied": "Permission denied",
-    "permissionDeniedForever": "Permission denied forever",
-    "unknownCity": "Unknown City",
-    "unknownState": "Unknown State",
-    "locationUnavailable": "Location unavailable",
-    "hiUser": "Hi, {firstName}",
-    "@hiUser": {
-        "description": "Greeting on the home screen",
-        "placeholders": {
-            "firstName": {
-                "type": "String"
-            }
-        }
-    },
-    "promotions": "Promotions",
-    "categories": "Categories",
-    "recommended": "Recommended",
-    "seeAll": "See All",
-    "promoLabel": "PROMO",
-    "claimButton": "Claim",
-    "catHaircuts": "Haircuts",
-    "catShaving": "Shaving",
-    "catColoring": "Coloring",
-    "catStyling": "Styling",
-    "catFacial": "Facial",
-    "catMassage": "Massage",
-    "catNails": "Nails",
-    "catMore": "More",
-    "unknownShop": "Unknown",
-    "generalCategory": "General",
-    "myBarbrTitle": "My Bookings",
-    "tabUpcoming": "Upcoming",
-    "tabHistory": "History",
-    "noPastReservations": "No past or cancelled bookings.",
-    "noUpcomingReservations": "No upcoming bookings yet.\nBook a service to see it here!",
-    "cancelBtn": "Cancel",
-    "viewTicketBtn": "View Ticket",
-    "statusCancelled": "Cancelled",
-    "statusDone": "Done",
-    "ticketOrderTitle": "Order",
-    "ticketProvider": "Provider",
-    "ticketDate": "Date",
-    "ticketTime": "Time",
-    "ticketBookingId": "Booking ID",
-    "ticketTotalPaid": "Total Paid",
-    "ticketScanHint": "Scan at the counter upon arrival",
-    "ticketCallOwner": "Call Owner",
-    "bkTitleComplete": "Booking complete!",
-    "bkTitleProvider": "Select provider:",
-    "bkTitleServices": "Select Services:",
-    "bkTitleCheckout": "Checkout & payment:",
-    "bkApptDate": "Appointment Date",
-    "bkAvailTime": "Available Time",
-    "bkMainService": "Select Main Service",
-    "bkAddons": "Extra Add-ons",
-    "bkHealthSafety": "Health & Safety",
-    "bkAllergies": "Skin allergies or sensitivities?",
-    "bkSummary": "Booking Summary",
-    "bkLocation": "Location",
-    "bkProvider": "Provider",
-    "bkDate": "Date",
-    "bkTime": "Time",
-    "bkEstDuration": "Estimated Duration",
-    "bkMins": "~{time} mins",
-    "@bkMins": {
-        "placeholders": {
-            "time": {
-                "type": "int"
-            }
-        }
-    },
-    "bkPaymentMethod": "Payment Method",
-    "bkCreditCard": "Credit / Debit Card",
-    "bkOnlineBanking": "Online Banking (FPX)",
-    "bkCash": "Cash at Counter",
-    "bkNoCards": "No cards saved. Please add one in your Profile.",
-    "bkGrandTotal": "Grand Total",
-    "bkContinue": "Continue",
-    "bkConfirmPay": "Confirm & Pay {price}",
-    "@bkConfirmPay": {
-        "placeholders": {
-            "price": {
-                "type": "String"
-            }
-        }
-    },
-    "bkCardHolder": "Card Holder",
-    "bkExpires": "Expires",
-    "bkConfirmed": "Booking Confirmed!",
-    "bkNotified": "Your provider has been notified.",
-    "bkViewOrder": "View Order",
-    "bkBackHome": "Back to Home",
-    "navHome": "Home",
-    "navExplore": "Explore",
-    "navMyBarbr": "Bookings",
-    "navSaved": "Saved",
-    "shopDetailDummyAddress": "123 Main Street, City Center",
-    "shopDetailDummyHours": "Open Now • Closes at 10:00 PM",
-    "shopDetailAbout": "About",
-    "shopDetailAboutDesc": "Experience premium grooming and wellness services in a relaxing environment. Our professionals are dedicated to making you look and feel your absolute best.",
-    "exploreCatBeauty": "Beauty & Wellness",
-    "exploreCatBarber": "Barber Shop",
-    "exploreCatHealth": "Health & Clinic",
-    "exploreCatFood": "Food & Drinks",
-    "exploreCatRestaurant": "Restaurant",
-    "exploreCatCafe": "Cafe",
-    "exploreCatAuto": "Auto & Transport",
-    "exploreCatWorkshop": "Workshop & Repair",
-    "exploreCatGas": "Gas Station",
-    "exploreCatDaily": "Daily Needs",
-    "exploreCatSupermarket": "Supermarket",
-    "exploreCatBanking": "Banking",
-    "exploreCatCommunity": "Community",
-    "exploreCatSchool": "School",
-    "exploreCatReligion": "Religion",
-    "searchAll": "All {category}",
-    "@searchAll": {
-        "placeholders": {
-            "category": {
-                "type": "String"
-            }
-        }
-    },
-    "searchHeadersCategories": "CATEGORIES",
-    "searchHeadersShops": "SHOPS & SERVICES",
-    "searchMatchProvides": "Provides {service}",
-    "@searchMatchProvides": {
-        "placeholders": {
-            "service": {
-                "type": "String"
-            }
-        }
-    },
-    "msgVia": "Message via",
-    "msgWhatsApp": "WhatsApp",
-    "msgTelegram": "Telegram",
-    "msgSMS": "SMS Message",
-    "btnViewProfile": "View Store",
-    "piProfileUpdated": "Profile updated successfully!",
-    "piFullName": "Full Name",
-    "piFullNameHint": "Enter your full name",
-    "piEmail": "Email Address",
-    "piEmailHint": "Enter your email",
-    "piPhone": "Phone Number",
-    "piPhoneHint": "Enter your phone number",
-    "piDob": "Date of Birth",
-    "piDobHint": "DD / MM / YYYY",
-    "piSaveChanges": "Save Changes",
-    "savedTitle": "My Saved",
-    "savedEmptyState": "You haven't saved any spots yet.",
-    "ticketCountdownPast": "Appointment Started/Passed",
-    "ticketCountdownStartsIn": "Starts in: {duration}",
-    "@ticketCountdownStartsIn": {
-        "placeholders": {
-            "duration": {
-                "type": "String"
-            }
-        }
-    },
-    "support": "Support",
-    "helpCenter": "Help Center",
-    "contactUs": "Contact Us",
-    "about": "About",
-    "termsOfService": "Terms of Service",
-    "privacyPolicy": "Privacy Policy",
-    "rateUs": "Rate the App",
-    "inviteFriends": "Invite Friends",
-    "referralText": "Get RM10 for every referral",
-    "madeIn": "Made with pride in Malaysia",
-    "bookNow": "Book Now"
+  "@@locale": "en",
+  "profile": "Profile",
+  "@profile": {
+    "description": "The title shown in the AppBar"
+  },
+  "preferences": "Preferences",
+  "darkMode": "Dark Mode",
+  "language": "Language",
+  "currentLanguage": "English",
+  "account": "Account",
+  "personalInformation": "Personal Information",
+  "paymentMethods": "Payment Methods",
+  "privacySecurity": "Privacy & Security",
+  "logOut": "Log Out",
+  "selectLanguage": "Select Language",
+  "english": "English",
+  "malay": "Bahasa Melayu",
+  "searchHint": "Search",
+  "nearby": "Nearby",
+  "statusOpenCaps": "OPEN",
+  "statusClosingCaps": "CLOSING SOON",
+  "statusClosedCaps": "CLOSED",
+  "statusOpenNow": "Open Now",
+  "statusClosingSoon": "Closing Soon",
+  "statusClosed": "Closed",
+  "closingIn": "CLOSING IN {minutes}M",
+  "@closingIn": {
+    "description": "Countdown for when a shop is closing soon",
+    "placeholders": {
+      "minutes": {
+        "type": "int",
+        "example": "15"
+      }
+    }
+  },
+  "rating": "Rating",
+  "reviews": "Reviews",
+  "away": "Away",
+  "call": "Call",
+  "directions": "Directions",
+  "operatingHours": "Operating Hours",
+  "today": "Today",
+  "todayDay": "Today ({day})",
+  "@todayDay": {
+    "placeholders": {
+      "day": {
+        "type": "Object"
+      }
+    }
+  },
+  "servicesAvailable": "Services Available",
+  "generalService": "General Service",
+  "recentReviews": "Recent Reviews",
+  "noReviewsYet": "No reviews yet.",
+  "user": "User",
+  "rezrvNow": "Book Now",
+  "resultsFor": "Results for '{query}'",
+  "@resultsFor": {
+    "placeholders": {
+      "query": {
+        "type": "Object"
+      }
+    }
+  },
+  "noResultsFoundTitle": "No results found",
+  "noLocationsMatch": "No locations match your search.",
+  "noMatchesFound": "No matches found",
+  "trySearchingDifferent": "Try searching for a different shop or service.",
+  "clear": "Clear",
+  "locating": "Locating...",
+  "locationDisabled": "Location disabled",
+  "permissionDenied": "Permission denied",
+  "permissionDeniedForever": "Permission denied forever",
+  "unknownCity": "Unknown City",
+  "unknownState": "Unknown State",
+  "locationUnavailable": "Location unavailable",
+  "hiUser": "Hi, {firstName}",
+  "@hiUser": {
+    "placeholders": {
+      "firstName": {
+        "type": "Object"
+      }
+    }
+  },
+  "promotions": "Promotions",
+  "categories": "Categories",
+  "recommended": "Recommended",
+  "seeAll": "See All",
+  "promoLabel": "PROMO",
+  "claimButton": "Claim",
+  "catHaircuts": "Haircuts",
+  "catShaving": "Shaving",
+  "catColoring": "Coloring",
+  "catStyling": "Styling",
+  "catFacial": "Facial",
+  "catMassage": "Massage",
+  "catNails": "Nails",
+  "catMore": "More",
+  "unknownShop": "Unknown",
+  "generalCategory": "General",
+  "myBarbrTitle": "My Bookings",
+  "tabUpcoming": "Upcoming",
+  "tabHistory": "History",
+  "noPastReservations": "No past or cancelled bookings.",
+  "noUpcomingReservations": "No upcoming bookings yet.\nBook a service to see it here!",
+  "cancelBtn": "Cancel",
+  "viewTicketBtn": "View Ticket",
+  "statusCancelled": "Cancelled",
+  "statusDone": "Done",
+  "ticketOrderTitle": "Order",
+  "ticketProvider": "Provider",
+  "ticketDate": "Date",
+  "ticketTime": "Time",
+  "ticketBookingId": "Booking ID",
+  "ticketTotalPaid": "Total Paid",
+  "ticketScanHint": "Scan at the counter upon arrival",
+  "ticketCallOwner": "Call Owner",
+  "bkTitleComplete": "Booking complete!",
+  "bkTitleProvider": "Select provider:",
+  "bkTitleServices": "Select Services:",
+  "bkTitleCheckout": "Checkout & payment:",
+  "bkApptDate": "Appointment Date",
+  "bkAvailTime": "Available Time",
+  "bkMainService": "Select Main Service",
+  "bkAddons": "Extra Add-ons",
+  "bkHealthSafety": "Health & Safety",
+  "bkAllergies": "Skin allergies or sensitivities?",
+  "bkSummary": "Booking Summary",
+  "bkLocation": "Location",
+  "bkProvider": "Provider",
+  "bkDate": "Date",
+  "bkTime": "Time",
+  "bkEstDuration": "Estimated Duration",
+  "bkMins": "~{time} mins",
+  "@bkMins": {
+    "placeholders": {
+      "time": {
+        "type": "Object"
+      }
+    }
+  },
+  "bkPaymentMethod": "Payment Method",
+  "bkCreditCard": "Credit / Debit Card",
+  "bkOnlineBanking": "Online Banking (FPX)",
+  "bkCash": "Cash at Counter",
+  "bkNoCards": "No cards saved. Please add one in your Profile.",
+  "bkGrandTotal": "Grand Total",
+  "bkContinue": "Continue",
+  "bkConfirmPay": "Confirm & Pay {price}",
+  "@bkConfirmPay": {
+    "placeholders": {
+      "price": {
+        "type": "Object"
+      }
+    }
+  },
+  "bkCardHolder": "Card Holder",
+  "bkExpires": "Expires",
+  "bkConfirmed": "Booking Confirmed!",
+  "bkNotified": "Your provider has been notified.",
+  "bkViewOrder": "View Order",
+  "bkBackHome": "Back to Home",
+  "navHome": "Home",
+  "navExplore": "Explore",
+  "navMyBarbr": "Bookings",
+  "navSaved": "Saved",
+  "shopDetailDummyAddress": "123 Main Street, City Center",
+  "shopDetailDummyHours": "Open Now • Closes at 10:00 PM",
+  "shopDetailAbout": "About",
+  "shopDetailAboutDesc": "Experience premium grooming and wellness services in a relaxing environment. Our professionals are dedicated to making you look and feel your absolute best.",
+  "exploreCatBeauty": "Beauty & Wellness",
+  "exploreCatBarber": "Barber Shop",
+  "exploreCatHealth": "Health & Clinic",
+  "exploreCatFood": "Food & Drinks",
+  "exploreCatRestaurant": "Restaurant",
+  "exploreCatCafe": "Cafe",
+  "exploreCatAuto": "Auto & Transport",
+  "exploreCatWorkshop": "Workshop & Repair",
+  "exploreCatGas": "Gas Station",
+  "exploreCatDaily": "Daily Needs",
+  "exploreCatSupermarket": "Supermarket",
+  "exploreCatBanking": "Banking",
+  "exploreCatCommunity": "Community",
+  "exploreCatSchool": "School",
+  "exploreCatReligion": "Religion",
+  "searchAll": "All {category}",
+  "@searchAll": {
+    "placeholders": {
+      "category": {
+        "type": "Object"
+      }
+    }
+  },
+  "searchHeadersCategories": "CATEGORIES",
+  "searchHeadersShops": "SHOPS & SERVICES",
+  "searchMatchProvides": "Provides {service}",
+  "@searchMatchProvides": {
+    "placeholders": {
+      "service": {
+        "type": "Object"
+      }
+    }
+  },
+  "msgVia": "Message via",
+  "msgWhatsApp": "WhatsApp",
+  "msgTelegram": "Telegram",
+  "msgSMS": "SMS Message",
+  "btnViewProfile": "View Store",
+  "piProfileUpdated": "Profile updated successfully!",
+  "piFullName": "Full Name",
+  "piFullNameHint": "Enter your full name",
+  "piEmail": "Email Address",
+  "piEmailHint": "Enter your email",
+  "piPhone": "Phone Number",
+  "piPhoneHint": "Enter your phone number",
+  "piDob": "Date of Birth",
+  "piDobHint": "DD / MM / YYYY",
+  "piSaveChanges": "Save Changes",
+  "savedTitle": "My Saved",
+  "savedEmptyState": "You haven't saved any spots yet.",
+  "ticketCountdownPast": "Appointment Started/Passed",
+  "ticketCountdownStartsIn": "Starts in: {duration}",
+  "@ticketCountdownStartsIn": {
+    "placeholders": {
+      "duration": {
+        "type": "Object"
+      }
+    }
+  },
+  "support": "Support",
+  "helpCenter": "Help Center",
+  "contactUs": "Contact Us",
+  "about": "About",
+  "termsOfService": "Terms of Service",
+  "privacyPolicy": "Privacy Policy",
+  "rateUs": "Rate the App",
+  "inviteFriends": "Invite Friends",
+  "referralText": "Get RM10 for every referral",
+  "madeIn": "Made with pride in Malaysia",
+  "bookNow": "Book Now",
+  "authLogout": "Log Out",
+  "authWelcomeBack": "Welcome Back!",
+  "authWelcomeSubtitle": "Sign in to continue using Ngam",
+  "authEmail": "Email Address",
+  "authPassword": "Password",
+  "authLogin": "Sign In",
+  "authNoAccount": "Don't have an account? ",
+  "authRegisterHere": "Register here",
+  "authCreateAccount": "Create Account",
+  "authRegisterSubtitle": "Join Ngam community today",
+  "authFullName": "Full Legal Name",
+  "authPhone": "Phone Number",
+  "authRoleSelect": "I want to:",
+  "authRoleCustomer": "Post Tasks",
+  "authRoleRunner": "Earn as Runner",
+  "authRegister": "Sign Up",
+  "authHaveAccount": "Already have an account? ",
+  "authLoginHere": "Sign in here",
+  "authPleaseEnterEmail": "Please enter your email",
+  "authValidEmail": "Please enter a valid email",
+  "authPleaseEnterPassword": "Please enter your password",
+  "authPleaseEnterName": "Please enter your name",
+  "authPleaseEnterPhone": "Please enter your phone number",
+  "authPasswordMinLength": "Password must be at least 6 characters",
+  "authConfirmPassword": "Confirm Password",
+  "authPasswordsDoNotMatch": "Passwords do not match",
+  "authForgotPassword": "Forgot Password?",
+  "authOrContinueWith": "Or continue with",
+  "authGoogleSignin": "Google",
+  "authAppleSignin": "Apple",
+  "navMyTasks": "My Tasks",
+  "navChat": "Chat",
+  "navProfile": "Profile",
+  "customerGreeting": "Hi, {arg0}",
+  "customerWhatDoYouNeed": "What do you need done today?",
+  "customerSearchHint": "Search for tasks or services...",
+  "customerQuickCategories": "Quick Categories",
+  "customerNearbyRunners": "Nearby Runners Ready",
+  "customerRecentTasks": "Your Recent Tasks",
+  "customerViewAll": "View All",
+  "customerPostNewTask": "Post a New Task",
+  "customerTaskTitle": "Task Title",
+  "customerTaskDesc": "Describe what you need done...",
+  "customerBounty": "Bounty Amount (RM)",
+  "customerLocation": "Location",
+  "customerPostTask": "Post Task Now",
+  "customerAvailableServices": "Available Services ({arg0})",
+  "customerNoServices": "No services available right now.",
+  "customerRunnersWillPost": "Runners will post new services soon.",
+  "customerServiceOrdered": "Service ordered successfully!",
+  "customerOrderService": "Order Service",
+  "postTaskTitleRunner": "Post a Service",
+  "postTaskTitleCustomer": "Post New Task",
+  "postTaskServiceTitleLabel": "Service Title",
+  "postTaskServiceTitleHint": "e.g., I will print 10 pages",
+  "postTaskTaskTitleHint": "e.g., Print assignment 10 pages",
+  "postTaskErrTitle": "Please enter a title",
+  "postTaskServiceDescLabel": "Service Description",
+  "postTaskTaskDescLabel": "Task Description",
+  "postTaskServiceDescHint": "Describe what you can do...",
+  "postTaskErrDesc": "Please enter a description",
+  "postTaskCategory": "Category",
+  "postTaskLocationLabel": "Location / Drop-off Name",
+  "postTaskLocationHint": "e.g., Block C, Campus Library",
+  "postTaskErrLocation": "Please enter a location name",
+  "postTaskPinLocation": "Pin Exact Location",
+  "postTaskPriceRunner": "Price (RM)",
+  "postTaskMinRm": "Min: RM {arg0}",
+  "postTaskErrBounty": "Please enter a bounty amount",
+  "postTaskErrValidNumber": "Please enter a valid number",
+  "postTaskMinBountyInfo": "Minimum bounty for {arg0}: RM {arg1}",
+  "postTaskPosting": "Posting...",
+  "postTaskSubmitService": "Submit Service →",
+  "postTaskSubmitTask": "Submit Task →",
+  "postTaskServiceVisible": "Service will be visible to customers",
+  "postTaskTaskVisible": "Task will appear in the live feed once submitted",
+  "postTaskLocationPinned": "Location pinned: {arg0}, {arg1}",
+  "postTaskSubmittedTitle": "Task Submitted!",
+  "postTaskTaskLive": "Task is now LIVE!",
+  "postTaskRunnersCanSee": "Runners nearby can see your task in the feed",
+  "postTaskStatusOpen": "Status: OPEN",
+  "postTaskTrackStatus": "Track Status →",
+  "postTaskBackHome": "Back to Home",
+  "myTasksTasksPosted": "{arg0} tasks posted",
+  "myTasksPostTask": "Post Task",
+  "myTasksNoTasks": "No tasks yet",
+  "myTasksPostFirstTask": "Post your first task to get started!",
+  "orderStatusTitle": "Task Details",
+  "orderStatusTaskId": "Task ID: #GIG-{arg0}",
+  "orderStatusStatusLabel": "Status",
+  "orderStatusRunnerAssigned": "Runner: {arg0}",
+  "orderStatusAssigned": "Assigned",
+  "orderStatusErrChat": "Error opening chat: {arg0}",
+  "orderStatusRateReview": "Rate & Review Runner",
+  "orderStatusReviewSubmitted": "Review submitted",
+  "runnerFindGigs": "Find Gigs",
+  "runnerNearbyTasks": "Nearby ({arg0} tasks)",
+  "runnerNoGigs": "No gigs available",
+  "runnerCheckBack": "Check back later for new tasks",
+  "runnerTaskDetail": "Task Detail",
+  "runnerPostedTime": "Posted {arg0}",
+  "runnerBountyOffered": "Bounty Offered",
+  "runnerAcceptTask": "Accept Task",
+  "runnerChatCustomer": "Chat with Customer",
+  "runnerMarkComplete": "Mark as Complete",
+  "runnerConfirmAcceptance": "Confirm Acceptance",
+  "runnerAboutToAccept": "You are about to accept:",
+  "runnerWarningLocked": "Once accepted, task is LOCKED.\nIt will be removed from the public feed.",
+  "runnerStatusInProgress": "Task status will change to IN-PROGRESS in the database.",
+  "runnerCancel": "Cancel",
+  "runnerConfirm": "Confirm",
+  "runnerRunnerView": "Runner View",
+  "runnerActiveJob": "Active Job:",
+  "runnerInProgress": "IN-PROGRESS",
+  "runnerUploadProof": "Upload Proof (optional)",
+  "runnerPhotoUploadSoon": "Photo upload coming soon!",
+  "runnerTapUpload": "Tap to upload photo",
+  "runnerNotesRequester": "Notes for Requester",
+  "runnerNotesHint": "Any message for the customer...",
+  "runnerTaskCompleted": "Task Completed!",
+  "runnerRequesterNotified": "Requester will be notified instantly.",
+  "runnerDone": "Done",
+  "runnerMyJobsTitle": "Jobs",
+  "runnerCustomerTasks": "Customer Tasks",
+  "runnerMyServices": "My Services",
+  "runnerJobsCount": "{arg0} jobs",
+  "runnerPostJob": "Post Job",
+  "runnerNoJobsYet": "No jobs yet",
+  "runnerAcceptFirstGig": "Accept your first gig to get started!",
+  "runnerServiceTakenDown": "Service taken down",
+  "runnerTakeDown": "Take Down",
+  "profileCompleted": "Completed",
+  "profileRating": "Rating",
+  "profileAccount": "ACCOUNT",
+  "profileAccountDetails": "Account Details",
+  "profilePaymentMethods": "Payment Methods",
+  "profilePrivacySecurity": "Privacy & Security",
+  "profilePreferences": "PREFERENCES",
+  "profileLanguage": "Language",
+  "profileRoleAccess": "Role Access",
+  "profileStatistics": "Statistics",
+  "profileTasksPosted": "Tasks Posted",
+  "profileDarkMode": "Dark Mode",
+  "profileChooseLanguage": "Choose Language",
+  "profileInviteFriends": "Invite Friends",
+  "profileInviteFriendsDesc": "Get RM5 for every referral!",
+  "profileSupport": "SUPPORT",
+  "profileHelpCenter": "Help Center",
+  "profileContactUs": "Contact Us",
+  "profileAbout": "ABOUT",
+  "profileTerms": "Terms of Service",
+  "profilePrivacy": "Privacy Policy",
+  "profileRateApp": "Rate App",
+  "profileLogout": "Log Out",
+  "profileMadeWithLove": "Made with pride in Malaysia",
+  "profileLogoutSuccess": "Successfully logged out!",
+  "profileLanguageChanged": "Language changed to {arg0}",
+  "profileNgamRank": "Ngam Rank (Runner)",
+  "profileNewRating": "New",
+  "walletTitle": "Wallet & Payments",
+  "walletSwipeHint": "Swipe up or down to view cards",
+  "walletBalance": "Balance",
+  "walletNgamPay": "NGAM PAY",
+  "walletPlatinum": "PLATINUM",
+  "walletPrimary": "PRIMARY",
+  "walletValid": "VALID",
+  "walletThru": "THRU",
+  "walletBankAccount": "BANK ACCOUNT",
+  "walletDuitnowQr": "DuitNow QR",
+  "walletShowToReceive": "Show to receive payment",
+  "walletRecentTransactions": "Recent Transactions",
+  "walletTopUp": "Top Up",
+  "walletWithdraw": "Withdraw",
+  "walletSetPrimary": "Set Primary",
+  "walletRemove": "Remove",
+  "walletAddPaymentMethod": "Add Payment Method",
+  "walletCancel": "Cancel",
+  "walletAddCreditDebit": "Add Credit/Debit Card",
+  "walletSaveCard": "Save Card",
+  "walletLinkBankAccount": "Link Bank Account",
+  "walletSelectBank": "SELECT BANK",
+  "walletLinkAccount": "Link Account",
+  "walletCustomersScanQr": "Customers will scan your QR to pay you",
+  "walletYourQrCode": "YOUR QR CODE",
+  "walletTapUploadQr": "Tap to upload your QR code",
+  "walletFromAnyBank": "From any bank's DuitNow app",
+  "walletUploadQrFirst": "Please upload your QR code first",
+  "walletSaveDuitnowQr": "Save DuitNow QR",
+  "walletTaskCompletedTx": "Task Completed",
+  "walletWithdrawalTx": "Withdrawal",
+  "walletTopUpTx": "Top Up",
+  "walletPaidForTaskTx": "Paid for Task",
+  "paymentCardNumber": "Card Number",
+  "paymentExpiryDate": "Expiry Date",
+  "paymentCvv": "CVV",
+  "paymentCardholderName": "Cardholder Name",
+  "paymentAccountNumber": "Account Number",
+  "chatMessages": "Messages",
+  "chatSearchConversations": "Search conversations...",
+  "chatRecent": "RECENT",
+  "chatNoConversations": "No conversations yet.",
+  "chatNoMatchingConversations": "No matching conversations.",
+  "chatDeleteChat": "Delete Chat?",
+  "chatDeleteChatDesc": "This will permanently delete the conversation for both of you.",
+  "chatDelete": "Delete",
+  "chatToday": "Today",
+  "chatYesterday": "Yesterday",
+  "chatCamera": "Camera",
+  "chatGallery": "Gallery",
+  "chatFile": "File",
+  "chatTaskCard": "Task Card",
+  "chatSendQuote": "Send Quote",
+  "chatCounterOffer": "Counter-Offer",
+  "chatRequestLocation": "Request Location",
+  "chatTypeMessage": "Type message...",
+  "chatStartChat": "Start chat",
+  "chatOnline": "Online",
+  "chatOffline": "Offline",
+  "chatTyping": "typing...",
+  "chatSend": "Send",
+  "chatAttachment": "Attachment",
+  "chatPhoto": "Photo",
+  "chatVideo": "Video",
+  "chatDocument": "Document",
+  "chatLocation": "Location",
+  "chatQuoteAmount": "Quote Amount",
+  "chatEnterAmount": "Enter amount (RM)",
+  "chatSendQuoteBtn": "Send Quote",
+  "chatCounterOfferBtn": "Send Counter",
+  "chatAccept": "Accept",
+  "chatDecline": "Decline",
+  "chatLocationShared": "Location Shared",
+  "chatViewMap": "View Map",
+  "chatTaskInfo": "Task Info",
+  "chatBounty": "Bounty",
+  "chatStatus": "Status",
+  "chatLocationRequested": "Location Requested",
+  "chatShareLocationDesc": "Share your location to help calculate travel distance.",
+  "chatShareLocation": "Share Location",
+  "privacyTitle": "Privacy & Security",
+  "privacyAppLock": "App Lock",
+  "privacyAppLockDesc": "Use biometric or PIN to lock the app",
+  "privacyHideAppSwitcher": "Hide in App Switcher",
+  "privacyLocationServices": "Location Services",
+  "privacyTwoFactorAuth": "Two-Factor Authentication",
+  "privacyEnable2fa": "Enable 2FA?",
+  "privacyDataPrivacy": "DATA & PRIVACY",
+  "privacySystemPermissions": "System Permissions",
+  "privacyManagePermissions": "Manage Camera, Gallery, and GPS",
+  "privacyClearCache": "Clear App Cache?",
+  "privacyFreeStorage": "Clear temporary files to free up space. Your data is safe.",
+  "privacyActiveSessions": "ACTIVE SESSIONS",
+  "privacyThisDevice": "THIS DEVICE",
+  "privacyActiveNow": "Active Now",
+  "privacyLogOutAll": "Log out of all devices",
+  "privacyInstantlySecure": "Instantly secure your account",
+  "privacyEnableAppLock": "Enable App Lock",
+  "privacyAppLockInfo": "Your app will be locked with biometric or device PIN every time you switch away.",
+  "privacyNotNow": "Not Now",
+  "privacyEnable": "Enable",
+  "privacyAuthEnableLock": "Authenticate to enable App Lock",
+  "privacyAuthDisableLock": "Authenticate to disable App Lock",
+  "privacyEnable2faDesc": "Add an extra layer of security to your account. You will need to verify your identity when logging in from a new device.",
+  "privacyDisable2fa": "Disable Two-Factor Authentication",
+  "privacyDisable2faDesc": "Your account will only rely on your password for security.",
+  "privacyCacheCleared": "Cache cleared successfully",
+  "privacyLogOutAllTitle": "Secure Account?",
+  "privacyLogOutAllDesc": "This will instantly log you out of all other devices. You will stay logged in on this phone.",
+  "privacyLogOutAllBtn": "Log Out All",
+  "privacyActiveSessionsInfo": "Device Details",
+  "privacyLastLogin": "Last Login",
+  "privacyDevice": "Device",
+  "privacyIpAddress": "IP Address",
+  "supportDone": "Done",
+  "supportHelpCenter": "Help Center",
+  "supportGreeting": "Hi\nHow can we help?",
+  "supportSearchHint": "Search questions...",
+  "supportFaqTitle": "FAQ",
+  "supportNoResults": "No questions found for \"{arg0}\"",
+  "supportContactUs": "Contact Us",
+  "supportContactSubtitle": "Our team is ready to help you.",
+  "supportChatSupport": "Chat Support",
+  "supportChatSubtitle": "We're here to help.",
+  "supportStartChat": "Start Chat",
+  "supportEmailUs": "Email Us",
+  "supportEmailSubtitle": "Send an email anytime.",
+  "supportCallUs": "Call Us",
+  "supportCallSubtitle": "Mon-Fri, 9am–5pm.",
+  "supportFollowUs": "FOLLOW US",
+  "supportFaq1Q": "How do I post a task?",
+  "supportFaq1A": "Tap the \"+\" button below, fill in the task details like category, location, and price offer. Then submit and wait for a runner to pick up your task.",
+  "supportFaq2Q": "How do I become a Runner?",
+  "supportFaq2A": "Switch your role to \"Runner\" from your profile. You can then find available tasks in the feed and accept suitable ones.",
+  "supportFaq3Q": "How does payment work?",
+  "supportFaq3A": "Payment is made directly between the Customer and Runner after task completion. We recommend using DuitNow or bank transfer.",
+  "supportFaq4Q": "Can I cancel a task?",
+  "supportFaq4A": "Yes, you can cancel from the \"My Tasks\" page as long as no runner has accepted it yet.",
+  "supportFaq5Q": "What if the runner doesn't show up?",
+  "supportFaq5A": "Contact us through \"Contact Us\" and we will help resolve the issue within 24 hours.",
+  "supportFaq6Q": "Can Ngam runners be trusted?",
+  "supportFaq6A": "All our runners must go through a strict identity verification process before their accounts are activated for your safety.",
+  "supportFaq7Q": "Can I communicate with the runner?",
+  "supportFaq7A": "Yes, you can use the in-app chat to communicate with the runner once they accept your task.",
+  "supportFaq8Q": "What if the item price changes?",
+  "supportFaq8A": "You can discuss with the runner through chat. The runner will inform you of the actual price with a receipt for verification.",
+  "supportFaq9Q": "How do I give a rating?",
+  "supportFaq9A": "After the task is marked as complete, a pop-up will appear allowing you to rate and review the runner.",
+  "supportFaq10Q": "Is my location information safe?",
+  "supportFaq10A": "Yes, your personal and exact location information will only be shared with the runner who has accepted your task.",
+  "supportFaq11Q": "How long does it take to complete a task?",
+  "supportFaq11A": "It depends on the type of task and distance. You can view the estimated time or ask the runner directly.",
+  "supportFaq12Q": "What if my item is damaged?",
+  "supportFaq12A": "Please take a photo of the damage and contact our customer support within 24 hours for compensation assistance.",
+  "supportFaq13Q": "Can I tip the runner?",
+  "supportFaq13A": "Of course! You can give a cash tip directly to the runner or include the tip amount in your original task price offer.",
+  "supportFaq14Q": "Is there a weight limit for items?",
+  "supportFaq14A": "We recommend a maximum weight of 15kg for motorcycle delivery tasks. For larger items, please state clearly in the description.",
+  "supportFaq15Q": "Can I change location after runner accepts?",
+  "supportFaq15A": "Location changes after task acceptance are subject to runner agreement. Additional costs may apply.",
+  "aboutLikeNgam": "Like Ngam?",
+  "aboutRateSubtitle": "Give us stars to help us grow.",
+  "aboutFeedbackHint": "Share your thoughts about Ngam...",
+  "aboutSubmitFeedback": "Submit Feedback",
+  "aboutThankYou": "Thank you for your feedback!",
+  "accountTitle": "Account Details",
+  "accountPublicProfile": "PUBLIC PROFILE",
+  "accountShippingDetails": "SHIPPING DETAILS",
+  "accountSecurity": "SECURITY",
+  "accountSaveChanges": "Save Changes",
+  "accountFullName": "Full Name",
+  "accountEmailReadonly": "Email Address (Read Only)",
+  "accountPhone": "Phone Number",
+  "accountDob": "Date of Birth",
+  "accountAddress": "Primary Delivery Address",
+  "accountCurrentPassword": "Current Password",
+  "accountNewPassword": "New Password",
+  "reviewTitle": "Rate & Review",
+  "reviewHowWas": "How was your experience?",
+  "reviewTapToRate": "Tap a star to rate",
+  "reviewLeaveComment": "Leave a comment (optional)",
+  "reviewCommentHint": "Tell us about your experience...",
+  "reviewSubmit": "Submit Review",
+  "reviewSubmitting": "Submitting...",
+  "reviewSelectRating": "Please select a rating",
+  "reviewFailed": "Failed to submit review",
+  "verificationTitle": "Become a Runner",
+  "verificationSubtitle": "Complete verification to start earning",
+  "verificationFullName": "Full Legal Name",
+  "verificationIcNumber": "IC Number",
+  "verificationVehicleType": "Vehicle Type",
+  "verificationUploadIc": "Upload IC Photo",
+  "verificationUploadSelfie": "Upload Selfie with IC",
+  "verificationSubmit": "Submit Verification",
+  "verificationPending": "Verification Pending",
+  "verificationApproved": "Verified Runner",
+  "statsTitle": "Stats & Earnings",
+  "statsTotalEarnings": "Total Earnings",
+  "statsCompletedTasks": "Completed Tasks",
+  "statsAvgRating": "Average Rating",
+  "statsWeekly": "Weekly",
+  "statsMonthly": "Monthly",
+  "statsAllTime": "All-Time",
+  "statsEarningsChart": "Earnings Chart",
+  "statsNoEarnings": "No earnings data.",
+  "statsNoTaskData": "No task data.",
+  "statsTasksByStatus": "Tasks by Status",
+  "statsEarningsByCategory": "Earnings by Category",
+  "statsRecentActivity": "Recent Activity",
+  "rankBronze": "Bronze Runner",
+  "rankSilver": "Silver Runner",
+  "rankGold": "Gold Runner",
+  "rankPlatinum": "Platinum Runner",
+  "rankXpToNext": "{arg0} XP to next rank",
+  "rankTasksProgress": "{arg0} / {arg1} Tasks",
+  "commonCancel": "Cancel",
+  "commonConfirm": "Confirm",
+  "commonSave": "Save",
+  "commonDelete": "Delete",
+  "commonEdit": "Edit",
+  "commonClose": "Close",
+  "commonLoading": "Loading...",
+  "commonError": "Error",
+  "commonSuccess": "Success",
+  "commonRetry": "Retry",
+  "commonNoData": "No data available",
+  "commonLogOut": "Log Out",
+  "taskDetailNavigate": "Navigate to Location",
+  "taskDetailManageService": "Manage Service",
+  "taskDetailAdjustBounty": "Adjust Bounty",
+  "taskDetailDeleteService": "Delete Service",
+  "taskDetailDeleteServiceTitle": "Delete Service?",
+  "taskDetailDeleteServiceDesc": "Are you sure you want to permanently delete this service?",
+  "taskDetailCancel": "Cancel",
+  "taskDetailDelete": "Delete",
+  "taskDetailSave": "Save",
+  "taskDetailErrorChat": "Error starting chat: {arg0}",
+  "navFeed": "Ngam Feed",
+  "navInbox": "Messages",
+  "navDiscover": "Discover",
+  "expandSidebar": "Expand Sidebar",
+  "collapseSidebar": "Collapse Sidebar",
+  "lightMode": "Light Mode",
+  "switchLanguage": "Switch Language",
+  "homeGreeting": "Hi, {name}",
+  "@homeGreeting": {
+    "placeholders": {
+      "name": {
+        "type": "Object"
+      }
+    }
+  },
+  "homeSearchPlaceholder": "Search services, stores, items...",
+  "homeCurrentLocation": "Current location: {location}",
+  "@homeCurrentLocation": {
+    "placeholders": {
+      "location": {
+        "type": "Object"
+      }
+    }
+  },
+  "homeLocationDetected": "Location detected: {location}",
+  "@homeLocationDetected": {
+    "placeholders": {
+      "location": {
+        "type": "Object"
+      }
+    }
+  },
+  "homeNearbyStores": "Nearby Stores",
+  "homeSeeAll": "See All",
+  "homePopularOffers": "Hot Deals",
+  "homeTrendingPort": "Trending Spots",
+  "homeQuickCategories": "Quick Categories",
+  "homeLiveQueue": "My Queue",
+  "homeStampsCard": "Stamp Rewards",
+  "homeFlashPromo": "Flash RM10",
+  "homeFlashDesc": "Haircut Promo",
+  "homeViralCafe": "Viral Spot",
+  "homeViralDesc": "Coffee & Bakery",
+  "homeDetailing": "Nano Detailing",
+  "homeDetailingDesc": "30% Discount",
+  "homeDailyCoupon": "Daily Promo",
+  "homeDailyCouponDesc": "RM5 Coupon",
+  "homeSpaRelax": "Spa & Relax",
+  "homeSpaRelaxDesc": "Afternoon Slot",
+  "catBarber": "Haircut",
+  "catCarwash": "Car Wash",
+  "catCafe": "Cafe & Chill",
+  "catWorkshop": "Workshop",
+  "catSalon": "Salon & Spa",
+  "catHealth": "Clinic & Health",
+  "feedForYou": "For You",
+  "feedFollowing": "Following",
+  "feedBookNow": "Book Now",
+  "feedVisitStore": "Visit Store",
+  "storeCatalog": "Catalog",
+  "storeMenu": "Menu",
+  "storeReviews": "Reviews",
+  "storeInfo": "Info",
+  "storeAllItems": "All Items",
+  "storeBookQueue": "Book / Queue",
+  "bookingCancelTitle": "Cancel Booking",
+  "bookingDisputeTitle": "Report Dispute",
+  "bookingRefundNote": "Refund will be credited to your Ngam Wallet.",
+  "@customerGreeting": {
+    "placeholders": {
+      "arg0": {
+        "type": "Object"
+      }
+    }
+  },
+  "@customerAvailableServices": {
+    "placeholders": {
+      "arg0": {
+        "type": "Object"
+      }
+    }
+  },
+  "@postTaskMinRm": {
+    "placeholders": {
+      "arg0": {
+        "type": "Object"
+      }
+    }
+  },
+  "@postTaskMinBountyInfo": {
+    "placeholders": {
+      "arg0": {
+        "type": "Object"
+      },
+      "arg1": {
+        "type": "Object"
+      }
+    }
+  },
+  "@postTaskLocationPinned": {
+    "placeholders": {
+      "arg0": {
+        "type": "Object"
+      },
+      "arg1": {
+        "type": "Object"
+      }
+    }
+  },
+  "@myTasksTasksPosted": {
+    "placeholders": {
+      "arg0": {
+        "type": "Object"
+      }
+    }
+  },
+  "@orderStatusTaskId": {
+    "placeholders": {
+      "arg0": {
+        "type": "Object"
+      }
+    }
+  },
+  "@orderStatusRunnerAssigned": {
+    "placeholders": {
+      "arg0": {
+        "type": "Object"
+      }
+    }
+  },
+  "@orderStatusErrChat": {
+    "placeholders": {
+      "arg0": {
+        "type": "Object"
+      }
+    }
+  },
+  "@runnerNearbyTasks": {
+    "placeholders": {
+      "arg0": {
+        "type": "Object"
+      }
+    }
+  },
+  "@runnerPostedTime": {
+    "placeholders": {
+      "arg0": {
+        "type": "Object"
+      }
+    }
+  },
+  "@runnerJobsCount": {
+    "placeholders": {
+      "arg0": {
+        "type": "Object"
+      }
+    }
+  },
+  "@profileLanguageChanged": {
+    "placeholders": {
+      "arg0": {
+        "type": "Object"
+      }
+    }
+  },
+  "@supportNoResults": {
+    "placeholders": {
+      "arg0": {
+        "type": "Object"
+      }
+    }
+  },
+  "@rankXpToNext": {
+    "placeholders": {
+      "arg0": {
+        "type": "Object"
+      }
+    }
+  },
+  "@rankTasksProgress": {
+    "placeholders": {
+      "arg0": {
+        "type": "Object"
+      },
+      "arg1": {
+        "type": "Object"
+      }
+    }
+  },
+  "@taskDetailErrorChat": {
+    "placeholders": {
+      "arg0": {
+        "type": "Object"
+      }
+    }
+  }
 }

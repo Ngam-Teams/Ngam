@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
+import '../l10n/generated/app_localizations.dart';
 import 'custom_bottom_nav.dart';
 
 // ============================================================
@@ -21,29 +22,30 @@ class BottomNavCustomer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return CustomBottomNav(
       currentIndex: currentIndex,
       onTap: onTap,
       items: [
         NavItem(
           icon: HugeIcons.strokeRoundedHome11,
-          title: 'Home',
+          title: l10n?.navHome ?? 'Home',
         ),
         NavItem(
           icon: HugeIcons.strokeRoundedMaps,
-          title: 'Discover',
+          title: l10n?.navDiscover ?? 'Discover',
         ),
         NavItem(
           icon: HugeIcons.strokeRoundedPlayCircle02,
-          title: 'Feed',
+          title: l10n?.navFeed ?? 'Feed',
         ),
         NavItem(
           icon: HugeIcons.strokeRoundedMessage02,
-          title: 'Inbox',
+          title: l10n?.navInbox ?? 'Inbox',
         ),
         NavItem(
           icon: HugeIcons.strokeRoundedUser,
-          title: 'Profile',
+          title: l10n?.navProfile ?? 'Profile',
         ),
       ],
     );

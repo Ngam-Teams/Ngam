@@ -1,3 +1,4 @@
+import '../../l10n/generated/app_localizations.dart';
 import 'dart:ui';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -512,6 +513,7 @@ class _LoginScreenState extends State<LoginScreen>
   // 1. THE LOGIN CARD
   // ───────────────────────────────────────────────────────────────────────────
   Widget _buildLoginCard(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return KeyedSubtree(
       key: const ValueKey('login_card'),
       child: _buildCardShell(
@@ -522,7 +524,7 @@ class _LoginScreenState extends State<LoginScreen>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'USER LOGIN',
+                (l10n?.authLogin ?? 'USER LOGIN').toUpperCase(),
                 textAlign: TextAlign.center,
                 style: GoogleFonts.outfit(
                   fontSize: 26,
@@ -545,7 +547,7 @@ class _LoginScreenState extends State<LoginScreen>
 
               // Email Address
               Text(
-                'EMAIL ADDRESS',
+                (l10n?.authEmail ?? 'EMAIL ADDRESS').toUpperCase(),
                 style: GoogleFonts.inter(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
@@ -575,7 +577,7 @@ class _LoginScreenState extends State<LoginScreen>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'PASSWORD',
+                    (l10n?.authPassword ?? 'PASSWORD').toUpperCase(),
                     style: GoogleFonts.inter(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,
@@ -590,7 +592,7 @@ class _LoginScreenState extends State<LoginScreen>
                       });
                     },
                     child: Text(
-                      'Forgot?',
+                      l10n?.authForgotPassword ?? 'Forgot?',
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -660,7 +662,7 @@ class _LoginScreenState extends State<LoginScreen>
                               child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
                             )
                           : Text(
-                              'SIGN IN',
+                              (l10n?.authLogin ?? 'SIGN IN').toUpperCase(),
                               style: GoogleFonts.outfit(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w800,
@@ -687,7 +689,7 @@ class _LoginScreenState extends State<LoginScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    "Don't have an account? ",
+                    (l10n?.authNoAccount != null ? '${l10n!.authNoAccount} ' : "Don't have an account? "),
                     style: GoogleFonts.inter(fontSize: 12.5, color: textSecondary),
                   ),
                   GestureDetector(
@@ -697,7 +699,7 @@ class _LoginScreenState extends State<LoginScreen>
                       });
                     },
                     child: Text(
-                      'Sign Up',
+                      l10n?.authRegister ?? 'Sign Up',
                       style: GoogleFonts.inter(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w700,
@@ -745,6 +747,7 @@ class _LoginScreenState extends State<LoginScreen>
   // 2. THE REGISTER CARD (3 Clean Fields: Name, Email, Password)
   // ───────────────────────────────────────────────────────────────────────────
   Widget _buildRegisterCard(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return KeyedSubtree(
       key: const ValueKey('register_card'),
       child: _buildCardShell(
@@ -755,7 +758,7 @@ class _LoginScreenState extends State<LoginScreen>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'CREATE ACCOUNT',
+                (l10n?.authCreateAccount ?? 'CREATE ACCOUNT').toUpperCase(),
                 textAlign: TextAlign.center,
                 style: GoogleFonts.outfit(
                   fontSize: 24,
@@ -778,7 +781,7 @@ class _LoginScreenState extends State<LoginScreen>
 
               // Field 1: Full Name
               Text(
-                'FULL NAME',
+                (l10n?.authFullName ?? 'FULL NAME').toUpperCase(),
                 style: GoogleFonts.inter(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
@@ -801,7 +804,7 @@ class _LoginScreenState extends State<LoginScreen>
 
               // Field 2: Email Address
               Text(
-                'EMAIL ADDRESS',
+                (l10n?.authEmail ?? 'EMAIL ADDRESS').toUpperCase(),
                 style: GoogleFonts.inter(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
@@ -828,7 +831,7 @@ class _LoginScreenState extends State<LoginScreen>
 
               // Field 3: Password
               Text(
-                'PASSWORD',
+                (l10n?.authPassword ?? 'PASSWORD').toUpperCase(),
                 style: GoogleFonts.inter(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
@@ -900,7 +903,7 @@ class _LoginScreenState extends State<LoginScreen>
                               child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
                             )
                           : Text(
-                              'CREATE ACCOUNT',
+                              (l10n?.authCreateAccount ?? 'CREATE ACCOUNT').toUpperCase(),
                               style: GoogleFonts.outfit(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w800,
@@ -924,7 +927,7 @@ class _LoginScreenState extends State<LoginScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Already have an account? ',
+                    (l10n?.authHaveAccount != null ? '${l10n!.authHaveAccount} ' : 'Already have an account? '),
                     style: GoogleFonts.inter(fontSize: 12.5, color: textSecondary),
                   ),
                   GestureDetector(
@@ -964,6 +967,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildForgotFormView() {
+    final l10n = AppLocalizations.of(context);
     return Form(
       key: _forgotFormKey,
       child: Column(
@@ -1013,7 +1017,7 @@ class _LoginScreenState extends State<LoginScreen>
 
           // Email Input
           Text(
-            'EMAIL ADDRESS',
+            (l10n?.authEmail ?? 'EMAIL ADDRESS').toUpperCase(),
             style: GoogleFonts.inter(
               fontSize: 10.5,
               fontWeight: FontWeight.w700,

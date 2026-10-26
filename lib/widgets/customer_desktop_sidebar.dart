@@ -1,3 +1,5 @@
+import '../l10n/generated/app_localizations.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -44,6 +46,15 @@ class CustomerDesktopSidebar extends StatelessWidget {
     final authProvider = context.watch<AuthProvider>();
     final themeProvider = context.watch<ThemeProvider>();
     final user = authProvider.user;
+    final l10n = AppLocalizations.of(context);
+
+    final localizedNavItems = [
+      (icon: HugeIcons.strokeRoundedHome11, label: l10n?.navHome ?? 'Laman Utama'),
+      (icon: HugeIcons.strokeRoundedMaps, label: l10n?.navDiscover ?? 'Terokai Peta'),
+      (icon: HugeIcons.strokeRoundedPlayCircle02, label: l10n?.navFeed ?? 'Ngam Feed'),
+      (icon: HugeIcons.strokeRoundedMessage02, label: l10n?.navInbox ?? 'Mesej'),
+      (icon: HugeIcons.strokeRoundedUser, label: l10n?.navProfile ?? 'Profil Saya'),
+    ];
 
     return ValueListenableBuilder<bool>(
       valueListenable: isExpandedNotifier,
@@ -314,10 +325,10 @@ class CustomerDesktopSidebar extends StatelessWidget {
                       child: ListView.separated(
                         padding: EdgeInsets.zero,
                         physics: const ClampingScrollPhysics(),
-                        itemCount: navItems.length,
+                        itemCount: localizedNavItems.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 4),
                         itemBuilder: (context, index) {
-                          final item = navItems[index];
+                          final item = localizedNavItems[index];
                           final selected = index == selectedIndex;
                           return _SidebarNavItem(
                             icon: item.icon,
@@ -341,12 +352,23 @@ class CustomerDesktopSidebar extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
 
-                    // ─── 4. Butang Bawah (Tema / Log Keluar / Log Masuk) ──
+                    // ─── 4. Butang Bawah (Tukar Bahasa / Tema / Log Keluar) ──
+                    _SidebarNavItem(
+                      icon: HugeIcons.strokeRoundedLanguageSquare,
+                      label: context.locale.languageCode == 'ms' ? 'English (EN)' : 'Bahasa Melayu (MS)',
+                      selected: false,
+                      isExpanded: isExpanded,
+                      onTap: () async {
+                        final nextCode = context.locale.languageCode == 'ms' ? 'en' : 'ms';
+                        await context.setLocale(Locale(nextCode));
+                      },
+                    ),
+
                     _SidebarNavItem(
                       icon: isDark
                           ? HugeIcons.strokeRoundedSun01
                           : HugeIcons.strokeRoundedMoon02,
-                      label: isDark ? 'Mod Cerah' : 'Mod Gelap',
+                      label: isDark ? (l10n?.lightMode ?? 'Mod Cerah') : (l10n?.darkMode ?? 'Mod Gelap'),
                       selected: false,
                       isExpanded: isExpanded,
                       onTap: () => themeProvider.toggleTheme(),
@@ -355,7 +377,7 @@ class CustomerDesktopSidebar extends StatelessWidget {
                     if (user != null)
                       _SidebarNavItem(
                         icon: HugeIcons.strokeRoundedLogout02,
-                        label: 'Log Keluar',
+                        label: l10n?.logOut ?? 'Log Keluar',
                         selected: false,
                         isExpanded: isExpanded,
                         onTap: () async {

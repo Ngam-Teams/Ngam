@@ -1,3 +1,4 @@
+import '../../l10n/generated/app_localizations.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -1055,7 +1056,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                       Expanded(
                         child: _buildQuickActionButton(
                           icon: HugeIcons.strokeRoundedCalendar03,
-                          label: 'Book Slot',
+                          label: AppLocalizations.of(context)?.bookNow ?? 'Book Slot',
                           color: Colors.blue,
                           onTap: _openBookings,
                           isDark: isDark,
@@ -1066,7 +1067,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                       Expanded(
                         child: _buildQuickActionButton(
                           icon: HugeIcons.strokeRoundedInformationCircle,
-                          label: 'Info & Hours',
+                          label: AppLocalizations.of(context)?.operatingHours ?? 'Info & Hours',
                           color: Colors.blue,
                           onTap: _openStoreInfo,
                           isDark: isDark,
@@ -1077,7 +1078,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                       Expanded(
                         child: _buildQuickActionButton(
                           icon: HugeIcons.strokeRoundedStar,
-                          label: 'Reviews',
+                          label: AppLocalizations.of(context)?.reviews ?? 'Reviews',
                           color: Colors.amber,
                           onTap: _openReviews,
                           isDark: isDark,
@@ -1379,7 +1380,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                     Expanded(
                       child: _buildQuickActionButton(
                         icon: HugeIcons.strokeRoundedCalendar03,
-                        label: 'Book Slot',
+                        label: AppLocalizations.of(context)?.bookNow ?? 'Book Slot',
                         color: Colors.blue,
                         onTap: _openBookings,
                         isDark: isDark,
@@ -1390,7 +1391,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                     Expanded(
                       child: _buildQuickActionButton(
                         icon: HugeIcons.strokeRoundedInformationCircle,
-                        label: 'Info & Hours',
+                        label: AppLocalizations.of(context)?.operatingHours ?? 'Info & Hours',
                         color: Colors.blue,
                         onTap: _openStoreInfo,
                         isDark: isDark,
@@ -1401,7 +1402,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                     Expanded(
                       child: _buildQuickActionButton(
                         icon: HugeIcons.strokeRoundedStar,
-                        label: 'Reviews',
+                        label: AppLocalizations.of(context)?.reviews ?? 'Reviews',
                         color: Colors.amber,
                         onTap: _openReviews,
                         isDark: isDark,

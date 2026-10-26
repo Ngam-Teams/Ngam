@@ -1,3 +1,4 @@
+import 'package:ngam/l10n/generated/app_localizations.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
@@ -937,7 +938,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 10, vertical: 4),
                                 child: Text(
-                                  'Berhampiran',
+                                  AppLocalizations.of(context)?.nearby ?? 'Berhampiran',
                                   style: TextStyle(
                                     color: (isDesktopLandscape && !isDark)
                                         ? (_activeTopTab == 0
@@ -980,7 +981,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 10, vertical: 4),
                                 child: Text(
-                                  'Untuk Anda',
+                                  AppLocalizations.of(context)?.feedForYou ?? 'Untuk Anda',
                                   style: TextStyle(
                                     color: (isDesktopLandscape && !isDark)
                                         ? (_activeTopTab == 1

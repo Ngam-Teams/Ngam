@@ -1,3 +1,4 @@
+import 'package:ngam/l10n/generated/app_localizations.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
@@ -537,7 +538,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Live Radar Port Terdekat',
+                            AppLocalizations.of(context)?.homeNearbyStores ?? 'Live Radar Port Terdekat',
                             style: TextStyle(
                               color: isDark ? Colors.white : const Color(0xFF0F172A),
                               fontSize: 17,
@@ -561,10 +562,10 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                               color: isDark ? Colors.white12 : Colors.black12,
                             ),
                           ),
-                          child: const Row(
+                          child: Row(
                             children: [
                               Text(
-                                'Buka Peta',
+                                AppLocalizations.of(context)?.navDiscover ?? 'Buka Peta',
                                 style: TextStyle(
                                   color: Color(0xFF2196F3),
                                   fontSize: 12,
@@ -773,7 +774,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Hai, $_userName',
+                AppLocalizations.of(context)?.homeGreeting(_userName) ?? 'Hai, $_userName',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -1012,7 +1013,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Cari barber, servis kereta, kafe...',
+                  AppLocalizations.of(context)?.homeSearchPlaceholder ?? 'Cari servis, kedai, barangan...',
                   style: TextStyle(
                     color: isDark ? Colors.white54 : Colors.grey.shade500,
                     fontSize: 13.5,
