@@ -10,7 +10,86 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 import '../../widgets/glass_toast.dart';
+import '../../widgets/customer_desktop_sidebar.dart';
 import '../explore/business_store_view.dart';
+
+// ---------------------------------------------------------------------------
+// Reusable Feed Avatar with Initial / Abjad Fallback
+// ---------------------------------------------------------------------------
+Widget _buildFeedAvatar({
+  required String name,
+  required double size,
+  String? imageUrl,
+  Color? borderColor,
+  double borderWidth = 1.5,
+  List<BoxShadow>? boxShadow,
+  double? fontSize,
+}) {
+  final cleanName = name.trim();
+  final String initial = cleanName.isNotEmpty ? cleanName[0].toUpperCase() : 'N';
+  final String cleanUrl = imageUrl?.trim() ?? '';
+  final bool isDefaultOrEmpty = cleanUrl.isEmpty ||
+      cleanUrl.contains('photo-1535713875002-d1d0cf377fde') ||
+      cleanUrl.contains('default') ||
+      cleanUrl.contains('placeholder');
+
+  Widget avatarContent;
+  if (!isDefaultOrEmpty) {
+    avatarContent = ClipOval(
+      child: CachedNetworkImage(
+        imageUrl: cleanUrl,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorWidget: (_, __, ___) => _buildFeedAlphabetCircle(initial, size, fontSize),
+        placeholder: (_, __) => _buildFeedAlphabetCircle(initial, size, fontSize),
+      ),
+    );
+  } else {
+    avatarContent = _buildFeedAlphabetCircle(initial, size, fontSize);
+  }
+
+  return Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      border: borderColor != null
+          ? Border.all(color: borderColor, width: borderWidth)
+          : null,
+      boxShadow: boxShadow,
+    ),
+    child: avatarContent,
+  );
+}
+
+Widget _buildFeedAlphabetCircle(String initial, double size, [double? fontSize]) {
+  return Container(
+    width: size,
+    height: size,
+    decoration: const BoxDecoration(
+      shape: BoxShape.circle,
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0xFF00E5FF),
+          Color(0xFF0284C7),
+        ],
+      ),
+    ),
+    alignment: Alignment.center,
+    child: Text(
+      initial,
+      style: TextStyle(
+        color: Colors.black,
+        fontWeight: FontWeight.w900,
+        fontSize: fontSize ?? (size * 0.44),
+        letterSpacing: -0.5,
+      ),
+    ),
+  );
+}
 
 // =============================================================================
 // CustomerFeedScreen — Ruangan "Ngam Feed" Gaya TikTok / Reels Penuh
@@ -64,6 +143,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       'image':
           'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
       'mediaType': 'video',
+      'aspectRatio': 16 / 9,
       'title': 'Low Taper Fade + Beard Sculpting',
       'caption':
           'Hasil sentuhan kemas petang ini untuk regular bro Hazim. Slot walk-in dan giliran petang ni masih dibuka sampai jam 10 malam! #barber #taperfade #ngam',
@@ -77,7 +157,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       'commentList': [
         {
           'user': 'Hazim Azlan',
-          'avatar': 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150',
+          'avatar': '',
           'text': 'Memang kemas bro! Balik rumah bini terus puji haha',
           'time': '20m lepas',
           'likes': 4,
@@ -118,6 +198,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       'image':
           'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4',
       'mediaType': 'video',
+      'aspectRatio': 16 / 9,
       'title': 'Cermin Kereta Bersinar Bak Kristal',
       'caption':
           'Pakej Nano Wax Coating + Interior Steam Wash promosi khas pertengahan bulan. Hilangkan watermark dan bau hapak kereta anda sekarang! #detailing #carwash #ngam',
@@ -632,7 +713,19 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         }
         return KeyEventResult.ignored;
       },
-      child: Scaffold(
+      child: ValueListenableBuilder<bool>(
+        valueListenable: CustomerDesktopSidebar.isExpandedNotifier,
+        builder: (context, isSidebarExpanded, _) {
+          final double sidebarOccupiedWidth = isDesktopLandscape
+              ? (16.0 + (isSidebarExpanded ? 260.0 : 72.0))
+              : 0.0;
+          final double leftContentOffset = sidebarOccupiedWidth;
+          final double commentsPanelWidth = (screenWidth * 0.32).clamp(380.0, 460.0);
+          final double rightContentOffset = (isDesktopLandscape && _desktopCommentsPost != null)
+              ? commentsPanelWidth
+              : 0.0;
+
+          return Scaffold(
         backgroundColor: scaffoldBg,
         body: Stack(
         children: [
@@ -733,7 +826,13 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                     itemCount: _posts.length,
                     itemBuilder: (context, index) {
                       final post = _posts[index];
-                      return _buildFeedItem(post, bottomOffset, index);
+                      return _buildFeedItem(
+                        post,
+                        bottomOffset,
+                        index,
+                        leftContentOffset: leftContentOffset,
+                        rightContentOffset: rightContentOffset,
+                      );
                     },
                   ),
           ),
@@ -746,10 +845,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             duration: const Duration(milliseconds: 280),
             curve: Curves.easeOutCubic,
             top: safeTop > 0 ? safeTop + 6 : 14,
-            left: 0,
-            right: (isDesktopLandscape && _desktopCommentsPost != null)
-                ? (screenWidth * 0.32).clamp(380.0, 460.0)
-                : 0,
+            left: isDesktopLandscape ? leftContentOffset : 0,
+            right: isDesktopLandscape ? rightContentOffset : 0,
             child: Center(
               child: ConstrainedBox(
                 constraints: BoxConstraints(
@@ -950,9 +1047,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             AnimatedPositioned(
               duration: const Duration(milliseconds: 280),
               curve: Curves.easeOutCubic,
-              right: (_desktopCommentsPost != null
-                  ? ((screenWidth * 0.32).clamp(380.0, 460.0) + 20)
-                  : 28),
+              right: rightContentOffset + 24,
               top: 0,
               bottom: 0,
               child: Center(
@@ -1039,14 +1134,21 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                   : const SizedBox.shrink(),
             ),
         ],
-      ),
-    ),
-  );
-}
+              ),
+            );
+          },
+        ),
+      );
+    }
 
   // --- SINGLE FEED POST ITEM (RESPONSIVE TIKTOK DESKTOP / MOBILE ADAPTIVE) ---
   Widget _buildFeedItem(
-      Map<String, dynamic> post, double bottomOffset, int index) {
+    Map<String, dynamic> post,
+    double bottomOffset,
+    int index, {
+    double leftContentOffset = 0.0,
+    double rightContentOffset = 0.0,
+  }) {
     final double screenWidth = MediaQuery.sizeOf(context).width;
     final double screenHeight = MediaQuery.sizeOf(context).height;
     final bool isDesktopLandscape = screenWidth > 700;
@@ -1070,15 +1172,39 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       // Minimizes gap between stacked/scrolled video cards to ~68px
       // -------------------------------------------------------------
       final double topNavOffset = 58.0;
-      final double bottomOffset = 10.0;
-      final double availableHeight = screenHeight - topNavOffset - bottomOffset;
-      final double cardHeight = availableHeight.clamp(480.0, 1150.0);
-      final double commentsPanelWidth = (screenWidth * 0.32).clamp(380.0, 460.0);
-      final double rightContentOffset = _desktopCommentsPost != null ? commentsPanelWidth : 0.0;
-      final double cardWidth = (cardHeight * (9 / 16)).clamp(
-        280.0,
-        (screenWidth - rightContentOffset) * 0.52,
-      );
+      final double cardBottomOffset = 10.0;
+      final double availableHeight = (screenHeight - topNavOffset - cardBottomOffset).clamp(320.0, 1400.0);
+      final double openWidth = (screenWidth - leftContentOffset - rightContentOffset).clamp(320.0, 2400.0);
+
+      // Orientation & aspect ratio detection
+      final double postAspect = (post['aspectRatio'] as num?)?.toDouble() ?? (9 / 16);
+      final bool isLandscapePost = postAspect > 1.05;
+
+      final double maxCardWidth = (openWidth - 84.0).clamp(280.0, 1300.0);
+      final double maxCardHeight = availableHeight.clamp(480.0, 1150.0);
+
+      double cardWidth;
+      double cardHeight;
+
+      if (isLandscapePost) {
+        // Landscape video: expand gracefully horizontally to make full use of widescreen!
+        final double targetAspect = postAspect > 0.1 ? postAspect : (16 / 9);
+        double calcWidth = maxCardHeight * targetAspect;
+        double calcHeight = maxCardHeight;
+
+        if (calcWidth > maxCardWidth) {
+          calcWidth = maxCardWidth;
+          calcHeight = calcWidth / targetAspect;
+        }
+
+        // Clamp to sensible aesthetic proportions
+        cardWidth = calcWidth.clamp(480.0, maxCardWidth);
+        cardHeight = calcHeight.clamp(300.0, maxCardHeight);
+      } else {
+        // Portrait 9:16 standard feed item
+        cardHeight = maxCardHeight;
+        cardWidth = (cardHeight * (9 / 16)).clamp(280.0, (openWidth - 84.0) * 0.75);
+      }
 
       final String backdropImageUrl = isVideoMedia
           ? (post['shopAvatar']?.toString() ?? '')
@@ -1114,18 +1240,20 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             duration: const Duration(milliseconds: 280),
             curve: Curves.easeOutCubic,
             top: topNavOffset,
-            bottom: bottomOffset,
-            left: 0,
+            bottom: cardBottomOffset,
+            left: leftContentOffset,
             right: rightContentOffset,
             child: Center(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // Centered 9:16 Video Canvas
+                  // Centered Video Canvas with Animated Resize
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: Container(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeOutCubic,
                       width: cardWidth,
                       height: cardHeight,
                       decoration: BoxDecoration(
@@ -1354,6 +1482,17 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         isDesktop: isDesktop,
         onToggleMute: _toggleMute,
         onDoubleTap: (pos) => _handleDoubleTap(pos, post),
+        onAspectRatioDetermined: (aspect) {
+          if (post['aspectRatio'] != aspect) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                setState(() {
+                  post['aspectRatio'] = aspect;
+                });
+              }
+            });
+          }
+        },
         onPlayStateChanged: (playing) {
           if (mounted && index == _currentPage && _isVideoPlaying != playing) {
             setState(() => _isVideoPlaying = playing);
@@ -1533,26 +1672,18 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             clipBehavior: Clip.none,
             alignment: Alignment.center,
             children: [
-              Container(
-                width: isShortPhone ? 42 : 48,
-                height: isShortPhone ? 42 : 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: const Color(0xFF00E5FF),
-                    width: 2,
+              _buildFeedAvatar(
+                name: post['shopName']?.toString() ?? post['shopHandle']?.toString() ?? 'Ngam',
+                size: isShortPhone ? 42 : 48,
+                imageUrl: post['shopAvatar']?.toString(),
+                borderColor: const Color(0xFF00E5FF),
+                borderWidth: 2,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    blurRadius: 10,
                   ),
-                  image: DecorationImage(
-                    image: NetworkImage(post['shopAvatar']),
-                    fit: BoxFit.cover,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
+                ],
               ),
               Positioned(
                 bottom: -7,
@@ -1955,8 +2086,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
           loadedDb.add({
             'id': row['id']?.toString(),
             'user': row['user_name'] ?? 'Pelanggan Ngam',
-            'avatar': row['user_avatar'] ??
-                'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150',
+            'avatar': row['user_avatar']?.toString() ?? '',
             'text': row['comment_text'] ?? '',
             'time': timeAgo,
             'likes': (row['likes_count'] as num?)?.toInt() ?? 0,
@@ -1990,8 +2120,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
         (currentUser?.userMetadata?['name'] as String?) ??
         (currentUser?.email?.split('@').first) ??
         'Pelanggan Ngam';
-    final userAvatar = (currentUser?.userMetadata?['avatar_url'] as String?) ??
-        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150';
+    final userAvatar = (currentUser?.userMetadata?['avatar_url'] as String?) ?? '';
 
     final newEntry = {
       'user': userName,
@@ -2063,13 +2192,12 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
             padding: const EdgeInsets.fromLTRB(16, 16, 12, 12),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundImage: shopAvatar.isNotEmpty ? NetworkImage(shopAvatar) : null,
-                  backgroundColor: const Color(0xFF00E5FF).withValues(alpha: 0.15),
-                  child: shopAvatar.isEmpty
-                      ? const HugeIcon(icon: HugeIcons.strokeRoundedStore01, color: Color(0xFF00E5FF), size: 18)
-                      : null,
+                _buildFeedAvatar(
+                  name: shopName,
+                  size: 40,
+                  imageUrl: shopAvatar,
+                  borderColor: const Color(0xFF00E5FF).withValues(alpha: 0.5),
+                  borderWidth: 1.5,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -2276,12 +2404,12 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            CircleAvatar(
-                              radius: 17,
-                              backgroundImage: NetworkImage(
-                                c['avatar']?.toString() ??
-                                    'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150',
-                              ),
+                            _buildFeedAvatar(
+                              name: c['user']?.toString() ?? 'Pelanggan',
+                              size: 34,
+                              imageUrl: c['avatar']?.toString(),
+                              borderColor: Colors.white12,
+                              borderWidth: 1.0,
                             ),
                             const SizedBox(width: 10),
                             Expanded(
@@ -2540,6 +2668,7 @@ class _FeedVideoPlayerItem extends StatefulWidget {
   final bool isDesktop;
   final VoidCallback onToggleMute;
   final void Function(Offset position)? onDoubleTap;
+  final void Function(double aspectRatio)? onAspectRatioDetermined;
   final void Function(bool isPlaying)? onPlayStateChanged;
 
   const _FeedVideoPlayerItem({
@@ -2552,6 +2681,7 @@ class _FeedVideoPlayerItem extends StatefulWidget {
     required this.isDesktop,
     required this.onToggleMute,
     this.onDoubleTap,
+    this.onAspectRatioDetermined,
     this.onPlayStateChanged,
   });
 
@@ -2591,6 +2721,10 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
 
     _controller.initialize().then((_) {
       if (!mounted) return;
+      final double aspect = _controller.value.aspectRatio;
+      if (aspect > 0) {
+        widget.onAspectRatioDetermined?.call(aspect);
+      }
       setState(() {
         _isInitialized = true;
         _hasError = false;
@@ -2870,9 +3004,11 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
                 color: Colors.black,
                 alignment: Alignment.center,
                 child: FittedBox(
-                  // If landscape, fitWidth maintains locked aspect ratio with black bars (TikTok style)
-                  // If portrait, cover fills the vertical frame immersive
-                  fit: isLandscape ? BoxFit.fitWidth : BoxFit.cover,
+                  // On desktop widescreen, contain ensures landscape video expands fully with zero distortion
+                  // On mobile portrait, cover fills vertical immersive
+                  fit: widget.isDesktop
+                      ? (isLandscape ? BoxFit.contain : BoxFit.cover)
+                      : (isLandscape ? BoxFit.fitWidth : BoxFit.cover),
                   clipBehavior: Clip.hardEdge,
                   child: SizedBox(
                     width: _controller.value.size.width > 0 ? _controller.value.size.width : 720,
