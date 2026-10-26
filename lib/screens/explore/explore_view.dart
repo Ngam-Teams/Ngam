@@ -2556,24 +2556,160 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     );
   }
 
-  Widget _buildStorePlaceholder(bool isDark) {
+  Widget _buildCoverFallback(bool isDark) {
     return Container(
-      height: 160,
-      width: double.infinity,
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.blue.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF1E242B), const Color(0xFF0F1216)]
+              : [const Color(0xFF2563EB), const Color(0xFF1E40AF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
       ),
       child: Center(
         child: HugeIcon(
           icon: HugeIcons.strokeRoundedStore01,
-          color: isDark ? Colors.white38 : Colors.blue.withValues(alpha: 0.6),
-          size: 44,
+          color: Colors.white.withValues(alpha: 0.18),
+          size: 54,
           strokeWidth: 1.8,
         ),
       ),
     );
   }
+
+  Widget _buildShopAlphabetCircle(String initial, double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF00E5FF),
+            Color(0xFF0284C7),
+          ],
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: TextStyle(
+          color: Colors.black,
+          fontWeight: FontWeight.w900,
+          fontSize: size * 0.44,
+          letterSpacing: -0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStoreCoverBanner({
+    required Map<String, dynamic> shop,
+    required bool isDark,
+    double height = 180.0,
+    double logoSize = 82.0,
+  }) {
+    final String shopName = (shop['name'] ?? shop['business_name'] ?? 'Kedai').toString().trim();
+    final String initial = shopName.isNotEmpty ? shopName[0].toUpperCase() : 'N';
+    final String coverUrl = (shop['business_cover_url'] ?? shop['cover'])?.toString().trim() ?? '';
+    final String logoUrl = (shop['business_logo_url'] ?? shop['logo_url'] ?? shop['image'])?.toString().trim() ?? '';
+    final bool hasCover = coverUrl.isNotEmpty &&
+        !coverUrl.contains('photo-1503951914875-452162b0f3f1') &&
+        !coverUrl.contains('default');
+    final bool hasLogo = logoUrl.isNotEmpty &&
+        !logoUrl.contains('photo-1535713875002-d1d0cf377fde') &&
+        !logoUrl.contains('photo-1503951914875-452162b0f3f1') &&
+        logoUrl != coverUrl;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => BusinessStoreView(shop: shop),
+          ),
+        );
+      },
+      child: SizedBox(
+        height: height,
+        width: double.infinity,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // 1. Big rectangular cover banner with rounded corners
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (hasCover)
+                      Image.network(
+                        coverUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _buildCoverFallback(isDark),
+                      )
+                    else
+                      _buildCoverFallback(isDark),
+
+                    // Dark gradient overlay for contrast and depth
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.15),
+                            Colors.black.withValues(alpha: 0.72),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // 2. Circular Logo Overlaid on Cover (Bigger than business view: 82px)
+            Positioned(
+              bottom: 12,
+              left: 16,
+              child: Container(
+                width: logoSize,
+                height: logoSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2.8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      blurRadius: 12,
+                      spreadRadius: 1,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ClipOval(
+                  child: hasLogo
+                      ? Image.network(
+                          logoUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _buildShopAlphabetCircle(initial, logoSize),
+                        )
+                      : _buildShopAlphabetCircle(initial, logoSize),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
 
   Widget _buildDesktopStorePanel(bool isDark, Map<String, dynamic> shop) {
     final String shopName = shop['name'] ?? '';
@@ -2691,18 +2827,12 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Store Image
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: shop['image'] != null && shop['image'].toString().isNotEmpty
-                            ? Image.network(
-                                shop['image'],
-                                height: 160,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => _buildStorePlaceholder(isDark),
-                              )
-                            : _buildStorePlaceholder(isDark),
+                      // Store Cover Image Banner with Overlaid Circle Logo (Bigger than Business View)
+                      _buildStoreCoverBanner(
+                        shop: shop,
+                        isDark: isDark,
+                        height: 180,
+                        logoSize: 82,
                       ),
                       const SizedBox(height: 16),
 
@@ -2821,7 +2951,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                         shopId: shop["id"].toString(),
                                         shopName: shop["name"] ?? "Unknown Shop",
                                         category: shop["category"]?.toString().toUpperCase() ?? "SERVICE",
-                                        shopImage: shop["image"] ?? "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400",
+                                        shopImage: (shop["cover"] ?? shop["business_cover_url"] ?? shop["image"] ?? "").toString(),
                                       ),
                                     ),
                                   );
@@ -2987,9 +3117,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           )..layout(maxWidth: textAvailableWidth);
 
           int numLines = textPainter.computeLineMetrics().length;
-          double baseHeight = numLines > 1 ? 430.0 : 400;
+          double baseHeight = numLines > 1 ? 590.0 : 560.0;
           double adaptiveInitialSize = (baseHeight + bottomSafeArea) / screenHeight;
-          adaptiveInitialSize = adaptiveInitialSize.clamp(0.40, 0.85);
+          adaptiveInitialSize = adaptiveInitialSize.clamp(0.55, 0.90);
 
           final Widget sheet = DraggableScrollableSheet(
             controller: _sheetController,
@@ -3054,7 +3184,16 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                 decoration: BoxDecoration(
                                     color: isDark ? Colors.white24 : _lightModeGray.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(10)))),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
+
+                        // Store Cover Image Banner with Overlaid Circle Logo (Bigger than Business View)
+                        _buildStoreCoverBanner(
+                          shop: shop,
+                          isDark: isDark,
+                          height: 165,
+                          logoSize: 78,
+                        ),
+                        const SizedBox(height: 16),
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -3265,7 +3404,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                               shopId: shop["id"].toString(),
                                               shopName: shop["name"] ?? "Unknown Shop",
                                               category: shop["category"]?.toString().toUpperCase() ?? "SERVICE",
-                                              shopImage: shop["image"] ?? "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400",
+                                              shopImage: (shop["cover"] ?? shop["business_cover_url"] ?? shop["image"] ?? "").toString(),
                                             )));
                                           } else {
                                             //  USER IS GUEST: Show Toast and Redirect to Login!
