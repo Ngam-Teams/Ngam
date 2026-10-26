@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
+import '../models/user_model.dart';
 import '../utils/app_theme.dart';
 import '../utils/glass_toast.dart';
 
@@ -214,20 +215,7 @@ class CustomerDesktopSidebar extends StatelessWidget {
                             ),
                             child: Row(
                               children: [
-                                CircleAvatar(
-                                  radius: 17,
-                                  backgroundColor: const Color(0xFF42A5F5).withValues(alpha: 0.2),
-                                  backgroundImage: user?.userAvatarUrl != null
-                                      ? CachedNetworkImageProvider(user!.userAvatarUrl!)
-                                      : null,
-                                  child: user?.userAvatarUrl == null
-                                      ? const HugeIcon(
-                                          icon: HugeIcons.strokeRoundedUser,
-                                          color: Color(0xFF42A5F5),
-                                          size: 16,
-                                        )
-                                      : null,
-                                ),
+                                _buildSidebarAvatar(user, 17, isDark),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Column(
@@ -286,20 +274,7 @@ class CustomerDesktopSidebar extends StatelessWidget {
                             }
                           },
                           borderRadius: BorderRadius.circular(14),
-                          child: CircleAvatar(
-                            radius: 19,
-                            backgroundColor: const Color(0xFF42A5F5).withValues(alpha: 0.2),
-                            backgroundImage: user?.userAvatarUrl != null
-                                ? CachedNetworkImageProvider(user!.userAvatarUrl!)
-                                : null,
-                            child: user?.userAvatarUrl == null
-                                ? const HugeIcon(
-                                    icon: HugeIcons.strokeRoundedUser,
-                                    color: Color(0xFF42A5F5),
-                                    size: 18,
-                                  )
-                                : null,
-                          ),
+                          child: _buildSidebarAvatar(user, 19, isDark),
                         ),
                       ),
 
@@ -439,6 +414,72 @@ class CustomerDesktopSidebar extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildSidebarAvatar(UserModel? user, double radius, bool isDark) {
+    final hasImage = user?.userAvatarUrl != null && user!.userAvatarUrl!.trim().isNotEmpty;
+    final String name = (user?.userName?.trim().isNotEmpty ?? false) ? user!.userName!.trim() : 'P';
+    final String initial = name.isNotEmpty ? name[0].toUpperCase() : 'P';
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: radius * 2,
+          height: radius * 2,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF2A2B3D),
+                Color(0xFF161622),
+              ],
+            ),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.16),
+              width: 1.2,
+            ),
+            image: hasImage
+                ? DecorationImage(
+                    image: CachedNetworkImageProvider(user.userAvatarUrl!),
+                    fit: BoxFit.cover,
+                  )
+                : null,
+          ),
+          alignment: Alignment.center,
+          child: !hasImage
+              ? Text(
+                  initial,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: radius * 0.95,
+                    letterSpacing: -0.5,
+                  ),
+                )
+              : null,
+        ),
+        if (user != null)
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Container(
+              width: radius > 18 ? 9 : 8,
+              height: radius > 18 ? 9 : 8,
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: const Color(0xFF161622),
+                  width: 1.5,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -713,4 +754,5 @@ class _SidebarNavItem extends StatelessWidget {
       ),
     );
   }
+
 }

@@ -68,23 +68,27 @@ Widget _buildFeedAlphabetCircle(String initial, double size, [double? fontSize])
   return Container(
     width: size,
     height: size,
-    decoration: const BoxDecoration(
+    decoration: BoxDecoration(
       shape: BoxShape.circle,
-      gradient: LinearGradient(
+      gradient: const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Color(0xFF00E5FF),
-          Color(0xFF0284C7),
+          Color(0xFF2A2B3D),
+          Color(0xFF161622),
         ],
+      ),
+      border: Border.all(
+        color: Colors.white.withValues(alpha: 0.16),
+        width: 1.2,
       ),
     ),
     alignment: Alignment.center,
     child: Text(
       initial,
       style: TextStyle(
-        color: Colors.black,
-        fontWeight: FontWeight.w900,
+        color: Colors.white,
+        fontWeight: FontWeight.w800,
         fontSize: fontSize ?? (size * 0.44),
         letterSpacing: -0.5,
       ),
@@ -1677,8 +1681,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                 name: post['shopName']?.toString() ?? post['shopHandle']?.toString() ?? 'Ngam',
                 size: isShortPhone ? 42 : 48,
                 imageUrl: post['shopAvatar']?.toString(),
-                borderColor: const Color(0xFF00E5FF),
-                borderWidth: 2,
+                borderColor: Colors.white.withValues(alpha: 0.35),
+                borderWidth: 1.8,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.4),
@@ -1697,13 +1701,13 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                     decoration: BoxDecoration(
                       color: isFollowed
                           ? const Color(0xFF10B981)
-                          : const Color(0xFF00E5FF),
+                          : const Color(0xFF2196F3),
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
                           color: (isFollowed
                                   ? const Color(0xFF10B981)
-                                  : const Color(0xFF00E5FF))
+                                  : const Color(0xFF2196F3))
                               .withValues(alpha: 0.5),
                           blurRadius: 6,
                         ),
@@ -1712,7 +1716,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                     child: HugeIcon(
                       icon: isFollowed ? HugeIcons.strokeRoundedTick01 : HugeIcons.strokeRoundedAdd01,
                       size: isShortPhone ? 12 : 14,
-                      color: Colors.black,
+                      color: Colors.white,
                     ),
                   ),
                 ),
@@ -2197,7 +2201,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                   name: shopName,
                   size: 40,
                   imageUrl: shopAvatar,
-                  borderColor: const Color(0xFF00E5FF).withValues(alpha: 0.5),
+                  borderColor: Colors.white.withValues(alpha: 0.22),
                   borderWidth: 1.5,
                 ),
                 const SizedBox(width: 12),

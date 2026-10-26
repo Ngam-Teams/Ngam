@@ -934,50 +934,53 @@ Disahkan melalui aplikasi *Ngam*.
                 children: [
                   if (_currentStatus == 'cancelled')
                     Container(
-                      margin: const EdgeInsets.only(bottom: 20),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                       decoration: BoxDecoration(
-                          color: Colors.redAccent.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5))
+                        color: Colors.redAccent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const HugeIcon(icon: HugeIcons.strokeRoundedCancel01, color: Colors.redAccent, size: 22),
-                          const SizedBox(width: 12),
-                          Flexible(child: Text("This booking was cancelled", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isDark ? Colors.redAccent : Colors.red.shade700))),
+                          const HugeIcon(icon: HugeIcons.strokeRoundedCancel01, color: Colors.redAccent, size: 16),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              "Tempahan Dibatalkan • Slot tidak lagi aktif",
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: isDark ? Colors.redAccent : Colors.red.shade700),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ),
                     )
                   else if (_currentStatus == 'disputed')
                     Container(
-                      margin: const EdgeInsets.only(bottom: 20),
-                      padding: const EdgeInsets.all(16),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                       decoration: BoxDecoration(
-                          color: Colors.amber.shade900.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.amber.shade600)
+                        color: Colors.amber.shade900.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.amber.shade600.withValues(alpha: 0.5)),
                       ),
                       child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.amber.shade400, size: 24),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Pertikaian Sedang Disemak", 
-                                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.amber.shade400)
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  "Aduan anda sedang disiasat oleh Sokongan Ngam. Dana selamat dalam pegangan amanah sehingga semakan selesai.",
-                                  style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87),
-                                ),
-                              ],
+                          HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.amber.shade400, size: 16),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              "Dalam Pertikaian • Dana ditahan selamat oleh Ngam",
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.amber.shade400,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -986,47 +989,49 @@ Disahkan melalui aplikasi *Ngam*.
                   else ...[
                     //  LIVE STATUS STEP TRACKER CARD
                     _buildLiveStatusTrackerCard(context, isDark),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
 
                     Container(
-                    margin: const EdgeInsets.only(bottom: 20),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                      decoration: BoxDecoration(
                         color: _isPast
-                            ? Colors.green.withValues(alpha: 0.15)
-                            : Colors.blue.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(16),
+                            ? Colors.green.withValues(alpha: 0.12)
+                            : Colors.blue.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: _isPast ? Colors.green.withValues(alpha: 0.5) : Colors.blue.withValues(alpha: 0.5)
-                        )
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        HugeIcon(
+                          color: _isPast ? Colors.green.withValues(alpha: 0.4) : Colors.blue.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          HugeIcon(
                             icon: _isPast ? HugeIcons.strokeRoundedTickDouble01 : HugeIcons.strokeRoundedTime02,
                             color: _isPast ? Colors.green : Colors.blue,
-                            size: 22
-                        ),
-                        const SizedBox(width: 12),
-                        Flexible(
-                          child: Text(
-                            _isPast
-                                ? l10n.ticketCountdownPast
-                                : l10n.ticketCountdownStartsIn(_formatDuration(_timeLeft)),
-                            style: TextStyle(
-                                fontSize: 15,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              _isPast
+                                  ? l10n.ticketCountdownPast
+                                  : l10n.ticketCountdownStartsIn(_formatDuration(_timeLeft)),
+                              style: TextStyle(
+                                fontSize: 13,
                                 fontWeight: FontWeight.bold,
                                 color: _isPast
                                     ? (isDark ? Colors.greenAccent : Colors.green.shade700)
-                                    : (isDark ? Colors.blueAccent : Colors.blue.shade700)
+                                    : (isDark ? Colors.blueAccent : Colors.blue.shade700),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                        )
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
 
                   //  REARRANGED CLEAN TICKET CARD
                   Container(
@@ -1138,23 +1143,43 @@ Disahkan melalui aplikasi *Ngam*.
                     ),
                   ),
                   if (_currentStatus != 'cancelled' && _currentStatus != 'disputed') ...[
-                    const SizedBox(height: 16),
-                    TextButton.icon(
-                      onPressed: _showDisputeModal,
-                      icon: const HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.orangeAccent, size: 16),
-                      label: const Text(
-                        "Ada Masalah dengan Servis? Buka Pertikaian",
-                        style: TextStyle(color: Colors.orangeAccent, fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    if (_currentStatus != 'completed')
-                      TextButton(
-                        onPressed: _showCancellationModal,
-                        child: const Text(
-                          "Batal Tempahan Slot",
-                          style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.w500),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (_currentStatus != 'completed') ...[
+                          TextButton(
+                            onPressed: _showCancellationModal,
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
+                              "Batal Tempahan",
+                              style: TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            child: Text("•", style: TextStyle(color: isDark ? Colors.white30 : Colors.black26)),
+                          ),
+                        ],
+                        TextButton.icon(
+                          onPressed: _showDisputeModal,
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          icon: const HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.orangeAccent, size: 14),
+                          label: const Text(
+                            "Buka Pertikaian",
+                            style: TextStyle(color: Colors.orangeAccent, fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
                         ),
-                      ),
+                      ],
+                    ),
                   ],
                 ],
               ),
@@ -1426,13 +1451,13 @@ Disahkan melalui aplikasi *Ngam*.
     final steps = ['Diterima', 'Disahkan', 'Sedia'];
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E242B) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: statusColor.withValues(alpha: 0.35),
-          width: 1.5,
+          width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
@@ -1448,7 +1473,7 @@ Disahkan melalui aplikasi *Ngam*.
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
@@ -1456,10 +1481,10 @@ Disahkan melalui aplikasi *Ngam*.
                 child: HugeIcon(
                   icon: statusIcon,
                   color: statusColor,
-                  size: 20,
+                  size: 18,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1467,16 +1492,16 @@ Disahkan melalui aplikasi *Ngam*.
                     Text(
                       statusTitle,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.bold,
                         color: isDark ? Colors.white : Colors.black87,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 1),
                     Text(
                       statusSubtitle,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         color: isDark ? Colors.white60 : Colors.black54,
                       ),
                     ),
@@ -1484,7 +1509,7 @@ Disahkan melalui aplikasi *Ngam*.
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
@@ -1493,18 +1518,18 @@ Disahkan melalui aplikasi *Ngam*.
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      width: 6,
-                      height: 6,
+                      width: 5,
+                      height: 5,
                       decoration: BoxDecoration(
                         color: statusColor,
                         shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(width: 5),
+                    const SizedBox(width: 4),
                     Text(
                       'LIVE',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 9,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 0.8,
                         color: statusColor,
@@ -1515,7 +1540,7 @@ Disahkan melalui aplikasi *Ngam*.
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           Row(
             children: List.generate(steps.length * 2 - 1, (index) {
               if (index.isOdd) {

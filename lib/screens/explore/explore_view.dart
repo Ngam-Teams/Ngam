@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
@@ -43,6 +45,15 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   final FocusNode _searchFocus = FocusNode();
   final TextEditingController _searchController = TextEditingController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // --- IN-APP TURN-BY-TURN DIRECTION STATE ---
+  bool _isNavigating = false;
+  List<LatLng> _routePoints = [];
+  String _navDistance = '';
+  String _navDuration = '';
+  String _navInstruction = '';
+  dynamic _navManeuverIcon = HugeIcons.strokeRoundedNavigation03;
+  Map<String, dynamic>? _navTargetShop;
   final DraggableScrollableController _sheetController = DraggableScrollableController();
 
   Timer? _minuteTicker;
@@ -1114,17 +1125,321 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   }
 
   Future<void> _getDirections(Map<String, dynamic> shop) async {
-    // We use the shop's LatLng if available, or fallback to KL center (3.1415, 101.6865)
+    final double destLat = shop['location']?.latitude ?? 3.1415;
+    final double destLng = shop['location']?.longitude ?? 101.6865;
+    final double userLat = _currentLocation.latitude;
+    final double userLng = _currentLocation.longitude;
+
+    if (mounted) {
+      setState(() {
+        _isProfileOpen = false;
+        _selectedShop = shop;
+        _navTargetShop = shop;
+      });
+      // Close mobile bottom sheet if open
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    }
+
+    showGlassToast(
+      context,
+      'Menyediakan laluan ke ${shop['name']}...',
+      icon: HugeIcons.strokeRoundedRoute01,
+    );
+
+    try {
+      final url = Uri.parse(
+        'https://router.project-osrm.org/route/v1/driving/$userLng,$userLat;$destLng,$destLat?overview=full&geometries=geojson&steps=true',
+      );
+
+      final response = await http.get(url, headers: {'User-Agent': 'NgamApp/1.0'}).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final routes = data['routes'] as List<dynamic>?;
+        if (routes != null && routes.isNotEmpty) {
+          final route = routes[0];
+          final geometry = route['geometry'];
+          final coords = geometry['coordinates'] as List<dynamic>;
+          final List<LatLng> points = coords.map((c) => LatLng(
+            (c[1] as num).toDouble(),
+            (c[0] as num).toDouble(),
+          )).toList();
+
+          final double distMeters = (route['distance'] as num?)?.toDouble() ?? 0.0;
+          final double durSeconds = (route['duration'] as num?)?.toDouble() ?? 0.0;
+
+          String distStr;
+          if (distMeters >= 1000) {
+            distStr = '${(distMeters / 1000).toStringAsFixed(1)} km';
+          } else {
+            distStr = '${distMeters.round()} m';
+          }
+
+          final int mins = (durSeconds / 60).round();
+          String durStr = mins > 0 ? '$mins min' : '1 min';
+
+          String instruction = 'Menuju ke arah ${shop['name'] ?? 'destinasi'}';
+          dynamic maneuverIcon = HugeIcons.strokeRoundedNavigation03;
+          final legs = route['legs'] as List<dynamic>?;
+          if (legs != null && legs.isNotEmpty && legs[0]['steps'] != null) {
+            final steps = legs[0]['steps'] as List<dynamic>;
+            if (steps.length > 1) {
+              final nextStep = steps[1];
+              final name = nextStep['name']?.toString() ?? '';
+              final man = nextStep['maneuver'] as Map<String, dynamic>?;
+              final modifier = man?['modifier']?.toString().toLowerCase() ?? '';
+              final type = man?['type']?.toString().toLowerCase() ?? '';
+
+              if (modifier.contains('left')) {
+                maneuverIcon = HugeIcons.strokeRoundedArrowTurnBackward;
+                instruction = name.isNotEmpty ? 'Belok kiri ke $name' : 'Belok kiri di hadapan';
+              } else if (modifier.contains('right')) {
+                maneuverIcon = HugeIcons.strokeRoundedArrowTurnForward;
+                instruction = name.isNotEmpty ? 'Belok kanan ke $name' : 'Belok kanan di hadapan';
+              } else if (modifier.contains('u-turn') || modifier.contains('uturn')) {
+                maneuverIcon = HugeIcons.strokeRoundedNavigation03;
+                instruction = 'Buat pusingan U';
+              } else if (type == 'arrive') {
+                maneuverIcon = HugeIcons.strokeRoundedFlag01;
+                instruction = 'Tiba di ${shop['name']}';
+              } else {
+                maneuverIcon = HugeIcons.strokeRoundedArrowUp01;
+                instruction = name.isNotEmpty ? 'Terus ke $name' : 'Teruskan perjalanan';
+              }
+            }
+          }
+
+          if (mounted) {
+            setState(() {
+              _routePoints = points;
+              _navDistance = distStr;
+              _navDuration = durStr;
+              _navInstruction = instruction;
+              _navManeuverIcon = maneuverIcon;
+              _isNavigating = true;
+            });
+            _fitRouteBounds(points);
+          }
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('[ExploreView] In-app route fetch error: $e');
+    }
+
+    // Fallback: If route fetch fails, draw straight-line route and alert user
+    if (mounted) {
+      setState(() {
+        _routePoints = [_currentLocation, LatLng(destLat, destLng)];
+        _navDistance = _getDistanceString(shop['location']);
+        _navDuration = '~10 min';
+        _navInstruction = 'Menuju ke arah ${shop['name']}';
+        _navManeuverIcon = HugeIcons.strokeRoundedNavigation03;
+        _isNavigating = true;
+      });
+      _fitRouteBounds(_routePoints);
+    }
+  }
+
+  void _stopNavigation() {
+    setState(() {
+      _isNavigating = false;
+      _routePoints = [];
+      _navTargetShop = null;
+    });
+    showGlassToast(
+      context,
+      'Mod pandu arah ditamatkan',
+      icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+    );
+  }
+
+  void _openExternalMaps(Map<String, dynamic>? shop) async {
+    if (shop == null) return;
     final double lat = shop['location']?.latitude ?? 3.1415;
     final double lng = shop['location']?.longitude ?? 101.6865;
-
-    // Using Google Maps Universal URL ensures it opens in the Maps app or browser
     final String mapUrl = 'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng';
     final Uri uri = Uri.parse(mapUrl);
 
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
+  }
+
+  void _fitRouteBounds(List<LatLng> points) {
+    if (points.isEmpty) return;
+    try {
+      double minLat = points.first.latitude;
+      double maxLat = points.first.latitude;
+      double minLng = points.first.longitude;
+      double maxLng = points.first.longitude;
+      for (final p in points) {
+        if (p.latitude < minLat) minLat = p.latitude;
+        if (p.latitude > maxLat) maxLat = p.latitude;
+        if (p.longitude < minLng) minLng = p.longitude;
+        if (p.longitude > maxLng) maxLng = p.longitude;
+      }
+      final bounds = LatLngBounds(LatLng(minLat, minLng), LatLng(maxLat, maxLng));
+      _mapController.fitCamera(
+        CameraFit.bounds(
+          bounds: bounds,
+          padding: const EdgeInsets.fromLTRB(60, 140, 60, 140),
+        ),
+      );
+    } catch (e) {
+      debugPrint('[ExploreView] Fit bounds error: $e');
+    }
+  }
+
+  Widget _buildNavigationHUD(bool isDark, {required bool isDesktop}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF10151E).withValues(alpha: 0.92)
+            : Colors.white.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.16) : Colors.black.withValues(alpha: 0.08),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.15),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Maneuver Icon
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                colors: [Color(0xFF00E5FF), Color(0xFF0284C7)],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF00E5FF).withValues(alpha: 0.35),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+            child: Center(
+              child: HugeIcon(
+                icon: _navManeuverIcon,
+                color: Colors.black,
+                size: 22,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Instruction & Route Stats
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _navInstruction,
+                  style: TextStyle(
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Text(
+                      _navDistance,
+                      style: const TextStyle(
+                        color: Color(0xFF00E5FF),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        '•  $_navDuration  •  ${_navTargetShop?['name'] ?? ''}',
+                        style: TextStyle(
+                          color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          // External Map Launcher button (Google Maps / Waze)
+          Tooltip(
+            message: 'Buka di Google Maps / Waze',
+            child: GestureDetector(
+              onTap: () => _openExternalMaps(_navTargetShop),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                  border: Border.all(
+                    color: isDark ? Colors.white12 : Colors.black12,
+                  ),
+                ),
+                child: Center(
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedRoute01,
+                    color: isDark ? Colors.white70 : const Color(0xFF334155),
+                    size: 16,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Close / Stop Navigation
+          Tooltip(
+            message: 'Tamat Navigasi',
+            child: GestureDetector(
+              onTap: _stopNavigation,
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.redAccent.withValues(alpha: 0.15),
+                  border: Border.all(
+                    color: Colors.redAccent.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: const Center(
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedCancel01,
+                    color: Colors.redAccent,
+                    size: 16,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showMessageOptions(BuildContext context, bool isDark) {
@@ -1194,7 +1509,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     final double panelWidth = (screenWidth * 0.30).clamp(350.0, 440.0);
     final bool isSearchActive = _isSearchPanelOpen;
     // Di desktop, carousel tidak ditutup apabila panel kedai terbuka (ia cuma beralih ke kanan)
-    final bool hideBottomPanel = isSearchActive || (!isDesktop && _isProfileOpen);
+    final bool hideBottomPanel = _isNavigating || isSearchActive || (!isDesktop && _isProfileOpen);
     final double bottomPosition = hideBottomPanel
         ? -500
         : (isDesktop
@@ -1327,6 +1642,23 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                       },
                     ),
 
+                    // ROUTE POLYLINE LAYER (In-App Direction)
+                    if (_routePoints.isNotEmpty)
+                      PolylineLayer(
+                        polylines: [
+                          Polyline(
+                            points: _routePoints,
+                            strokeWidth: 8.0,
+                            color: const Color(0xFF003852).withValues(alpha: 0.8),
+                          ),
+                          Polyline(
+                            points: _routePoints,
+                            strokeWidth: 4.8,
+                            color: const Color(0xFF00E5FF),
+                          ),
+                        ],
+                      ),
+
                     //  1. CLUSTER LAYER (For all unselected shops)
                     MarkerClusterLayerWidget(
                       options: MarkerClusterLayerOptions(
@@ -1412,16 +1744,28 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                   ],
                 ),
               ),
-              // 1. Search Bar (Hadkan 40% dari kanan di desktop)
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeInOutCubic,
-                top: isDesktop ? 16.0 : (MediaQuery.of(context).padding.top + 6),
-                right: isDesktop ? 24.0 : 0.0,
-                left: isDesktop ? null : 0.0,
-                width: isDesktop ? searchWidth : null,
-                child: _buildSearchRow(isDark, isDesktop: isDesktop),
-              ),
+              // 0. In-App Navigation HUD
+              if (_isNavigating && _navTargetShop != null)
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOutCubic,
+                  top: isDesktop ? 20.0 : (MediaQuery.of(context).padding.top + 10),
+                  left: isDesktop ? (screenWidth * 0.5 - 260) : 16.0,
+                  right: isDesktop ? (screenWidth * 0.5 - 260) : 16.0,
+                  child: _buildNavigationHUD(isDark, isDesktop: isDesktop),
+                ),
+
+              // 1. Search Bar (Hadkan 40% dari kanan di desktop, disembunyikan semasa navigasi aktif)
+              if (!_isNavigating)
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOutCubic,
+                  top: isDesktop ? 16.0 : (MediaQuery.of(context).padding.top + 6),
+                  right: isDesktop ? 24.0 : 0.0,
+                  left: isDesktop ? null : 0.0,
+                  width: isDesktop ? searchWidth : null,
+                  child: _buildSearchRow(isDark, isDesktop: isDesktop),
+                ),
 
               // 2. Search Results Dropdown (Berada di sebelah kanan di bawah search bar)
               AnimatedPositioned(
@@ -2582,23 +2926,27 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     return Container(
       width: size,
       height: size,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF00E5FF),
-            Color(0xFF0284C7),
+            Color(0xFF2A2B3D),
+            Color(0xFF161622),
           ],
+        ),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.16),
+          width: 1.2,
         ),
       ),
       alignment: Alignment.center,
       child: Text(
         initial,
         style: TextStyle(
-          color: Colors.black,
-          fontWeight: FontWeight.w900,
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
           fontSize: size * 0.44,
           letterSpacing: -0.5,
         ),
