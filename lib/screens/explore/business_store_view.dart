@@ -1802,16 +1802,40 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: product.imageUrl.isNotEmpty
-                        ? Image.network(
-                            product.imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                _imageFallback(isDark),
-                          )
-                        : _imageFallback(isDark),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final width = constraints.maxWidth;
+                      // Guardrail Nisbah Masonry (Pinterest-Safe):
+                      // Min height: 4:3 nisbah landskap (width * 0.75) — elak kad jadi leper
+                      // Max height: 2:3 nisbah tall portrait (width * 1.5) — elak kad merosakkan grid
+                      final minH = width * 0.75;
+                      final maxH = width * 1.5;
+
+                      return ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: minH,
+                          maxHeight: maxH,
+                        ),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: product.imageUrl.isNotEmpty
+                              ? Image.network(
+                                  product.imageUrl,
+                                  fit: BoxFit.cover,
+                                  gaplessPlayback: true,
+                                  errorBuilder: (_, __, ___) =>
+                                      _imageFallback(isDark, minH),
+                                  loadingBuilder:
+                                      (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return _imageLoadingPlaceholder(
+                                        isDark, minH);
+                                  },
+                                )
+                              : _imageFallback(isDark, minH),
+                        ),
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1859,8 +1883,10 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
     );
   }
 
-  Widget _imageFallback(bool isDark) {
+  Widget _imageFallback(bool isDark, [double? height]) {
     return Container(
+      height: height ?? 140,
+      width: double.infinity,
       color: isDark
           ? Colors.white.withValues(alpha: 0.04)
           : Colors.blue.withValues(alpha: 0.06),
@@ -1869,6 +1895,28 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
           icon: HugeIcons.strokeRoundedImage01,
           color: isDark ? Colors.white24 : Colors.black26,
           size: 32,
+        ),
+      ),
+    );
+  }
+
+  Widget _imageLoadingPlaceholder(bool isDark, [double? height]) {
+    return Container(
+      height: height ?? 140,
+      width: double.infinity,
+      color: isDark
+          ? Colors.white.withValues(alpha: 0.04)
+          : Colors.black.withValues(alpha: 0.04),
+      child: Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              isDark ? Colors.white24 : Colors.black26,
+            ),
+          ),
         ),
       ),
     );

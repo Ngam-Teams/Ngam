@@ -739,22 +739,36 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
                                           CrossAxisAlignment.start,
                                       children: [
                                         ClipRRect(
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                          child: SizedBox(
-                                            width: double.infinity,
-                                            child: product.imageUrl.isNotEmpty
-                                                ? Image.network(
-                                                    product.imageUrl,
-                                                    fit: BoxFit.cover,
-                                                    errorBuilder:
-                                                        (_, __, ___) =>
-                                                            _imgFallback(
-                                                              isDark,
-                                                            ),
-                                                  )
-                                                : _imgFallback(isDark),
+                                          borderRadius: BorderRadius.circular(16),
+                                          child: LayoutBuilder(
+                                            builder: (context, constraints) {
+                                              final width = constraints.maxWidth;
+                                              final minH = width * 0.75;
+                                              final maxH = width * 1.5;
+
+                                              return ConstrainedBox(
+                                                constraints: BoxConstraints(
+                                                  minHeight: minH,
+                                                  maxHeight: maxH,
+                                                ),
+                                                child: SizedBox(
+                                                  width: double.infinity,
+                                                  child: product.imageUrl.isNotEmpty
+                                                      ? Image.network(
+                                                          product.imageUrl,
+                                                          fit: BoxFit.cover,
+                                                          gaplessPlayback: true,
+                                                          errorBuilder: (_, __, ___) =>
+                                                              _imgFallback(isDark, minH),
+                                                          loadingBuilder: (context, child, loadingProgress) {
+                                                            if (loadingProgress == null) return child;
+                                                            return _imgLoadingPlaceholder(isDark, minH);
+                                                          },
+                                                        )
+                                                      : _imgFallback(isDark, minH),
+                                                ),
+                                              );
+                                            },
                                           ),
                                         ),
                                         const SizedBox(height: 12),
@@ -814,9 +828,10 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
     );
   }
 
-  Widget _imgFallback(bool isDark) {
+  Widget _imgFallback(bool isDark, [double? height]) {
     return Container(
-      height: 120,
+      height: height ?? 140,
+      width: double.infinity,
       color: isDark
           ? Colors.white.withValues(alpha: 0.04)
           : Colors.blue.withValues(alpha: 0.06),
@@ -825,6 +840,28 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
           icon: HugeIcons.strokeRoundedImage01,
           color: isDark ? Colors.white24 : Colors.black26,
           size: 32,
+        ),
+      ),
+    );
+  }
+
+  Widget _imgLoadingPlaceholder(bool isDark, [double? height]) {
+    return Container(
+      height: height ?? 140,
+      width: double.infinity,
+      color: isDark
+          ? Colors.white.withValues(alpha: 0.04)
+          : Colors.black.withValues(alpha: 0.04),
+      child: Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              isDark ? Colors.white24 : Colors.black26,
+            ),
+          ),
         ),
       ),
     );
