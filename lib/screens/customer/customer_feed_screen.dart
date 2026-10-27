@@ -1955,7 +1955,6 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   }
 
   Future<void> _showCommentsBottomSheet(BuildContext context, Map<String, dynamic> post) async {
-    setState(() => _isModalOrRouteOpen = true);
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1984,9 +1983,6 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         );
       },
     );
-    if (mounted) {
-      setState(() => _isModalOrRouteOpen = false);
-    }
   }
 }
 
@@ -2116,16 +2112,28 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
   }
 
   void _handleSendComment() async {
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    if (currentUser == null) {
+      if (mounted) {
+        showGlassToast(
+          context,
+          'Sila log masuk untuk menulis komen',
+          icon: HugeIcons.strokeRoundedLock,
+        );
+        Navigator.pushNamed(context, '/login');
+      }
+      return;
+    }
+
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
 
     HapticFeedback.lightImpact();
-    final currentUser = Supabase.instance.client.auth.currentUser;
-    final userName = (currentUser?.userMetadata?['full_name'] as String?) ??
-        (currentUser?.userMetadata?['name'] as String?) ??
-        (currentUser?.email?.split('@').first) ??
+    final userName = (currentUser.userMetadata?['full_name'] as String?) ??
+        (currentUser.userMetadata?['name'] as String?) ??
+        (currentUser.email?.split('@').first) ??
         'Pelanggan Ngam';
-    final userAvatar = (currentUser?.userMetadata?['avatar_url'] as String?) ?? '';
+    final userAvatar = (currentUser.userMetadata?['avatar_url'] as String?) ?? '';
 
     final newEntry = {
       'user': userName,
