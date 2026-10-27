@@ -2180,6 +2180,8 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    final bool isLoggedIn = currentUser != null;
     final shopName = widget.post['shopName']?.toString() ?? 'Ngam Feed';
     final shopHandle = widget.post['shopHandle']?.toString() ?? '';
     final shopAvatar = widget.post['shopAvatar']?.toString() ?? '';
@@ -2464,6 +2466,15 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                             const SizedBox(width: 8),
                             GestureDetector(
                               onTap: () {
+                                if (Supabase.instance.client.auth.currentUser == null) {
+                                  showGlassToast(
+                                    context,
+                                    'Sila log masuk untuk menyukai komen',
+                                    icon: HugeIcons.strokeRoundedLock,
+                                  );
+                                  Navigator.pushNamed(context, '/login');
+                                  return;
+                                }
                                 HapticFeedback.lightImpact();
                                 setState(() {
                                   c['isLiked'] = !isCommentLiked;
@@ -2499,7 +2510,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                     ),
         ),
 
-        // 5. Sticky Bottom Input Field
+        // 5. Sticky Bottom Input Field / Guest Prompt
         Container(
           padding: EdgeInsets.fromLTRB(
             14,
@@ -2515,59 +2526,113 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
               ),
             ),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : Colors.black.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: TextField(
-                    controller: _commentController,
-                    onSubmitted: (_) => _handleSendComment(),
-                    style: TextStyle(
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                      fontSize: 13,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Tulis komen anda...',
-                      hintStyle: TextStyle(
-                        color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
-                        fontSize: 13,
+          child: !isLoggedIn
+              ? InkWell(
+                  onTap: () => Navigator.pushNamed(context, '/login'),
+                  borderRadius: BorderRadius.circular(24),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: isDark ? Colors.white12 : Colors.black12,
                       ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 11),
+                    ),
+                    child: Row(
+                      children: [
+                        const HugeIcon(
+                          icon: HugeIcons.strokeRoundedLock,
+                          color: Color(0xFF00E5FF),
+                          size: 18,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Log masuk untuk menulis komen...',
+                            style: TextStyle(
+                              color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF00E5FF), Color(0xFF0284C7)],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Text(
+                            'Log Masuk',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                )
+              : Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : Colors.black.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: TextField(
+                          controller: _commentController,
+                          onSubmitted: (_) => _handleSendComment(),
+                          style: TextStyle(
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            fontSize: 13,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Tulis komen anda...',
+                            hintStyle: TextStyle(
+                              color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                              fontSize: 13,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 11),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: _handleSendComment,
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF00E5FF), Color(0xFF0284C7)],
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child: HugeIcon(
+                            icon: HugeIcons.strokeRoundedArrowUp01,
+                            color: Colors.black,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: _handleSendComment,
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF00E5FF), Color(0xFF0284C7)],
-                    ),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: HugeIcon(
-                      icon: HugeIcons.strokeRoundedArrowUp01,
-                      color: Colors.black,
-                      size: 20,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       ],
     );
