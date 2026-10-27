@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/pwa_theme_bridge.dart';
 
 // ============================================================
 // Ngam App — Theme Provider
@@ -22,6 +23,7 @@ class ThemeProvider extends ChangeNotifier {
     final isDark = prefs.getBool(_themePrefKey);
     if (isDark != null) {
       _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
+      applyAppThemeOverlay(isDark);
       notifyListeners();
     }
   }
@@ -37,6 +39,7 @@ class ThemeProvider extends ChangeNotifier {
         ? ThemeMode.dark
         : ThemeMode.light;
     _saveThemeToPrefs();
+    applyAppThemeOverlay(isDarkMode);
     notifyListeners();
   }
 
@@ -44,6 +47,7 @@ class ThemeProvider extends ChangeNotifier {
   void setThemeMode(ThemeMode mode) {
     _themeMode = mode;
     _saveThemeToPrefs();
+    applyAppThemeOverlay(isDarkMode);
     notifyListeners();
   }
 }
