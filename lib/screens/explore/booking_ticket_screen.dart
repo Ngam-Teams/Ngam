@@ -778,17 +778,23 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
 
   String get _providerLabel {
     final cat = widget.category.toLowerCase();
-    if (cat.contains('food') || cat.contains('restaurant') || cat.contains('cafe') || cat.contains('makan')) {
+    if (cat.contains('food') || cat.contains('restaurant') || cat.contains('cafe') || cat.contains('makan') || cat.contains('fnb') || cat.contains('dining')) {
       return "Zon / Meja";
     }
-    if (cat.contains('auto') || cat.contains('workshop') || cat.contains('bengkel') || cat.contains('wash')) {
+    if (cat.contains('auto') || cat.contains('workshop') || cat.contains('bengkel') || cat.contains('wash') || cat.contains('tyre')) {
       return "Stesen / Servis";
     }
-    if (cat.contains('health') || cat.contains('clinic') || cat.contains('klinik') || cat.contains('dental')) {
+    if (cat.contains('health') || cat.contains('clinic') || cat.contains('klinik') || cat.contains('dental') || cat.contains('farmasi')) {
       return "Doktor / Pakar";
     }
-    if (cat.contains('court') || cat.contains('sport') || cat.contains('badminton') || cat.contains('futsal')) {
+    if (cat.contains('court') || cat.contains('sport') || cat.contains('badminton') || cat.contains('futsal') || cat.contains('kemudahan')) {
       return "Gelanggang / Bilik";
+    }
+    if (cat.contains('salon') || cat.contains('spa') || cat.contains('beauty') || cat.contains('facial') || cat.contains('massage') || cat.contains('urut')) {
+      return "Terapis / Bilik";
+    }
+    if (cat.contains('retail') || cat.contains('runcit') || cat.contains('butik') || cat.contains('boutique') || cat.contains('fashion')) {
+      return "Sesi / Butik";
     }
     return AppLocalizations.of(context)?.ticketProvider ?? "Pakar / Staf";
   }
@@ -796,14 +802,18 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
   Future<void> _shareTicketToWhatsApp() async {
     final cat = widget.category.toLowerCase();
     String itemType = "Pakar/Staf";
-    if (cat.contains('food') || cat.contains('restaurant') || cat.contains('cafe') || cat.contains('makan')) {
+    if (cat.contains('food') || cat.contains('restaurant') || cat.contains('cafe') || cat.contains('makan') || cat.contains('fnb') || cat.contains('dining')) {
       itemType = "Zon/Meja";
-    } else if (cat.contains('auto') || cat.contains('workshop') || cat.contains('bengkel') || cat.contains('wash')) {
+    } else if (cat.contains('auto') || cat.contains('workshop') || cat.contains('bengkel') || cat.contains('wash') || cat.contains('tyre')) {
       itemType = "Stesen/Servis";
-    } else if (cat.contains('health') || cat.contains('clinic') || cat.contains('dental')) {
+    } else if (cat.contains('health') || cat.contains('clinic') || cat.contains('dental') || cat.contains('farmasi')) {
       itemType = "Doktor/Pakar";
-    } else if (cat.contains('court') || cat.contains('sport') || cat.contains('badminton')) {
-      itemType = "Gelanggang";
+    } else if (cat.contains('court') || cat.contains('sport') || cat.contains('badminton') || cat.contains('futsal')) {
+      itemType = "Gelanggang/Bilik";
+    } else if (cat.contains('salon') || cat.contains('spa') || cat.contains('beauty') || cat.contains('facial') || cat.contains('massage') || cat.contains('urut')) {
+      itemType = "Terapis/Bilik";
+    } else if (cat.contains('retail') || cat.contains('runcit') || cat.contains('butik') || cat.contains('boutique') || cat.contains('fashion')) {
+      itemType = "Sesi/Butik";
     }
 
     final String displayPrice = widget.totalPrice.startsWith('RM') ? widget.totalPrice : 'RM ${widget.totalPrice}';

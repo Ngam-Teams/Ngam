@@ -19,6 +19,8 @@ enum BookingType {
   automotive,
   health,
   facility,
+  beauty,
+  retail,
 }
 
 class BookingsView extends StatefulWidget {
@@ -198,7 +200,82 @@ class _BookingsViewState extends State<BookingsView> {
       return BookingType.facility;
     }
 
-    // 5. SERVICE / BARBER
+    // 5. BEAUTY / SALON / SPA / ESTETIKA
+    if (cat.contains('salon') ||
+        cat.contains('spa') ||
+        cat.contains('facial') ||
+        cat.contains('massage') ||
+        cat.contains('urut') ||
+        cat.contains('reflexology') ||
+        cat.contains('refleksologi') ||
+        cat.contains('nail') ||
+        cat.contains('kuku') ||
+        cat.contains('beauty') ||
+        cat.contains('kecantikan') ||
+        cat.contains('waxing') ||
+        cat.contains('lash') ||
+        cat.contains('bulu mata') ||
+        cat.contains('estetik') ||
+        cat.contains('aesthetic') ||
+        cat.contains('makeup') ||
+        cat.contains('mekap') ||
+        cat.contains('andam') ||
+        cat.contains('muslimah') ||
+        name.contains('salon') ||
+        name.contains('spa') ||
+        name.contains('facial') ||
+        name.contains('massage') ||
+        name.contains('urut') ||
+        name.contains('reflexology') ||
+        name.contains('refleksologi') ||
+        name.contains('nail') ||
+        name.contains('beauty') ||
+        name.contains('kecantikan') ||
+        name.contains('lash') ||
+        name.contains('aesthetic') ||
+        name.contains('makeup') ||
+        name.contains('muslimah')) {
+      return BookingType.beauty;
+    }
+
+    // 6. RETAIL / SHOPPING / BUTIK / KEDAI RUNCIT
+    if (cat.contains('retail') ||
+        cat.contains('runcit') ||
+        cat.contains('pasar') ||
+        cat.contains('market') ||
+        cat.contains('grocery') ||
+        cat.contains('butik') ||
+        cat.contains('boutique') ||
+        cat.contains('fashion') ||
+        cat.contains('fesyen') ||
+        cat.contains('baju') ||
+        cat.contains('pakaian') ||
+        cat.contains('kasut') ||
+        cat.contains('tudung') ||
+        cat.contains('jubah') ||
+        cat.contains('perfume') ||
+        cat.contains('minyak wangi') ||
+        cat.contains('aksesori') ||
+        cat.contains('bundle') ||
+        cat.contains('perabot') ||
+        cat.contains('buku') ||
+        cat.contains('florist') ||
+        cat.contains('bunga') ||
+        cat.contains('shopping') ||
+        name.contains('butik') ||
+        name.contains('boutique') ||
+        name.contains('fashion') ||
+        name.contains('fesyen') ||
+        name.contains('tudung') ||
+        name.contains('jubah') ||
+        name.contains('perfume') ||
+        name.contains('florist') ||
+        name.contains('bundle') ||
+        name.contains('shopping')) {
+      return BookingType.retail;
+    }
+
+    // 7. SERVICE / BARBER / KHIDMAT AM
     return BookingType.service;
   }
 
@@ -341,6 +418,74 @@ class _BookingsViewState extends State<BookingsView> {
         ];
         break;
 
+      case BookingType.beauty:
+        _staffs = [
+          {
+            "name": "Mana-mana Terapis Bertugas",
+            "specialty": "Paling Cepat / Giliran Segera",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=400",
+          },
+          {
+            "name": "Siti Nurhaliza (Senior Aesthetician)",
+            "specialty": "Pakar Kulit Wajah & Facial Glow",
+            "rating": "4.9",
+            "image": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=400",
+          },
+          {
+            "name": "Kak Lily (Pakar Urutan & Spa)",
+            "specialty": "Aromaterapi & Refleksologi",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=400",
+          },
+        ];
+        _servicesList = [
+          {"name": "Urutan Aromaterapi & Refleksologi (60m)", "price": "RM75", "time": "60m"},
+          {"name": "Rawatan Facial Glowing & Cuci Muka (75m)", "price": "RM85", "time": "75m"},
+          {"name": "Rawatan Rambut Spa & Masker Herba (45m)", "price": "RM60", "time": "45m"},
+          {"name": "Manicure & Pedicure Spa Bersih (40m)", "price": "RM45", "time": "40m"},
+        ];
+        _addonsList = [
+          {"name": "Minyak Aroma Essential Pilihan", "price": "+RM15", "time": "+0m"},
+          {"name": "Lulur Badan & Body Scrub Herba", "price": "+RM25", "time": "+15m"},
+          {"name": "Masker Mata Anti-Sembap / Collagen", "price": "+RM10", "time": "+0m"},
+          {"name": "Serum Booster & Ampoule Wajah", "price": "+RM20", "time": "+0m"},
+        ];
+        break;
+
+      case BookingType.retail:
+        _staffs = [
+          {
+            "name": "Sesi Personal Shopper & Gaya",
+            "specialty": "Bimbingan Produk, Padanan & Saiz",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=400",
+          },
+          {
+            "name": "Bilik Fitting & Percubaan Eksklusif",
+            "specialty": "Ruang Percubaan Pakaian VIP",
+            "rating": "4.9",
+            "image": "https://images.unsplash.com/photo-1472851294608-062f824d29cc?q=80&w=400",
+          },
+          {
+            "name": "Slot Ambil Barang Ekspres (Click & Collect)",
+            "specialty": "Pengambilan Pantas Tanpa Beratur",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1526178613552-2b45c6c302f0?q=80&w=400",
+          },
+        ];
+        _servicesList = [
+          {"name": "Janji Temu Lawatan Butik / Kedai", "price": "RM0", "time": "30m"},
+          {"name": "Sesi Konsultasi Fesyen & Ukuran", "price": "RM25", "time": "45m"},
+          {"name": "Slot Pratonton Koleksi Khas / VIP", "price": "RM50", "time": "60m"},
+        ];
+        _addonsList = [
+          {"name": "Bungkusan Hadiah & Kad Eksklusif", "price": "+RM10", "time": "+0m"},
+          {"name": "Perkhidmatan Potong & Jahit Alteration", "price": "+RM15", "time": "+0m"},
+          {"name": "Penghantaran Terus ke Kenderaan (Curbside)", "price": "+RM0", "time": "+0m"},
+        ];
+        break;
+
       case BookingType.service:
         _staffs = [
           {
@@ -421,6 +566,14 @@ class _BookingsViewState extends State<BookingsView> {
         if (_currentStep == 0) return "Pilih gelanggang / court:";
         if (_currentStep == 1) return "Pilih tempoh & peralatan:";
         return "Sahkan tempahan court:";
+      case BookingType.beauty:
+        if (_currentStep == 0) return "Pilih terapis / juruestetik:";
+        if (_currentStep == 1) return "Pilih rawatan spa & estetika:";
+        return "Sahkan tempahan spa & salun:";
+      case BookingType.retail:
+        if (_currentStep == 0) return "Pilih jenis sesi / bantuan:";
+        if (_currentStep == 1) return "Pakej & keperluan lawatan:";
+        return "Sahkan janji temu butik:";
       case BookingType.service:
         if (_currentStep == 0) return "Pilih pakar / barber:";
         if (_currentStep == 1) return "Pilih servis & tambahan:";
@@ -434,6 +587,8 @@ class _BookingsViewState extends State<BookingsView> {
       case BookingType.automotive: return "Pakej Servis Kenderaan";
       case BookingType.health: return "Pilihan Rawatan & Konsultasi";
       case BookingType.facility: return "Tempoh Sesi Permainan";
+      case BookingType.beauty: return "Pilihan Rawatan Utama";
+      case BookingType.retail: return "Pilihan Sesi & Bantuan";
       case BookingType.service: return "Servis Utama";
     }
   }
@@ -444,6 +599,8 @@ class _BookingsViewState extends State<BookingsView> {
       case BookingType.automotive: return "Servis Tambahan Pilihan";
       case BookingType.health: return "Ujian & Rawatan Lanjutan";
       case BookingType.facility: return "Sewa Peralatan Tambahan";
+      case BookingType.beauty: return "Pakej Tambahan & Aroma";
+      case BookingType.retail: return "Perkhidmatan Tambahan";
       case BookingType.service: return "Servis Tambahan (Add-ons)";
     }
   }
@@ -454,6 +611,8 @@ class _BookingsViewState extends State<BookingsView> {
       case BookingType.automotive: return "Kenderaan Saiz Besar (SUV / 4x4 / MPV)?";
       case BookingType.health: return "Alahan Ubat-ubatan (Drug Allergies)?";
       case BookingType.facility: return "Perlu Bantuan Fasilitator / Pengadil?";
+      case BookingType.beauty: return "Kulit Sensitif atau Mengandung?";
+      case BookingType.retail: return "Perlukan Bantuan Aksesibiliti?";
       case BookingType.service: return "Alahan Kulit Kepala atau Sensitiviti?";
     }
   }
@@ -464,6 +623,8 @@ class _BookingsViewState extends State<BookingsView> {
       case BookingType.automotive: return "Tandakan jika kenderaan anda memerlukan ruang bay besar";
       case BookingType.health: return "Tandakan jika ada alahan kepada sebarang jenis ubat";
       case BookingType.facility: return "Tandakan jika memerlukan bantuan fasilitator perlawanan";
+      case BookingType.beauty: return "Tandakan jika ada alahan produk kulit atau perlukan minyak mesra ibu mengandung";
+      case BookingType.retail: return "Tandakan jika memerlukan bantuan kerusi roda atau panduan khas";
       case BookingType.service: return "Kulit sensitif terhadap sabun, pencuci atau minyak wangi";
     }
   }
@@ -474,6 +635,8 @@ class _BookingsViewState extends State<BookingsView> {
       case BookingType.automotive: return "Stesen / Servis";
       case BookingType.health: return "Doktor / Pakar";
       case BookingType.facility: return "Gelanggang / Bilik";
+      case BookingType.beauty: return "Terapis / Bilik";
+      case BookingType.retail: return "Sesi / Butik";
       case BookingType.service: return "Pakar / Staf";
     }
   }
@@ -488,6 +651,10 @@ class _BookingsViewState extends State<BookingsView> {
         return HugeIcons.strokeRoundedHospital02;
       case BookingType.facility:
         return HugeIcons.strokeRoundedLocation01;
+      case BookingType.beauty:
+        return HugeIcons.strokeRoundedSparkles;
+      case BookingType.retail:
+        return HugeIcons.strokeRoundedShoppingBag02;
       case BookingType.service:
         return HugeIcons.strokeRoundedUser;
     }
@@ -667,6 +834,7 @@ class _BookingsViewState extends State<BookingsView> {
     // 3. Dapatkan staf sebenar dari team_members (hanya jika jenis service/health/automotive)
     if (_bookingType == BookingType.service ||
         _bookingType == BookingType.health ||
+        _bookingType == BookingType.beauty ||
         _bookingType == BookingType.automotive) {
       try {
         final members = await Supabase.instance.client
