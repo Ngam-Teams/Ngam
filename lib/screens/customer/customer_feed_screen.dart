@@ -178,11 +178,26 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           'likes': 2,
         },
         {
+          'id': 'demo_cm_3',
           'user': 'Syed Amir',
           'avatar': 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?q=80&w=150',
           'text': 'Kena book awal ke bro atau boleh walk-in petang ni?',
           'time': '5m lepas',
           'likes': 1,
+          'replies': [
+            {
+              'id': 'demo_rp_1',
+              'parentId': 'demo_cm_3',
+              'user': 'Barber Danial',
+              'replyToUser': 'Syed Amir',
+              'avatar': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200',
+              'text': 'Boleh walk-in terus bro, petang ni ada 3 barber standby! 🔥',
+              'time': '2m lepas',
+              'likes': 3,
+              'isLiked': false,
+              'isCreator': true,
+            },
+          ],
         },
       ],
       'shopData': {
@@ -494,6 +509,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           });
         }
 
+        await _hydrateSavedCommentCounts(loaded);
+
         if (mounted) {
           setState(() {
             _posts = loaded;
@@ -509,14 +526,132 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       debugPrint('[CustomerFeedScreen] Live posts fetch fallback to demo: $e');
     }
 
+    final demoCopy = _demoPosts.map((p) => Map<String, dynamic>.from(p)).toList();
+    await _hydrateSavedCommentCounts(demoCopy);
+
     if (mounted) {
       setState(() {
         if (_posts.isEmpty) {
-          _posts = List.from(_demoPosts);
+          _posts = demoCopy;
         }
         _isLoading = false;
       });
     }
+  }
+
+  /// Kira jumlah semua komen utama + balasan (replies) di bawah setiap komen
+  static int countAllCommentsAndReplies(List<dynamic>? rawList) {
+    if (rawList == null || rawList.isEmpty) return 0;
+    int total = 0;
+    for (final item in rawList) {
+      if (item is Map) {
+        total += 1;
+        final replies = item['replies'];
+        if (replies is List) {
+          total += replies.length;
+        }
+      }
+    }
+    return total;
+  }
+
+  /// Selaraskan bilangan komen daripada SharedPreferences & jadual feed_comments supaya nombor komen di Feed sentiasa tepat
+  Future<void> _hydrateSavedCommentCounts(List<Map<String, dynamic>> postsList) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Cuba tarik kiraan sebenar dari jadual feed_comments jika ada pos Supabase
+      final Map<String, int> dbCommentCounts = {};
+      final livePostIds = postsList
+          .map((p) => p['id']?.toString() ?? '')
+          .where((id) => id.length > 20)
+          .toList();
+
+      if (livePostIds.isNotEmpty) {
+        try {
+          final rows = await Supabase.instance.client
+              .from('feed_comments')
+              .select('id, post_id')
+              .inFilter('post_id', livePostIds);
+          for (final r in rows) {
+            final pid = r['post_id']?.toString() ?? '';
+            if (pid.isNotEmpty) {
+              dbCommentCounts[pid] = (dbCommentCounts[pid] ?? 0) + 1;
+            }
+          }
+        } catch (_) {}
+      }
+
+      for (final post in postsList) {
+        final String postId = post['id']?.toString() ?? '';
+        if (postId.isEmpty) continue;
+
+        final int initialMetaCount = (post['comments'] as num?)?.toInt() ?? 0;
+        final int liveDbRowsCount = dbCommentCounts[postId] ?? 0;
+        final List? seedList = post['commentList'] as List?;
+        final int seedListCount = countAllCommentsAndReplies(seedList);
+
+        // Semak jika ada komen tersimpan secara tempatan
+        List<Map<String, dynamic>>? cachedComments;
+        int cachedCount = 0;
+        final String? cachedJson = prefs.getString('ngam_feed_comments_$postId');
+        if (cachedJson != null && cachedJson.isNotEmpty) {
+          try {
+            final List decoded = jsonDecode(cachedJson);
+            cachedComments =
+                decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+            cachedCount = countAllCommentsAndReplies(cachedComments);
+          } catch (_) {}
+        }
+
+        // Simpan atau dapatkan base offset supaya setiap komen/balasan baharu sentiasa +1
+        int? baseOffset = prefs.getInt('ngam_feed_comments_base_$postId');
+        if (baseOffset == null) {
+          final int actualKnownCount =
+              math.max(seedListCount, math.max(cachedCount, liveDbRowsCount));
+          baseOffset = math.max(0, initialMetaCount - actualKnownCount);
+          await prefs.setInt('ngam_feed_comments_base_$postId', baseOffset);
+        }
+
+        if (cachedComments != null) {
+          post['commentList'] = cachedComments;
+          final int computedTotal = baseOffset + cachedCount;
+          post['comments'] = math.max(computedTotal, liveDbRowsCount);
+          await prefs.setInt('ngam_feed_comments_total_$postId', post['comments'] as int);
+          continue;
+        }
+
+        final int effectiveCount = math.max(
+          initialMetaCount,
+          math.max(liveDbRowsCount, baseOffset + seedListCount),
+        );
+        post['comments'] = effectiveCount;
+      }
+    } catch (e) {
+      debugPrint('[CustomerFeedScreen] Error hydrating comment counts: $e');
+    }
+  }
+
+  void _syncPostCommentCount(
+    String postId,
+    int newCount,
+    List<Map<String, dynamic>> updatedComments,
+  ) {
+    if (!mounted) return;
+    setState(() {
+      for (final p in _posts) {
+        if (p['id']?.toString() == postId) {
+          p['comments'] = newCount;
+          p['commentList'] = List<Map<String, dynamic>>.from(updatedComments);
+        }
+      }
+      if (_desktopCommentsPost != null &&
+          _desktopCommentsPost!['id']?.toString() == postId) {
+        _desktopCommentsPost!['comments'] = newCount;
+        _desktopCommentsPost!['commentList'] =
+            List<Map<String, dynamic>>.from(updatedComments);
+      }
+    });
   }
 
   // Double-tap handler for heart animation
@@ -1130,12 +1265,12 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                         post: _desktopCommentsPost!,
                         isDesktop: true,
                         onClose: () => setState(() => _desktopCommentsPost = null),
-                        onCommentCountChanged: (count) {
-                          if (mounted) {
-                            setState(() {
-                              _desktopCommentsPost!['comments'] = count;
-                            });
-                          }
+                        onCommentCountChanged: (count, updatedList) {
+                          _syncPostCommentCount(
+                            _desktopCommentsPost!['id']?.toString() ?? '',
+                            count,
+                            updatedList,
+                          );
                         },
                       ),
                     )
@@ -1990,10 +2125,14 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
               post: post,
               isDesktop: false,
               onClose: () => Navigator.pop(ctx),
-              onCommentCountChanged: (count) {
-                if (mounted) {
-                  setState(() => post['comments'] = count);
-                }
+              onCommentCountChanged: (count, updatedList) {
+                post['comments'] = count;
+                post['commentList'] = updatedList;
+                _syncPostCommentCount(
+                  post['id']?.toString() ?? '',
+                  count,
+                  updatedList,
+                );
               },
             ),
           ),
@@ -2009,12 +2148,14 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
 // =============================================================================
 // REUSABLE FEED COMMENTS VIEW (TIKTOK & INSTAGRAM REELS ADAPTIVE)
 // Used in right side sliding panel on Desktop, and bottom sheet on Mobile.
+// Supports TikTok/Reels threaded replies directly underneath each comment!
 // =============================================================================
 class _FeedCommentsView extends StatefulWidget {
   final Map<String, dynamic> post;
   final bool isDesktop;
   final VoidCallback onClose;
-  final void Function(int newCount)? onCommentCountChanged;
+  final void Function(int newCount, List<Map<String, dynamic>> updatedComments)?
+      onCommentCountChanged;
 
   const _FeedCommentsView({
     super.key,
@@ -2033,11 +2174,21 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
   late final FocusNode _commentFocusNode;
   late final ScrollController _scrollController;
   final List<Map<String, dynamic>> _comments = [];
+  final Set<String> _expandedCommentIds = {};
+
   bool _isLoading = false;
   bool _isSubmitting = false;
   String? _loadedPostId;
+  int _baseCommentOffset = 0;
+
+  // Reply state (TikTok / Instagram Reels nested thread target)
+  String? _replyingToCommentId;
   String? _replyingToUser;
   bool _hasInputText = false;
+
+  int get _totalCommentCount =>
+      _baseCommentOffset +
+      _CustomerFeedScreenState.countAllCommentsAndReplies(_comments);
 
   @override
   void initState() {
@@ -2060,6 +2211,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
   void didUpdateWidget(covariant _FeedCommentsView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.post['id'] != oldWidget.post['id']) {
+      _replyingToCommentId = null;
       _replyingToUser = null;
       _commentController.clear();
       _initAndFetchComments();
@@ -2075,11 +2227,55 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
   }
 
   String _storageKey(String postId) => 'ngam_feed_comments_$postId';
+  String _baseKey(String postId) => 'ngam_feed_comments_base_$postId';
+  String _totalKey(String postId) => 'ngam_feed_comments_total_$postId';
 
-  Future<void> _persistCommentsLocally(String postId) async {
+  List<Map<String, dynamic>> _normalizeCommentsList(List<dynamic> raw) {
+    final List<Map<String, dynamic>> result = [];
+    for (int i = 0; i < raw.length; i++) {
+      final item = raw[i];
+      if (item is! Map) continue;
+      final map = Map<String, dynamic>.from(item);
+      final String cid = (map['id']?.toString() ?? '').trim().isNotEmpty
+          ? map['id'].toString()
+          : 'cm_seed_${i}_${map['user'] ?? 'u'}';
+      map['id'] = cid;
+
+      final List<Map<String, dynamic>> normalizedReplies = [];
+      final rawReplies = map['replies'];
+      if (rawReplies is List) {
+        for (int j = 0; j < rawReplies.length; j++) {
+          final r = rawReplies[j];
+          if (r is Map) {
+            final rMap = Map<String, dynamic>.from(r);
+            rMap['id'] = (rMap['id']?.toString() ?? '').trim().isNotEmpty
+                ? rMap['id'].toString()
+                : 'rp_seed_${i}_$j';
+            rMap['parentId'] = cid;
+            normalizedReplies.add(rMap);
+          }
+        }
+      }
+      map['replies'] = normalizedReplies;
+      if (normalizedReplies.isNotEmpty) {
+        _expandedCommentIds.add(cid);
+      }
+      result.add(map);
+    }
+    return result;
+  }
+
+  Future<void> _persistAndNotifyCount(String postId) async {
+    final int newTotal = _totalCommentCount;
+    widget.post['commentList'] = _comments;
+    widget.post['comments'] = newTotal;
+    widget.onCommentCountChanged?.call(newTotal, _comments);
+
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_storageKey(postId), jsonEncode(_comments));
+      await prefs.setInt(_baseKey(postId), _baseCommentOffset);
+      await prefs.setInt(_totalKey(postId), newTotal);
     } catch (e) {
       debugPrint('[FeedComments] Error saving local comments: $e');
     }
@@ -2089,95 +2285,210 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     final String postId = widget.post['id']?.toString() ?? '';
     _loadedPostId = postId;
     _comments.clear();
+    _expandedCommentIds.clear();
 
-    // 1. Try to load from persistent local storage first for offline/guest persistence
+    SharedPreferences? prefs;
     try {
-      final prefs = await SharedPreferences.getInstance();
+      prefs = await SharedPreferences.getInstance();
+    } catch (_) {}
+
+    // 1. Load cached comments from SharedPreferences if present
+    bool loadedFromCache = false;
+    if (prefs != null) {
       final cachedJson = prefs.getString(_storageKey(postId));
       if (cachedJson != null && cachedJson.isNotEmpty) {
-        final List list = jsonDecode(cachedJson);
-        _comments.addAll(list.map((e) => Map<String, dynamic>.from(e as Map)));
+        try {
+          final List list = jsonDecode(cachedJson);
+          _comments.addAll(_normalizeCommentsList(list));
+          loadedFromCache = true;
+        } catch (e) {
+          debugPrint('[FeedComments] Error decoding cached comments: $e');
+        }
       }
-    } catch (e) {
-      debugPrint('[FeedComments] Error loading cached comments: $e');
     }
 
-    // 2. If no local cache, check initial commentList from demo or post payload
-    if (_comments.isEmpty) {
+    // 2. If no local cache, check initial commentList from post payload
+    if (!loadedFromCache) {
       final rawList = widget.post['commentList'] as List?;
       if (rawList != null && rawList.isNotEmpty) {
-        _comments.addAll(rawList.map((e) => Map<String, dynamic>.from(e as Map)));
+        _comments.addAll(_normalizeCommentsList(rawList));
       }
     }
 
-    if (mounted) setState(() {});
+    // 3. Determine base comment offset so adding a comment ALWAYS increments by +1
+    final int currentListItems =
+        _CustomerFeedScreenState.countAllCommentsAndReplies(_comments);
+    final int postMetaComments = (widget.post['comments'] as num?)?.toInt() ?? 0;
 
-    // 3. For real backend posts (UUID > 20 chars), sync live from Supabase in the background
+    if (prefs != null && prefs.containsKey(_baseKey(postId))) {
+      _baseCommentOffset = prefs.getInt(_baseKey(postId)) ?? 0;
+    } else {
+      _baseCommentOffset = math.max(0, postMetaComments - currentListItems);
+      prefs?.setInt(_baseKey(postId), _baseCommentOffset);
+    }
+
+    if (mounted) {
+      setState(() {});
+      // Sync count immediately so feed badge matches
+      widget.post['comments'] = _totalCommentCount;
+      widget.onCommentCountChanged?.call(_totalCommentCount, _comments);
+    }
+
+    // 4. For real backend posts (UUID > 20 chars), sync live from Supabase in background
     if (postId.length > 20) {
       _fetchLiveComments(postId);
     }
   }
 
+  String _formatTimeAgo(String rawDate) {
+    if (rawDate.isEmpty) return 'Baru saja';
+    DateTime dt;
+    if (!rawDate.endsWith('Z') && !rawDate.contains('+') && rawDate.contains('T')) {
+      dt = DateTime.tryParse('${rawDate}Z')?.toLocal() ?? DateTime.now();
+    } else {
+      dt = DateTime.tryParse(rawDate)?.toLocal() ?? DateTime.now();
+    }
+    final diff = DateTime.now().difference(dt);
+    if (diff.isNegative || diff.inSeconds < 60) {
+      return 'Baru saja';
+    } else if (diff.inMinutes < 60) {
+      return '${diff.inMinutes}m';
+    } else if (diff.inHours < 24) {
+      return '${diff.inHours}j';
+    } else if (diff.inDays < 7) {
+      return '${diff.inDays}h';
+    } else {
+      return '${dt.day}/${dt.month}';
+    }
+  }
+
   Future<void> _fetchLiveComments(String postId) async {
     if (_isLoading) return;
-    setState(() => _isLoading = true);
+    if (_comments.isEmpty) {
+      setState(() => _isLoading = true);
+    }
     try {
       final dbRes = await Supabase.instance.client
           .from('feed_comments')
           .select()
           .eq('post_id', postId)
-          .order('created_at', ascending: false)
-          .limit(60);
+          .order('created_at', ascending: true)
+          .limit(100);
 
       if (!mounted || _loadedPostId != postId) return;
 
       if (dbRes.isNotEmpty) {
-        final List<Map<String, dynamic>> loadedDb = [];
         final myUid = Supabase.instance.client.auth.currentUser?.id;
+        final String shopName = widget.post['shopName']?.toString() ?? '';
+
+        // Parse top-level comments and encoded replies [[REPLY:parentId|replyToUser]]
+        final List<Map<String, dynamic>> topLevelDb = [];
+        final Map<String, List<Map<String, dynamic>>> repliesByParent = {};
+
+        final replyRegex = RegExp(r'^\[\[REPLY:([^|]+)\|([^\]]*)\]\]\s*(.*)$', dotAll: true);
 
         for (final row in dbRes) {
-          final rawDate = row['created_at']?.toString() ?? '';
-          DateTime dt;
-          if (!rawDate.endsWith('Z') && !rawDate.contains('+') && rawDate.contains('T')) {
-            dt = DateTime.tryParse('${rawDate}Z')?.toLocal() ?? DateTime.now();
-          } else {
-            dt = DateTime.tryParse(rawDate)?.toLocal() ?? DateTime.now();
-          }
-          final diff = DateTime.now().difference(dt);
-          String timeAgo;
-          if (diff.inSeconds < 60) {
-            timeAgo = 'Baru saja';
-          } else if (diff.inMinutes < 60) {
-            timeAgo = '${diff.inMinutes}m lepas';
-          } else if (diff.inHours < 24) {
-            timeAgo = '${diff.inHours}j lepas';
-          } else {
-            timeAgo = '${dt.day}/${dt.month}';
-          }
+          final String rowId = row['id']?.toString() ?? 'db_${DateTime.now().microsecondsSinceEpoch}';
+          final String rawText = row['comment_text']?.toString() ?? '';
+          final String userName = row['user_name']?.toString() ?? 'Pelanggan Ngam';
+          final String userAvatar = row['user_avatar']?.toString() ?? '';
+          final String timeAgo = _formatTimeAgo(row['created_at']?.toString() ?? '');
+          final int likes = (row['likes_count'] as num?)?.toInt() ?? 0;
+          final bool isMine = myUid != null && row['user_id'] == myUid;
+          final bool isCreator = shopName.isNotEmpty &&
+              userName.toLowerCase().trim() == shopName.toLowerCase().trim();
 
-          loadedDb.add({
-            'id': row['id']?.toString(),
-            'user': row['user_name'] ?? 'Pelanggan Ngam',
-            'avatar': row['user_avatar']?.toString() ?? '',
-            'text': row['comment_text'] ?? '',
-            'time': timeAgo,
-            'likes': (row['likes_count'] as num?)?.toInt() ?? 0,
-            'isLiked': false,
-            'isMyComment': myUid != null && row['user_id'] == myUid,
-          });
+          final match = replyRegex.firstMatch(rawText);
+          if (match != null) {
+            final String parentId = match.group(1)!.trim();
+            final String replyToUser = match.group(2)!.trim();
+            final String cleanText = match.group(3)!.trim();
+            repliesByParent.putIfAbsent(parentId, () => []).add({
+              'id': rowId,
+              'parentId': parentId,
+              'user': userName,
+              'replyToUser': replyToUser,
+              'avatar': userAvatar,
+              'text': cleanText,
+              'time': timeAgo,
+              'likes': likes,
+              'isLiked': false,
+              'isMyComment': isMine,
+              'isCreator': isCreator,
+            });
+          } else {
+            topLevelDb.add({
+              'id': rowId,
+              'user': userName,
+              'avatar': userAvatar,
+              'text': rawText,
+              'time': timeAgo,
+              'likes': likes,
+              'isLiked': false,
+              'isMyComment': isMine,
+              'isCreator': isCreator,
+              'replies': <Map<String, dynamic>>[],
+            });
+          }
+        }
+
+        // Attach DB replies to their parent comments
+        for (final c in topLevelDb) {
+          final cid = c['id'].toString();
+          if (repliesByParent.containsKey(cid)) {
+            c['replies'] = repliesByParent[cid]!;
+            _expandedCommentIds.add(cid);
+          }
+        }
+
+        // Newest top-level comments first, while keeping replies chronological
+        final List<Map<String, dynamic>> orderedTopLevel = topLevelDb.reversed.toList();
+
+        // Merge any local-only comments/replies from _comments that aren't in DB yet
+        for (final localC in _comments) {
+          final String localId = localC['id']?.toString() ?? '';
+          final String localText = localC['text']?.toString() ?? '';
+          final String localUser = localC['user']?.toString() ?? '';
+
+          final existingIdx = orderedTopLevel.indexWhere((dbC) =>
+              dbC['id'] == localId ||
+              (dbC['text'] == localText && dbC['user'] == localUser));
+
+          if (existingIdx == -1) {
+            orderedTopLevel.insert(0, localC);
+          } else {
+            // Merge any local-only replies under this comment
+            final List<Map<String, dynamic>> dbReplies =
+                List<Map<String, dynamic>>.from(orderedTopLevel[existingIdx]['replies'] as List? ?? []);
+            final List localReplies = localC['replies'] as List? ?? [];
+            for (final lr in localReplies) {
+              if (lr is Map) {
+                final lrMap = Map<String, dynamic>.from(lr);
+                final bool existsInDb = dbReplies.any((dr) =>
+                    dr['id'] == lrMap['id'] ||
+                    (dr['text'] == lrMap['text'] && dr['user'] == lrMap['user']));
+                if (!existsInDb) {
+                  dbReplies.add(lrMap);
+                }
+              }
+            }
+            orderedTopLevel[existingIdx]['replies'] = dbReplies;
+            if (dbReplies.isNotEmpty) {
+              _expandedCommentIds.add(orderedTopLevel[existingIdx]['id'].toString());
+            }
+          }
         }
 
         setState(() {
-          _comments.clear();
-          _comments.addAll(loadedDb);
+          _comments
+            ..clear()
+            ..addAll(orderedTopLevel);
           _isLoading = false;
         });
-        widget.post['commentList'] = _comments;
-        widget.post['comments'] = _comments.length;
-        widget.onCommentCountChanged?.call(_comments.length);
-        _persistCommentsLocally(postId);
+
+        await _persistAndNotifyCount(postId);
       } else {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
       }
     } catch (e) {
       debugPrint('[FeedCommentsView] Supabase fetch fallback to local cache: $e');
@@ -2206,42 +2517,92 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     }
 
     final String postId = widget.post['id']?.toString() ?? '';
-    final String commentId = 'cm_${DateTime.now().millisecondsSinceEpoch}';
+    final String shopName = widget.post['shopName']?.toString() ?? '';
+    final bool isCreator = shopName.isNotEmpty &&
+        userName.toLowerCase().trim() == shopName.toLowerCase().trim();
 
-    final newEntry = {
-      'id': commentId,
-      'user': userName,
-      'avatar': userAvatar,
-      'text': text,
-      'time': 'Baru saja',
-      'likes': 0,
-      'isLiked': false,
-      'isMyComment': true,
-      'createdAt': DateTime.now().toIso8601String(),
-    };
+    final String? targetParentId = _replyingToCommentId;
+    final String? targetReplyUser = _replyingToUser;
+    final bool isReply = targetParentId != null && targetParentId.isNotEmpty;
 
-    setState(() {
-      _comments.insert(0, newEntry);
-      _replyingToUser = null;
-    });
+    String dbCommentPayloadText = text;
 
-    widget.post['commentList'] = _comments;
-    widget.post['comments'] = _comments.length;
-    widget.onCommentCountChanged?.call(_comments.length);
+    if (isReply) {
+      // Cari komen utama (parent comment) dan masukkan balasan terus di bawahnya (gaya TikTok / Reels)
+      final int parentIdx =
+          _comments.indexWhere((c) => c['id']?.toString() == targetParentId);
 
-    _commentController.clear();
-    _persistCommentsLocally(postId);
+      final String replyId = 'rp_${DateTime.now().millisecondsSinceEpoch}';
+      final Map<String, dynamic> newReply = {
+        'id': replyId,
+        'parentId': targetParentId,
+        'user': userName,
+        'replyToUser': targetReplyUser ?? '',
+        'avatar': userAvatar,
+        'text': text,
+        'time': 'Baru saja',
+        'likes': 0,
+        'isLiked': false,
+        'isMyComment': true,
+        'isCreator': isCreator,
+        'createdAt': DateTime.now().toIso8601String(),
+      };
 
-    // Smoothly scroll to the top of the comment list
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        0.0,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOutCubic,
-      );
+      setState(() {
+        if (parentIdx != -1) {
+          final List<Map<String, dynamic>> currentReplies =
+              List<Map<String, dynamic>>.from(_comments[parentIdx]['replies'] as List? ?? []);
+          currentReplies.add(newReply);
+          _comments[parentIdx]['replies'] = currentReplies;
+          _expandedCommentIds.add(targetParentId);
+        } else {
+          // Fallback jika komen induk tidak dijumpai
+          _comments.insert(0, {
+            ...newReply,
+            'replies': <Map<String, dynamic>>[],
+          });
+        }
+        _replyingToCommentId = null;
+        _replyingToUser = null;
+      });
+
+      dbCommentPayloadText = '[[REPLY:$targetParentId|${targetReplyUser ?? ""}]] $text';
+    } else {
+      final String commentId = 'cm_${DateTime.now().millisecondsSinceEpoch}';
+      final Map<String, dynamic> newEntry = {
+        'id': commentId,
+        'user': userName,
+        'avatar': userAvatar,
+        'text': text,
+        'time': 'Baru saja',
+        'likes': 0,
+        'isLiked': false,
+        'isMyComment': true,
+        'isCreator': isCreator,
+        'createdAt': DateTime.now().toIso8601String(),
+        'replies': <Map<String, dynamic>>[],
+      };
+
+      setState(() {
+        _comments.insert(0, newEntry);
+        _replyingToCommentId = null;
+        _replyingToUser = null;
+      });
+
+      // Scroll ke atas untuk komen utama baharu
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
+        );
+      }
     }
 
-    // Attempt backend persistence if real Supabase post
+    _commentController.clear();
+    await _persistAndNotifyCount(postId);
+
+    // Cuba simpan ke Supabase jika pos sebenar
     if (postId.length > 20) {
       try {
         await Supabase.instance.client.from('feed_comments').insert({
@@ -2249,14 +2610,15 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
           'user_id': currentUser?.id,
           'user_name': userName,
           'user_avatar': userAvatar,
-          'comment_text': text,
+          'comment_text': dbCommentPayloadText,
         });
 
-        // Also increment comments_count on feed_posts
-        await Supabase.instance.client
-            .from('feed_posts')
-            .update({'comments_count': _comments.length})
-            .eq('id', postId);
+        try {
+          await Supabase.instance.client
+              .from('feed_posts')
+              .update({'comments_count': _totalCommentCount})
+              .eq('id', postId);
+        } catch (_) {}
       } catch (err) {
         debugPrint('[FeedCommentsView] Supabase insert note (saved locally): $err');
       }
@@ -2266,7 +2628,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
       setState(() => _isSubmitting = false);
       showGlassToast(
         context,
-        'Komen berjaya dihantar!',
+        isReply ? 'Balasan dihantar!' : 'Komen berjaya dihantar!',
         icon: HugeIcons.strokeRoundedCheckmarkCircle02,
       );
     }
@@ -2278,21 +2640,18 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     final String postId = widget.post['id']?.toString() ?? '';
     setState(() {});
 
-    widget.post['commentList'] = _comments;
-    widget.post['comments'] = _comments.length;
-    widget.onCommentCountChanged?.call(_comments.length);
-    _persistCommentsLocally(postId);
+    await _persistAndNotifyCount(postId);
 
     final commentId = removed['id']?.toString();
     if (commentId != null &&
         !commentId.startsWith('cm_') &&
-        !commentId.startsWith('local_') &&
+        !commentId.startsWith('demo_') &&
         postId.length > 20) {
       try {
         await Supabase.instance.client.from('feed_comments').delete().eq('id', commentId);
         await Supabase.instance.client
             .from('feed_posts')
-            .update({'comments_count': _comments.length})
+            .update({'comments_count': _totalCommentCount})
             .eq('id', postId);
       } catch (e) {
         debugPrint('[FeedCommentsView] Supabase delete error: $e');
@@ -2308,14 +2667,52 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     }
   }
 
-  void _handleReply(String targetUser) {
+  void _handleDeleteReply(int parentIndex, int replyIndex) async {
+    HapticFeedback.mediumImpact();
+    final parent = _comments[parentIndex];
+    final List<Map<String, dynamic>> replies =
+        List<Map<String, dynamic>>.from(parent['replies'] as List? ?? []);
+    if (replyIndex < 0 || replyIndex >= replies.length) return;
+
+    final removedReply = replies.removeAt(replyIndex);
+    parent['replies'] = replies;
+    final String postId = widget.post['id']?.toString() ?? '';
+    setState(() {});
+
+    await _persistAndNotifyCount(postId);
+
+    final replyId = removedReply['id']?.toString();
+    if (replyId != null &&
+        !replyId.startsWith('rp_') &&
+        !replyId.startsWith('demo_') &&
+        postId.length > 20) {
+      try {
+        await Supabase.instance.client.from('feed_comments').delete().eq('id', replyId);
+        await Supabase.instance.client
+            .from('feed_posts')
+            .update({'comments_count': _totalCommentCount})
+            .eq('id', postId);
+      } catch (_) {}
+    }
+
+    if (mounted) {
+      showGlassToast(
+        context,
+        'Balasan telah dipadam',
+        icon: HugeIcons.strokeRoundedDelete02,
+      );
+    }
+  }
+
+  void _handleReply({
+    required String parentCommentId,
+    required String targetUser,
+  }) {
     HapticFeedback.selectionClick();
     setState(() {
+      _replyingToCommentId = parentCommentId;
       _replyingToUser = targetUser;
-      _commentController.text = '@$targetUser ';
-      _commentController.selection = TextSelection.fromPosition(
-        TextPosition(offset: _commentController.text.length),
-      );
+      _expandedCommentIds.add(parentCommentId);
     });
     _commentFocusNode.requestFocus();
   }
@@ -2332,7 +2729,230 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     });
 
     final String postId = widget.post['id']?.toString() ?? '';
-    _persistCommentsLocally(postId);
+    await _persistAndNotifyCount(postId);
+  }
+
+  void _toggleLikeReply(int parentIndex, int replyIndex) async {
+    HapticFeedback.lightImpact();
+    final parent = _comments[parentIndex];
+    final List<Map<String, dynamic>> replies =
+        List<Map<String, dynamic>>.from(parent['replies'] as List? ?? []);
+    if (replyIndex < 0 || replyIndex >= replies.length) return;
+
+    final r = replies[replyIndex];
+    final bool isLiked = r['isLiked'] == true;
+    final int likes = (r['likes'] as num?)?.toInt() ?? 0;
+
+    setState(() {
+      r['isLiked'] = !isLiked;
+      r['likes'] = isLiked ? math.max(0, likes - 1) : likes + 1;
+      parent['replies'] = replies;
+    });
+
+    final String postId = widget.post['id']?.toString() ?? '';
+    await _persistAndNotifyCount(postId);
+  }
+
+  Widget _buildBadgePill({
+    required String text,
+    required Color color,
+    required Color bgColor,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(left: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 9.5,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNestedReplyItem({
+    required Map<String, dynamic> reply,
+    required String parentCommentId,
+    required int parentIndex,
+    required int replyIndex,
+    required String currentUserName,
+    required String shopName,
+    required bool isDark,
+  }) {
+    final String replyUser = reply['user']?.toString() ?? 'Pelanggan';
+    final String replyToUser = reply['replyToUser']?.toString() ?? '';
+    final bool isReplyLiked = reply['isLiked'] == true;
+    final int replyLikes = (reply['likes'] as num?)?.toInt() ?? 0;
+    final bool isMyReply =
+        reply['isMyComment'] == true || replyUser == currentUserName;
+    final bool isCreator = reply['isCreator'] == true ||
+        (shopName.isNotEmpty &&
+            replyUser.toLowerCase().trim() == shopName.toLowerCase().trim());
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildFeedAvatar(
+            name: replyUser,
+            size: 26,
+            imageUrl: reply['avatar']?.toString(),
+            borderColor: isDark ? Colors.white12 : Colors.black12,
+            borderWidth: 1.0,
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // TikTok / Reels Reply Header: Replier ▸ TargetUser
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      replyUser,
+                      style: TextStyle(
+                        color: isDark ? Colors.white70 : const Color(0xFF1E293B),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (isCreator)
+                      _buildBadgePill(
+                        text: 'Pencipta',
+                        color: const Color(0xFFFE2C55),
+                        bgColor: const Color(0xFFFE2C55).withValues(alpha: 0.14),
+                      ),
+                    if (isMyReply)
+                      _buildBadgePill(
+                        text: 'Anda',
+                        color: const Color(0xFF00E5FF),
+                        bgColor: const Color(0xFF00E5FF).withValues(alpha: 0.15),
+                      ),
+                    if (replyToUser.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        child: Icon(
+                          Icons.play_arrow_rounded,
+                          size: 13,
+                          color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                        ),
+                      ),
+                      Text(
+                        replyToUser,
+                        style: TextStyle(
+                          color: isDark ? Colors.white60 : const Color(0xFF475569),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 3),
+                // Reply Text
+                Text(
+                  reply['text']?.toString() ?? '',
+                  style: TextStyle(
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    fontSize: 13,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                // TikTok Action Row: Time · Balas · Padam
+                Row(
+                  children: [
+                    Text(
+                      reply['time']?.toString() ?? 'Baru saja',
+                      style: TextStyle(
+                        color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                        fontSize: 11,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _handleReply(
+                        parentCommentId: parentCommentId,
+                        targetUser: replyUser,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          'Balas',
+                          style: TextStyle(
+                            color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (isMyReply) ...[
+                      const SizedBox(width: 14),
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => _handleDeleteReply(parentIndex, replyIndex),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Text(
+                            'Padam',
+                            style: TextStyle(
+                              color: Colors.red.withValues(alpha: 0.8),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Heart Like Button for Reply
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _toggleLikeReply(parentIndex, replyIndex),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              child: Column(
+                children: [
+                  Icon(
+                    isReplyLiked ? Icons.favorite : Icons.favorite_border_rounded,
+                    size: 15,
+                    color: isReplyLiked
+                        ? const Color(0xFFFE2C55)
+                        : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$replyLikes',
+                    style: TextStyle(
+                      color: isReplyLiked
+                          ? const Color(0xFFFE2C55)
+                          : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -2467,7 +3087,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
           height: 1,
         ),
 
-        // 3. Comments Title Bar
+        // 3. Comments Title Bar (Shows exact total comments + replies matching feed counter)
         Padding(
           padding: const EdgeInsets.fromLTRB(18, 12, 16, 12),
           child: Row(
@@ -2491,7 +3111,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      '${_comments.length}',
+                      '$_totalCommentCount',
                       style: const TextStyle(
                         color: Color(0xFF00E5FF),
                         fontSize: 11.5,
@@ -2527,7 +3147,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
           height: 1,
         ),
 
-        // 4. Comments List
+        // 4. Comments & Nested Replies List (TikTok / Instagram Reels Style)
         Expanded(
           child: _isLoading
               ? const Center(
@@ -2584,157 +3204,259 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                     )
                   : ListView.separated(
                       controller: _scrollController,
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
                       itemCount: _comments.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 14),
+                      separatorBuilder: (_, __) => const SizedBox(height: 16),
                       itemBuilder: (_, idx) {
                         final c = _comments[idx];
+                        final String commentId = c['id']?.toString() ?? 'cm_$idx';
                         final bool isCommentLiked = c['isLiked'] == true;
                         final int commentLikes = (c['likes'] as num?)?.toInt() ?? 0;
                         final String commentUser = c['user']?.toString() ?? 'Pelanggan';
                         final bool isMyComment = c['isMyComment'] == true ||
                             commentUser == currentUserName;
+                        final bool isCreator = c['isCreator'] == true ||
+                            (shopName.isNotEmpty &&
+                                commentUser.toLowerCase().trim() ==
+                                    shopName.toLowerCase().trim());
 
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildFeedAvatar(
-                              name: commentUser,
-                              size: 36,
-                              imageUrl: c['avatar']?.toString(),
-                              borderColor: Colors.white12,
-                              borderWidth: 1.0,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
+                        final List<Map<String, dynamic>> replies =
+                            (c['replies'] as List?)
+                                    ?.map((e) => Map<String, dynamic>.from(e as Map))
+                                    .toList() ??
+                                [];
+                        final bool isExpanded = _expandedCommentIds.contains(commentId);
+                        final bool isBeingRepliedTo = _replyingToCommentId == commentId;
+
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: isBeingRepliedTo
+                              ? const EdgeInsets.symmetric(horizontal: 8, vertical: 6)
+                              : EdgeInsets.zero,
+                          decoration: BoxDecoration(
+                            color: isBeingRepliedTo
+                                ? const Color(0xFF00E5FF).withValues(alpha: 0.06)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Parent Comment Row
+                              Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Text(
-                                        commentUser,
-                                        style: TextStyle(
-                                          color: isDark ? Colors.white70 : const Color(0xFF1E293B),
-                                          fontSize: 12.5,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      if (isMyComment) ...[
-                                        const SizedBox(width: 6),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
-                                            borderRadius: BorderRadius.circular(6),
-                                          ),
-                                          child: const Text(
-                                            'Anda',
-                                            style: TextStyle(
-                                              color: Color(0xFF00E5FF),
-                                              fontSize: 9.5,
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        c['time']?.toString() ?? '',
-                                        style: TextStyle(
-                                          color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ],
+                                  _buildFeedAvatar(
+                                    name: commentUser,
+                                    size: 36,
+                                    imageUrl: c['avatar']?.toString(),
+                                    borderColor: isDark ? Colors.white12 : Colors.black12,
+                                    borderWidth: 1.0,
                                   ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    c['text']?.toString() ?? '',
-                                    style: TextStyle(
-                                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                      fontSize: 13,
-                                      height: 1.35,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      GestureDetector(
-                                        behavior: HitTestBehavior.opaque,
-                                        onTap: () => _handleReply(commentUser),
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(vertical: 2),
-                                          child: Text(
-                                            'Balas',
-                                            style: TextStyle(
-                                              color: isDark ? Colors.white54 : const Color(0xFF64748B),
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      if (isMyComment) ...[
-                                        const SizedBox(width: 12),
-                                        GestureDetector(
-                                          behavior: HitTestBehavior.opaque,
-                                          onTap: () => _handleDeleteComment(idx),
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(vertical: 2),
-                                            child: Text(
-                                              'Padam',
-                                              style: TextStyle(
-                                                color: Colors.red.withValues(alpha: 0.8),
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Flexible(
+                                              child: Text(
+                                                commentUser,
+                                                style: TextStyle(
+                                                  color: isDark ? Colors.white70 : const Color(0xFF1E293B),
+                                                  fontSize: 12.5,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
+                                            if (isCreator)
+                                              _buildBadgePill(
+                                                text: 'Pencipta',
+                                                color: const Color(0xFFFE2C55),
+                                                bgColor: const Color(0xFFFE2C55).withValues(alpha: 0.14),
+                                              ),
+                                            if (isMyComment)
+                                              _buildBadgePill(
+                                                text: 'Anda',
+                                                color: const Color(0xFF00E5FF),
+                                                bgColor: const Color(0xFF00E5FF).withValues(alpha: 0.15),
+                                              ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          c['text']?.toString() ?? '',
+                                          style: TextStyle(
+                                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                            fontSize: 13.5,
+                                            height: 1.35,
                                           ),
                                         ),
+                                        const SizedBox(height: 5),
+                                        // TikTok Meta & Action Row: Time · Balas · Padam
+                                        Row(
+                                          children: [
+                                            Text(
+                                              c['time']?.toString() ?? 'Baru saja',
+                                              style: TextStyle(
+                                                color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                                                fontSize: 11.5,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 16),
+                                            GestureDetector(
+                                              behavior: HitTestBehavior.opaque,
+                                              onTap: () => _handleReply(
+                                                parentCommentId: commentId,
+                                                targetUser: commentUser,
+                                              ),
+                                              child: Padding(
+                                                padding: const EdgeInsets.symmetric(vertical: 2),
+                                                child: Text(
+                                                  'Balas',
+                                                  style: TextStyle(
+                                                    color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                                                    fontSize: 11.5,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            if (isMyComment) ...[
+                                              const SizedBox(width: 16),
+                                              GestureDetector(
+                                                behavior: HitTestBehavior.opaque,
+                                                onTap: () => _handleDeleteComment(idx),
+                                                child: Padding(
+                                                  padding: const EdgeInsets.symmetric(vertical: 2),
+                                                  child: Text(
+                                                    'Padam',
+                                                    style: TextStyle(
+                                                      color: Colors.red.withValues(alpha: 0.8),
+                                                      fontSize: 11.5,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
                                       ],
-                                    ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: () => _toggleLikeComment(idx),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(4),
+                                      child: Column(
+                                        children: [
+                                          Icon(
+                                            isCommentLiked ? Icons.favorite : Icons.favorite_border_rounded,
+                                            size: 17,
+                                            color: isCommentLiked
+                                                ? const Color(0xFFFE2C55)
+                                                : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '$commentLikes',
+                                            style: TextStyle(
+                                              color: isCommentLiked
+                                                  ? const Color(0xFFFE2C55)
+                                                  : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: () => _toggleLikeComment(idx),
-                              child: Padding(
-                                padding: const EdgeInsets.all(4),
-                                child: Column(
-                                  children: [
-                                    Icon(
-                                      isCommentLiked ? Icons.favorite : Icons.favorite_border_rounded,
-                                      size: 16,
-                                      color: isCommentLiked
-                                          ? const Color(0xFFFE2C55)
-                                          : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      '$commentLikes',
-                                      style: TextStyle(
-                                        color: isCommentLiked
-                                            ? const Color(0xFFFE2C55)
-                                            : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
+
+                              // Nested Replies Section directly underneath parent comment (TikTok / Reels style)
+                              if (replies.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 46),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      if (isExpanded)
+                                        ...List.generate(
+                                          replies.length,
+                                          (rIdx) => _buildNestedReplyItem(
+                                            reply: replies[rIdx],
+                                            parentCommentId: commentId,
+                                            parentIndex: idx,
+                                            replyIndex: rIdx,
+                                            currentUserName: currentUserName,
+                                            shopName: shopName,
+                                            isDark: isDark,
+                                          ),
+                                        ),
+                                      // TikTok Expand / Collapse Bar: ── Lihat X balasan ⌄ / ── Sembunyikan ⌃
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 8),
+                                        child: GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
+                                          onTap: () {
+                                            HapticFeedback.selectionClick();
+                                            setState(() {
+                                              if (isExpanded) {
+                                                _expandedCommentIds.remove(commentId);
+                                              } else {
+                                                _expandedCommentIds.add(commentId);
+                                              }
+                                            });
+                                          },
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Container(
+                                                width: 22,
+                                                height: 1.2,
+                                                color: isDark ? Colors.white24 : Colors.black26,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                isExpanded
+                                                    ? 'Sembunyikan'
+                                                    : 'Lihat ${replies.length} balasan',
+                                                style: TextStyle(
+                                                  color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                                                  fontSize: 11.5,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 2),
+                                              Icon(
+                                                isExpanded
+                                                    ? Icons.keyboard_arrow_up_rounded
+                                                    : Icons.keyboard_arrow_down_rounded,
+                                                size: 16,
+                                                color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         );
                       },
                     ),
         ),
 
-        // 5. Sticky Bottom Input Field (Always Active for all users with Reply Indicator & User Avatar)
+        // 5. Sticky Bottom Input Field (TikTok / Reels Reply Banner & Input Bar)
         Container(
           padding: EdgeInsets.fromLTRB(
             14,
@@ -2753,12 +3475,25 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Reply indicator badge (if user clicked 'Balas')
+              // Reply indicator badge (if user clicked 'Balas' on any comment/reply)
               if (_replyingToUser != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.06)
+                        : Colors.black.withValues(alpha: 0.04),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   child: Row(
                     children: [
+                      const Icon(
+                        Icons.subdirectory_arrow_right_rounded,
+                        size: 14,
+                        color: Color(0xFF00E5FF),
+                      ),
+                      const SizedBox(width: 6),
                       Text(
                         'Membalas kepada ',
                         style: TextStyle(
@@ -2766,12 +3501,15 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                           fontSize: 11.5,
                         ),
                       ),
-                      Text(
-                        '@$_replyingToUser',
-                        style: const TextStyle(
-                          color: Color(0xFF00E5FF),
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
+                      Flexible(
+                        child: Text(
+                          '@$_replyingToUser',
+                          style: const TextStyle(
+                            color: Color(0xFF00E5FF),
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       const Spacer(),
@@ -2779,13 +3517,13 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                         behavior: HitTestBehavior.opaque,
                         onTap: () {
                           setState(() {
+                            _replyingToCommentId = null;
                             _replyingToUser = null;
-                            _commentController.clear();
                           });
                         },
                         child: Icon(
                           Icons.close_rounded,
-                          size: 14,
+                          size: 16,
                           color: isDark ? Colors.white54 : const Color(0xFF64748B),
                         ),
                       ),
@@ -2815,7 +3553,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                             : Colors.black.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(
-                          color: _hasInputText
+                          color: _hasInputText || _replyingToUser != null
                               ? const Color(0xFF00E5FF).withValues(alpha: 0.45)
                               : Colors.transparent,
                           width: 1.0,
@@ -2834,7 +3572,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                         decoration: InputDecoration(
                           hintText: _replyingToUser != null
                               ? 'Balas kepada @$_replyingToUser...'
-                              : 'Tulis komen anda...',
+                              : 'Tambah komen...',
                           hintStyle: TextStyle(
                             color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
                             fontSize: 13,
