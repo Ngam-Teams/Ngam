@@ -173,7 +173,13 @@
     "logout_success": "Berjaya log keluar!",
     "language_changed": "Bahasa ditukar kepada {}",
     "ngam_rank": "Pangkat Ngam (Runner)",
-    "new_rating": "Baru"
+    "new_rating": "Baru",
+    "stamp_cards": "Kad Cop Ganjaran (Stamps)",
+    "live_queue": "Tiket Giliran Walk-In (Live Queue)",
+    "check_updates": "Semak Kemas Kini Aplikasi",
+    "guest_user": "Tetamu (Guest)",
+    "guest_subtitle": "Log masuk untuk mengurus pesanan dan ganjaran anda.",
+    "login_register": "Log Masuk / Daftar"
   },
   "wallet": {
     "title": "Dompet & Pembayaran",

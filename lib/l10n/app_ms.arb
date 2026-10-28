@@ -612,5 +612,11 @@
   "storeBookQueue": "Tempah / Giliran",
   "bookingCancelTitle": "Batal Tempahan",
   "bookingDisputeTitle": "Aduan Pertikaian",
-  "bookingRefundNote": "Baki bayaran akan dikreditkan kembali ke Ngam Wallet anda."
+  "bookingRefundNote": "Baki bayaran akan dikreditkan kembali ke Ngam Wallet anda.",
+  "profileStampCards": "Kad Cop Ganjaran (Stamps)",
+  "profileLiveQueue": "Tiket Giliran Walk-In (Live Queue)",
+  "profileCheckUpdates": "Semak Kemas Kini Aplikasi",
+  "profileGuestUser": "Tetamu (Guest)",
+  "profileGuestSubtitle": "Log masuk untuk mengurus pesanan dan ganjaran anda.",
+  "profileLoginRegister": "Log Masuk / Daftar"
 }

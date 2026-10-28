@@ -830,5 +830,11 @@
         "type": "Object"
       }
     }
-  }
+  },
+  "profileStampCards": "Reward Stamp Cards",
+  "profileLiveQueue": "Walk-In Queue Ticket (Live Queue)",
+  "profileCheckUpdates": "Check for App Updates",
+  "profileGuestUser": "Guest User",
+  "profileGuestSubtitle": "Sign in to manage your bookings and rewards.",
+  "profileLoginRegister": "Sign In / Register"
 }

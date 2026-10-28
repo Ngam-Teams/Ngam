@@ -173,7 +173,13 @@
     "logout_success": "Successfully logged out!",
     "language_changed": "Language changed to {}",
     "ngam_rank": "Ngam Rank (Runner)",
-    "new_rating": "New"
+    "new_rating": "New",
+    "stamp_cards": "Reward Stamp Cards",
+    "live_queue": "Walk-In Queue Ticket (Live Queue)",
+    "check_updates": "Check for App Updates",
+    "guest_user": "Guest User",
+    "guest_subtitle": "Sign in to manage your bookings and rewards.",
+    "login_register": "Sign In / Register"
   },
   "wallet": {
     "title": "Wallet & Payments",
