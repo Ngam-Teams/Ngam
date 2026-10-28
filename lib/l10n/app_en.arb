@@ -836,5 +836,8 @@
   "profileCheckUpdates": "Check for App Updates",
   "profileGuestUser": "Guest User",
   "profileGuestSubtitle": "Sign in to manage your bookings and rewards.",
-  "profileLoginRegister": "Sign In / Register"
+  "profileLoginRegister": "Sign In / Register",
+  "profileSaved": "Saved",
+  "profileSavedShops": "Saved Shops",
+  "profileSavedPosts": "Saved Posts"
 }

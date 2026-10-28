@@ -618,5 +618,8 @@
   "profileCheckUpdates": "Semak Kemas Kini Aplikasi",
   "profileGuestUser": "Tetamu (Guest)",
   "profileGuestSubtitle": "Log masuk untuk mengurus pesanan dan ganjaran anda.",
-  "profileLoginRegister": "Log Masuk / Daftar"
+  "profileLoginRegister": "Log Masuk / Daftar",
+  "profileSaved": "Disimpan",
+  "profileSavedShops": "Kedai Disimpan",
+  "profileSavedPosts": "Hantaran Disimpan"
 }

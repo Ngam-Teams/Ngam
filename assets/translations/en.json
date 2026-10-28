@@ -179,7 +179,14 @@
     "check_updates": "Check for App Updates",
     "guest_user": "Guest User",
     "guest_subtitle": "Sign in to manage your bookings and rewards.",
-    "login_register": "Sign In / Register"
+    "login_register": "Sign In / Register",
+    "saved": "Saved",
+    "saved_shops": "Saved Shops",
+    "saved_posts": "Saved Posts",
+    "no_saved_shops": "No saved shops yet",
+    "no_saved_shops_desc": "Tap the bookmark icon on any shop to save it here for fast re-booking.",
+    "no_saved_posts": "No saved posts yet",
+    "no_saved_posts_desc": "Bookmark interesting posts or promos from Ngam Feed to view them anytime."
   },
   "wallet": {
     "title": "Wallet & Payments",

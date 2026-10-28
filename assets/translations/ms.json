@@ -179,7 +179,14 @@
     "check_updates": "Semak Kemas Kini Aplikasi",
     "guest_user": "Tetamu (Guest)",
     "guest_subtitle": "Log masuk untuk mengurus pesanan dan ganjaran anda.",
-    "login_register": "Log Masuk / Daftar"
+    "login_register": "Log Masuk / Daftar",
+    "saved": "Disimpan",
+    "saved_shops": "Kedai Disimpan",
+    "saved_posts": "Hantaran Disimpan",
+    "no_saved_shops": "Belum ada kedai disimpan",
+    "no_saved_shops_desc": "Ketik ikon penanda buku pada mana-mana kedai untuk simpan di sini dan buat tempahan pantas.",
+    "no_saved_posts": "Belum ada hantaran disimpan",
+    "no_saved_posts_desc": "Tandakan hantaran atau tawaran promosi menarik dari Ngam Feed untuk tonton semula pada bila-bila masa."
   },
   "wallet": {
     "title": "Dompet & Pembayaran",

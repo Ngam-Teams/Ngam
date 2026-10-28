@@ -16,6 +16,7 @@ import 'support_screens.dart';
 import 'about_screens.dart';
 import 'privacy_security_screen.dart';
 import 'wallet_screen.dart';
+import 'saved_screen.dart';
 import 'my_stamp_cards_screen.dart';
 import 'my_queue_ticket_screen.dart';
 import '../../services/app_update_service.dart';
@@ -266,6 +267,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => const WalletScreen(),
+                                    ),
+                                  ),
+                                ),
+                                _buildDivider(isDark),
+                                _buildSettingsTile(
+                                  isDark,
+                                  HugeIcons.strokeRoundedBookmark02,
+                                  "profile.saved".tr(),
+                                  trailing: _buildArrow(),
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const SavedScreen(),
                                     ),
                                   ),
                                 ),

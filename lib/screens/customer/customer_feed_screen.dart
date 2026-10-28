@@ -15,6 +15,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 import '../../widgets/glass_toast.dart';
 import '../../widgets/customer_desktop_sidebar.dart';
+import '../../services/saved_service.dart';
 import '../explore/business_store_view.dart';
 
 // ---------------------------------------------------------------------------
@@ -487,7 +488,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             'ctaText': ctaText,
             'likes': (row['likes_count'] as num?)?.toInt() ?? 0,
             'isLiked': false,
-            'isSaved': false,
+            'isSaved': SavedService.isPostSaved(row['id']?.toString()),
             'isFollowed': false,
             'comments': (row['comments_count'] as num?)?.toInt() ?? 0,
             'commentList': <Map<String, dynamic>>[],
@@ -779,18 +780,20 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     );
   }
 
-  void _toggleSave(Map<String, dynamic> post) {
+  void _toggleSave(Map<String, dynamic> post) async {
+    final nowSaved = await SavedService.toggleSavePost(post);
     setState(() {
-      final isSaved = post['isSaved'] as bool;
-      post['isSaved'] = !isSaved;
+      post['isSaved'] = nowSaved;
     });
-    showGlassToast(
-      context,
-      post['isSaved']
-          ? 'Disimpan ke koleksi simpanan anda'
-          : 'Dikeluarkan dari simpanan',
-      icon: HugeIcons.strokeRoundedBookmark02,
-    );
+    if (mounted) {
+      showGlassToast(
+        context,
+        nowSaved
+            ? 'Hantaran disimpan ke koleksi anda'
+            : 'Hantaran dikeluarkan dari simpanan',
+        icon: HugeIcons.strokeRoundedBookmark02,
+      );
+    }
   }
 
   void _sharePost(Map<String, dynamic> post) {
@@ -831,6 +834,21 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       autofocus: true,
       onKeyEvent: (node, event) {
         if (event is KeyDownEvent) {
+          // Abaikan semua pintasan papan kekunci jika pengguna sedang menaip (TextField / EditableText)
+          final primaryFocus = FocusManager.instance.primaryFocus;
+          if (primaryFocus != null && primaryFocus.context != null) {
+            final isEditable = primaryFocus.context!.findAncestorWidgetOfExactType<EditableText>() != null;
+            if (isEditable) {
+              return KeyEventResult.ignored;
+            }
+          }
+          // Jika modal ulasan atau panel komen dibuka, abaikan kekunci huruf seperti 'M'
+          if (_isModalOrRouteOpen || _desktopCommentsPost != null) {
+            if (event.logicalKey == LogicalKeyboardKey.keyM) {
+              return KeyEventResult.ignored;
+            }
+          }
+
           if (event.logicalKey == LogicalKeyboardKey.arrowDown ||
               event.logicalKey == LogicalKeyboardKey.pageDown) {
             if (_currentPage < _posts.length - 1) {

@@ -19,6 +19,7 @@ import '../explore/my_bookings_view.dart';
 import '../explore/qr_scanner_screen.dart';
 import '../explore/store_route_loader.dart';
 import '../shared/my_queue_ticket_screen.dart';
+import '../shared/saved_screen.dart';
 import 'package:flutter/services.dart';
 
 // =============================================================================
@@ -912,6 +913,25 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                     padding: const EdgeInsets.all(9),
                     child: HugeIcon(
                       icon: HugeIcons.strokeRoundedQrCode01,
+                      color: isDark ? Colors.white70 : const Color(0xFF1E293B),
+                      size: 20,
+                    ),
+                  ),
+                ),
+
+                // Saved (Disimpan) Bookmark Button
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SavedScreen()),
+                    );
+                  },
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    padding: const EdgeInsets.all(9),
+                    child: HugeIcon(
+                      icon: HugeIcons.strokeRoundedBookmark02,
                       color: isDark ? Colors.white70 : const Color(0xFF1E293B),
                       size: 20,
                     ),

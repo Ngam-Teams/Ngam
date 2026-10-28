@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'bookings_view.dart'; //  Make sure this points to your Bookings checkout screen!
 import '../../widgets/glass_toast.dart';
+import '../../services/saved_service.dart';
 // Make sure this matches your Auth Screen file name!
 
 class ShopDetailScreen extends StatelessWidget {
@@ -68,7 +69,31 @@ class ShopDetailScreen extends StatelessWidget {
                   actions: [
                     Padding(
                       padding: const EdgeInsets.only(right: 16.0),
-                      child: _buildGlassIconButton(HugeIcons.strokeRoundedFavourite, context, isDark),
+                      child: ValueListenableBuilder<List<Map<String, dynamic>>>(
+                        valueListenable: SavedService.savedShopsNotifier,
+                        builder: (context, _, __) {
+                          final String shopId = (shop['id'] ?? shop['shopId'] ?? '').toString();
+                          final bool isSaved = SavedService.isShopSaved(shopId);
+                          return _buildGlassIconButton(
+                            isSaved ? Icons.bookmark_rounded : HugeIcons.strokeRoundedBookmark02,
+                            context,
+                            isDark,
+                            iconColor: isSaved ? const Color(0xFFFBBF24) : null,
+                            onTap: () async {
+                              final nowSaved = await SavedService.toggleSaveShop(shop);
+                              if (context.mounted) {
+                                showGlassToast(
+                                  context,
+                                  nowSaved
+                                      ? 'Kedai disimpan ke koleksi anda'
+                                      : 'Kedai dikeluarkan dari simpanan',
+                                  icon: HugeIcons.strokeRoundedBookmark02,
+                                );
+                              }
+                            },
+                          );
+                        },
+                      ),
                     ),
                   ],
                 ),
@@ -225,20 +250,37 @@ class ShopDetailScreen extends StatelessWidget {
 
   // --- UI HELPERS ---
 
-  Widget _buildGlassIconButton(dynamic icon, BuildContext context, bool isDark) {
+  Widget _buildGlassIconButton(
+    dynamic icon,
+    BuildContext context,
+    bool isDark, {
+    VoidCallback? onTap,
+    Color? iconColor,
+  }) {
     return GestureDetector(
-      onTap: () => Navigator.pop(context),
+      onTap: onTap ?? () => Navigator.pop(context),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(100),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Container(
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isDark ? Colors.black.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.5),
               border: Border.all(color: Colors.white.withValues(alpha: isDark ? 0.1 : 0.5), width: 1.5),
             ),
-            child: HugeIcon(icon: icon, color: isDark ? Colors.white : Colors.black87, size: 20),
+            child: icon is IconData
+                ? Icon(
+                    icon,
+                    color: iconColor ?? (isDark ? Colors.white : Colors.black87),
+                    size: 20,
+                  )
+                : HugeIcon(
+                    icon: icon,
+                    color: iconColor ?? (isDark ? Colors.white : Colors.black87),
+                    size: 20,
+                  ),
           ),
         ),
       ),
