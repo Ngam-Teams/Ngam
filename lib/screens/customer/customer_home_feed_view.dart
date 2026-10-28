@@ -1176,140 +1176,161 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
 
   // --- WIDGET 4: KATEGORI PILIHAN GRID ---
   Widget _buildQuickIntentGrid(bool isDark) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double width = constraints.maxWidth;
+        // On desktop / wide displays (>= 580), display all 6 categories in 1 sleek, balanced row!
+        // On mobile (< 580), display 3 columns (2 rows of 3).
+        final int crossAxisCount = width >= 580 ? 6 : 3;
+        final double spacing = width >= 580 ? 8.0 : 10.0;
+        final double itemWidth = (width - ((crossAxisCount - 1) * spacing)) / crossAxisCount;
+
+        // Keep the card compact and proportional (~84-88px height) on both mobile and desktop
+        final double targetHeight = width >= 580 ? 86.0 : 82.0;
+        final double childAspectRatio = (itemWidth / targetHeight).clamp(1.10, 1.45);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Kategori Pilihan',
-              style: TextStyle(
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.3,
-              ),
-            ),
-            GestureDetector(
-              onTap: () => widget.onSwitchTab?.call(1),
-              child: const Text(
-                'Semua Kategori',
-                style: TextStyle(
-                  color: Color(0xFF2196F3),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Kategori Pilihan',
+                  style: TextStyle(
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.3,
+                  ),
                 ),
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () => widget.onSwitchTab?.call(1),
+                    child: const Text(
+                      'Semua Kategori',
+                      style: TextStyle(
+                        color: Color(0xFF2196F3),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _quickIntents.length,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: spacing,
+                mainAxisSpacing: spacing,
+                childAspectRatio: childAspectRatio,
               ),
+              itemBuilder: (context, index) {
+                final cat = _quickIntents[index];
+                final Color catColor = cat['color'];
+
+                return MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () {
+                      // Switch to Discover tab (tab 1)
+                      widget.onSwitchTab?.call(1);
+                    },
+                    child: GlassContainer(
+                      useOwnLayer: true,
+                      quality: GlassQuality.standard,
+                      shape: const LiquidRoundedSuperellipse(borderRadius: 16.0),
+                      settings: LiquidGlassSettings(
+                        thickness: 0.1,
+                        blur: 2.0,
+                        lightIntensity: isDark ? 0.1 : 0.2,
+                        glassColor: Colors.transparent,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          color: isDark
+                              ? const Color(0xFF161624).withValues(alpha: 0.85)
+                              : Colors.white.withValues(alpha: 0.85),
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.black.withValues(alpha: 0.06),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: catColor.withValues(alpha: isDark ? 0.18 : 0.12),
+                                border: Border.all(
+                                  color: catColor.withValues(alpha: isDark ? 0.35 : 0.25),
+                                  width: 1.0,
+                                ),
+                              ),
+                              child: Center(
+                                child: HugeIcon(
+                                  icon: cat['icon'],
+                                  color: catColor,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  cat['title'],
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : Colors.black87,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              cat['count'],
+                              style: TextStyle(
+                                color: isDark ? Colors.white38 : Colors.grey.shade500,
+                                fontSize: 9.0,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ],
-        ),
-        const SizedBox(height: 12),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _quickIntents.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: 1.22,
-          ),
-          itemBuilder: (context, index) {
-            final cat = _quickIntents[index];
-            final Color catColor = cat['color'];
-
-            return GestureDetector(
-              onTap: () {
-                // Switch to Discover tab (tab 1)
-                widget.onSwitchTab?.call(1);
-              },
-              child: GlassContainer(
-                useOwnLayer: true,
-                quality: GlassQuality.standard,
-                shape: const LiquidRoundedSuperellipse(borderRadius: 18.0),
-                settings: LiquidGlassSettings(
-                  thickness: 0.1,
-                  blur: 2.0,
-                  lightIntensity: isDark ? 0.1 : 0.2,
-                  glassColor: Colors.transparent,
-                ),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
-                    color: isDark
-                        ? const Color(0xFF161624).withValues(alpha: 0.85)
-                        : Colors.white.withValues(alpha: 0.85),
-                    border: Border.all(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.08)
-                          : Colors.black.withValues(alpha: 0.06),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: catColor.withValues(alpha: isDark ? 0.18 : 0.12),
-                          border: Border.all(
-                            color: catColor.withValues(alpha: isDark ? 0.35 : 0.25),
-                            width: 1.0,
-                          ),
-                        ),
-                        child: Center(
-                          child: HugeIcon(
-                            icon: cat['icon'],
-                            color: catColor,
-                            size: 19,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            cat['title'],
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            style: TextStyle(
-                              color: isDark ? Colors.white : Colors.black87,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        cat['count'],
-                        style: TextStyle(
-                          color: isDark ? Colors.white38 : Colors.grey.shade500,
-                          fontSize: 9.0,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ],
+        );
+      },
     );
   }
 

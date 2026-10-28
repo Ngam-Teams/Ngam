@@ -127,7 +127,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               Text(
                                 user != null
                                     ? ((user.userName?.isNotEmpty ?? false) ? user.userName! : 'User')
-                                    : 'Tetamu (Guest)',
+                                    : 'profile.guest_user'.tr(),
                                 style: GoogleFonts.outfit(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w900,
@@ -166,7 +166,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               Text(
                                 user != null
                                     ? (user.userEmail ?? '')
-                                    : 'Log masuk untuk mengurus pesanan dan ganjaran anda.',
+                                    : 'profile.guest_subtitle'.tr(),
                                 style: TextStyle(
                                   color: isDark ? Colors.white70 : Colors.grey,
                                   fontSize: 14,
@@ -184,9 +184,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     color: Colors.white,
                                     size: 18,
                                   ),
-                                  label: const Text(
-                                    'Log Masuk / Daftar',
-                                    style: TextStyle(
+                                  label: Text(
+                                    'profile.login_register'.tr(),
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 14,
@@ -273,7 +273,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 _buildSettingsTile(
                                   isDark,
                                   HugeIcons.strokeRoundedLoyaltyCard,
-                                  "Kad Cop Ganjaran (Stamps)",
+                                  "profile.stamp_cards".tr(),
                                   trailing: _buildArrow(),
                                   onTap: () => Navigator.push(
                                     context,
@@ -286,7 +286,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 _buildSettingsTile(
                                   isDark,
                                   HugeIcons.strokeRoundedTicket01,
-                                  "Tiket Giliran Walk-In (Live Queue)",
+                                  "profile.live_queue".tr(),
                                   trailing: _buildArrow(),
                                   onTap: () => Navigator.push(
                                     context,
@@ -441,7 +441,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               _buildSettingsTile(
                                 isDark,
                                 HugeIcons.strokeRoundedCloudDownload,
-                                'Semak Kemas Kini Aplikasi',
+                                'profile.check_updates'.tr(),
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
