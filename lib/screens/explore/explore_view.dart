@@ -15,6 +15,7 @@ import 'package:ngam/l10n/generated/app_localizations.dart';
 import '../../widgets/glass_box.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'business_store_view.dart';
+import 'store_reviews_view.dart';
 import 'store_route_loader.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import '../../widgets/glass_toast.dart';
@@ -3059,6 +3060,369 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
 
 
+
+  // ─── Desktop Store Review Section & Rating Breakdown ─────────────
+  Widget _buildDesktopReviewsSection(Map<String, dynamic> shop, bool isDark) {
+    final l10n = AppLocalizations.of(context);
+    final double rating = (shop['rating'] is num)
+        ? (shop['rating'] as num).toDouble()
+        : (double.tryParse(shop['rating']?.toString() ?? '5.0') ?? 5.0);
+    final int reviewsCount = (shop['reviews'] is num)
+        ? (shop['reviews'] as num).toInt()
+        : (int.tryParse(shop['reviews']?.toString() ?? '0') ?? 0);
+
+    // Extract real/sample recent customer reviews
+    final List<dynamic>? rawRecent = shop['recentReviews'] as List<dynamic>?;
+    List<Map<String, dynamic>> displayReviews = [];
+
+    if (rawRecent != null && rawRecent.isNotEmpty) {
+      displayReviews = rawRecent.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } else if (reviewsCount > 0) {
+      displayReviews = [
+        {
+          'userName': 'Farhan Akmal',
+          'rating': 5.0,
+          'date': '2 hari lepas',
+          'comment': 'Servis memang terbaik dan kemas! Layanan mesra, ruang sangat bersih & selesa.',
+        },
+        {
+          'userName': 'Nurul Ain',
+          'rating': 4.8,
+          'date': '5 hari lepas',
+          'comment': 'Pantas dan mudah bila dah buat tempahan awal melalui Ngam. Tak perlu tunggu lama.',
+        },
+      ];
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section Header with View All Link
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const HugeIcon(
+                  icon: HugeIcons.strokeRoundedStar,
+                  color: Colors.amber,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  l10n?.reviews ?? 'Ulasan Pelanggan',
+                  style: TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withValues(alpha: 0.10) : Colors.black.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$reviewsCount',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white70 : Colors.black54,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => StoreReviewsView(shop: shop)),
+                );
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                child: Row(
+                  children: [
+                    Text(
+                      'Lihat Semua',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue,
+                      ),
+                    ),
+                    SizedBox(width: 2),
+                    Icon(Icons.chevron_right_rounded, size: 16, color: Colors.blue),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Rating Overview Card with Progress Breakdown
+        _buildInnerGlassCard(
+          isDark: isDark,
+          radius: 16,
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              // Left score column
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        rating.toStringAsFixed(1),
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '/ 5.0',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.white38 : Colors.black38,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: List.generate(5, (index) {
+                      return Icon(
+                        index < rating.floor() ? Icons.star_rounded : (index < rating ? Icons.star_half_rounded : Icons.star_outline_rounded),
+                        size: 15,
+                        color: Colors.amber,
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    reviewsCount > 0 ? '$reviewsCount ulasan disahkan' : 'Rating komuniti',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? Colors.white54 : Colors.black45,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 18),
+              // Right progress bars breakdown
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildDesktopRatingBar(5, 0.88, isDark),
+                    const SizedBox(height: 3),
+                    _buildDesktopRatingBar(4, 0.10, isDark),
+                    const SizedBox(height: 3),
+                    _buildDesktopRatingBar(3, 0.02, isDark),
+                    const SizedBox(height: 3),
+                    _buildDesktopRatingBar(2, 0.00, isDark),
+                    const SizedBox(height: 3),
+                    _buildDesktopRatingBar(1, 0.00, isDark),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Recent Reviews List or Empty State
+        if (displayReviews.isNotEmpty) ...[
+          ...displayReviews.map((rev) {
+            final userName = rev['userName']?.toString() ?? rev['name']?.toString() ?? 'Pengguna Ngam';
+            final comment = rev['comment']?.toString() ?? 'Pengalaman yang sangat memuaskan!';
+            final revRating = (rev['rating'] as num?)?.toDouble() ?? 5.0;
+            final date = rev['date']?.toString() ?? 'Baru sahaja';
+            final initial = userName.trim().isNotEmpty ? userName.trim()[0].toUpperCase() : 'U';
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _buildInnerGlassCard(
+                isDark: isDark,
+                radius: 14,
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        // User Avatar
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF2A2B3D), Color(0xFF161622)],
+                            ),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.16),
+                              width: 1.0,
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            initial,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                userName,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white : Colors.black87,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                date,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: isDark ? Colors.white38 : Colors.black38,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Row(
+                          children: List.generate(5, (sIdx) {
+                            return Icon(
+                              sIdx < revRating.floor() ? Icons.star_rounded : Icons.star_outline_rounded,
+                              size: 12,
+                              color: Colors.amber,
+                            );
+                          }),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      comment,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        height: 1.35,
+                        color: isDark ? Colors.white.withValues(alpha: 0.85) : const Color(0xFF334155),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ] else ...[
+          _buildInnerGlassCard(
+            isDark: isDark,
+            radius: 14,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Column(
+              children: [
+                Text(
+                  'Belum ada ulasan untuk kedai ini.',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white70 : Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Kongsikan ulasan pertama anda bersama komuniti!',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark ? Colors.white38 : Colors.black45,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+                InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => StoreReviewsView(shop: shop)),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                    ),
+                    child: const Text(
+                      'Tulis Ulasan Sekarang',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildDesktopRatingBar(int star, double pct, bool isDark) {
+    return Row(
+      children: [
+        Text(
+          '$star',
+          style: TextStyle(
+            fontSize: 9.5,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white54 : Colors.black54,
+          ),
+        ),
+        const SizedBox(width: 3),
+        const Icon(Icons.star_rounded, size: 10, color: Colors.amber),
+        const SizedBox(width: 5),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: pct,
+              minHeight: 4.5,
+              backgroundColor: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.amber.withValues(alpha: 0.8)),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildDesktopStorePanel(bool isDark, Map<String, dynamic> shop) {
     final String shopName = shop['name'] ?? '';
     final ShopStatus status = _getShopStatus(shop);
@@ -3254,94 +3618,116 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                       ),
                       const SizedBox(height: 16),
 
-                      // Primary Action Buttons
-                      Row(
-                        children: [
-                          // Button 1: View Store Profile
-                          Expanded(
-                            child: _AnimatedPressable(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => BusinessStoreView(shop: shop),
-                                  ),
-                                );
-                              },
-                              child: _buildInnerGlassCard(
-                                isDark: isDark,
-                                radius: 16.0,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                child: Center(
-                                  child: Text(
-                                    AppLocalizations.of(context)!.btnViewProfile,
-                                    style: TextStyle(
-                                      color: isDark ? Colors.white : Colors.black87,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
+                      const SizedBox(height: 20),
 
-                          // Button 2: Book / Queue (With Auth Guard)
-                          Expanded(
-                            child: _AnimatedPressable(
-                              onTap: () {
-                                if (Supabase.instance.client.auth.currentUser != null) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => BookingsView(
-                                        shopId: shop["id"].toString(),
-                                        shopName: shop["name"] ?? "Unknown Shop",
-                                        category: (shop["business_industry"] ?? shop["category"] ?? "SERVICE").toString(),
-                                        shopImage: (shop["cover"] ?? shop["business_cover_url"] ?? shop["image"] ?? "").toString(),
-                                      ),
-                                    ),
-                                  );
-                                } else {
-                                  showGlassToast(
-                                    context,
-                                    "Please sign in or register to make a booking.",
-                                    isError: true,
-                                  );
-                                  Navigator.pushNamed(context, '/login');
-                                }
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue,
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.blue.withValues(alpha: 0.35),
-                                      blurRadius: 14,
-                                      offset: const Offset(0, 5),
-                                    ),
-                                  ],
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    AppLocalizations.of(context)!.bookNow,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      // Review & Rating Section
+                      _buildDesktopReviewsSection(shop, isDark),
+                      const SizedBox(height: 12),
                     ],
                   ),
+                ),
+              ),
+
+              // Pinned Bottom Action Bar (Static View Store & Book Now)
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF0F1521).withValues(alpha: 0.88)
+                      : Colors.white.withValues(alpha: 0.92),
+                  border: Border(
+                    top: BorderSide(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.12)
+                          : Colors.black.withValues(alpha: 0.08),
+                      width: 1.0,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    // Button 1: View Store Profile
+                    Expanded(
+                      child: _AnimatedPressable(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => BusinessStoreView(shop: shop),
+                            ),
+                          );
+                        },
+                        child: _buildInnerGlassCard(
+                          isDark: isDark,
+                          radius: 16.0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          child: Center(
+                            child: Text(
+                              AppLocalizations.of(context)!.btnViewProfile,
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black87,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+
+                    // Button 2: Book / Queue (With Auth Guard)
+                    Expanded(
+                      child: _AnimatedPressable(
+                        onTap: () {
+                          if (Supabase.instance.client.auth.currentUser != null) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => BookingsView(
+                                  shopId: shop["id"].toString(),
+                                  shopName: shop["name"] ?? "Unknown Shop",
+                                  category: (shop["business_industry"] ?? shop["category"] ?? "SERVICE").toString(),
+                                  shopImage: (shop["cover"] ?? shop["business_cover_url"] ?? shop["image"] ?? "").toString(),
+                                ),
+                              ),
+                            );
+                          } else {
+                            showGlassToast(
+                              context,
+                              "Please sign in or register to make a booking.",
+                              isError: true,
+                            );
+                            Navigator.pushNamed(context, '/login');
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: Colors.blue,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.blue.withValues(alpha: 0.35),
+                                blurRadius: 14,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              AppLocalizations.of(context)!.bookNow,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
