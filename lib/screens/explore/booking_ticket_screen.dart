@@ -59,22 +59,7 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
     _fetchShopPhone();
 
     //  Realtime Supabase status sync with merchant
-    if (widget.bookingDbId != null && widget.bookingDbId!.isNotEmpty) {
-      _statusSubscription = Supabase.instance.client
-          .from('bookings')
-          .stream(primaryKey: ['id'])
-          .eq('id', widget.bookingDbId!)
-          .listen((rows) {
-        if (rows.isNotEmpty && mounted) {
-          final dbStatus = rows.first['status'] as String?;
-          if (dbStatus != null && dbStatus != _currentStatus) {
-            setState(() {
-              _currentStatus = dbStatus;
-            });
-          }
-        }
-      });
-    }
+    _initRealtimeBookingStatusSync();
 
     //  ONLY run the timer if the booking is NOT cancelled!
     if (!widget.isCancelled && _currentStatus != 'cancelled') {
@@ -85,6 +70,46 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
         _updateTimeLeft();
       });
     }
+  }
+
+  String? _resolvedBookingDbId;
+
+  Future<void> _initRealtimeBookingStatusSync() async {
+    _resolvedBookingDbId = widget.bookingDbId;
+    if ((_resolvedBookingDbId == null || _resolvedBookingDbId!.isEmpty) &&
+        widget.bookingId.isNotEmpty) {
+      try {
+        final found = await Supabase.instance.client
+            .from('bookings')
+            .select('id, status')
+            .eq('booking_metadata->>booking_id', widget.bookingId)
+            .maybeSingle();
+        if (found != null && mounted) {
+          _resolvedBookingDbId = found['id']?.toString();
+          final dbStatus = found['status'] as String?;
+          if (dbStatus != null && dbStatus != _currentStatus) {
+            setState(() => _currentStatus = dbStatus);
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (!mounted || _resolvedBookingDbId == null || _resolvedBookingDbId!.isEmpty) return;
+
+    _statusSubscription = Supabase.instance.client
+        .from('bookings')
+        .stream(primaryKey: ['id'])
+        .eq('id', _resolvedBookingDbId!)
+        .listen((rows) {
+      if (rows.isNotEmpty && mounted) {
+        final dbStatus = rows.first['status'] as String?;
+        if (dbStatus != null && dbStatus != _currentStatus) {
+          setState(() {
+            _currentStatus = dbStatus;
+          });
+        }
+      }
+    }, onError: (_) {});
   }
 
   @override
@@ -486,26 +511,47 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
   Future<void> _executeCancellation(String reason) async {
     try {
       final user = Supabase.instance.client.auth.currentUser;
-      final targetId = widget.bookingDbId;
+      final targetId = _resolvedBookingDbId ?? widget.bookingDbId;
       double price = double.tryParse(widget.totalPrice.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+
+      Map<String, dynamic> existingMeta = {};
+      try {
+        final row = (targetId != null && targetId.isNotEmpty)
+            ? await Supabase.instance.client
+                .from('bookings')
+                .select('booking_metadata')
+                .eq('id', targetId)
+                .maybeSingle()
+            : await Supabase.instance.client
+                .from('bookings')
+                .select('booking_metadata')
+                .eq('booking_metadata->>booking_id', widget.bookingId)
+                .maybeSingle();
+        if (row != null && row['booking_metadata'] is Map) {
+          existingMeta = Map<String, dynamic>.from(row['booking_metadata'] as Map);
+        }
+      } catch (_) {}
+
+      final updatedMeta = {
+        ...existingMeta,
+        'booking_id': existingMeta['booking_id'] ?? widget.bookingId,
+        'shop_name': existingMeta['shop_name'] ?? widget.shopName,
+        'provider_name': existingMeta['provider_name'] ?? widget.providerName,
+        'total_price': existingMeta['total_price'] ?? widget.totalPrice,
+        'cancellation_reason': reason,
+        'cancelled_at': DateTime.now().toIso8601String(),
+        'cancelled_by': user?.id,
+      };
 
       if (targetId != null && targetId.isNotEmpty) {
         await Supabase.instance.client.from('bookings').update({
           'status': 'cancelled',
-          'booking_metadata': {
-            'cancellation_reason': reason,
-            'cancelled_at': DateTime.now().toIso8601String(),
-            'cancelled_by': user?.id,
-          }
+          'booking_metadata': updatedMeta,
         }).eq('id', targetId);
       } else {
         await Supabase.instance.client.from('bookings').update({
           'status': 'cancelled',
-          'booking_metadata': {
-            'cancellation_reason': reason,
-            'cancelled_at': DateTime.now().toIso8601String(),
-            'cancelled_by': user?.id,
-          }
+          'booking_metadata': updatedMeta,
         }).eq('booking_metadata->>booking_id', widget.bookingId);
       }
 
@@ -1065,12 +1111,33 @@ Disahkan melalui aplikasi *Ngam*.
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(14),
-                                child: Image.network(
-                                  widget.shopImage,
-                                  width: 56,
-                                  height: 56,
-                                  fit: BoxFit.cover,
-                                ),
+                                child: widget.shopImage.trim().isNotEmpty
+                                    ? Image.network(
+                                        widget.shopImage,
+                                        width: 56,
+                                        height: 56,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Container(
+                                          width: 56,
+                                          height: 56,
+                                          color: Colors.blueAccent.withValues(alpha: 0.15),
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            widget.shopName.isNotEmpty ? widget.shopName[0].toUpperCase() : 'N',
+                                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.blueAccent),
+                                          ),
+                                        ),
+                                      )
+                                    : Container(
+                                        width: 56,
+                                        height: 56,
+                                        color: Colors.blueAccent.withValues(alpha: 0.15),
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          widget.shopName.isNotEmpty ? widget.shopName[0].toUpperCase() : 'N',
+                                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.blueAccent),
+                                        ),
+                                      ),
                               ),
                               const SizedBox(width: 16),
                               Expanded(

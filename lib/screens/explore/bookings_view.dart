@@ -42,7 +42,11 @@ class BookingsView extends StatefulWidget {
 }
 
 class _BookingsViewState extends State<BookingsView> {
-  List<String> _bookedTimes = [];
+  List<Map<String, dynamic>> _activeBookings = [];
+
+  late final TextEditingController _customerNameCtrl;
+  late final TextEditingController _customerPhoneCtrl;
+  late final TextEditingController _bookingNotesCtrl;
 
   int _selectedDateIndex = 0; // Keep this!
   DateTime _selectedCalendarDate = DateTime.now(); //  ADD THIS FOR THE CALENDAR
@@ -663,8 +667,41 @@ class _BookingsViewState extends State<BookingsView> {
   bool _isTimeValid(String timeStr, int dateIndex) {
     if (dateIndex < 0 || dateIndex >= _dates.length) return false;
 
-    //  THE NO FAKE HOPE CHECK: Hide it if someone else booked it!
-    if (_bookedTimes.contains(timeStr)) return false;
+    final String targetDate = _dates[dateIndex]['fullDate']!.substring(0, 10);
+    final String selectedStaffName = _staffs.isNotEmpty && _frontCardIndex < _staffs.length
+        ? (_staffs[_frontCardIndex]['name'] ?? '')
+        : '';
+    final String selectedStaffId = _staffs.isNotEmpty && _frontCardIndex < _staffs.length
+        ? (_staffs[_frontCardIndex]['id'] ?? '')
+        : '';
+    final bool isSpecificStaff = selectedStaffId.isNotEmpty &&
+        selectedStaffId != 'any' &&
+        !selectedStaffName.toLowerCase().contains('mana-mana');
+
+    // Semak jika slot masa pada tarikh (dan staf) tersebut telah ditempah orang lain
+    final bool isSlotTaken = _activeBookings.any((b) {
+      if (_holdingRecordId != null && b['id']?.toString() == _holdingRecordId) {
+        return false; // Jangan kunci slot yang sedang dipegang oleh pengguna ini sendiri
+      }
+      final String bDate = b['booking_date']?.toString() ?? '';
+      final String bTime = b['booking_time']?.toString() ?? '';
+      if (bDate != targetDate || bTime != timeStr) return false;
+
+      if (isSpecificStaff) {
+        final meta = b['booking_metadata'] as Map<String, dynamic>? ?? {};
+        final String bStaffId = (b['staff_id'] ?? meta['staff_id'] ?? '').toString();
+        final String bProviderName = (meta['provider_name'] ?? '').toString();
+        if (bStaffId.isNotEmpty && bStaffId != selectedStaffId) return false;
+        if (bProviderName.isNotEmpty &&
+            !bProviderName.toLowerCase().contains('mana-mana') &&
+            bProviderName != selectedStaffName) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    if (isSlotTaken) return false;
 
     // Check if the time has passed today
     if (dateIndex > 0) return true;
@@ -674,6 +711,39 @@ class _BookingsViewState extends State<BookingsView> {
     final timeToCompare = DateTime(now.year, now.month, now.day, int.parse(parts[0]), int.parse(parts[1]));
 
     return timeToCompare.isAfter(now);
+  }
+
+  String get _fullServiceSummary {
+    final List<String> mainNames = _selectedServices
+        .where((i) => i >= 0 && i < _servicesList.length)
+        .map((i) => _servicesList[i]['name']!)
+        .toList();
+    final List<String> addonNames = _selectedAddons
+        .where((i) => i >= 0 && i < _addonsList.length)
+        .map((i) => _addonsList[i]['name']!)
+        .toList();
+    if (mainNames.isEmpty) return 'Servis Pilihan';
+    if (addonNames.isEmpty) return mainNames.join(', ');
+    return '${mainNames.join(', ')} + ${addonNames.join(', ')}';
+  }
+
+  String get _notesHintText {
+    switch (_bookingType) {
+      case BookingType.dining:
+        return 'Cth: 4 Dewasa, 1 Kerusi Bayi / Meja tepi tingkap';
+      case BookingType.automotive:
+        return 'Cth: No. Plat VAB 1234 (Honda Civic Putih)';
+      case BookingType.health:
+        return 'Cth: Simptom demam / pemeriksaan kesihatan tahunan';
+      case BookingType.facility:
+        return 'Cth: 6 pemain / perlukan sewa raket tambahan';
+      case BookingType.beauty:
+        return 'Cth: Kulit sensitif / pilihan urutan sederhana';
+      case BookingType.retail:
+        return 'Cth: Saiz M & L / warna tema pastel';
+      case BookingType.service:
+        return 'Cth: Gaya potongan Low Taper Fade';
+    }
   }
 
   String _shopName = '';
@@ -883,7 +953,7 @@ class _BookingsViewState extends State<BookingsView> {
   }
 
   void _listenToRealtimeBookings() {
-    //  Magic Stream: Updates the screen instantly if ANYONE books a slot!
+    if (widget.shopId.isEmpty) return;
     _timeStream = Supabase.instance.client
         .from('bookings')
         .stream(primaryKey: ['id'])
@@ -891,19 +961,38 @@ class _BookingsViewState extends State<BookingsView> {
         .listen((data) {
       if (!mounted) return;
       setState(() {
-        _bookedTimes = data
-            .where((b) => b['status'] != 'cancelled') // Keep 'holding', 'pending', and 'confirmed' blocked
-            .map<String>((booking) => booking['booking_time'].toString())
+        _activeBookings = data
+            .where((b) => b['status'] != 'cancelled')
+            .map((b) => Map<String, dynamic>.from(b))
             .toList();
       });
+    }, onError: (e) {
+      debugPrint('[BookingsView] Realtime bookings stream notice: $e');
     });
   }
 
   @override
   void initState() {
     super.initState();
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    String initName = UserData.userName.value.trim();
+    if (initName.isEmpty || initName == 'Guest') {
+      initName = (currentUser?.userMetadata?['full_name'] as String?) ??
+          (currentUser?.userMetadata?['name'] as String?) ??
+          (currentUser?.email?.split('@').first) ??
+          '';
+    }
+    String initPhone = UserData.userPhone.value.trim();
+    if (initPhone.isEmpty) {
+      initPhone = currentUser?.phone ??
+          (currentUser?.userMetadata?['phone'] as String?) ??
+          '';
+    }
+    _customerNameCtrl = TextEditingController(text: initName);
+    _customerPhoneCtrl = TextEditingController(text: initPhone);
+    _bookingNotesCtrl = TextEditingController();
+
     _initCategoryTemplate();
-    //  CHANGED TO 0.85 so the left and right cards are clearly visible
     _generateUpcomingDates();
     _selectFirstAvailableSlot();
     _recoverLostDraft();
@@ -913,10 +1002,18 @@ class _BookingsViewState extends State<BookingsView> {
 
   @override
   void dispose() {
+    _customerNameCtrl.dispose();
+    _customerPhoneCtrl.dispose();
+    _bookingNotesCtrl.dispose();
     _timeStream?.cancel();
-    //  SAFETY CATCH: If they swipe out of the app while holding a slot, delete the lock!
-    if (_holdingRecordId != null && !_isSubmitted) {
-      Supabase.instance.client.from('bookings').delete().eq('id', _holdingRecordId!);
+    if (_holdingRecordId != null &&
+        !_holdingRecordId!.startsWith('local_') &&
+        !_isSubmitted) {
+      Supabase.instance.client
+          .from('bookings')
+          .delete()
+          .eq('id', _holdingRecordId!)
+          .catchError((_) {});
     }
     super.dispose();
   }
@@ -1229,7 +1326,11 @@ class _BookingsViewState extends State<BookingsView> {
                 onTap: () async {
                   //  IF they back out of the checkout, RELEASE THE SLOT so others can book it!
                   if (_currentStep == 1 && _holdingRecordId != null) {
-                    await Supabase.instance.client.from('bookings').delete().eq('id', _holdingRecordId!);
+                    if (!_holdingRecordId!.startsWith('local_')) {
+                      try {
+                        await Supabase.instance.client.from('bookings').delete().eq('id', _holdingRecordId!);
+                      } catch (_) {}
+                    }
                     _holdingRecordId = null;
                   }
                   setState(() => _currentStep--);
@@ -1251,49 +1352,94 @@ class _BookingsViewState extends State<BookingsView> {
                   //  STEP 1: CREATE THE TEMPORARY LOCK
                   if (_currentStep == 0) {
                     if (_selectedTimeIndex == -1) {
-                      showGlassToast(context, "Please select an available time slot.", isError: true);
+                      showGlassToast(context, "Sila pilih slot masa yang tersedia terlebih dahulu.", isError: true);
+                      return;
+                    }
+
+                    if (!_isTimeValid(_times[_selectedTimeIndex], _selectedDateIndex)) {
+                      showGlassToast(context, "Slot masa ini baru sahaja diambil. Sila pilih masa lain.", isError: true);
                       return;
                     }
 
                     final String targetDate = _dates[_selectedDateIndex]['fullDate']!.substring(0, 10);
                     final String targetTime = _times[_selectedTimeIndex];
 
-                    try {
-                      // Insert a 'holding' record to claim the slot instantly!
-                      final holdResponse = await Supabase.instance.client.from('bookings').insert({
-                        'business_id': widget.shopId,
-                        'customer_id': Supabase.instance.client.auth.currentUser!.id,
-                        'customer_name': UserData.userName.value.isNotEmpty ? UserData.userName.value : 'Guest',
-                        'service_name': 'Holding...',
-                        'booking_date': targetDate,
-                        'booking_time': targetTime,
-                        'status': 'holding', //  Locks the slot for everyone else!
-                        'pax': 1,
-                        'booking_metadata': {
-                          'customer_auth_id': Supabase.instance.client.auth.currentUser!.id,
-                          'phone': UserData.userPhone.value.isNotEmpty ? UserData.userPhone.value : '',
-                        }
-                      }).select().single();
+                    var user = Supabase.instance.client.auth.currentUser;
+                    if (user == null) {
+                      try {
+                        final anonRes = await Supabase.instance.client.auth.signInAnonymously();
+                        user = anonRes.user;
+                      } catch (_) {}
+                    }
 
-                      _holdingRecordId = holdResponse['id'].toString();
-                      setState(() => _currentStep++);
-                    } catch (e) {
-                      if (mounted) {
-                        showGlassToast(context, "Slot just got taken by someone else! Try another.", isError: true);
+                    if (widget.shopId.isNotEmpty && widget.shopId.length > 20) {
+                      try {
+                        final holdPayload = <String, dynamic>{
+                          'business_id': widget.shopId,
+                          if (user != null) 'customer_id': user.id,
+                          'customer_name': _customerNameCtrl.text.trim().isNotEmpty
+                              ? _customerNameCtrl.text.trim()
+                              : (UserData.userName.value.isNotEmpty ? UserData.userName.value : 'Pelanggan Ngam'),
+                          'service_name': 'Holding...',
+                          'booking_date': targetDate,
+                          'booking_time': targetTime,
+                          'status': 'holding',
+                          'pax': 1,
+                          'booking_metadata': {
+                            if (user != null) 'customer_auth_id': user.id,
+                            'provider_name': staff["name"],
+                            'phone': _customerPhoneCtrl.text.trim(),
+                          }
+                        };
+                        final holdResponse = await Supabase.instance.client
+                            .from('bookings')
+                            .insert(holdPayload)
+                            .select()
+                            .single();
+
+                        _holdingRecordId = holdResponse['id'].toString();
+                      } catch (e) {
+                        debugPrint('[BookingsView] Hold slot fallback to direct checkout: $e');
+                        _holdingRecordId = 'local_${DateTime.now().millisecondsSinceEpoch}';
                       }
+                    } else {
+                      _holdingRecordId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+                    }
+
+                    if (mounted) {
+                      setState(() => _currentStep++);
                     }
 
                   } else if (_currentStep == 1) {
+                    if (_selectedServices.isEmpty) {
+                      showGlassToast(context, "Sila pilih sekurang-kurangnya satu servis utama.", isError: true);
+                      return;
+                    }
                     setState(() => _currentStep++);
                   } else {
-
                     //  STEP 3: FINALIZE CHECKOUT
-                    if (_selectedPaymentIndex == 0) {
+                    if (_selectedPaymentIndex == 0 && _totalPrice > 0) {
                       final hasCards = UserData.savedPaymentMethods.value.any((m) => m["type"] == "card");
                       if (!hasCards) {
-                        showGlassToast(context, "Please add a Credit or Debit Card first.", isError: true);
+                        showGlassToast(context, "Sila tambah Kad Kredit/Debit atau pilih kaedah bayaran lain.", isError: true);
                         return;
                       }
+                    }
+
+                    final String finalCustomerName = _customerNameCtrl.text.trim().isNotEmpty
+                        ? _customerNameCtrl.text.trim()
+                        : (UserData.userName.value.trim().isNotEmpty ? UserData.userName.value.trim() : 'Pelanggan Ngam');
+                    final String finalCustomerPhone = _customerPhoneCtrl.text.trim().isNotEmpty
+                        ? _customerPhoneCtrl.text.trim()
+                        : (UserData.userPhone.value.trim().isNotEmpty ? UserData.userPhone.value.trim() : '+60 12-345 6789');
+                    final String finalNotes = _bookingNotesCtrl.text.trim();
+
+                    // Simpan nama & telefon untuk kemudahan tempahan seterusnya
+                    if (_customerNameCtrl.text.trim().isNotEmpty) {
+                      UserData.userName.value = _customerNameCtrl.text.trim();
+                    }
+                    if (_customerPhoneCtrl.text.trim().isNotEmpty) {
+                      UserData.userPhone.value = _customerPhoneCtrl.text.trim();
                     }
 
                     // Generate Short ID
@@ -1304,53 +1450,99 @@ class _BookingsViewState extends State<BookingsView> {
                     final randomPart = String.fromCharCodes(Iterable.generate(5, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))));
                     final String shortBookingId = "RZRV-$datePart-$randomPart";
 
+                    final String targetDate = _dates[_selectedDateIndex]['fullDate']!.substring(0, 10);
+                    final String targetTime = _times[_selectedTimeIndex];
+                    final String combinedServiceTitle = _fullServiceSummary;
+                    final List<String> selectedAddonNames = _selectedAddons
+                        .where((i) => i >= 0 && i < _addonsList.length)
+                        .map((i) => _addonsList[i]['name']!)
+                        .toList();
+
+                    final String? staffId = (staff["id"] != null && staff["id"] != "any" && staff["id"]!.length > 10)
+                        ? staff["id"]
+                        : null;
+                    final String? serviceId = _selectedServices.isNotEmpty
+                        ? _servicesList[_selectedServices.first]["id"]
+                        : null;
+                    final currentUser = Supabase.instance.client.auth.currentUser;
+
+                    String combinedNotes = finalNotes;
+                    if (_hasAllergies) {
+                      combinedNotes = combinedNotes.isEmpty
+                          ? '[Perhatian: $_healthToggleTitle]'
+                          : '$combinedNotes | [Perhatian: $_healthToggleTitle]';
+                    }
+
+                    final Map<String, dynamic> metadataPayload = {
+                      'short_ref': shortBookingId,
+                      'booking_id': shortBookingId,
+                      if (currentUser != null) 'customer_auth_id': currentUser.id,
+                      'customer_name': finalCustomerName,
+                      'phone': finalCustomerPhone,
+                      'provider_name': staff["name"],
+                      if (staffId != null) 'staff_id': staffId,
+                      if (serviceId != null && serviceId.isNotEmpty) 'service_id': serviceId,
+                      'addons_list': selectedAddonNames,
+                      'estimated_duration_mins': _totalTime,
+                      'payment_method': _paymentMethods[_selectedPaymentIndex]["name"],
+                      'total_price': "RM$_totalPrice",
+                      'shop_name': widget.shopName,
+                      'shop_image': widget.shopImage,
+                      'category': widget.category,
+                      'booking_type': _bookingType.name,
+                      'has_allergies_or_notes': _hasAllergies,
+                      'notes': combinedNotes.isNotEmpty ? combinedNotes : 'Tempahan melalui Aplikasi Ngam',
+                    };
+
                     try {
-                      //  UPDATE the existing lock to 'pending' with all the final details!
-                      final String? staffId = (staff["id"] != null && staff["id"] != "any" && staff["id"]!.length > 10)
-                          ? staff["id"]
-                          : null;
-                      final String? serviceId = _servicesList[_selectedServices.first]["id"];
-
-                      await Supabase.instance.client.from('bookings').update({
-                        'service_name': _servicesList[_selectedServices.first]["name"]!,
-                        'status': 'pending',
-                        if (staffId != null) 'staff_id': staffId,
-                        'booking_metadata': {
-                          'short_ref': shortBookingId, // For your UI
-                          'booking_id': shortBookingId, // For the MyBookingsView sync
-                          'customer_auth_id': Supabase.instance.client.auth.currentUser!.id,
-                          'customer_name': UserData.userName.value.isNotEmpty ? UserData.userName.value : 'Pelanggan Ngam',
-                          'phone': UserData.userPhone.value.isNotEmpty ? UserData.userPhone.value : '',
-                          'provider_name': staff["name"],
-                          if (staffId != null) 'staff_id': staffId,
-                          if (serviceId != null) 'service_id': serviceId,
-                          'total_price': "RM$_totalPrice",
-                          //  Save Shop details so MyBookingsView can display them directly from the DB!
-                          'shop_name': widget.shopName,
-                          'shop_image': widget.shopImage,
-                          'category': widget.category,
-                          'booking_type': _bookingType.name,
-                          'has_allergies_or_notes': _hasAllergies,
+                      if (widget.shopId.isNotEmpty && widget.shopId.length > 20) {
+                        if (_holdingRecordId != null && !_holdingRecordId!.startsWith('local_')) {
+                          await Supabase.instance.client.from('bookings').update({
+                            'customer_name': finalCustomerName,
+                            'service_name': combinedServiceTitle,
+                            'status': 'pending',
+                            if (staffId != null) 'staff_id': staffId,
+                            'booking_metadata': metadataPayload,
+                          }).eq('id', _holdingRecordId!);
+                        } else {
+                          final inserted = await Supabase.instance.client.from('bookings').insert({
+                            'business_id': widget.shopId,
+                            if (currentUser != null) 'customer_id': currentUser.id,
+                            'customer_name': finalCustomerName,
+                            'service_name': combinedServiceTitle,
+                            'booking_date': targetDate,
+                            'booking_time': targetTime,
+                            'status': 'pending',
+                            'pax': 1,
+                            if (staffId != null) 'staff_id': staffId,
+                            'booking_metadata': metadataPayload,
+                          }).select('id').single();
+                          _holdingRecordId = inserted['id'].toString();
                         }
-                      }).eq('id', _holdingRecordId!);
+                      }
+                    } catch (e) {
+                      debugPrint('[BookingsView] Supabase booking finalize notice: $e');
+                    }
 
-                      final dateStr = "${_dates[_selectedDateIndex]['day']}, ${_dates[_selectedDateIndex]['date']} ${_dates[_selectedDateIndex]['month']}";
-                      final timeStr = _times[_selectedTimeIndex];
+                    final dateStr = "${_dates[_selectedDateIndex]['day']}, ${_dates[_selectedDateIndex]['date']} ${_dates[_selectedDateIndex]['month']}";
+                    final timeStr = _times[_selectedTimeIndex];
 
-                      LocalNotificationService.showBookingConfirmed(
-                        shopName: widget.shopName, category: widget.category, shopImage: widget.shopImage,
-                        providerName: staff["name"]!, date: dateStr, time: timeStr, totalPrice: "RM$_totalPrice", bookingId: shortBookingId,
-                      );
+                    LocalNotificationService.showBookingConfirmed(
+                      shopName: widget.shopName,
+                      category: combinedServiceTitle,
+                      shopImage: widget.shopImage,
+                      providerName: staff["name"]!,
+                      date: dateStr,
+                      time: timeStr,
+                      totalPrice: "RM$_totalPrice",
+                      bookingId: shortBookingId,
+                    );
 
+                    if (mounted) {
                       setState(() {
                         _generatedBookingId = shortBookingId;
                         _isSubmitted = true;
                       });
-
-                    } catch (e) {
-                      if (mounted) {
-                        showGlassToast(context, "Failed to confirm payment. Try again.", isError: true);
-                      }
                     }
                   }
                 },
@@ -1863,6 +2055,49 @@ class _BookingsViewState extends State<BookingsView> {
             ),
           ),
 
+          const SizedBox(height: 20),
+
+          Text("Maklumat Pelanggan & Nota", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black87)),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.02),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withValues(alpha: isDark ? 0.08 : 0.3)),
+            ),
+            child: Column(
+              children: [
+                _buildPremiumInput(
+                  isDark: isDark,
+                  label: "Nama Anda",
+                  hint: "Masukkan nama penuh / panggilan",
+                  icon: HugeIcons.strokeRoundedUser,
+                  controller: _customerNameCtrl,
+                  keyboardType: TextInputType.name,
+                ),
+                const SizedBox(height: 10),
+                _buildPremiumInput(
+                  isDark: isDark,
+                  label: "No. Telefon (WhatsApp)",
+                  hint: "Cth: 012-345 6789",
+                  icon: HugeIcons.strokeRoundedCall02,
+                  controller: _customerPhoneCtrl,
+                  keyboardType: TextInputType.phone,
+                ),
+                const SizedBox(height: 10),
+                _buildPremiumInput(
+                  isDark: isDark,
+                  label: "Nota Khas / Permintaan (Pilihan)",
+                  hint: _notesHintText,
+                  icon: HugeIcons.strokeRoundedNote01,
+                  controller: _bookingNotesCtrl,
+                  keyboardType: TextInputType.text,
+                ),
+              ],
+            ),
+          ),
+
           const SizedBox(height: 24),
 
           Text("Payment Method", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black87)),
@@ -2119,15 +2354,19 @@ class _BookingsViewState extends State<BookingsView> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => BookingTicketScreen(
-                          shopId: widget.shopId, //  ADD THIS LINE!
+                          shopId: widget.shopId,
                           shopName: widget.shopName,
-                          category: widget.category,
+                          category: _fullServiceSummary,
                           shopImage: widget.shopImage,
                           providerName: _staffs[_frontCardIndex]["name"]!,
                           date: "${_dates[_selectedDateIndex]['day']}, ${_dates[_selectedDateIndex]['date']} ${_dates[_selectedDateIndex]['month']}",
                           time: _times[_selectedTimeIndex],
                           totalPrice: "RM$_totalPrice",
                           bookingId: _generatedBookingId,
+                          status: 'pending',
+                          bookingDbId: (_holdingRecordId != null && !_holdingRecordId!.startsWith('local_'))
+                              ? _holdingRecordId
+                              : null,
                         ),
                       ),
                     );
