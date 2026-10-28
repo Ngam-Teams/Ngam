@@ -7,7 +7,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../services/saved_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/glass_toast.dart';
-import '../explore/shop_detail_screen.dart';
+import '../explore/business_store_view.dart';
 
 class SavedScreen extends StatefulWidget {
   const SavedScreen({super.key});
@@ -401,14 +401,18 @@ class _SavedScreenState extends State<SavedScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => ShopDetailScreen(
+                          builder: (_) => BusinessStoreView(
                             shop: {
                               'id': shopId,
+                              'business_id': shopId,
                               'name': name,
+                              'business_name': name,
                               'category': category,
+                              'business_industry': category,
                               'image': image,
                               'rating': rating,
                               'location': location,
+                              'address': location,
                             },
                           ),
                         ),

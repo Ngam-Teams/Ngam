@@ -8,6 +8,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/product_model.dart';
 import '../../widgets/glass_toast.dart';
+import '../../services/saved_service.dart';
 import 'business_products_view.dart';
 import 'bookings_view.dart';
 import 'store_cart_view.dart';
@@ -124,7 +125,6 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
 
-  bool _isLiked = false;
   final List<CartItem> _cart = [];
 
   int get _cartItemCount => _cart.fold(0, (sum, item) => sum + item.quantity);
@@ -1548,29 +1548,60 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Like button
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _isLiked = !_isLiked;
-                    });
-                  },
-                  child: SizedBox(
-                    width: 44,
-                    height: 44,
-                    child: Center(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-                        child: HugeIcon(
-                          icon: HugeIcons.strokeRoundedFavourite,
-                          key: ValueKey(_isLiked),
-                          color: _isLiked ? Colors.red : (isDark ? Colors.white : const Color(0xFF1C1C1E)),
-                          size: 22,
+                // Simpan (Bookmark) button
+                ValueListenableBuilder<List<Map<String, dynamic>>>(
+                  valueListenable: SavedService.savedShopsNotifier,
+                  builder: (context, _, __) {
+                    final String sId = (widget.shop['id'] ?? widget.shop['business_id'] ?? widget.shop['shopId'] ?? '').toString();
+                    final bool isSaved = SavedService.isShopSaved(sId);
+                    return GestureDetector(
+                      onTap: () async {
+                        final shopData = {
+                          'id': sId,
+                          'shopId': sId,
+                          'name': _shopName,
+                          'category': _shopCategory,
+                          'image': _logoUrl.isNotEmpty ? _logoUrl : _coverUrl,
+                          'rating': widget.shop['rating'] ?? 5.0,
+                          'location': widget.shop['address'] ?? widget.shop['location'] ?? '',
+                          ...widget.shop,
+                        };
+                        final nowSaved = await SavedService.toggleSaveShop(shopData);
+                        if (context.mounted) {
+                          showGlassToast(
+                            context,
+                            nowSaved
+                                ? 'Kedai disimpan ke koleksi anda'
+                                : 'Kedai dikeluarkan dari simpanan',
+                            icon: HugeIcons.strokeRoundedBookmark02,
+                          );
+                        }
+                      },
+                      child: SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: Center(
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                            child: isSaved
+                                ? const Icon(
+                                    Icons.bookmark_rounded,
+                                    key: ValueKey(true),
+                                    color: Color(0xFFFBBF24),
+                                    size: 22,
+                                  )
+                                : HugeIcon(
+                                    icon: HugeIcons.strokeRoundedBookmark02,
+                                    key: const ValueKey(false),
+                                    color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                                    size: 22,
+                                  ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
                 // Cart button
                 GestureDetector(
