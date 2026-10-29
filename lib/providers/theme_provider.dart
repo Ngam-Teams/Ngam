@@ -9,7 +9,7 @@ import '../utils/pwa_theme_bridge.dart';
 
 class ThemeProvider extends ChangeNotifier {
   static const String _themePrefKey = 'theme_mode';
-  ThemeMode _themeMode = ThemeMode.light;
+  ThemeMode _themeMode = ThemeMode.dark;
 
   ThemeProvider() {
     _loadThemeFromPrefs();
@@ -23,9 +23,11 @@ class ThemeProvider extends ChangeNotifier {
     final isDark = prefs.getBool(_themePrefKey);
     if (isDark != null) {
       _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
-      applyAppThemeOverlay(isDark);
-      notifyListeners();
+    } else {
+      _themeMode = ThemeMode.dark;
     }
+    applyAppThemeOverlay(isDarkMode);
+    notifyListeners();
   }
 
   Future<void> _saveThemeToPrefs() async {

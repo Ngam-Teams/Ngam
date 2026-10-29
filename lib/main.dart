@@ -38,6 +38,19 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   setCleanUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Edge-to-edge transparent status bar & dark navigation bar matching website (#0A0A14)
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
+      systemNavigationBarColor: Color(0xFF0A0A14),
+      systemNavigationBarIconBrightness: Brightness.light,
+      systemNavigationBarDividerColor: Colors.transparent,
+    ),
+  );
+
   await EasyLocalization.ensureInitialized();
   
   // Load environment variables dulu

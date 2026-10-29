@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 import '../../widgets/bottom_nav_customer.dart';
@@ -71,8 +72,21 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       _initializedPages[4] ? const ProfileScreen() : const SizedBox.shrink(),
     ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final navBg = isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8F9FA);
+    final iconBrightness = isDark ? Brightness.light : Brightness.dark;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: iconBrightness,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor: navBg,
+        systemNavigationBarIconBrightness: iconBrightness,
+        systemNavigationBarDividerColor: Colors.transparent,
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
         final isDesktop = constraints.maxWidth >= 800;
 
         // Desktop / Landscape Layout (≥800px): Collapsible Modern Glass Sidebar
@@ -160,6 +174,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
         // Mobile Layout (<800px): Floating BottomNavCustomer
         return Scaffold(
+          backgroundColor: navBg,
           extendBody: true,
           resizeToAvoidBottomInset: false,
           body: Stack(
@@ -202,6 +217,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           ),
         );
       },
-    );
-  }
+    ),
+  );
+}
 }

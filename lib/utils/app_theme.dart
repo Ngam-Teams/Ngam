@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
@@ -31,6 +32,14 @@ class AppTheme {
       foregroundColor: secondary,
       elevation: 0,
       centerTitle: true,
+      systemOverlayStyle: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: Color(0xFFF8F9FA),
+        systemNavigationBarIconBrightness: Brightness.dark,
+        systemNavigationBarDividerColor: Colors.transparent,
+      ),
       titleTextStyle: GoogleFonts.outfit(
         fontSize: 20,
         fontWeight: FontWeight.w700,
@@ -128,12 +137,20 @@ class AppTheme {
       onSurface: Color(0xFFE8E8E8),
       error: error,
     ),
-    scaffoldBackgroundColor: const Color(0xFF13131A),
+    scaffoldBackgroundColor: const Color(0xFF0A0A14),
     appBarTheme: AppBarTheme(
-      backgroundColor: const Color(0xFF1E1E2C),
+      backgroundColor: const Color(0xFF0A0A14),
       foregroundColor: Colors.white,
       elevation: 0,
       centerTitle: true,
+      systemOverlayStyle: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Color(0xFF0A0A14),
+        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarDividerColor: Colors.transparent,
+      ),
       titleTextStyle: GoogleFonts.outfit(
         fontSize: 20,
         fontWeight: FontWeight.w700,
