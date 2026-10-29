@@ -8,6 +8,8 @@ import '../../services/saved_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/glass_toast.dart';
 import '../explore/business_store_view.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:video_player/video_player.dart';
 
 class SavedScreen extends StatefulWidget {
   const SavedScreen({super.key});
@@ -22,7 +24,64 @@ class _SavedScreenState extends State<SavedScreen> {
   @override
   void initState() {
     super.initState();
-    SavedService.init();
+    SavedService.init().then((_) {
+      if (mounted) {
+        _hydratePostCovers();
+      }
+    });
+  }
+
+  Future<void> _hydratePostCovers() async {
+    final posts = SavedService.savedPostsNotifier.value;
+    final missingCovers = posts.where((p) {
+      final cover = (p['cover'] ?? p['thumbnail'] ?? '').toString();
+      final bId = (p['businessId'] ?? '').toString();
+      return (cover.isEmpty || cover.endsWith('.mp4')) && bId.isNotEmpty;
+    }).toList();
+
+    if (missingCovers.isEmpty) return;
+
+    final bizIds = missingCovers.map((p) => p['businessId'].toString()).toSet().toList();
+    try {
+      final res = await Supabase.instance.client
+          .from('businesses')
+          .select('id, business_cover_url, business_logo_url')
+          .inFilter('id', bizIds);
+
+      if (res.isNotEmpty) {
+        final Map<String, dynamic> bizMap = {};
+        for (final b in res) {
+          bizMap[b['id'].toString()] = b;
+        }
+
+        bool updated = false;
+        final updatedPosts = posts.map((p) {
+          final bId = p['businessId']?.toString();
+          if (bId != null && bizMap.containsKey(bId)) {
+            final b = bizMap[bId];
+            final cover = b['business_cover_url']?.toString();
+            final logo = b['business_logo_url']?.toString();
+            final currentCover = (p['cover'] ?? p['thumbnail'] ?? '').toString();
+            if (cover != null && cover.isNotEmpty && (currentCover.isEmpty || currentCover.endsWith('.mp4'))) {
+              p['cover'] = cover;
+              p['thumbnail'] = cover;
+              updated = true;
+            }
+            if (logo != null && logo.isNotEmpty && (p['shopAvatar'] == null || p['shopAvatar'].toString().isEmpty)) {
+              p['shopAvatar'] = logo;
+              updated = true;
+            }
+          }
+          return p;
+        }).toList();
+
+        if (updated && mounted) {
+          await SavedService.updateSavedPosts(updatedPosts);
+        }
+      }
+    } catch (e) {
+      debugPrint('[SavedScreen] Hydrate post covers error: $e');
+    }
   }
 
   @override
@@ -476,175 +535,252 @@ class _SavedScreenState extends State<SavedScreen> {
           );
         }
 
-        return GridView.builder(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisSpacing: 14,
-            crossAxisSpacing: 14,
-            childAspectRatio: 0.72,
-          ),
-          itemCount: posts.length,
-          itemBuilder: (context, index) {
-            final post = posts[index];
-            return _buildPostCard(post, isDark);
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final double width = constraints.maxWidth;
+            // Di telefon bimbit (< 480px): susun 3 lajur ikut standard TikTok / Reels
+            // Di skrin lebar / desktop: susun selagi muat (responsif 4 hingga 8 lajur mengikut kelebaran skrin)
+            final int crossAxisCount = width < 480
+                ? 3
+                : (width / 135).floor().clamp(3, 8);
+
+            final double spacing = width < 480 ? 6.0 : 10.0;
+
+            return GridView.builder(
+              physics: const BouncingScrollPhysics(),
+              padding: EdgeInsets.symmetric(
+                horizontal: width < 480 ? 10 : 20,
+                vertical: 8,
+              ),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                mainAxisSpacing: spacing,
+                crossAxisSpacing: spacing,
+                childAspectRatio: 0.68, // Nisbah menegak TikTok / Reels yang ideal
+              ),
+              itemCount: posts.length,
+              itemBuilder: (context, index) {
+                final post = posts[index];
+                return _buildPostCard(post, isDark, compact: width < 480);
+              },
+            );
           },
         );
       },
     );
   }
 
-  Widget _buildPostCard(Map<String, dynamic> post, bool isDark) {
+  Widget _buildPostCard(Map<String, dynamic> post, bool isDark, {bool compact = false}) {
     final String postId = (post['id'] ?? '').toString();
     final String shopName = post['shopName'] ?? 'Kedai';
     final String title = post['title'] ?? post['caption'] ?? '';
     final String image = post['image'] ?? '';
+    final String cover = (post['cover'] ?? post['thumbnail'] ?? '').toString();
     final String mediaType = post['mediaType'] ?? 'image';
+    final String category = post['category'] ?? 'Umum';
+    final bool isVideo = mediaType == 'video' ||
+        image.toLowerCase().endsWith('.mp4') ||
+        image.toLowerCase().endsWith('.mov') ||
+        image.toLowerCase().endsWith('.webm');
 
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF141923) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _openPostViewer(post, isDark),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF141923) : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.06),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Stack(
-          children: [
-            // Media Background
-            Positioned.fill(
-              child: image.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: image,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => Container(color: Colors.grey.shade900),
-                    )
-                  : Container(color: Colors.grey.shade900),
-            ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // Media Thumbnail (Auto video frame, static cover, or curated aesthetic fallback)
+                _SavedPostThumbnail(
+                  mediaUrl: image,
+                  coverUrl: cover,
+                  category: category,
+                  isVideo: isVideo,
+                  isDark: isDark,
+                ),
 
-            // Top gradient & video badge
-            Positioned(
-              top: 8,
-              left: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    HugeIcon(
-                      icon: mediaType == 'video'
-                          ? HugeIcons.strokeRoundedVideo01
-                          : HugeIcons.strokeRoundedImage01,
-                      color: Colors.white,
-                      size: 13,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      mediaType.toUpperCase(),
-                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Unsave Bookmark Button
-            Positioned(
-              top: 8,
-              right: 8,
-              child: GestureDetector(
-                onTap: () async {
-                  await SavedService.removeSavedPost(postId);
-                  if (mounted) {
-                    showGlassToast(
-                      context,
-                      'Hantaran dikeluarkan dari simpanan',
-                      icon: HugeIcons.strokeRoundedBookmark02,
-                    );
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.6),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.bookmark_rounded,
-                    color: Color(0xFFFBBF24),
-                    size: 16,
-                  ),
-                ),
-              ),
-            ),
-
-            // Bottom Gradient Overlay + Text
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.85),
-                    ],
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      shopName,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                // Top Vignette Overlay
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 48,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.60),
+                          Colors.transparent,
+                        ],
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      title.isNotEmpty ? title : 'Promosi Istimewa',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+
+                // Top-Left Badge (Video / Photo Indicator)
+                Positioned(
+                  top: 6,
+                  left: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2.5),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.65),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        HugeIcon(
+                          icon: isVideo
+                              ? HugeIcons.strokeRoundedVideo01
+                              : HugeIcons.strokeRoundedImage01,
+                          color: Colors.white,
+                          size: 10,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          isVideo ? 'VIDEO' : 'FOTO',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Top-Right Unsave Bookmark Button
+                Positioned(
+                  top: 5,
+                  right: 5,
+                  child: GestureDetector(
+                    onTap: () async {
+                      await SavedService.removeSavedPost(postId);
+                      if (mounted) {
+                        showGlassToast(
+                          context,
+                          'Hantaran dikeluarkan dari simpanan',
+                          icon: HugeIcons.strokeRoundedBookmark02,
+                        );
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(4.5),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.65),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.bookmark_rounded,
+                        color: Color(0xFFFBBF24),
+                        size: 13,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Bottom Gradient Overlay + Info
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: compact ? 7 : 9,
+                      vertical: compact ? 6 : 8,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.40),
+                          Colors.black.withValues(alpha: 0.88),
+                        ],
+                        stops: const [0.0, 0.3, 1.0],
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          shopName,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            fontSize: compact ? 9.5 : 10.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          title.isNotEmpty ? title : 'Promosi Istimewa',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: compact ? 10.5 : 11.5,
+                            fontWeight: FontWeight.bold,
+                            height: 1.15,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  // ─── EMPTY STATE WIDGET ────────────────────────────────────────
+  void _openPostViewer(Map<String, dynamic> post, bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _SavedPostViewerModal(post: post, isDark: isDark),
+    );
+  }
+
+  // ─── EMPTY STATE WIDGET ────────────────────────────────────────  // ─── EMPTY STATE WIDGET ────────────────────────────────────────
   Widget _buildEmptyState({
     required dynamic icon,
     required String title,
@@ -719,6 +855,476 @@ class _SavedScreenState extends State<SavedScreen> {
           icon: icon,
           color: isDark ? Colors.white : Colors.black87,
           size: 20,
+        ),
+      ),
+    );
+  }
+}
+
+
+// ─── WIDGET: SMART VIDEO THUMBNAIL (FIRST FRAME / STATIC COVER / AESTHETIC FALLBACK) ────
+class _SavedPostThumbnail extends StatefulWidget {
+  final String mediaUrl;
+  final String coverUrl;
+  final String category;
+  final bool isVideo;
+  final bool isDark;
+
+  const _SavedPostThumbnail({
+    required this.mediaUrl,
+    required this.coverUrl,
+    required this.category,
+    required this.isVideo,
+    required this.isDark,
+  });
+
+  @override
+  State<_SavedPostThumbnail> createState() => _SavedPostThumbnailState();
+}
+
+class _SavedPostThumbnailState extends State<_SavedPostThumbnail> {
+  VideoPlayerController? _controller;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initThumbnail();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SavedPostThumbnail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.mediaUrl != widget.mediaUrl || oldWidget.coverUrl != widget.coverUrl) {
+      _disposeController();
+      _initThumbnail();
+    }
+  }
+
+  void _disposeController() {
+    _controller?.dispose();
+    _controller = null;
+    _isInitialized = false;
+  }
+
+  @override
+  void dispose() {
+    _disposeController();
+    super.dispose();
+  }
+
+  void _initThumbnail() {
+    final cleanCover = widget.coverUrl.trim();
+    final bool hasValidCover = cleanCover.isNotEmpty &&
+        !cleanCover.toLowerCase().endsWith('.mp4') &&
+        !cleanCover.toLowerCase().endsWith('.mov') &&
+        !cleanCover.toLowerCase().endsWith('.webm');
+
+    // Jika sudah ada cover statik sah, gunakan terus
+    if (hasValidCover) return;
+
+    // Jika video, inisialisasi VideoPlayerController untuk paparkan frame pertama (paused)
+    final cleanMedia = widget.mediaUrl.trim();
+    if (widget.isVideo && cleanMedia.isNotEmpty) {
+      try {
+        final uri = Uri.tryParse(cleanMedia);
+        if (uri != null) {
+          _controller = VideoPlayerController.networkUrl(
+            uri,
+            videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+          );
+          _controller!.setVolume(0.0).catchError((_) {});
+          _controller!.initialize().then((_) {
+            if (mounted) {
+              setState(() {
+                _isInitialized = true;
+              });
+            }
+          }).catchError((_) {
+            // Jika ralat muat video, ia automatik gunakan curated aesthetic fallback
+          });
+        }
+      } catch (_) {}
+    }
+  }
+
+  String _getCategoryFallbackImage(String cat) {
+    final lower = cat.toLowerCase();
+    if (lower.contains('barber') || lower.contains('rambut') || lower.contains('gunting')) {
+      return 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=600';
+    } else if (lower.contains('carwash') || lower.contains('cuci') || lower.contains('detailing')) {
+      return 'https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?q=80&w=600';
+    } else if (lower.contains('cafe') || lower.contains('kafe') || lower.contains('kopi') || lower.contains('chill')) {
+      return 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?q=80&w=600';
+    } else if (lower.contains('restoran') || lower.contains('estetik') || lower.contains('makan') || lower.contains('dining') || lower.contains('fnb')) {
+      return 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=600';
+    } else if (lower.contains('pickle') || lower.contains('ball') || lower.contains('sport') || lower.contains('sukan')) {
+      return 'https://images.unsplash.com/photo-1622163642998-1ea32b0bbc67?q=80&w=600';
+    } else if (lower.contains('workshop') || lower.contains('bengkel') || lower.contains('servis')) {
+      return 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?q=80&w=600';
+    } else if (lower.contains('salon') || lower.contains('salun') || lower.contains('spa')) {
+      return 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=600';
+    } else if (lower.contains('klinik') || lower.contains('kesihatan') || lower.contains('health')) {
+      return 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?q=80&w=600';
+    }
+    return 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=600';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cleanCover = widget.coverUrl.trim();
+    final bool hasValidCover = cleanCover.isNotEmpty &&
+        !cleanCover.toLowerCase().endsWith('.mp4') &&
+        !cleanCover.toLowerCase().endsWith('.mov') &&
+        !cleanCover.toLowerCase().endsWith('.webm');
+
+    // 1. Gambar cover statik
+    if (hasValidCover) {
+      return CachedNetworkImage(
+        imageUrl: cleanCover,
+        fit: BoxFit.cover,
+        errorWidget: (_, __, ___) => _buildFallbackImage(),
+      );
+    }
+
+    // 2. Frame video sebenar (paused pada frame 0)
+    if (widget.isVideo && _isInitialized && _controller != null) {
+      return FittedBox(
+        fit: BoxFit.cover,
+        clipBehavior: Clip.hardEdge,
+        child: SizedBox(
+          width: _controller!.value.size.width > 0 ? _controller!.value.size.width : 300,
+          height: _controller!.value.size.height > 0 ? _controller!.value.size.height : 400,
+          child: VideoPlayer(_controller!),
+        ),
+      );
+    }
+
+    // 3. Fallback estetik bertema kategori kedai
+    return _buildFallbackImage();
+  }
+
+  Widget _buildFallbackImage() {
+    final fallbackUrl = _getCategoryFallbackImage(widget.category);
+    return CachedNetworkImage(
+      imageUrl: fallbackUrl,
+      fit: BoxFit.cover,
+      errorWidget: (_, __, ___) => Container(
+        color: widget.isDark ? const Color(0xFF1E2430) : const Color(0xFFE2E8F0),
+        child: Center(
+          child: HugeIcon(
+            icon: widget.isVideo ? HugeIcons.strokeRoundedVideo01 : HugeIcons.strokeRoundedImage01,
+            color: widget.isDark ? Colors.white30 : Colors.black26,
+            size: 24,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── WIDGET: INTERACTIVE MODAL VIDEO PLAYER (WATCH SAVED VIDEO) ─────────
+class _SavedPostViewerModal extends StatefulWidget {
+  final Map<String, dynamic> post;
+  final bool isDark;
+
+  const _SavedPostViewerModal({required this.post, required this.isDark});
+
+  @override
+  State<_SavedPostViewerModal> createState() => _SavedPostViewerModalState();
+}
+
+class _SavedPostViewerModalState extends State<_SavedPostViewerModal> {
+  VideoPlayerController? _controller;
+  bool _isInitialized = false;
+  bool _isPlaying = true;
+  bool _isMuted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final String mediaUrl = (widget.post['image'] ?? '').toString().trim();
+    final bool isVideo = widget.post['mediaType'] == 'video' ||
+        mediaUrl.toLowerCase().endsWith('.mp4') ||
+        mediaUrl.toLowerCase().endsWith('.mov') ||
+        mediaUrl.toLowerCase().endsWith('.webm');
+
+    if (isVideo && mediaUrl.isNotEmpty) {
+      final uri = Uri.tryParse(mediaUrl);
+      if (uri != null) {
+        _controller = VideoPlayerController.networkUrl(uri);
+        _controller!.initialize().then((_) {
+          if (mounted) {
+            setState(() => _isInitialized = true);
+            _controller!.setLooping(true);
+            _controller!.play();
+          }
+        }).catchError((_) {});
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  void _togglePlayPause() {
+    if (_controller == null || !_isInitialized) return;
+    setState(() {
+      if (_controller!.value.isPlaying) {
+        _controller!.pause();
+        _isPlaying = false;
+      } else {
+        _controller!.play();
+        _isPlaying = true;
+      }
+    });
+  }
+
+  void _toggleMute() {
+    if (_controller == null || !_isInitialized) return;
+    setState(() {
+      _isMuted = !_isMuted;
+      _controller!.setVolume(_isMuted ? 0.0 : 1.0);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String shopName = widget.post['shopName'] ?? 'Kedai';
+    final String shopAvatar = widget.post['shopAvatar'] ?? '';
+    final String category = widget.post['category'] ?? 'Umum';
+    final String title = widget.post['title'] ?? widget.post['caption'] ?? '';
+    final String caption = widget.post['caption'] ?? '';
+    final String shopId = widget.post['businessId']?.toString() ?? '';
+    final isVideo = _controller != null;
+
+    final double screenHeight = MediaQuery.of(context).size.height;
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isWide = screenWidth > 600;
+
+    return Center(
+      child: Container(
+        width: isWide ? 460 : screenWidth,
+        height: isWide ? (screenHeight * 0.85).clamp(500, 750) : screenHeight * 0.90,
+        margin: isWide ? const EdgeInsets.all(24) : EdgeInsets.zero,
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F131C),
+          borderRadius: BorderRadius.circular(isWide ? 28 : 24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.6),
+              blurRadius: 30,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(isWide ? 28 : 24),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Media Player or Image
+              GestureDetector(
+                onTap: _togglePlayPause,
+                child: Container(
+                  color: Colors.black,
+                  child: isVideo && _isInitialized
+                      ? Center(
+                          child: AspectRatio(
+                            aspectRatio: _controller!.value.aspectRatio > 0
+                                ? _controller!.value.aspectRatio
+                                : 9 / 16,
+                            child: VideoPlayer(_controller!),
+                          ),
+                        )
+                      : CachedNetworkImage(
+                          imageUrl: (widget.post['cover'] ?? widget.post['image'] ?? '').toString(),
+                          fit: BoxFit.contain,
+                          errorWidget: (_, __, ___) => const Center(
+                            child: CircularProgressIndicator(color: Colors.blueAccent),
+                          ),
+                        ),
+                ),
+              ),
+
+              // Play/Pause indicator icon when paused
+              if (isVideo && _isInitialized && !_isPlaying)
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.65),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 48),
+                  ),
+                ),
+
+              // Top Bar: Close Button & Sound Toggle
+              Positioned(
+                top: 14,
+                left: 14,
+                right: 14,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.55),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
+                      ),
+                    ),
+                    if (isVideo && _isInitialized)
+                      GestureDetector(
+                        onTap: _toggleMute,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.55),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+              // Bottom Overlay: Shop Info, Caption, and View Store Button
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.75),
+                        Colors.black.withValues(alpha: 0.95),
+                      ],
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 18,
+                            backgroundImage: shopAvatar.isNotEmpty
+                                ? CachedNetworkImageProvider(shopAvatar)
+                                : null,
+                            backgroundColor: Colors.white24,
+                            child: shopAvatar.isEmpty
+                                ? const HugeIcon(icon: HugeIcons.strokeRoundedStore01, color: Colors.white, size: 18)
+                                : null,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  shopName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  category.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Colors.blueAccent,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (shopId.isNotEmpty)
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => BusinessStoreView(
+                                      shop: {
+                                        'id': shopId,
+                                        'business_id': shopId,
+                                        'name': shopName,
+                                        'business_name': shopName,
+                                        'category': category,
+                                      },
+                                    ),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blueAccent,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: const Text('Lihat Kedai', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
+                        ],
+                      ),
+                      if (title.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      if (caption.isNotEmpty && caption != title) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          caption,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: 12,
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

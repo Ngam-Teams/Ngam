@@ -151,6 +151,10 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       'location': 'Bangi Sentral',
       'image':
           'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+      'cover':
+          'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=800',
+      'thumbnail':
+          'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=800',
       'mediaType': 'video',
       'aspectRatio': 16 / 9,
       'title': 'Low Taper Fade + Beard Sculpting',
@@ -221,6 +225,10 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       'location': 'Seksyen 9, Bangi',
       'image':
           'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4',
+      'cover':
+          'https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?q=80&w=800',
+      'thumbnail':
+          'https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?q=80&w=800',
       'mediaType': 'video',
       'aspectRatio': 16 / 9,
       'title': 'Cermin Kereta Bersinar Bak Kristal',
@@ -480,6 +488,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             'image': mediaUrl.isNotEmpty
                 ? mediaUrl
                 : 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=800',
+            'cover': (biz['business_cover_url'] as String?)?.trim() ?? '',
+            'thumbnail': (biz['business_cover_url'] as String?)?.trim() ?? '',
             'mediaType': isVideo ? 'video' : (row['media_type'] ?? 'image'),
             'title': row['title'] ?? '',
             'caption': row['caption'] ?? '',

@@ -124,17 +124,35 @@ class SavedService {
       current.removeAt(existingIndex);
       nowSaved = false;
     } else {
+      final String coverCandidate = (post['cover'] ??
+              post['thumbnail'] ??
+              post['coverUrl'] ??
+              post['shopCover'] ??
+              post['shopData']?['cover'] ??
+              post['shopData']?['business_cover_url'] ??
+              post['business_cover_url'] ??
+              '')
+          .toString();
+
+      final String mediaUrl = (post['image'] ?? post['mediaUrl'] ?? '').toString();
+      final bool isVideo = (post['mediaType'] == 'video') ||
+          mediaUrl.toLowerCase().endsWith('.mp4') ||
+          mediaUrl.toLowerCase().endsWith('.mov') ||
+          mediaUrl.toLowerCase().endsWith('.webm');
+
       current.insert(0, {
         'id': postId,
         'businessId': post['businessId']?.toString() ?? '',
         'shopName': post['shopName'] ?? 'Kedai',
         'shopHandle': post['shopHandle'] ?? '',
-        'shopAvatar': post['shopAvatar'] ?? '',
+        'shopAvatar': post['shopAvatar'] ?? post['shopData']?['logo_url'] ?? '',
         'category': post['category'] ?? 'Umum',
         'title': post['title'] ?? '',
         'caption': post['caption'] ?? '',
-        'image': post['image'] ?? '',
-        'mediaType': post['mediaType'] ?? 'image',
+        'image': mediaUrl,
+        'cover': coverCandidate,
+        'thumbnail': coverCandidate,
+        'mediaType': isVideo ? 'video' : (post['mediaType'] ?? 'image'),
         'likes': post['likes'] ?? 0,
         'comments': post['comments'] ?? 0,
         'ctaText': post['ctaText'] ?? 'AMBIL GILIRAN',
@@ -154,6 +172,11 @@ class SavedService {
     current.removeWhere((p) => p['id']?.toString() == postId);
     savedPostsNotifier.value = current;
     await _persistPosts(current);
+  }
+
+  static Future<void> updateSavedPosts(List<Map<String, dynamic>> posts) async {
+    savedPostsNotifier.value = posts;
+    await _persistPosts(posts);
   }
 
   static Future<void> _persistPosts(List<Map<String, dynamic>> posts) async {
