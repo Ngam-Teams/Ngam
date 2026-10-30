@@ -526,10 +526,9 @@ class _BookingsViewState extends State<BookingsView> {
     }
   }
 
+  // Soft launch: no online gateway is connected, so appointments are paid at the shop.
   final List<Map<String, dynamic>> _paymentMethods = [
-    {"name": "Credit / Debit Card", "icon": HugeIcons.strokeRoundedCreditCard, "type": "card"},
-    {"name": "Online Banking (FPX)", "icon": HugeIcons.strokeRoundedBank, "type": "fpx"},
-    {"name": "Cash at Counter", "icon": HugeIcons.strokeRoundedCash01, "type": "cash"},
+    {"name": "Bayar di Kedai (Tunai)", "icon": HugeIcons.strokeRoundedCash01, "type": "cash"},
   ];
 
   final List<String> _banksList = ["Maybank2u", "CIMB Clicks", "Public Bank", "RHB Now"];
@@ -537,17 +536,24 @@ class _BookingsViewState extends State<BookingsView> {
   StreamSubscription<List<Map<String, dynamic>>>? _timeStream;
   String? _holdingRecordId;
 
-  int get _totalPrice {
-    int total = 0;
-    for (int i in _selectedServices) { total += int.parse(_servicesList[i]["price"]!.replaceAll(RegExp(r'[^0-9]'), '')); }
-    for (int i in _selectedAddons) { total += int.parse(_addonsList[i]["price"]!.replaceAll(RegExp(r'[^0-9]'), '')); }
-    return total;
+  double _parseMoney(String s) =>
+      double.tryParse(RegExp(r'[0-9]+(\.[0-9]+)?').firstMatch(s)?.group(0) ?? '') ?? 0.0;
+
+  String _fmtMoney(double v) => v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);
+
+  double get _totalPrice {
+    double total = 0;
+    for (int i in _selectedServices) { if (i >= 0 && i < _servicesList.length) total += _parseMoney(_servicesList[i]["price"] ?? ''); }
+    for (int i in _selectedAddons) { if (i >= 0 && i < _addonsList.length) total += _parseMoney(_addonsList[i]["price"] ?? ''); }
+    return double.parse(total.toStringAsFixed(2));
   }
+
+  String get _totalPriceLabel => _fmtMoney(_totalPrice);
 
   int get _totalTime {
     int time = 0;
-    for (int i in _selectedServices) { time += int.parse(_servicesList[i]["time"]!.replaceAll(RegExp(r'[^0-9]'), '')); }
-    for (int i in _selectedAddons) { time += int.parse(_addonsList[i]["time"]!.replaceAll(RegExp(r'[^0-9]'), '')); }
+    for (int i in _selectedServices) { if (i >= 0 && i < _servicesList.length) time += int.tryParse((_servicesList[i]["time"] ?? '').replaceAll(RegExp(r'[^0-9]'), '')) ?? 0; }
+    for (int i in _selectedAddons) { if (i >= 0 && i < _addonsList.length) time += int.tryParse((_addonsList[i]["time"] ?? '').replaceAll(RegExp(r'[^0-9]'), '')) ?? 0; }
     return time;
   }
 
@@ -664,6 +670,71 @@ class _BookingsViewState extends State<BookingsView> {
     }
   }
 
+  /// A 'holding' row older than 10 minutes is abandoned (app killed / user left).
+  bool _isStaleHold(Map<String, dynamic> b) {
+    if (b['status'] != 'holding') return false;
+    final created = DateTime.tryParse('${b['created_at']}');
+    if (created == null) return false;
+    return DateTime.now().toUtc().difference(created.toUtc()) > const Duration(minutes: 10);
+  }
+
+  bool _rowTakesSlot(Map<String, dynamic> b, String targetDate, String timeStr,
+      bool isSpecificStaff, String selectedStaffId, String selectedStaffName) {
+    final status = (b['status'] ?? '').toString();
+    if (const ['cancelled', 'rejected', 'declined', 'no_show'].contains(status)) return false;
+    if (_isStaleHold(b)) return false;
+    final String bDate = b['booking_date']?.toString() ?? '';
+    final String bTime = b['booking_time']?.toString() ?? '';
+    if (bDate != targetDate || bTime != timeStr) return false;
+
+    if (isSpecificStaff) {
+      final meta = (b['booking_metadata'] is Map)
+          ? Map<String, dynamic>.from(b['booking_metadata'] as Map)
+          : <String, dynamic>{};
+      final String bStaffId = (b['staff_id'] ?? meta['staff_id'] ?? '').toString();
+      final String bProviderName = (meta['provider_name'] ?? '').toString();
+      if (bStaffId.isNotEmpty && bStaffId != selectedStaffId) return false;
+      if (bProviderName.isNotEmpty &&
+          !bProviderName.toLowerCase().contains('mana-mana') &&
+          bProviderName != selectedStaffName) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// Booked slots visible to this customer: realtime table rows ∪ privacy-safe RPC rows.
+  List<Map<String, dynamic>> get _slotRows {
+    final seen = <String>{};
+    final out = <Map<String, dynamic>>[];
+    for (final b in [..._activeBookings, ..._rpcSlots]) {
+      final id = b['id']?.toString() ?? '';
+      if (id.isNotEmpty && !seen.add(id)) continue;
+      out.add(b);
+    }
+    return out;
+  }
+
+  List<Map<String, dynamic>> _rpcSlots = [];
+  Timer? _slotRefreshTimer;
+  bool _busy = false;
+
+  /// Uses the `get_booked_slots` RPC (see supabase/migrations/20261030_*.sql) which
+  /// exposes only slot data (no customer names/phones). Silently ignored until deployed.
+  Future<void> _refreshBookedSlots() async {
+    if (widget.shopId.length <= 20) return;
+    try {
+      final res = await Supabase.instance.client
+          .rpc('get_booked_slots', params: {'p_business_id': widget.shopId});
+      if (res is List) {
+        _rpcSlots = res.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        if (mounted) setState(() {});
+      }
+    } catch (_) {
+      // RPC not deployed yet → rely on the realtime stream.
+    }
+  }
+
   bool _isTimeValid(String timeStr, int dateIndex) {
     if (dateIndex < 0 || dateIndex >= _dates.length) return false;
 
@@ -679,26 +750,11 @@ class _BookingsViewState extends State<BookingsView> {
         !selectedStaffName.toLowerCase().contains('mana-mana');
 
     // Semak jika slot masa pada tarikh (dan staf) tersebut telah ditempah orang lain
-    final bool isSlotTaken = _activeBookings.any((b) {
+    final bool isSlotTaken = _slotRows.any((b) {
       if (_holdingRecordId != null && b['id']?.toString() == _holdingRecordId) {
         return false; // Jangan kunci slot yang sedang dipegang oleh pengguna ini sendiri
       }
-      final String bDate = b['booking_date']?.toString() ?? '';
-      final String bTime = b['booking_time']?.toString() ?? '';
-      if (bDate != targetDate || bTime != timeStr) return false;
-
-      if (isSpecificStaff) {
-        final meta = b['booking_metadata'] as Map<String, dynamic>? ?? {};
-        final String bStaffId = (b['staff_id'] ?? meta['staff_id'] ?? '').toString();
-        final String bProviderName = (meta['provider_name'] ?? '').toString();
-        if (bStaffId.isNotEmpty && bStaffId != selectedStaffId) return false;
-        if (bProviderName.isNotEmpty &&
-            !bProviderName.toLowerCase().contains('mana-mana') &&
-            bProviderName != selectedStaffName) {
-          return false;
-        }
-      }
-      return true;
+      return _rowTakesSlot(b, targetDate, timeStr, isSpecificStaff, selectedStaffId, selectedStaffName);
     });
 
     if (isSlotTaken) return false;
@@ -884,17 +940,22 @@ class _BookingsViewState extends State<BookingsView> {
         final effective = services.isNotEmpty ? services : products;
 
         if (effective.isNotEmpty) {
-          _servicesList = effective.take(8).map<Map<String, String>>((row) {
+          _servicesList = effective.take(40).map<Map<String, String>>((row) {
             final name = row['name']?.toString() ?? 'Servis';
-            final priceVal = (row['price'] as num?)?.toInt() ?? 0;
+            final priceVal = (row['price'] as num?)?.toDouble() ?? 0.0;
             final dur = (row['duration_minutes'] as num?)?.toInt() ?? 30;
             return {
               "id": row['id']?.toString() ?? '',
               "name": name,
-              "price": "RM$priceVal",
+              "price": "RM${_fmtMoney(priceVal)}",
               "time": "${dur}m",
             };
           }).toList();
+          // Template add-ons are placeholders (not real merchant data) → hide them.
+          _addonsList = [];
+          _selectedAddons.clear();
+          _selectedServices.removeWhere((i) => i >= _servicesList.length);
+          if (_selectedServices.isEmpty && _servicesList.isNotEmpty) _selectedServices.add(0);
         }
       }
     } catch (e) {
@@ -962,7 +1023,7 @@ class _BookingsViewState extends State<BookingsView> {
       if (!mounted) return;
       setState(() {
         _activeBookings = data
-            .where((b) => b['status'] != 'cancelled')
+            .where((b) => !const ['cancelled', 'rejected', 'declined', 'no_show'].contains(b['status']))
             .map((b) => Map<String, dynamic>.from(b))
             .toList();
       });
@@ -998,6 +1059,8 @@ class _BookingsViewState extends State<BookingsView> {
     _recoverLostDraft();
     _listenToRealtimeBookings();
     _fetchMerchantLiveConfig();
+    _refreshBookedSlots();
+    _slotRefreshTimer = Timer.periodic(const Duration(seconds: 20), (_) => _refreshBookedSlots());
   }
 
   @override
@@ -1006,14 +1069,9 @@ class _BookingsViewState extends State<BookingsView> {
     _customerPhoneCtrl.dispose();
     _bookingNotesCtrl.dispose();
     _timeStream?.cancel();
-    if (_holdingRecordId != null &&
-        !_holdingRecordId!.startsWith('local_') &&
-        !_isSubmitted) {
-      Supabase.instance.client
-          .from('bookings')
-          .delete()
-          .eq('id', _holdingRecordId!)
-          .catchError((_) {});
+    _slotRefreshTimer?.cancel();
+    if (_holdingRecordId != null && !_isSubmitted) {
+      _releaseHold(); // fire-and-forget; frees the slot for others
     }
     super.dispose();
   }
@@ -1326,14 +1384,9 @@ class _BookingsViewState extends State<BookingsView> {
                 onTap: () async {
                   //  IF they back out of the checkout, RELEASE THE SLOT so others can book it!
                   if (_currentStep == 1 && _holdingRecordId != null) {
-                    if (!_holdingRecordId!.startsWith('local_')) {
-                      try {
-                        await Supabase.instance.client.from('bookings').delete().eq('id', _holdingRecordId!);
-                      } catch (_) {}
-                    }
-                    _holdingRecordId = null;
+                    await _releaseHold();
                   }
-                  setState(() => _currentStep--);
+                  if (mounted) setState(() => _currentStep--);
                 },
                 child: Container(
                   height: 50, width: 50,
@@ -1348,204 +1401,7 @@ class _BookingsViewState extends State<BookingsView> {
             ],
             Expanded(
               child: _AnimatedPressable(
-                onTap: () async {
-                  //  STEP 1: CREATE THE TEMPORARY LOCK
-                  if (_currentStep == 0) {
-                    if (_selectedTimeIndex == -1) {
-                      showGlassToast(context, "Sila pilih slot masa yang tersedia terlebih dahulu.", isError: true);
-                      return;
-                    }
-
-                    if (!_isTimeValid(_times[_selectedTimeIndex], _selectedDateIndex)) {
-                      showGlassToast(context, "Slot masa ini baru sahaja diambil. Sila pilih masa lain.", isError: true);
-                      return;
-                    }
-
-                    final String targetDate = _dates[_selectedDateIndex]['fullDate']!.substring(0, 10);
-                    final String targetTime = _times[_selectedTimeIndex];
-
-                    var user = Supabase.instance.client.auth.currentUser;
-                    if (user == null) {
-                      try {
-                        final anonRes = await Supabase.instance.client.auth.signInAnonymously();
-                        user = anonRes.user;
-                      } catch (_) {}
-                    }
-
-                    if (widget.shopId.isNotEmpty && widget.shopId.length > 20) {
-                      try {
-                        final holdPayload = <String, dynamic>{
-                          'business_id': widget.shopId,
-                          if (user != null) 'customer_id': user.id,
-                          'customer_name': _customerNameCtrl.text.trim().isNotEmpty
-                              ? _customerNameCtrl.text.trim()
-                              : (UserData.userName.value.isNotEmpty ? UserData.userName.value : 'Pelanggan Ngam'),
-                          'service_name': 'Holding...',
-                          'booking_date': targetDate,
-                          'booking_time': targetTime,
-                          'status': 'holding',
-                          'pax': 1,
-                          'booking_metadata': {
-                            if (user != null) 'customer_auth_id': user.id,
-                            'provider_name': staff["name"],
-                            'phone': _customerPhoneCtrl.text.trim(),
-                          }
-                        };
-                        final holdResponse = await Supabase.instance.client
-                            .from('bookings')
-                            .insert(holdPayload)
-                            .select()
-                            .single();
-
-                        _holdingRecordId = holdResponse['id'].toString();
-                      } catch (e) {
-                        debugPrint('[BookingsView] Hold slot fallback to direct checkout: $e');
-                        _holdingRecordId = 'local_${DateTime.now().millisecondsSinceEpoch}';
-                      }
-                    } else {
-                      _holdingRecordId = 'local_${DateTime.now().millisecondsSinceEpoch}';
-                    }
-
-                    if (mounted) {
-                      setState(() => _currentStep++);
-                    }
-
-                  } else if (_currentStep == 1) {
-                    if (_selectedServices.isEmpty) {
-                      showGlassToast(context, "Sila pilih sekurang-kurangnya satu servis utama.", isError: true);
-                      return;
-                    }
-                    setState(() => _currentStep++);
-                  } else {
-                    //  STEP 3: FINALIZE CHECKOUT
-                    if (_selectedPaymentIndex == 0 && _totalPrice > 0) {
-                      final hasCards = UserData.savedPaymentMethods.value.any((m) => m["type"] == "card");
-                      if (!hasCards) {
-                        showGlassToast(context, "Sila tambah Kad Kredit/Debit atau pilih kaedah bayaran lain.", isError: true);
-                        return;
-                      }
-                    }
-
-                    final String finalCustomerName = _customerNameCtrl.text.trim().isNotEmpty
-                        ? _customerNameCtrl.text.trim()
-                        : (UserData.userName.value.trim().isNotEmpty ? UserData.userName.value.trim() : 'Pelanggan Ngam');
-                    final String finalCustomerPhone = _customerPhoneCtrl.text.trim().isNotEmpty
-                        ? _customerPhoneCtrl.text.trim()
-                        : (UserData.userPhone.value.trim().isNotEmpty ? UserData.userPhone.value.trim() : '+60 12-345 6789');
-                    final String finalNotes = _bookingNotesCtrl.text.trim();
-
-                    // Simpan nama & telefon untuk kemudahan tempahan seterusnya
-                    if (_customerNameCtrl.text.trim().isNotEmpty) {
-                      UserData.userName.value = _customerNameCtrl.text.trim();
-                    }
-                    if (_customerPhoneCtrl.text.trim().isNotEmpty) {
-                      UserData.userPhone.value = _customerPhoneCtrl.text.trim();
-                    }
-
-                    // Generate Short ID
-                    final dt = DateTime.now();
-                    final datePart = "${dt.year.toString().substring(2)}${dt.month.toString().padLeft(2, '0')}${dt.day.toString().padLeft(2, '0')}";
-                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-                    final rnd = Random();
-                    final randomPart = String.fromCharCodes(Iterable.generate(5, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))));
-                    final String shortBookingId = "RZRV-$datePart-$randomPart";
-
-                    final String targetDate = _dates[_selectedDateIndex]['fullDate']!.substring(0, 10);
-                    final String targetTime = _times[_selectedTimeIndex];
-                    final String combinedServiceTitle = _fullServiceSummary;
-                    final List<String> selectedAddonNames = _selectedAddons
-                        .where((i) => i >= 0 && i < _addonsList.length)
-                        .map((i) => _addonsList[i]['name']!)
-                        .toList();
-
-                    final String? staffId = (staff["id"] != null && staff["id"] != "any" && staff["id"]!.length > 10)
-                        ? staff["id"]
-                        : null;
-                    final String? serviceId = _selectedServices.isNotEmpty
-                        ? _servicesList[_selectedServices.first]["id"]
-                        : null;
-                    final currentUser = Supabase.instance.client.auth.currentUser;
-
-                    String combinedNotes = finalNotes;
-                    if (_hasAllergies) {
-                      combinedNotes = combinedNotes.isEmpty
-                          ? '[Perhatian: $_healthToggleTitle]'
-                          : '$combinedNotes | [Perhatian: $_healthToggleTitle]';
-                    }
-
-                    final Map<String, dynamic> metadataPayload = {
-                      'short_ref': shortBookingId,
-                      'booking_id': shortBookingId,
-                      if (currentUser != null) 'customer_auth_id': currentUser.id,
-                      'customer_name': finalCustomerName,
-                      'phone': finalCustomerPhone,
-                      'provider_name': staff["name"],
-                      if (staffId != null) 'staff_id': staffId,
-                      if (serviceId != null && serviceId.isNotEmpty) 'service_id': serviceId,
-                      'addons_list': selectedAddonNames,
-                      'estimated_duration_mins': _totalTime,
-                      'payment_method': _paymentMethods[_selectedPaymentIndex]["name"],
-                      'total_price': "RM$_totalPrice",
-                      'shop_name': widget.shopName,
-                      'shop_image': widget.shopImage,
-                      'category': widget.category,
-                      'booking_type': _bookingType.name,
-                      'has_allergies_or_notes': _hasAllergies,
-                      'notes': combinedNotes.isNotEmpty ? combinedNotes : 'Tempahan melalui Aplikasi Ngam',
-                    };
-
-                    try {
-                      if (widget.shopId.isNotEmpty && widget.shopId.length > 20) {
-                        if (_holdingRecordId != null && !_holdingRecordId!.startsWith('local_')) {
-                          await Supabase.instance.client.from('bookings').update({
-                            'customer_name': finalCustomerName,
-                            'service_name': combinedServiceTitle,
-                            'status': 'pending',
-                            if (staffId != null) 'staff_id': staffId,
-                            'booking_metadata': metadataPayload,
-                          }).eq('id', _holdingRecordId!);
-                        } else {
-                          final inserted = await Supabase.instance.client.from('bookings').insert({
-                            'business_id': widget.shopId,
-                            if (currentUser != null) 'customer_id': currentUser.id,
-                            'customer_name': finalCustomerName,
-                            'service_name': combinedServiceTitle,
-                            'booking_date': targetDate,
-                            'booking_time': targetTime,
-                            'status': 'pending',
-                            'pax': 1,
-                            if (staffId != null) 'staff_id': staffId,
-                            'booking_metadata': metadataPayload,
-                          }).select('id').single();
-                          _holdingRecordId = inserted['id'].toString();
-                        }
-                      }
-                    } catch (e) {
-                      debugPrint('[BookingsView] Supabase booking finalize notice: $e');
-                    }
-
-                    final dateStr = "${_dates[_selectedDateIndex]['day']}, ${_dates[_selectedDateIndex]['date']} ${_dates[_selectedDateIndex]['month']}";
-                    final timeStr = _times[_selectedTimeIndex];
-
-                    LocalNotificationService.showBookingConfirmed(
-                      shopName: widget.shopName,
-                      category: combinedServiceTitle,
-                      shopImage: widget.shopImage,
-                      providerName: staff["name"]!,
-                      date: dateStr,
-                      time: timeStr,
-                      totalPrice: "RM$_totalPrice",
-                      bookingId: shortBookingId,
-                    );
-
-                    if (mounted) {
-                      setState(() {
-                        _generatedBookingId = shortBookingId;
-                        _isSubmitted = true;
-                      });
-                    }
-                  }
-                },
+                onTap: () => _onPrimaryTap(staff),
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   decoration: BoxDecoration(
@@ -1557,9 +1413,11 @@ class _BookingsViewState extends State<BookingsView> {
                       child: Text(
                           _currentStep < 2
                               ? "Continue"
-                              : (_totalPrice == 0
-                                  ? "Confirm Booking (Free)"
-                                  : "Confirm & Pay RM$_totalPrice"),
+                              : (_busy
+                                  ? "Menghantar..."
+                                  : (_totalPrice == 0
+                                      ? "Hantar Tempahan (Percuma)"
+                                      : "Hantar Tempahan · RM$_totalPriceLabel")),
                           style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)
                       )
                   ),
@@ -1570,6 +1428,352 @@ class _BookingsViewState extends State<BookingsView> {
         ),
       ],
     );
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Slot hold / release / confirm (robust against RLS + network errors)
+  // ─────────────────────────────────────────────────────────────
+
+  Future<void> _releaseHold() async {
+    final id = _holdingRecordId;
+    _holdingRecordId = null;
+    if (id == null || id.startsWith('local_')) return;
+    final db = Supabase.instance.client;
+    try {
+      // Prefer deleting (keeps merchant list clean). Without a delete policy this
+      // returns no rows, so fall back to cancelling (always allowed for own holds).
+      final deleted = await db.from('bookings').delete().eq('id', id).select('id');
+      if ((deleted as List).isNotEmpty) return;
+    } catch (_) {}
+    try {
+      await db.from('bookings').update({'status': 'cancelled'}).eq('id', id);
+    } catch (_) {}
+  }
+
+  Future<Map<String, dynamic>> _insertBooking(Map<String, dynamic> payload) async {
+    final db = Supabase.instance.client;
+    Future<Map<String, dynamic>> run(Map<String, dynamic> p) async =>
+        Map<String, dynamic>.from(await db.from('bookings').insert(p).select().single());
+    try {
+      return await run(payload);
+    } on PostgrestException catch (e) {
+      if (payload.containsKey('total_price') && (e.message.contains('total_price') || e.code == 'PGRST204' || e.code == '42703')) {
+        return await run({...payload}..remove('total_price'));
+      }
+      rethrow;
+    }
+  }
+
+  Future<List<dynamic>> _updateBooking(String id, Map<String, dynamic> payload) async {
+    final db = Supabase.instance.client;
+    Future<List<dynamic>> run(Map<String, dynamic> p) async =>
+        await db.from('bookings').update(p).eq('id', id).select('id');
+    try {
+      return await run(payload);
+    } on PostgrestException catch (e) {
+      if (payload.containsKey('total_price') && (e.message.contains('total_price') || e.code == 'PGRST204' || e.code == '42703')) {
+        return await run({...payload}..remove('total_price'));
+      }
+      rethrow;
+    }
+  }
+
+  bool _isValidPhone(String phone) {
+    final digits = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    return digits.length >= 9 && digits.length <= 14;
+  }
+
+  Future<void> _onPrimaryTap(Map<String, String> staff) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await _handlePrimaryAction(staff);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _handlePrimaryAction(Map<String, String> staff) async {
+    final db = Supabase.instance.client;
+
+    // ───────── STEP 1 → 2: reserve the slot (temporary hold) ─────────
+    if (_currentStep == 0) {
+      if (_selectedTimeIndex == -1) {
+        showGlassToast(context, "Sila pilih slot masa yang tersedia terlebih dahulu.", isError: true);
+        return;
+      }
+      if (widget.shopId.length <= 20) {
+        showGlassToast(context, "Kedai ini belum boleh menerima tempahan.", isError: true);
+        return;
+      }
+
+      var user = db.auth.currentUser;
+      if (user == null) {
+        try {
+          user = (await db.auth.signInAnonymously()).user;
+        } catch (_) {}
+      }
+      if (user == null) {
+        if (!mounted) return;
+        showGlassToast(context, "Sila log masuk untuk membuat tempahan.", isError: true);
+        Navigator.pushNamed(context, '/login');
+        return;
+      }
+
+      await _refreshBookedSlots();
+      if (!mounted) return;
+      if (!_isTimeValid(_times[_selectedTimeIndex], _selectedDateIndex)) {
+        showGlassToast(context, "Slot masa ini baru sahaja diambil. Sila pilih masa lain.", isError: true);
+        setState(() => _selectedTimeIndex = -1);
+        return;
+      }
+
+      final String targetDate = _dates[_selectedDateIndex]['fullDate']!.substring(0, 10);
+      final String targetTime = _times[_selectedTimeIndex];
+      final String holdName = _customerNameCtrl.text.trim().isNotEmpty
+          ? _customerNameCtrl.text.trim()
+          : (UserData.userName.value.isNotEmpty ? UserData.userName.value : 'Pelanggan Ngam');
+
+      final String? staffUuid = (staff["id"] != null && staff["id"] != "any" && staff["id"]!.length > 10) ? staff["id"] : null;
+
+      Map<String, dynamic> basePayload(bool withCustomerId) => {
+            'business_id': widget.shopId,
+            if (withCustomerId) 'customer_id': user!.id,
+            'customer_name': holdName,
+            'service_name': 'Holding...',
+            'booking_date': targetDate,
+            'booking_time': targetTime,
+            'status': 'holding',
+            'pax': 1,
+            if (staffUuid != null) 'staff_id': staffUuid,
+            'booking_metadata': {
+              'customer_auth_id': user!.id,
+              'provider_name': staff["name"],
+              'phone': _customerPhoneCtrl.text.trim(),
+            }
+          };
+
+      Map<String, dynamic>? hold;
+      try {
+        try {
+          hold = await _insertBooking(basePayload(true));
+        } on PostgrestException catch (e) {
+          if (e.code == '23505') rethrow; // slot already taken (unique index)
+          // e.g. customer_id FK for guest accounts → rely on metadata ownership
+          hold = await _insertBooking(basePayload(false));
+        }
+      } on PostgrestException catch (e) {
+        debugPrint('[BookingsView] hold failed: ${e.code} ${e.message}');
+        if (!mounted) return;
+        showGlassToast(
+          context,
+          e.code == '23505'
+              ? "Slot masa ini baru sahaja diambil. Sila pilih masa lain."
+              : "Tidak dapat menempah slot ini. Semak sambungan internet & cuba lagi.",
+          isError: true,
+        );
+        if (e.code == '23505') setState(() => _selectedTimeIndex = -1);
+        return;
+      } catch (e) {
+        debugPrint('[BookingsView] hold error: $e');
+        if (!mounted) return;
+        showGlassToast(context, "Tidak dapat menempah slot ini. Semak sambungan internet & cuba lagi.", isError: true);
+        return;
+      }
+
+      _holdingRecordId = hold['id'].toString();
+
+      // Two customers may hold the same slot at the same moment: the earliest hold wins.
+      await _refreshBookedSlots();
+      final myCreated = DateTime.tryParse('${hold['created_at']}');
+      final bool isSpecific = staffUuid != null;
+      final bool lostRace = _slotRows.any((b) {
+        if (b['id']?.toString() == _holdingRecordId) return false;
+        if (!_rowTakesSlot(b, targetDate, targetTime, isSpecific, staffUuid ?? '', staff["name"] ?? '')) return false;
+        final theirs = DateTime.tryParse('${b['created_at']}');
+        if (theirs == null || myCreated == null) return false;
+        return theirs.isBefore(myCreated);
+      });
+      if (lostRace) {
+        await _releaseHold();
+        if (!mounted) return;
+        showGlassToast(context, "Slot masa ini baru sahaja diambil. Sila pilih masa lain.", isError: true);
+        setState(() => _selectedTimeIndex = -1);
+        return;
+      }
+
+      if (mounted) setState(() => _currentStep++);
+      return;
+    }
+
+    // ───────── STEP 2 → 3: services ─────────
+    if (_currentStep == 1) {
+      if (_selectedServices.isEmpty) {
+        showGlassToast(context, "Sila pilih sekurang-kurangnya satu servis utama.", isError: true);
+        return;
+      }
+      setState(() => _currentStep++);
+      return;
+    }
+
+    // ───────── STEP 3: confirm & send to merchant ─────────
+    final String finalCustomerName = _customerNameCtrl.text.trim();
+    final String finalCustomerPhone = _customerPhoneCtrl.text.trim();
+    if (finalCustomerName.length < 2) {
+      showGlassToast(context, "Sila masukkan nama anda.", isError: true);
+      return;
+    }
+    if (!_isValidPhone(finalCustomerPhone)) {
+      showGlassToast(context, "Sila masukkan no. telefon yang sah supaya kedai boleh menghubungi anda.", isError: true);
+      return;
+    }
+    final String finalNotes = _bookingNotesCtrl.text.trim();
+
+    // Simpan nama & telefon untuk kemudahan tempahan seterusnya
+    UserData.userName.value = finalCustomerName;
+    UserData.userPhone.value = finalCustomerPhone;
+
+    // Generate Short ID
+    final dt = DateTime.now();
+    final datePart = "${dt.year.toString().substring(2)}${dt.month.toString().padLeft(2, '0')}${dt.day.toString().padLeft(2, '0')}";
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final rnd = Random();
+    final randomPart = String.fromCharCodes(Iterable.generate(5, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))));
+    final String shortBookingId = "RZRV-$datePart-$randomPart";
+
+    final String targetDate = _dates[_selectedDateIndex]['fullDate']!.substring(0, 10);
+    final String targetTime = _times[_selectedTimeIndex];
+    final String combinedServiceTitle = _fullServiceSummary;
+    final List<String> selectedAddonNames = _selectedAddons
+        .where((i) => i >= 0 && i < _addonsList.length)
+        .map((i) => _addonsList[i]['name']!)
+        .toList();
+
+    final String? staffId = (staff["id"] != null && staff["id"] != "any" && staff["id"]!.length > 10) ? staff["id"] : null;
+    final String? serviceId = (_selectedServices.isNotEmpty && _selectedServices.first < _servicesList.length)
+        ? _servicesList[_selectedServices.first]["id"]
+        : null;
+    final currentUser = db.auth.currentUser;
+    if (currentUser == null) {
+      showGlassToast(context, "Sesi tamat. Sila log masuk semula.", isError: true);
+      Navigator.pushNamed(context, '/login');
+      return;
+    }
+
+    String combinedNotes = finalNotes;
+    if (_hasAllergies) {
+      combinedNotes = combinedNotes.isEmpty
+          ? '[Perhatian: $_healthToggleTitle]'
+          : '$combinedNotes | [Perhatian: $_healthToggleTitle]';
+    }
+
+    final Map<String, dynamic> metadataPayload = {
+      'short_ref': shortBookingId,
+      'booking_id': shortBookingId,
+      'customer_auth_id': currentUser.id,
+      'customer_name': finalCustomerName,
+      'phone': finalCustomerPhone,
+      'provider_name': staff["name"],
+      if (staffId != null) 'staff_id': staffId,
+      if (serviceId != null && serviceId.isNotEmpty) 'service_id': serviceId,
+      'addons_list': selectedAddonNames,
+      'estimated_duration_mins': _totalTime,
+      'payment_method': _paymentMethods[_selectedPaymentIndex]["name"],
+      'payment_status': 'unpaid',
+      'total_price': "RM$_totalPriceLabel",
+      'shop_name': widget.shopName,
+      'shop_image': widget.shopImage,
+      'category': widget.category,
+      'booking_type': _bookingType.name,
+      'has_allergies_or_notes': _hasAllergies,
+      'notes': combinedNotes.isNotEmpty ? combinedNotes : 'Tempahan melalui Aplikasi Ngam',
+    };
+
+    String? savedId;
+    final String? oldHold = _holdingRecordId;
+
+    // 1) Promote our hold → pending (works when RLS allows holding→pending)
+    if (oldHold != null && !oldHold.startsWith('local_')) {
+      try {
+        final rows = await _updateBooking(oldHold, {
+          'customer_name': finalCustomerName,
+          'service_name': combinedServiceTitle,
+          'status': 'pending',
+          'total_price': _totalPrice,
+          if (staffId != null) 'staff_id': staffId,
+          'booking_metadata': metadataPayload,
+        });
+        if (rows.isNotEmpty) savedId = oldHold;
+      } catch (e) {
+        debugPrint('[BookingsView] promote hold failed: $e');
+      }
+    }
+
+    // 2) Fallback: release the hold and insert a fresh pending booking
+    if (savedId == null) {
+      await _releaseHold();
+      try {
+        final inserted = await _insertBooking({
+          'business_id': widget.shopId,
+          'customer_id': currentUser.id,
+          'customer_name': finalCustomerName,
+          'service_name': combinedServiceTitle,
+          'booking_date': targetDate,
+          'booking_time': targetTime,
+          'status': 'pending',
+          'pax': 1,
+          'total_price': _totalPrice,
+          if (staffId != null) 'staff_id': staffId,
+          'booking_metadata': metadataPayload,
+        });
+        savedId = inserted['id'].toString();
+      } on PostgrestException catch (e) {
+        debugPrint('[BookingsView] insert pending failed: ${e.code} ${e.message}');
+        if (!mounted) return;
+        showGlassToast(
+          context,
+          e.code == '23505'
+              ? "Slot masa ini baru sahaja diambil. Sila pilih masa lain."
+              : "Tempahan gagal dihantar. Sila cuba lagi.",
+          isError: true,
+        );
+        if (e.code == '23505') {
+          setState(() {
+            _currentStep = 0;
+            _selectedTimeIndex = -1;
+          });
+        }
+        return;
+      } catch (e) {
+        debugPrint('[BookingsView] insert pending error: $e');
+        if (!mounted) return;
+        showGlassToast(context, "Tempahan gagal dihantar. Semak internet & cuba lagi.", isError: true);
+        return;
+      }
+    }
+
+    _holdingRecordId = savedId;
+
+    final dateStr = "${_dates[_selectedDateIndex]['day']}, ${_dates[_selectedDateIndex]['date']} ${_dates[_selectedDateIndex]['month']}";
+    final timeStr = _times[_selectedTimeIndex];
+
+    LocalNotificationService.showBookingConfirmed(
+      shopName: widget.shopName,
+      category: combinedServiceTitle,
+      shopImage: widget.shopImage,
+      providerName: staff["name"]!,
+      date: dateStr,
+      time: timeStr,
+      totalPrice: "RM$_totalPriceLabel",
+      bookingId: shortBookingId,
+    );
+
+    if (mounted) {
+      setState(() {
+        _generatedBookingId = shortBookingId;
+        _isSubmitted = true;
+      });
+    }
   }
 
   Widget _buildCurrentStep(bool isDark, Map<String, String> staff) {
@@ -1964,11 +2168,13 @@ class _BookingsViewState extends State<BookingsView> {
           const SizedBox(height: 12),
           Column(children: List.generate(_servicesList.length, (index) => _buildSelectionTile(_servicesList[index], index, isDark, _selectedServices, false))),
 
+          if (_addonsList.isNotEmpty) ...[
           const SizedBox(height: 24),
 
           Text(_addonsTitle, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
           const SizedBox(height: 12),
           Column(children: List.generate(_addonsList.length, (index) => _buildSelectionTile(_addonsList[index], index, isDark, _selectedAddons, true))),
+          ],
 
           const SizedBox(height: 24),
           Text("Keperluan & Keselamatan", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
@@ -2122,7 +2328,7 @@ class _BookingsViewState extends State<BookingsView> {
                   children: [
                     GestureDetector(
                       onTap: () {
-                        if (i == 0) {
+                        if (pType == "card") {
                           final hasCards = UserData.savedPaymentMethods.value.any((m) => m["type"] == "card");
                           if (!hasCards) {
                             _showAddCardSheet(context, isDark);
@@ -2272,7 +2478,7 @@ class _BookingsViewState extends State<BookingsView> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text("Grand Total", style: TextStyle(fontSize: 16, color: isDark ? Colors.white70 : Colors.black54)),
-              Text("RM$_totalPrice", style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, height: 1.0, color: isDark ? Colors.white : Colors.black)),
+              Text("RM$_totalPriceLabel", style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, height: 1.0, color: isDark ? Colors.white : Colors.black)),
             ],
           ),
           const SizedBox(height: 10),
@@ -2342,9 +2548,9 @@ class _BookingsViewState extends State<BookingsView> {
                   child: const Center(child: HugeIcon(icon: HugeIcons.strokeRoundedCheckmarkCircle02, color: Colors.greenAccent, size: 50)),
                 ),
                 const SizedBox(height: 32),
-                Text("Booking Confirmed!", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+                Text("Tempahan Dihantar!", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
                 const SizedBox(height: 8),
-                Text("Your provider has been notified.", style: TextStyle(fontSize: 15, color: isDark ? Colors.white60 : Colors.black54)),
+                Text("Kedai akan mengesahkan tempahan anda tidak lama lagi.", style: TextStyle(fontSize: 15, color: isDark ? Colors.white60 : Colors.black54)),
                 const SizedBox(height: 40),
 
                 // Button to open the ticket immediately after booking
@@ -2361,7 +2567,7 @@ class _BookingsViewState extends State<BookingsView> {
                           providerName: _staffs[_frontCardIndex]["name"]!,
                           date: "${_dates[_selectedDateIndex]['day']}, ${_dates[_selectedDateIndex]['date']} ${_dates[_selectedDateIndex]['month']}",
                           time: _times[_selectedTimeIndex],
-                          totalPrice: "RM$_totalPrice",
+                          totalPrice: "RM$_totalPriceLabel",
                           bookingId: _generatedBookingId,
                           status: 'pending',
                           bookingDbId: (_holdingRecordId != null && !_holdingRecordId!.startsWith('local_'))

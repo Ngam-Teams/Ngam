@@ -24,9 +24,24 @@ class ChipPurchaseResult {
   bool get isWebFallback => raw['is_web_fallback'] == true;
 }
 
+class ChipPaymentException implements Exception {
+  final String message;
+  ChipPaymentException(this.message);
+  @override
+  String toString() => message;
+}
+
 class ChipPaymentService {
   static final ChipPaymentService instance = ChipPaymentService._internal();
   ChipPaymentService._internal();
+
+  /// Online payment is OFF unless the build explicitly opts in with
+  /// `--dart-define=ENABLE_ONLINE_PAYMENT=true` AND a CHIP_API_KEY exists.
+  /// (Real confirmation must come from a server-side webhook before enabling.)
+  static const bool onlinePaymentEnabled =
+      bool.fromEnvironment('ENABLE_ONLINE_PAYMENT', defaultValue: false);
+
+  bool get isAvailable => onlinePaymentEnabled && _apiKey.isNotEmpty;
 
   static const String _baseUrl = 'https://gate.chip-in.asia/api/v1';
 
@@ -78,9 +93,8 @@ class ChipPaymentService {
       'cancel_redirect': 'https://ngam.dev/receipt/cancel',
     };
 
-    if (_apiKey.isEmpty) {
-      debugPrint('[ChipPaymentService] CHIP_API_KEY tidak dikonfigurasi. Menggunakan mod simulasi.');
-      return _generateFallbackResult(amount, orderTitle);
+    if (!isAvailable) {
+      throw ChipPaymentException('Pembayaran dalam talian belum tersedia.');
     }
 
     try {
@@ -107,17 +121,19 @@ class ChipPaymentService {
         );
       } else {
         debugPrint('[ChipPaymentService] Create error: ${response.statusCode} - ${response.body}');
-        return _generateFallbackResult(amount, orderTitle);
+        throw ChipPaymentException('Gagal menghubungi gerbang pembayaran. Sila cuba lagi.');
       }
+    } on ChipPaymentException {
+      rethrow;
     } catch (e) {
-      debugPrint('[ChipPaymentService] Exception: $e. Mengaktifkan mod simulasi selamat.');
-      return _generateFallbackResult(amount, orderTitle);
+      debugPrint('[ChipPaymentService] Exception: $e');
+      throw ChipPaymentException('Sambungan ke gerbang pembayaran gagal. Semak internet anda.');
     }
   }
 
   /// Semak status transaksi sama ada sudah dibayar ('paid')
   Future<String> checkPurchaseStatus(String purchaseId) async {
-    if (purchaseId.startsWith('sim_') || _apiKey.isEmpty) {
+    if (!isAvailable) {
       return 'pending';
     }
 
@@ -133,22 +149,5 @@ class ChipPaymentService {
       debugPrint('[ChipPaymentService] Status check error: $e');
       return 'pending';
     }
-  }
-
-  ChipPurchaseResult _generateFallbackResult(double amount, String orderTitle) {
-    final simId = 'sim_${DateTime.now().millisecondsSinceEpoch}';
-    final qrData = '00020101021226580014my.com.duitnow0118NGAMPAYMENTGATEWAY520458125303458540${amount.toStringAsFixed(2)}5802MY5910NGAMSTORE6005BANGI62150111NGAM${simId.substring(4, 10)}6304A1B2';
-
-    return ChipPurchaseResult(
-      id: simId,
-      checkoutUrl: 'https://gate.chip-in.asia/p/$simId',
-      duitNowUrl: qrData,
-      amount: amount,
-      status: 'pending',
-      raw: {
-        'is_web_fallback': true,
-        'simulated_qr_data': qrData,
-      },
-    );
   }
 }

@@ -416,7 +416,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "Adakah anda pasti mahu membatalkan slot tempahan ini? Baki bayaran akan dipulangkan ke Ngam Wallet anda.",
+                                  "Adakah anda pasti mahu membatalkan tempahan ini? Slot akan dibebaskan dan kedai akan dimaklumkan.",
                                   style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 13),
                                 ),
                               ],
@@ -437,54 +437,56 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                         if (!confirm) return;
 
                         final bookingDbId = item["db_id"];
-                        final rawPrice = item['totalPrice']?.toString() ?? '0';
-                        final price = double.tryParse(rawPrice.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
                         final user = Supabase.instance.client.auth.currentUser;
-
-                        await Supabase.instance.client.from('bookings').update({
-                          'status': 'cancelled',
-                          'booking_metadata': {
-                            'cancellation_reason': selectedReason,
-                            'cancelled_at': DateTime.now().toIso8601String(),
-                            'cancelled_by': user?.id,
-                          }
-                        }).eq('id', bookingDbId);
-
-                        if (price > 0 && user != null) {
+                        try {
+                          // Keep existing metadata (shop, phone, owner id…) – only add cancellation info.
+                          Map<String, dynamic> existingMeta = {};
                           try {
-                            await Supabase.instance.client.from('wallet_transactions').insert({
-                              'user_id': user.id,
-                              'type': 'refund',
-                              'amount': price,
-                              'reference_id': item['id']?.toString() ?? '',
-                              'description': 'Bayaran balik tempahan: ${item['title']} (${item['category']})'
-                            });
-
-                            final uData = await Supabase.instance.client
-                                .from('users')
-                                .select('wallet_balance')
-                                .eq('id', user.id)
+                            final row = await Supabase.instance.client
+                                .from('bookings')
+                                .select('booking_metadata')
+                                .eq('id', bookingDbId)
                                 .maybeSingle();
-                            final curBal = (uData?['wallet_balance'] as num?)?.toDouble() ?? 0.0;
-                            await Supabase.instance.client.from('users').update({
-                              'wallet_balance': curBal + price
-                            }).eq('id', user.id);
-                          } catch (we) {
-                            debugPrint('Refund log error: $we');
-                          }
-                        }
+                            if (row != null && row['booking_metadata'] is Map) {
+                              existingMeta = Map<String, dynamic>.from(row['booking_metadata'] as Map);
+                            }
+                          } catch (_) {}
 
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                price > 0
-                                    ? 'Tempahan dibatalkan. RM ${price.toStringAsFixed(2)} dikreditkan ke Wallet anda.'
-                                    : 'Tempahan berjaya dibatalkan.',
+                          final rows = await Supabase.instance.client
+                              .from('bookings')
+                              .update({
+                                'status': 'cancelled',
+                                'booking_metadata': {
+                                  ...existingMeta,
+                                  'cancellation_reason': selectedReason,
+                                  'cancelled_at': DateTime.now().toIso8601String(),
+                                  'cancelled_by': user?.id,
+                                }
+                              })
+                              .eq('id', bookingDbId)
+                              .select('id');
+
+                          if ((rows as List).isEmpty) {
+                            throw Exception('Kedai telah mengesahkan tempahan ini. Sila hubungi kedai untuk membatalkannya.');
+                          }
+
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Tempahan berjaya dibatalkan.'),
+                                backgroundColor: Colors.redAccent,
                               ),
-                              backgroundColor: Colors.redAccent,
-                            ),
-                          );
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(e.toString().replaceFirst('Exception: ', '')),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                          }
                         }
                       },
                       behavior: HitTestBehavior.opaque,

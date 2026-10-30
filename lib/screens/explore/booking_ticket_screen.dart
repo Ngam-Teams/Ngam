@@ -449,7 +449,7 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
               ),
               const SizedBox(height: 8),
               Text(
-                'Sila nyatakan sebab pembatalan slot ini. Baki bayaran akan dikreditkan kembali ke Ngam Wallet anda secara automatik.',
+                'Sila nyatakan sebab pembatalan slot ini. Slot akan dibebaskan dan kedai akan dimaklumkan.',
                 style: TextStyle(fontSize: 13, color: isDark ? Colors.white60 : Colors.black54),
               ),
               const SizedBox(height: 16),
@@ -512,7 +512,6 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
     try {
       final user = Supabase.instance.client.auth.currentUser;
       final targetId = _resolvedBookingDbId ?? widget.bookingDbId;
-      double price = double.tryParse(widget.totalPrice.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
 
       Map<String, dynamic> existingMeta = {};
       try {
@@ -543,40 +542,20 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
         'cancelled_by': user?.id,
       };
 
+      final List<dynamic> updatedRows;
       if (targetId != null && targetId.isNotEmpty) {
-        await Supabase.instance.client.from('bookings').update({
+        updatedRows = await Supabase.instance.client.from('bookings').update({
           'status': 'cancelled',
           'booking_metadata': updatedMeta,
-        }).eq('id', targetId);
+        }).eq('id', targetId).select('id');
       } else {
-        await Supabase.instance.client.from('bookings').update({
+        updatedRows = await Supabase.instance.client.from('bookings').update({
           'status': 'cancelled',
           'booking_metadata': updatedMeta,
-        }).eq('booking_metadata->>booking_id', widget.bookingId);
+        }).eq('booking_metadata->>booking_id', widget.bookingId).select('id');
       }
-
-      if (price > 0 && user != null) {
-        try {
-          await Supabase.instance.client.from('wallet_transactions').insert({
-            'user_id': user.id,
-            'type': 'refund',
-            'amount': price,
-            'reference_id': widget.bookingId,
-            'description': 'Bayaran balik tempahan: ${widget.shopName} (${widget.category})'
-          });
-
-          final userData = await Supabase.instance.client
-              .from('users')
-              .select('wallet_balance')
-              .eq('id', user.id)
-              .maybeSingle();
-          final currentBal = (userData?['wallet_balance'] as num?)?.toDouble() ?? 0.0;
-          await Supabase.instance.client.from('users').update({
-            'wallet_balance': currentBal + price
-          }).eq('id', user.id);
-        } catch (we) {
-          debugPrint('Wallet refund notice: $we');
-        }
+      if (updatedRows.isEmpty) {
+        throw Exception('Kedai telah mengesahkan tempahan ini. Sila hubungi kedai untuk membatalkannya.');
       }
 
       if (mounted) {
@@ -585,15 +564,13 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
         });
         showGlassToast(
           context,
-          price > 0
-              ? 'Tempahan dibatalkan. RM ${price.toStringAsFixed(2)} telah dikembalikan ke Wallet anda.'
-              : 'Tempahan telah berjaya dibatalkan.',
+          'Tempahan telah berjaya dibatalkan.',
           type: GlassToastType.success,
         );
       }
     } catch (e) {
       if (mounted) {
-        showGlassToast(context, 'Gagal membatalkan tempahan: $e', isError: true);
+        showGlassToast(context, 'Gagal membatalkan tempahan: ${e.toString().replaceFirst('Exception: ', '')}', isError: true);
       }
     }
   }

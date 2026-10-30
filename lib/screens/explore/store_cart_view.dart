@@ -55,16 +55,26 @@ class _StoreCartViewState extends State<StoreCartView> {
   final TextEditingController _voucherController = TextEditingController();
   int _orderTypeIndex = 0; // 0: Pickup / Dine-in, 1: Delivery
   bool _voucherApplied = false;
+  bool _isApplyingVoucher = false;
   double _discountAmount = 0.0;
+  Map<String, dynamic>? _voucher;
   bool _isProcessing = false;
   bool _isPreOrder = false;
 
-  final List<String> _orderTypes = ['Pickup / Dine-In', 'Delivery'];
+  /// Delivery is not offered yet (no address capture / rider flow), so only
+  /// Pickup / Dine-In is available for the soft launch.
+  static const bool _deliveryEnabled = false;
+  final List<String> _orderTypes =
+      _deliveryEnabled ? ['Pickup / Dine-In', 'Delivery'] : ['Pickup / Dine-In'];
 
   @override
   void initState() {
     super.initState();
-    _items = List.from(widget.cartItems);
+    // Copy each CartItem: the view mutates quantities locally and reports the
+    // delta to the parent via onUpdateQuantity (sharing instances double-counted).
+    _items = widget.cartItems
+        .map((c) => CartItem(product: c.product, quantity: c.quantity))
+        .toList();
     if (widget.tableNumber != null && widget.tableNumber!.isNotEmpty) {
       _orderTypeIndex = 0; // Dine-in
     }
@@ -89,18 +99,125 @@ class _StoreCartViewState extends State<StoreCartView> {
 
   double get _total => (_subtotal + _deliveryFee - _discountAmount).clamp(0.0, 999999.0);
 
-  void _applyVoucher() {
-    final code = _voucherController.text.trim().toUpperCase();
-    if (code.isEmpty) return;
+  String _escapeLike(String s) =>
+      s.replaceAll(r'\', r'\\').replaceAll('%', r'\%').replaceAll('_', r'\_');
 
-    if (code == 'NGAM10' || code == 'WELCOME') {
-      setState(() {
-        _voucherApplied = true;
-        _discountAmount = (_subtotal * 0.10); // 10% off
-      });
-      showGlassToast(context, 'Promo applied! 10% discount.');
+  /// Base amount a voucher applies to (whole cart, or only specific products).
+  double _voucherBase(Map<String, dynamic> v) {
+    if ((v['applicable_scope'] ?? 'all') == 'specific_products') {
+      final ids = (v['applicable_ids'] is List)
+          ? (v['applicable_ids'] as List).map((e) => e.toString()).toSet()
+          : <String>{};
+      return _items
+          .where((i) => ids.contains(i.product.id.toString()))
+          .fold(0.0, (s, i) => s + i.totalPrice);
+    }
+    return _subtotal;
+  }
+
+  double _computeDiscount(Map<String, dynamic> v) {
+    final base = _voucherBase(v);
+    if (base <= 0) return 0.0;
+    final value = (v['discount_value'] as num?)?.toDouble() ?? 0.0;
+    double d;
+    if (v['discount_type'] == 'percentage') {
+      d = base * value / 100.0;
+      final cap = (v['max_discount_amount'] as num?)?.toDouble();
+      if (cap != null && cap > 0 && d > cap) d = cap;
     } else {
-      showGlassToast(context, 'Invalid promo code. Try "NGAM10"', isError: true);
+      d = value;
+    }
+    if (d > base) d = base;
+    return double.parse(d.toStringAsFixed(2));
+  }
+
+  /// Validates the promo code against the merchant's real vouchers.
+  Future<void> _applyVoucher() async {
+    final code = _voucherController.text.trim();
+    if (code.isEmpty || _isApplyingVoucher) return;
+    final bizId = widget.shop['id']?.toString();
+    if (bizId == null || bizId.isEmpty) return;
+
+    setState(() => _isApplyingVoucher = true);
+    try {
+      final v = await Supabase.instance.client
+          .from('vouchers')
+          .select()
+          .eq('business_id', bizId)
+          .eq('is_active', true)
+          .ilike('code', _escapeLike(code))
+          .maybeSingle();
+
+      if (!mounted) return;
+      String? error;
+      if (v == null) {
+        error = 'Kod promo tidak sah.';
+      } else {
+        final now = DateTime.now().toUtc();
+        final start = DateTime.tryParse('${v['start_date']}');
+        final endD = v['end_date'] == null ? null : DateTime.tryParse('${v['end_date']}');
+        final limit = v['total_usage_limit'] as num?;
+        final used = (v['times_used'] as num?) ?? 0;
+        final minSpend = (v['min_spend'] as num?)?.toDouble() ?? 0.0;
+        final scope = (v['applicable_scope'] ?? 'all').toString();
+        final eligibility = (v['customer_eligibility'] ?? 'all').toString();
+
+        if (start != null && start.toUtc().isAfter(now)) {
+          error = 'Kod promo belum bermula.';
+        } else if (endD != null && endD.toUtc().isBefore(now)) {
+          error = 'Kod promo telah tamat tempoh.';
+        } else if (limit != null && used >= limit) {
+          error = 'Kuota kod promo telah habis.';
+        } else if (eligibility != 'all') {
+          error = 'Kod promo ini hanya untuk pelanggan tertentu.';
+        } else if (scope == 'category') {
+          error = 'Kod promo ini tidak boleh digunakan di sini.';
+        } else if (_subtotal < minSpend) {
+          error = 'Belanja minimum RM ${minSpend.toStringAsFixed(2)} diperlukan.';
+        } else if (_computeDiscount(Map<String, dynamic>.from(v)) <= 0) {
+          error = 'Kod promo tidak terpakai untuk item dalam troli.';
+        }
+      }
+
+      if (error != null) {
+        setState(() {
+          _voucher = null;
+          _voucherApplied = false;
+          _discountAmount = 0.0;
+          _isApplyingVoucher = false;
+        });
+        showGlassToast(context, error, isError: true);
+        return;
+      }
+
+      final voucher = Map<String, dynamic>.from(v!);
+      setState(() {
+        _voucher = voucher;
+        _voucherApplied = true;
+        _discountAmount = _computeDiscount(voucher);
+        _isApplyingVoucher = false;
+      });
+      showGlassToast(context, 'Promo digunakan! Diskaun RM ${_discountAmount.toStringAsFixed(2)}.');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isApplyingVoucher = false);
+      showGlassToast(context, 'Tidak dapat semak kod promo. Cuba lagi.', isError: true);
+    }
+  }
+
+  /// Re-evaluates the applied voucher after the cart changes.
+  void _refreshVoucher() {
+    final v = _voucher;
+    if (v == null) return;
+    final minSpend = (v['min_spend'] as num?)?.toDouble() ?? 0.0;
+    final d = _computeDiscount(v);
+    if (_subtotal < minSpend || d <= 0) {
+      _voucher = null;
+      _voucherApplied = false;
+      _discountAmount = 0.0;
+      showGlassToast(context, 'Kod promo dibatalkan kerana troli tidak lagi layak.', isError: true);
+    } else {
+      _discountAmount = d;
     }
   }
 
@@ -110,9 +227,7 @@ class _StoreCartViewState extends State<StoreCartView> {
       if (item.quantity <= 0) {
         _items.remove(item);
       }
-      if (_voucherApplied) {
-        _discountAmount = (_subtotal * 0.10);
-      }
+      _refreshVoucher();
     });
     widget.onUpdateQuantity?.call(item.product, delta);
   }
@@ -215,6 +330,10 @@ class _StoreCartViewState extends State<StoreCartView> {
           ? 'table'
           : (_isPreOrder ? 'pre_order' : 'online');
 
+      final String voucherNote = (_voucherApplied && _voucher != null)
+          ? '[PROMO ${_voucher!['code']} -RM${_discountAmount.toStringAsFixed(2)}] '
+          : '';
+
       final orderData = {
         'business_id': widget.shop['id'],
         'owner_user_id': user.id,
@@ -222,7 +341,12 @@ class _StoreCartViewState extends State<StoreCartView> {
         'total': _total,
         'status': 'pending',
         'source': source,
-        'notes': (tablePrefix + (_isPreOrder ? '[PRE-ORDER] ' : '') + _notesController.text.trim()).trim(),
+        'payment_method': 'cash',
+        'notes': (tablePrefix +
+                (_isPreOrder ? '[PRE-ORDER] ' : '') +
+                voucherNote +
+                _notesController.text.trim())
+            .trim(),
       };
 
       final orderRes = await Supabase.instance.client
@@ -233,60 +357,72 @@ class _StoreCartViewState extends State<StoreCartView> {
 
       final String orderId = orderRes['id'].toString();
 
-      if (_items.isNotEmpty) {
-        try {
-          final itemsData = _items.map((item) => {
-            'order_id': orderId,
-            'product_id': item.product.id,
-            'product_name': item.product.name,
-            'quantity': item.quantity,
-            'unit_price': item.product.price,
-            'subtotal': item.totalPrice,
-          }).toList();
-
-          await Supabase.instance.client.from('order_items').insert(itemsData);
-        } catch (itemErr) {
-          debugPrint('Notice: order_items insert error (order #$orderId still created): $itemErr');
-        }
+      // Items MUST be saved with the order. If they fail, withdraw the order so
+      // the merchant never receives an empty/unpreparable order.
+      try {
+        final itemsData = _items
+            .map((item) => {
+                  'order_id': orderId,
+                  'product_id': item.product.id,
+                  'product_name': item.product.name,
+                  'quantity': item.quantity,
+                  'unit_price': item.product.price,
+                  'subtotal': item.totalPrice,
+                })
+            .toList();
+        await Supabase.instance.client.from('order_items').insert(itemsData);
+      } catch (itemErr) {
+        debugPrint('order_items insert failed, cancelling order #$orderId: $itemErr');
+        await _cancelOrder(orderId);
+        throw Exception('Item pesanan gagal disimpan. Sila cuba lagi.');
       }
 
       if (!mounted) return;
       setState(() => _isProcessing = false);
 
-      // Open Chip Asia Payment Modal & Digital Receipt!
-      await CustomerPaymentModal.show(
+      final bool completed = await CustomerPaymentModal.show(
         context: context,
         amount: _total,
         orderTitle: 'Pesanan #${orderId.length > 6 ? orderId.substring(0, 6).toUpperCase() : orderId} - ${widget.shop['name'] ?? 'Kedai'}',
         shopName: widget.shop['name']?.toString() ?? 'Kedai Ngam',
         orderId: orderId,
-        items: _items.map((i) => {
-          'name': i.product.name,
-          'qty': i.quantity,
-          'price': i.totalPrice,
-        }).toList(),
+        items: _items
+            .map((i) => {
+                  'name': i.product.name,
+                  'qty': i.quantity,
+                  'price': i.totalPrice,
+                })
+            .toList(),
         customerName: customerName,
-        onPaymentSuccess: (method, ref) async {
-          try {
-            await Supabase.instance.client.from('orders').update({
-              'status': 'paid',
-              'payment_method': method,
-              'payment_reference': ref,
-            }).eq('id', orderId);
-          } catch (e) {
-            debugPrint('[StoreCartView] Update order to paid note: $e');
-          }
-        },
       );
 
-      if (mounted) {
-        widget.onClearCart?.call();
-        Navigator.pop(context); // Return to store
+      if (!mounted) return;
+      if (!completed) {
+        // Customer left before the order was confirmed → withdraw it, keep cart.
+        await _cancelOrder(orderId);
+        if (!mounted) return;
+        showGlassToast(context, 'Pesanan dibatalkan. Troli anda masih disimpan.', isError: true);
+        return;
       }
+
+      widget.onClearCart?.call();
+      Navigator.pop(context); // Return to store
     } catch (e) {
       if (!mounted) return;
       setState(() => _isProcessing = false);
-      showGlassToast(context, 'Failed to place order: $e', isError: true);
+      showGlassToast(context, 'Pesanan gagal dihantar: ${e.toString().replaceFirst('Exception: ', '')}', isError: true);
+    }
+  }
+
+  /// Customers may only move their own pending orders to 'cancelled' (RLS).
+  Future<void> _cancelOrder(String orderId) async {
+    try {
+      await Supabase.instance.client
+          .from('orders')
+          .update({'status': 'cancelled'})
+          .eq('id', orderId);
+    } catch (e) {
+      debugPrint('[StoreCartView] cancel order failed: $e');
     }
   }
 
@@ -477,7 +613,8 @@ class _StoreCartViewState extends State<StoreCartView> {
                           const SizedBox(height: 16),
                         ],
 
-                        // Order Type Selector
+                        // Order Type Selector (hidden while only one option exists)
+                        if (_orderTypes.length > 1) ...[
                         Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
@@ -520,6 +657,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                         ),
 
                         const SizedBox(height: 18),
+                        ],
 
                         // Item List
                         ..._items.map((item) => Padding(
@@ -661,7 +799,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                                   textCapitalization: TextCapitalization.characters,
                                   style: TextStyle(color: textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
                                   decoration: InputDecoration(
-                                    hintText: 'Promo Code (e.g. NGAM10)',
+                                    hintText: 'Kod Promo (jika ada)',
                                     hintStyle: TextStyle(color: textSecondary, fontSize: 13, fontWeight: FontWeight.normal),
                                     border: InputBorder.none,
                                     prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 40),
@@ -678,8 +816,10 @@ class _StoreCartViewState extends State<StoreCartView> {
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                               ),
-                              onPressed: _applyVoucher,
-                              child: Text(_voucherApplied ? 'Applied' : 'Apply', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              onPressed: _isApplyingVoucher ? null : _applyVoucher,
+                              child: _isApplyingVoucher
+                                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                  : Text(_voucherApplied ? 'Applied' : 'Apply', style: const TextStyle(fontWeight: FontWeight.bold)),
                             ),
                           ],
                         ),
@@ -710,7 +850,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                               ],
                               if (_voucherApplied) ...[
                                 const SizedBox(height: 8),
-                                _summaryRow('Discount (10%)', '-RM ${_discountAmount.toStringAsFixed(2)}', Colors.green, Colors.green),
+                                _summaryRow('Diskaun${_voucher != null ? ' (${_voucher!['code']})' : ''}', '-RM ${_discountAmount.toStringAsFixed(2)}', Colors.green, Colors.green),
                               ],
                               Divider(color: isDark ? Colors.white12 : Colors.black12, height: 24),
                               _summaryRow(
@@ -785,7 +925,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                               : Text(
                                   !widget.isStoreOpen && !_isPreOrder
                                       ? 'Kedai Tutup · Aktifkan Pre-Order'
-                                      : (_isPreOrder ? 'Hantar Pre-Order' : 'Checkout Now'),
+                                      : (_isPreOrder ? 'Hantar Pre-Order' : 'Hantar Pesanan'),
                                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                                 ),
                         ),

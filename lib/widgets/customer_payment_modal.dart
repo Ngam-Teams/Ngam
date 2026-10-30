@@ -47,6 +47,8 @@ class CustomerPaymentModal extends StatefulWidget {
     final res = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
       backgroundColor: Colors.transparent,
       builder: (ctx) => CustomerPaymentModal(
         amount: amount,
@@ -69,6 +71,20 @@ class CustomerPaymentModal extends StatefulWidget {
 class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
   PaymentStep _currentStep = PaymentStep.selectMethod;
   String _selectedMethod = 'duitnow'; // 'duitnow', 'fpx_card', 'cash'
+  bool get _onlineAvailable => ChipPaymentService.instance.isAvailable;
+  bool get _isCash => _selectedMethod == 'cash';
+
+  @override
+  void initState() {
+    super.initState();
+    if (!_onlineAvailable) {
+      // Soft launch: orders are paid at the counter. Show the confirmation only.
+      _selectedMethod = 'cash';
+      _currentStep = PaymentStep.receipt;
+      final shortId = widget.orderId.length > 8 ? widget.orderId.substring(0, 8) : widget.orderId;
+      _transactionRef = 'ORDER-${shortId.toUpperCase()}';
+    }
+  }
 
   ChipPurchaseResult? _purchase;
   bool _isLoadingQr = false;
@@ -93,6 +109,11 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
           setState(() => _secondsRemaining--);
         } else {
           timer.cancel();
+          _statusTimer?.cancel();
+          if (_currentStep == PaymentStep.duitNowQr) {
+            setState(() => _currentStep = PaymentStep.selectMethod);
+            showGlassToast(context, 'Kod QR telah tamat tempoh. Sila cuba semula.', isError: true);
+          }
         }
       }
     });
@@ -121,7 +142,7 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
       _currentStep = PaymentStep.receipt;
     });
 
-    if (widget.onPaymentSuccess != null) {
+    if (!_isCash && widget.onPaymentSuccess != null) {
       await widget.onPaymentSuccess!(method, _transactionRef);
     }
   }
@@ -132,32 +153,50 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
       _isLoadingQr = true;
     });
 
-    final res = await ChipPaymentService.instance.createPurchase(
-      amount: widget.amount,
-      orderTitle: widget.orderTitle,
-      clientName: widget.customerName,
-      clientPhone: widget.customerPhone,
-    );
+    try {
+      final res = await ChipPaymentService.instance.createPurchase(
+        amount: widget.amount,
+        orderTitle: widget.orderTitle,
+        clientName: widget.customerName,
+        clientPhone: widget.customerPhone,
+      );
 
-    if (mounted) {
+      if (mounted) {
+        setState(() {
+          _purchase = res;
+          _isLoadingQr = false;
+        });
+        _startCountdown();
+        _startPollingStatus(res.id);
+      }
+    } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _purchase = res;
         _isLoadingQr = false;
+        _currentStep = PaymentStep.selectMethod;
       });
-      _startCountdown();
-      _startPollingStatus(res.id);
+      showGlassToast(context, e.toString(), isError: true);
     }
   }
 
   Future<void> _proceedToFpxCard() async {
     setState(() => _isLoadingQr = true);
-    final res = await ChipPaymentService.instance.createPurchase(
-      amount: widget.amount,
-      orderTitle: widget.orderTitle,
-      clientName: widget.customerName,
-      clientPhone: widget.customerPhone,
-    );
+    final ChipPurchaseResult res;
+    try {
+      res = await ChipPaymentService.instance.createPurchase(
+        amount: widget.amount,
+        orderTitle: widget.orderTitle,
+        clientName: widget.customerName,
+        clientPhone: widget.customerPhone,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoadingQr = false);
+      showGlassToast(context, e.toString(), isError: true);
+      return;
+    }
 
+    if (!mounted) return;
     setState(() => _isLoadingQr = false);
 
     if (res.checkoutUrl.isNotEmpty) {
@@ -181,7 +220,9 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final currencyFormat = NumberFormat.currency(locale: 'ms_MY', symbol: 'RM ');
 
-    return Center(
+    return PopScope(
+      canPop: _currentStep != PaymentStep.receipt,
+      child: Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
         child: Container(
@@ -264,6 +305,7 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
 
                     const SizedBox(height: 18),
 
+                    if (_onlineAvailable) ...[
                     // Opsyen 1: DuitNow QR (Chip Asia)
                     _buildPaymentOption(
                       isDark: isDark,
@@ -287,6 +329,7 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                     ),
 
                     const SizedBox(height: 10),
+                    ],
 
                     // Opsyen 3: Bayar Tunai di Kaunter
                     _buildPaymentOption(
@@ -538,24 +581,6 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                                 label: const Text('Buka Web', style: TextStyle(fontSize: 12)),
                               ),
                             ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF10B981),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                              ),
-                              onPressed: () {
-                                _statusTimer?.cancel();
-                                _countdownTimer?.cancel();
-                                _handleSuccessPayment('DuitNow QR (Simulasi Berjaya)', _purchase?.id ?? 'SIM-882');
-                              },
-                              icon: const HugeIcon(icon: HugeIcons.strokeRoundedCheckmarkCircle02, size: 15, color: Colors.white),
-                              label: const Text('Simulasi Berjaya', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                            ),
-                          ),
                         ],
                       ),
                     ],
@@ -584,7 +609,7 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                     const SizedBox(height: 12),
 
                     Text(
-                      'Bayaran Berjaya!',
+                      _isCash ? 'Pesanan Diterima!' : 'Bayaran Berjaya!',
                       style: TextStyle(
                         color: isDark ? Colors.white : const Color(0xFF0F172A),
                         fontSize: 20,
@@ -592,7 +617,10 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                       ),
                     ),
                     Text(
-                      'Pesanan anda telah disahkan dan dihantar ke kedai.',
+                      _isCash
+                          ? 'Pesanan anda telah dihantar ke kedai. Sila bayar di kaunter semasa mengambil pesanan.'
+                          : 'Pesanan anda telah disahkan dan dihantar ke kedai.',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         color: isDark ? Colors.white60 : const Color(0xFF64748B),
                         fontSize: 12,
@@ -691,7 +719,7 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Jumlah Dibayar',
+                                _isCash ? 'Jumlah Perlu Dibayar' : 'Jumlah Dibayar',
                                 style: TextStyle(
                                   color: isDark ? Colors.white : const Color(0xFF0F172A),
                                   fontSize: 14,
@@ -727,7 +755,7 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                             ),
                             onPressed: () {
                               Clipboard.setData(ClipboardData(
-                                text: 'Resit Rasmi Ngam\nKedai: ${widget.shopName}\nOrder: #${widget.orderId}\nJumlah: ${currencyFormat.format(widget.amount)}\nRef: $_transactionRef\nStatus: LULUS BAYAR',
+                                text: 'Resit Ngam\nKedai: ${widget.shopName}\nOrder: #${widget.orderId}\nJumlah: ${currencyFormat.format(widget.amount)}\nRef: $_transactionRef\nStatus: ${_isCash ? 'BELUM BAYAR (Tunai di Kaunter)' : 'LULUS BAYAR'}',
                               ));
                               showGlassToast(context, 'Butiran resit disalin ke papan klip!', icon: HugeIcons.strokeRoundedCopy01);
                             },
@@ -758,6 +786,7 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
           ),
         ),
       ),
+    ),
     );
   }
 
