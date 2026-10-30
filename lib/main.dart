@@ -129,7 +129,26 @@ class NgamApp extends StatelessWidget {
             themeMode: themeProvider.themeMode,
 
             // ─── Dynamic Route Resolution (PWA & Deep Links) ───
-            onGenerateRoute: (settings) {
+            onGenerateInitialRoutes: (String initialRoute) {
+              // Shortcut deep links (/tab/...) open ONLY the target tab (no stacked intermediate routes).
+              if (initialRoute.startsWith('/tab/')) {
+                return [_generateRoute(RouteSettings(name: initialRoute))!];
+              }
+              final target = _generateRoute(RouteSettings(name: initialRoute))!;
+              if (initialRoute == '/') return [target];
+              return [_generateRoute(const RouteSettings(name: '/'))!, target];
+            },
+            onGenerateRoute: _generateRoute,
+          );
+        },
+      ),
+    );
+  }
+}
+
+
+/// Resolves all named routes (PWA deep links, shortcuts, store links).
+Route<dynamic>? _generateRoute(RouteSettings settings) {
               final uri = Uri.tryParse(settings.name ?? '') ?? Uri();
               final segments = uri.pathSegments;
 
@@ -299,11 +318,4 @@ class NgamApp extends StatelessWidget {
                   },
                 ),
               );
-            },
-          );
-        },
-      ),
-    );
-  }
 }
-
