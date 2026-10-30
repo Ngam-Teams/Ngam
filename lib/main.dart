@@ -171,6 +171,14 @@ class NgamApp extends StatelessWidget {
                     transitionsBuilder: (_, animation, __, child) =>
                         FadeTransition(opacity: animation, child: child),
                   );
+                case '/tab/discover':
+                  return MaterialPageRoute(settings: settings, builder: (_) => const CustomerHomeScreen(initialIndex: 1));
+                case '/tab/feed':
+                  return MaterialPageRoute(settings: settings, builder: (_) => const CustomerHomeScreen(initialIndex: 2));
+                case '/tab/inbox':
+                  return MaterialPageRoute(settings: settings, builder: (_) => const CustomerHomeScreen(initialIndex: 3));
+                case '/tab/profile':
+                  return MaterialPageRoute(settings: settings, builder: (_) => const CustomerHomeScreen(initialIndex: 4));
                 case '/customer-home':
                   return MaterialPageRoute(settings: settings, builder: (_) => const CustomerHomeScreen());
                 case '/review':
@@ -254,7 +262,7 @@ class NgamApp extends StatelessWidget {
 
               // 5. Clean handle fallback (e.g. /pisangkrispy?table=1) where first segment is NOT reserved
               const reservedRoutes = {
-                'q', 'queue', 'login', 'register', 'forgot-password', 'reset-password',
+                'tab', 'q', 'queue', 'login', 'register', 'forgot-password', 'reset-password',
                 'customer-home', 'review', 'profile', 'explore', 'bookings',
                 'cart', 'chat', 'wallet', 'orders', 'notifications', 'search',
                 'privacy', 'terms', 'support', 'about', 'feed', 'api', 'assets'

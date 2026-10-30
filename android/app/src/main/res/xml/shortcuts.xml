@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="profile" android:enabled="true" android:icon="@drawable/shortcut_profile" android:shortcutShortLabel="@string/shortcut_profile">
+        <intent android:action="android.intent.action.VIEW" android:data="https://ngam.dev/tab/profile" android:targetPackage="com.ngam.app" android:targetClass="com.ngam.app.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="inbox" android:enabled="true" android:icon="@drawable/shortcut_inbox" android:shortcutShortLabel="@string/shortcut_inbox">
+        <intent android:action="android.intent.action.VIEW" android:data="https://ngam.dev/tab/inbox" android:targetPackage="com.ngam.app" android:targetClass="com.ngam.app.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="feed" android:enabled="true" android:icon="@drawable/shortcut_feed" android:shortcutShortLabel="@string/shortcut_feed">
+        <intent android:action="android.intent.action.VIEW" android:data="https://ngam.dev/tab/feed" android:targetPackage="com.ngam.app" android:targetClass="com.ngam.app.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="discover" android:enabled="true" android:icon="@drawable/shortcut_discover" android:shortcutShortLabel="@string/shortcut_discover">
+        <intent android:action="android.intent.action.VIEW" android:data="https://ngam.dev/tab/discover" android:targetPackage="com.ngam.app" android:targetClass="com.ngam.app.MainActivity" />
+    </shortcut>
+</shortcuts>

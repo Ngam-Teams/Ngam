@@ -12,7 +12,8 @@ import '../shared/profile_screen.dart';
 import '../../services/app_update_service.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
-  const CustomerHomeScreen({super.key});
+  final int initialIndex;
+  const CustomerHomeScreen({super.key, this.initialIndex = 0});
 
   @override
   State<CustomerHomeScreen> createState() => _CustomerHomeScreenState();
@@ -27,6 +28,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   @override
   void initState() {
     super.initState();
+    final start = widget.initialIndex.clamp(0, 4);
+    _currentIndex = start;
+    _initializedPages[start] = true;
     // Buang splash screen lepas frame pertama di-render
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FlutterNativeSplash.remove();

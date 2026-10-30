@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shortcut_discover">Teroka</string>
+    <string name="shortcut_feed">Feed</string>
+    <string name="shortcut_inbox">Inbox</string>
+    <string name="shortcut_profile">Profil</string>
+</resources>

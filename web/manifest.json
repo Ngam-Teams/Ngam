@@ -9,7 +9,11 @@
     "theme_color": "#0A0A14",
     "description": "Ngam - Pesanan & Servis Komuniti Pintar Malaysia",
     "orientation": "portrait-primary",
-    "categories": ["lifestyle", "shopping", "utilities"],
+    "categories": [
+        "lifestyle",
+        "shopping",
+        "utilities"
+    ],
     "prefer_related_applications": false,
     "icons": [
         {
@@ -51,18 +55,56 @@
     ],
     "shortcuts": [
         {
-            "name": "Teroka Kedai & Servis",
+            "name": "Teroka",
             "short_name": "Teroka",
-            "description": "Cari kedai dan servis fizikal terdekat",
-            "url": "/",
-            "icons": [{ "src": "icons/Icon-192.png", "sizes": "192x192" }]
+            "description": "Cari kedai dan servis terdekat",
+            "url": "/tab/discover",
+            "icons": [
+                {
+                    "src": "icons/shortcuts/discover.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                }
+            ]
         },
         {
-            "name": "Pesanan Saya",
-            "short_name": "Pesanan",
-            "description": "Semak status pesanan aktif anda",
-            "url": "/",
-            "icons": [{ "src": "icons/Icon-192.png", "sizes": "192x192" }]
+            "name": "Feed",
+            "short_name": "Feed",
+            "description": "Tonton video dari kedai",
+            "url": "/tab/feed",
+            "icons": [
+                {
+                    "src": "icons/shortcuts/feed.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                }
+            ]
+        },
+        {
+            "name": "Peti Masuk",
+            "short_name": "Inbox",
+            "description": "Mesej anda",
+            "url": "/tab/inbox",
+            "icons": [
+                {
+                    "src": "icons/shortcuts/inbox.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                }
+            ]
+        },
+        {
+            "name": "Profil",
+            "short_name": "Profil",
+            "description": "Akaun saya",
+            "url": "/tab/profile",
+            "icons": [
+                {
+                    "src": "icons/shortcuts/profile.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                }
+            ]
         }
     ]
 }
