@@ -1,3 +1,4 @@
+import '../../widgets/glass_nav_button.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -154,21 +155,31 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  IconButton(
-                    icon: const HugeIcon(icon: HugeIcons.strokeRoundedCancel01, color: Colors.white, size: 28),
-                    onPressed: () => Navigator.pop(context),
+                  GlassNavButton.close(
+                    context: context,
+                    isDark: true,
+                    size: 42,
+                    iconSize: 22,
                   ),
                   Row(
                     children: [
-                      IconButton(
-                        icon: const HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.white, size: 24),
+                      GlassNavButton(
+                        icon: HugeIcons.strokeRoundedImage01,
                         tooltip: 'Pilih dari Galeri',
-                        onPressed: _pickFromGallery,
+                        isDark: true,
+                        size: 42,
+                        iconSize: 20,
+                        onTap: _pickFromGallery,
                       ),
-                      IconButton(
-                        icon: HugeIcon(icon: _torchEnabled ? HugeIcons.strokeRoundedFlash : HugeIcons.strokeRoundedFlashOff, color: _torchEnabled ? Colors.amber : Colors.white, size: 26),
+                      const SizedBox(width: 8),
+                      GlassNavButton(
+                        icon: _torchEnabled ? HugeIcons.strokeRoundedFlash : HugeIcons.strokeRoundedFlashOff,
+                        iconColor: _torchEnabled ? Colors.amber : Colors.white,
                         tooltip: 'Lampu Kilat',
-                        onPressed: () {
+                        isDark: true,
+                        size: 42,
+                        iconSize: 20,
+                        onTap: () {
                           controller.toggleTorch();
                           setState(() => _torchEnabled = !_torchEnabled);
                         },

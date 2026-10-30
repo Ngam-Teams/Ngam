@@ -1,3 +1,4 @@
+import '../../widgets/glass_nav_button.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -484,9 +485,16 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, color: isDark ? Colors.white : Colors.black87, size: 20),
-          onPressed: () => Navigator.pop(context),
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12.0),
+          child: Center(
+            child: GlassNavButton.back(
+              context: context,
+              isDark: isDark,
+              size: 40,
+              iconSize: 20,
+            ),
+          ),
         ),
         title: Text(
           'Tiket Giliran Walk-In',
@@ -497,15 +505,33 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
           ),
         ),
         actions: [
-          IconButton(
-            icon: const HugeIcon(icon: HugeIcons.strokeRoundedQrCode, color: Color(0xFF42A5F5), size: 22),
-            onPressed: _scanQueueQr,
-            tooltip: 'Imbas QR Giliran',
+          Padding(
+            padding: const EdgeInsets.only(right: 6.0),
+            child: Center(
+              child: GlassNavButton(
+                icon: HugeIcons.strokeRoundedQrCode,
+                iconColor: const Color(0xFF42A5F5),
+                tooltip: 'Imbas QR Giliran',
+                isDark: isDark,
+                size: 38,
+                iconSize: 20,
+                onTap: _scanQueueQr,
+              ),
+            ),
           ),
-          IconButton(
-            icon: const HugeIcon(icon: HugeIcons.strokeRoundedRefresh, color: Color(0xFF42A5F5), size: 22),
-            onPressed: () => _loadCustomerTicket(),
-            tooltip: 'Segarkan Status',
+          Padding(
+            padding: const EdgeInsets.only(right: 12.0),
+            child: Center(
+              child: GlassNavButton(
+                icon: HugeIcons.strokeRoundedRefresh,
+                iconColor: const Color(0xFF42A5F5),
+                tooltip: 'Segarkan Status',
+                isDark: isDark,
+                size: 38,
+                iconSize: 20,
+                onTap: () => _loadCustomerTicket(),
+              ),
+            ),
           ),
         ],
       ),

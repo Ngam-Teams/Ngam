@@ -1,3 +1,4 @@
+import '../../widgets/glass_nav_button.dart';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -276,9 +277,16 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
         centerTitle: true,
         title: Text("privacy.title".tr(),
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, fontFamily: 'Inter')),
-        leading: IconButton(
-            icon: const HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, color: Colors.grey, size: 24),
-            onPressed: () => Navigator.pop(context)
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12.0),
+          child: Center(
+            child: GlassNavButton.back(
+              context: context,
+              isDark: isDark,
+              size: 40,
+              iconSize: 20,
+            ),
+          ),
         ),
       ),
       body: SingleChildScrollView(

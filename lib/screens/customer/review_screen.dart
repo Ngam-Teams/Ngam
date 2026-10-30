@@ -1,3 +1,4 @@
+import '../../widgets/glass_nav_button.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -104,11 +105,23 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12.0),
+          child: Center(
+            child: GlassNavButton.back(
+              context: context,
+              isDark: isDark,
+              size: 40,
+              iconSize: 20,
+            ),
+          ),
+        ),
         title: Text(
           'Ulasan & Penarafan',
           style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
         ),
-        elevation: 0,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),

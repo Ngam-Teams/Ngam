@@ -15,6 +15,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/shop_data.dart';
 import '../../widgets/glass_toast.dart';
 import '../explore/business_store_view.dart';
+import '../explore/explore_view.dart';
 import '../explore/my_bookings_view.dart';
 import '../explore/qr_scanner_screen.dart';
 import '../explore/store_route_loader.dart';
@@ -993,7 +994,8 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
   Widget _buildSearchBar(bool isDark) {
     return GestureDetector(
       onTap: () {
-        // Switch to Discover tab to search on map
+        // Switch to Discover tab and focus its search bar
+        ExploreView.pendingSearch.value = const ExploreSearchRequest(focusSearch: true);
         widget.onSwitchTab?.call(1);
       },
       child: GlassContainer(
@@ -1259,7 +1261,8 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(
                     onTap: () {
-                      // Switch to Discover tab (tab 1)
+                      // Switch to Discover tab filtered by this category
+                      ExploreView.pendingSearch.value = ExploreSearchRequest(categoryId: cat['categoryKey'] as String);
                       widget.onSwitchTab?.call(1);
                     },
                     child: GlassContainer(

@@ -1,3 +1,4 @@
+import '../../widgets/glass_nav_button.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -41,13 +42,16 @@ class _MyBookingsViewState extends State<MyBookingsView> {
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: Navigator.canPop(context)
-            ? IconButton(
-                icon: HugeIcon(
-                  icon: HugeIcons.strokeRoundedArrowLeft01,
-                  color: isDark ? Colors.white : const Color(0xFF0F172A),
-                  size: 22,
+            ? Padding(
+                padding: const EdgeInsets.only(left: 12.0),
+                child: Center(
+                  child: GlassNavButton.back(
+                    context: context,
+                    isDark: isDark,
+                    size: 40,
+                    iconSize: 20,
+                  ),
                 ),
-                onPressed: () => Navigator.pop(context),
               )
             : null,
         title: Text(

@@ -1,3 +1,4 @@
+import '../../widgets/glass_nav_button.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:ngam/widgets/glass_box.dart';
@@ -64,9 +65,16 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
         elevation: 0,
         centerTitle: true,
         title: Text("support.help_center".tr(), style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 18, color: isDark ? Colors.white : Colors.black87)),
-        leading: IconButton(
-          icon: HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, color: isDark ? Colors.white70 : Colors.black54, size: 24),
-          onPressed: () => Navigator.pop(context),
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12.0),
+          child: Center(
+            child: GlassNavButton.back(
+              context: context,
+              isDark: isDark,
+              size: 40,
+              iconSize: 20,
+            ),
+          ),
         ),
       ),
       body: SafeArea(
@@ -181,9 +189,16 @@ class ContactUsScreen extends StatelessWidget {
         elevation: 0,
         centerTitle: true,
         title: Text("support.contact_us".tr(), style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 18, color: isDark ? Colors.white : Colors.black87)),
-        leading: IconButton(
-          icon: HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, color: isDark ? Colors.white70 : Colors.black54, size: 24),
-          onPressed: () => Navigator.pop(context),
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12.0),
+          child: Center(
+            child: GlassNavButton.back(
+              context: context,
+              isDark: isDark,
+              size: 40,
+              iconSize: 20,
+            ),
+          ),
         ),
       ),
       body: SafeArea(

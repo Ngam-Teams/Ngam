@@ -1,3 +1,4 @@
+import '../../widgets/glass_nav_button.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -662,7 +663,17 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
         elevation: 0,
         centerTitle: true,
         title: Text("wallet.title".tr(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        leading: IconButton(icon: const HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, color: Colors.grey, size: 24), onPressed: () => Navigator.pop(context)),
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12.0),
+          child: Center(
+            child: GlassNavButton.back(
+              context: context,
+              isDark: Theme.of(context).brightness == Brightness.dark,
+              size: 40,
+              iconSize: 20,
+            ),
+          ),
+        ),
       ),
       body: Stack(
         children: [

@@ -29,7 +29,18 @@ import '../../widgets/customer_desktop_sidebar.dart';
 
 enum ShopStatus { open, closingSoon, closed }
 
+/// Request sent from other tabs (e.g. Home feed) to prefill the Discover search.
+class ExploreSearchRequest {
+  final String? query;
+  final String? categoryId;
+  final bool focusSearch;
+  const ExploreSearchRequest({this.query, this.categoryId, this.focusSearch = false});
+}
+
 class ExploreView extends StatefulWidget {
+  /// Set this, then switch to the Discover tab. ExploreView consumes it.
+  static final ValueNotifier<ExploreSearchRequest?> pendingSearch = ValueNotifier<ExploreSearchRequest?>(null);
+
   const ExploreView({super.key});
 
   @override
@@ -242,6 +253,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     _pageController = PageController(viewportFraction: 0.85);
     _desktopCarouselController = ScrollController();
 
+    ExploreView.pendingSearch.addListener(_consumePendingSearch);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _consumePendingSearch());
+
     //  2. Attach the listener for the search bar focus
     _searchFocus.addListener(_onSearchFocusChanged);
     CustomerDesktopSidebar.isExpandedNotifier.addListener(_onSidebarExpandedChanged);
@@ -376,6 +390,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     _positionStream?.cancel();
     _debounce?.cancel();
     CustomerDesktopSidebar.isExpandedNotifier.removeListener(_onSidebarExpandedChanged);
+    ExploreView.pendingSearch.removeListener(_consumePendingSearch);
     _searchFocus.removeListener(_onSearchFocusChanged);
     _searchFocus.dispose();
     _searchController.dispose();
@@ -558,6 +573,37 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       duration: const Duration(milliseconds: 350),
       curve: Curves.easeInOutCubic,
     );
+  }
+
+  int _pendingRetries = 0;
+  void _consumePendingSearch() {
+    final req = ExploreView.pendingSearch.value;
+    if (req == null || !mounted) return;
+    if (req.categoryId != null) {
+      // Wait until shops have loaded so the filter has data.
+      if (_nearbyShops.isEmpty && _pendingRetries < 20) {
+        _pendingRetries++;
+        Future.delayed(const Duration(milliseconds: 300), _consumePendingSearch);
+        return;
+      }
+      _pendingRetries = 0;
+      ExploreView.pendingSearch.value = null;
+      final id = req.categoryId!;
+      String label = id;
+      for (final g in _getCategoryTree(context)) {
+        for (final s in g['sub']) {
+          if (s['id'] == id) label = s['label'];
+        }
+      }
+      _executeCategorySearch(id, label);
+    } else {
+      ExploreView.pendingSearch.value = null;
+      if (req.query != null && req.query!.isNotEmpty) {
+        _searchController.text = req.query!;
+        _handleSearch(req.query!);
+      }
+      if (req.focusSearch) _searchFocus.requestFocus();
+    }
   }
 
   void _executeCategorySearch(String categoryId, String categoryLabel, {bool isGroup = false}) {

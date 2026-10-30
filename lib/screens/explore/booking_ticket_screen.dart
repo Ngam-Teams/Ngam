@@ -1,3 +1,4 @@
+import '../../widgets/glass_nav_button.dart';
 import 'dart:async'; //  Needed for Timer
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -878,27 +879,34 @@ Disahkan melalui aplikasi *Ngam*.
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: HugeIcon(
-            icon: HugeIcons.strokeRoundedCancel01,
-            color: isDark ? Colors.white : Colors.black,
-            size: 24.0,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12.0),
+          child: Center(
+            child: GlassNavButton.close(
+              context: context,
+              isDark: isDark,
+              size: 40,
+              iconSize: 20,
+            ),
           ),
-          onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           l10n.ticketOrderTitle,
           style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.bold),
         ),
         actions: [
-          IconButton(
-            tooltip: 'Kongsi Resit',
-            icon: HugeIcon(
-              icon: HugeIcons.strokeRoundedShare01,
-              color: isDark ? Colors.white : Colors.black,
-              size: 22.0,
+          Padding(
+            padding: const EdgeInsets.only(right: 6.0),
+            child: Center(
+              child: GlassNavButton(
+                icon: HugeIcons.strokeRoundedShare01,
+                tooltip: 'Kongsi Resit',
+                isDark: isDark,
+                size: 40,
+                iconSize: 20,
+                onTap: _shareTicketToWhatsApp,
+              ),
             ),
-            onPressed: _shareTicketToWhatsApp,
           ),
           PopupMenuButton<String>(
             icon: HugeIcon(

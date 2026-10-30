@@ -1,3 +1,4 @@
+import '../../widgets/glass_nav_button.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:ngam/widgets/glass_box.dart';
@@ -68,9 +69,16 @@ class LegalTextScreen extends StatelessWidget {
         elevation: 0,
         centerTitle: true,
         title: Text(title, style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 18, color: isDark ? Colors.white : Colors.black87)),
-        leading: IconButton(
-          icon: HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, color: isDark ? Colors.white70 : Colors.black54, size: 24),
-          onPressed: () => Navigator.pop(context),
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12.0),
+          child: Center(
+            child: GlassNavButton.back(
+              context: context,
+              isDark: isDark,
+              size: 40,
+              iconSize: 20,
+            ),
+          ),
         ),
       ),
       body: SafeArea(
@@ -129,9 +137,16 @@ class _RateAppScreenState extends State<RateAppScreen> {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          leading: IconButton(
-            icon: HugeIcon(icon: HugeIcons.strokeRoundedCancel01, color: isDark ? Colors.white70 : Colors.black54, size: 24),
-            onPressed: () => Navigator.pop(context),
+          leading: Padding(
+            padding: const EdgeInsets.only(left: 12.0),
+            child: Center(
+              child: GlassNavButton.close(
+                context: context,
+                isDark: isDark,
+                size: 40,
+                iconSize: 20,
+              ),
+            ),
           ),
         ),
         body: SafeArea(

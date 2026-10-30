@@ -1,3 +1,4 @@
+import '../../widgets/glass_nav_button.dart';
 import 'dart:io';
 import 'dart:async';
 import 'dart:ui' as ui;
@@ -176,7 +177,17 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
         elevation: 0,
         centerTitle: true,
         title: Text("wallet.title".tr(), style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
-        leading: IconButton(icon: const HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, color: Colors.grey, size: 24), onPressed: () => Navigator.pop(context)),
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12.0),
+          child: Center(
+            child: GlassNavButton.back(
+              context: context,
+              isDark: isDark,
+              size: 40,
+              iconSize: 20,
+            ),
+          ),
+        ),
       ),
       body: Stack(
         children: [

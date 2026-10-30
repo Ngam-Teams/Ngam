@@ -1,3 +1,4 @@
+import '../../widgets/glass_nav_button.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -128,9 +129,16 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, color: isDark ? Colors.white : Colors.black87, size: 20),
-          onPressed: () => Navigator.pop(context),
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12.0),
+          child: Center(
+            child: GlassNavButton.back(
+              context: context,
+              isDark: isDark,
+              size: 40,
+              iconSize: 20,
+            ),
+          ),
         ),
         title: Text(
           'Kad Cop Digital Saya',
@@ -141,10 +149,19 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const HugeIcon(icon: HugeIcons.strokeRoundedQrCode, color: Color(0xFF42A5F5), size: 26),
-            tooltip: 'Tunjuk QR Saya',
-            onPressed: () => _showCustomerQrSheet(phone, name),
+          Padding(
+            padding: const EdgeInsets.only(right: 12.0),
+            child: Center(
+              child: GlassNavButton(
+                icon: HugeIcons.strokeRoundedQrCode,
+                iconColor: const Color(0xFF42A5F5),
+                tooltip: 'Tunjuk QR Saya',
+                isDark: isDark,
+                size: 40,
+                iconSize: 22,
+                onTap: () => _showCustomerQrSheet(phone, name),
+              ),
+            ),
           ),
         ],
       ),
