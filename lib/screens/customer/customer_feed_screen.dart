@@ -950,8 +950,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     final bool isDark = themeProvider?.isDarkMode ?? (Theme.of(context).brightness == Brightness.dark);
     final Color scaffoldBg = isDark ? const Color(0xFF0B0F17) : const Color(0xFFF8FAFC);
     
-    // Bottom padding to position feed content nicely above the floating navbar
-    final double bottomOffset = (safeBottom > 0 ? safeBottom : 16) + 78;
+    // Bottom padding to position feed content nicely above the lowered floating navbar (50% gap reduction)
+    final double bottomOffset = (safeBottom > 0 ? (safeBottom * 0.5) : 10) + 68;
 
     return Focus(
       autofocus: true,

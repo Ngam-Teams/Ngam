@@ -44,7 +44,8 @@ class _CustomBottomNavState extends State<CustomBottomNav> {
     final bool isKeyboardOpen = keyboardHeight > 100;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final double safeBottom = MediaQuery.paddingOf(context).bottom;
-    final double adjustedBottomPadding = safeBottom > 0 ? safeBottom + 0 : 20;
+    // Turunkan jurang bawah (floating bottom gap) sebanyak 50% supaya navbar tidak terapung terlalu tinggi dalam pelayar web / skrin penuh
+    final double adjustedBottomPadding = safeBottom > 0 ? (safeBottom * 0.5) : 10.0;
 
     const Duration animDuration = Duration(milliseconds: 450);
     const Curve animCurve = Curves.easeOutQuint;
