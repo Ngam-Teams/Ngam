@@ -47,7 +47,7 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
   String get _postId => (widget.post['id'] ?? '').toString();
   String get _shopName => (widget.post['shopName'] ?? 'Kedai di Ngam').toString();
   String get _title => (widget.post['title'] ?? widget.post['caption'] ?? 'Hantaran menarik di Ngam').toString();
-  String get _shareUrl => 'https://ngam.app/p/$_postId';
+  String get _shareUrl => 'https://ngam.dev/p/$_postId';
   String get _shareText => 'Tengok video menarik dari $_shopName di Ngam!\n"$_title"\n\n$_shareUrl';
 
   Future<void> _launchExternalUrl(String urlString) async {

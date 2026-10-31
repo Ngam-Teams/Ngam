@@ -23,6 +23,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'screens/explore/store_route_loader.dart';
 import 'screens/shared/my_queue_ticket_screen.dart';
+import 'screens/customer/post_route_loader.dart';
 import 'core/router/url_strategy.dart';
 
 import 'widgets/app_lock_wrapper.dart';
@@ -266,7 +267,16 @@ Route<dynamic>? _generateRoute(RouteSettings settings) {
                 );
               }
 
-              // 4. /voucher/:code or /promo/:code
+              // 4. /p/:id or /post/:id (e.g. /p/1 or /post/uuid)
+              if (segments.isNotEmpty && (segments.first == 'p' || segments.first == 'post')) {
+                final postId = segments.length > 1 ? segments[1] : '';
+                return MaterialPageRoute(
+                  settings: settings,
+                  builder: (_) => PostRouteLoader(postId: postId),
+                );
+              }
+
+              // 5. /voucher/:code or /promo/:code
               if (segments.isNotEmpty && (segments.first == 'voucher' || segments.first == 'promo')) {
                 final code = segments.length > 1 ? segments[1] : '';
                 final store = uri.queryParameters['store'] ?? uri.queryParameters['shop'] ?? '';
@@ -279,12 +289,13 @@ Route<dynamic>? _generateRoute(RouteSettings settings) {
                 );
               }
 
-              // 5. Clean handle fallback (e.g. /pisangkrispy?table=1) where first segment is NOT reserved
+              // 6. Clean handle fallback (e.g. /pisangkrispy?table=1) where first segment is NOT reserved
               const reservedRoutes = {
                 'tab', 'q', 'queue', 'login', 'register', 'forgot-password', 'reset-password',
                 'customer-home', 'review', 'profile', 'explore', 'bookings',
                 'cart', 'chat', 'wallet', 'orders', 'notifications', 'search',
-                'privacy', 'terms', 'support', 'about', 'feed', 'api', 'assets'
+                'privacy', 'terms', 'support', 'about', 'feed', 'api', 'assets',
+                'p', 'post'
               };
               if (segments.isNotEmpty && !reservedRoutes.contains(segments.first.toLowerCase())) {
                 final rawHandle = Uri.decodeComponent(segments.first);
