@@ -83,8 +83,18 @@ class VoucherService {
 
       if (raw != null && raw.isNotEmpty) {
         final List<dynamic> decoded = jsonDecode(raw);
-        savedVouchersNotifier.value =
+        final loaded =
             decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        // Bersihkan sebarang baucar mock 'local_' yang pernah disimpan sebelum ini
+        final int beforeCount = loaded.length;
+        loaded.removeWhere((v) {
+          final id = v['id']?.toString() ?? '';
+          return id.startsWith('local_');
+        });
+        savedVouchersNotifier.value = loaded;
+        if (loaded.length != beforeCount) {
+          await _persist();
+        }
       }
 
       // Auto-seed welcome voucher if user doesn't have it yet
@@ -403,7 +413,7 @@ class VoucherService {
           return {'success': false, 'message': status['reason'] ?? 'Baucar ini tidak layak untuk pesanan ini.'};
         }
       }
-      return {'success': false, 'message': 'Kod baucar "$cleanCode" tidak sah atau tidak dijumpai.'};
+      return {'success': false, 'message': saveRes['message'] ?? 'Kod baucar "$cleanCode" tidak sah atau tidak dijumpai.'};
     }
 
     if (match['is_eligible'] != true) {
@@ -473,29 +483,18 @@ class VoucherService {
           'saved_at': DateTime.now().toIso8601String(),
         };
 
-        await toggleSaveVoucher(entry);
+        await saveVoucher(entry);
         return {'success': true, 'voucher': entry, 'message': 'Baucar berjaya disimpan!'};
       }
     } catch (e) {
       debugPrint('[VoucherService] Semakan Supabase gagal: $e');
     }
 
-    // Fallback general coupon
-    final fallbackEntry = {
-      'id': 'local_$cleanCode',
-      'code': cleanCode,
-      'title': 'Baucar Promosi Komuniti',
-      'shop_name': 'Baucar Rasmi Ngam',
-      'discount_type': cleanCode.contains('50') || cleanCode.contains('PERCENT') ? 'percentage' : 'fixed',
-      'discount_value': cleanCode.contains('50') ? 50.0 : 5.0,
-      'min_spend': 10.0,
-      'end_date': DateTime.now().add(const Duration(days: 30)).toIso8601String(),
-      'saved_at': DateTime.now().toIso8601String(),
-      'is_platform': true,
+    // Jika tiada dalam senarai curated atau Supabase, kod adalah tidak sah
+    return {
+      'success': false,
+      'message': 'Kod baucar "$cleanCode" tidak sah atau tidak wujud.',
     };
-
-    await toggleSaveVoucher(fallbackEntry);
-    return {'success': true, 'voucher': fallbackEntry, 'message': 'Baucar $cleanCode berjaya disimpan!'};
   }
 
   /// Padam baucar tersimpan mengikut ID atau Kod

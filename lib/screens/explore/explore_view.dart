@@ -3827,7 +3827,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 );
   }
 
-  // --- 5. BOTTOM SHEET MODAL (GOOGLE MAPS STYLE) ---
+  // --- 5. BOTTOM SHEET MODAL ---
 
   void _showBusinessProfile(BuildContext context, Map<String, dynamic> shop) {
     setState(() {
@@ -3837,7 +3837,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
     final bool isDesktop = MediaQuery.of(context).size.width >= 800;
     if (isDesktop) {
-      // Pada desktop, panel sisi Google Maps diaktifkan melalui state _isProfileOpen di dalam Stack!
+      // Pada desktop, panel sisi diaktifkan melalui state _isProfileOpen di dalam Stack!
       return;
     }
 
@@ -3877,14 +3877,6 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     final double bottomSafeArea = MediaQuery.of(context).padding.bottom;
     final double screenHeight = MediaQuery.of(context).size.height;
 
-    // Google Maps Snap-Points:
-    // 1. Minimized Peek: ~24% screen height (tunjuk tajuk, rating, status, & shortcut action buttons)
-    // 2. Medium Half-Sheet: 50% (separuh skrin kemas, peta masih nampak di atas)
-    // 3. Full Expanded: 88% (maklumat penuh, gambar banner, review & ulasan)
-    final double peekSize = ((200.0 + bottomSafeArea) / screenHeight).clamp(0.22, 0.32);
-    final double halfSize = 0.52;
-    final double fullSize = 0.88;
-
     _scaffoldKey.currentState!.showBottomSheet(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -3893,19 +3885,34 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         return LayoutBuilder(builder: (ctx, constraints) {
           final String shopName = (shop['name'] ?? shop['business_name'] ?? 'Kedai Ngam').toString();
 
+          // Kira adaptive initial height mengikut panjang tajuk kedai
+          double textAvailableWidth = constraints.maxWidth - 108;
+          final TextPainter textPainter = TextPainter(
+            text: TextSpan(
+              text: shopName,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            textDirection: TextDirection.ltr,
+            maxLines: 2,
+          )..layout(maxWidth: textAvailableWidth > 0 ? textAvailableWidth : 250);
+
+          int numLines = textPainter.computeLineMetrics().length;
+          double baseHeight = numLines > 1 ? 600.0 : 570.0;
+          double adaptiveInitialSize = ((baseHeight + bottomSafeArea) / screenHeight).clamp(0.60, 0.88);
+
           final Widget sheet = DraggableScrollableSheet(
             controller: _sheetController,
-            initialChildSize: peekSize,
+            initialChildSize: adaptiveInitialSize,
             minChildSize: 0.0,
-            maxChildSize: fullSize,
+            maxChildSize: 0.95,
             snap: true,
-            snapSizes: [0.0, peekSize, halfSize, fullSize],
+            snapSizes: [0.0, adaptiveInitialSize, 0.95],
             expand: false,
             builder: (sheetContext, scrollController) {
               return NotificationListener<DraggableScrollableNotification>(
                 onNotification: (notification) {
-                  // Tutup terus jika ditarik ke bawah melepasi separuh peek
-                  if (notification.extent <= (peekSize * 0.55) && _isProfileOpen) {
+                  // Mudah ditutup: leret ke bawah melepasi 35% skrin untuk tutup terus
+                  if (notification.extent <= 0.35 && _isProfileOpen) {
                     _isProfileOpen = false;
                     _sheetController
                         .animateTo(0.0,
@@ -3920,32 +3927,32 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                   return true;
                 },
                 child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                   child: Stack(
                     children: [
-                      // 1. Frosted Glass Background
+                      // 1. Frosted Liquid Glass Background
                       Positioned.fill(
                         child: GlassContainer(
                           useOwnLayer: true,
                           quality: GlassQuality.standard,
-                          shape: const LiquidRoundedSuperellipse(borderRadius: 28.0),
+                          shape: const LiquidRoundedSuperellipse(borderRadius: 32.0),
                           settings: _getGlassSettings(isDark, blur: 16),
                           child: Container(
                             decoration: BoxDecoration(
                               color: isDark
                                   ? const Color(0xFF0F1521).withValues(alpha: 0.88)
                                   : Colors.white.withValues(alpha: 0.90),
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                               border: Border.all(
                                 color: isDark
-                                    ? Colors.white.withValues(alpha: 0.14)
+                                    ? Colors.white.withValues(alpha: 0.15)
                                     : Colors.black.withValues(alpha: 0.08),
                                 width: 1.0,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.12),
-                                  blurRadius: 20,
+                                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.10),
+                                  blurRadius: 18,
                                   offset: const Offset(0, -4),
                                 ),
                               ],
@@ -3956,18 +3963,18 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
                       // 2. Scrollable Body Content
                       Positioned.fill(
-                        bottom: 74 + bottomSafeArea, // Beri laluan kepada Pinned Bottom Action Bar
+                        bottom: 84 + bottomSafeArea, // Ruang untuk Pinned Action Buttons bawah
                         child: ListView(
                           controller: scrollController,
                           physics: const BouncingScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+                          padding: const EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 20),
                           children: [
-                            // Drag Handle Pill (Google Maps style)
+                            // Drag Handle Bar (Kemas & Responsif)
                             Center(
                               child: Container(
                                 width: 44,
                                 height: 4.5,
-                                margin: const EdgeInsets.only(bottom: 12),
+                                margin: const EdgeInsets.only(bottom: 14),
                                 decoration: BoxDecoration(
                                   color: isDark
                                       ? Colors.white.withValues(alpha: 0.28)
@@ -3977,9 +3984,19 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                               ),
                             ),
 
-                            // Store Header: Name, Category, Status Badge & Close (X)
+                            // Store Cover Image Banner with Overlaid Circle Logo
+                            _buildStoreCoverBanner(
+                              shop: shop,
+                              isDark: isDark,
+                              height: 165,
+                              logoSize: 78,
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Store Title, Category, Status & Share Button
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Expanded(
                                   child: Column(
@@ -3988,126 +4005,74 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                       Text(
                                         shopName,
                                         style: TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w800,
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.bold,
                                           letterSpacing: -0.3,
                                           color: isDark ? Colors.white : _lightModeGray,
                                         ),
-                                        maxLines: 1,
+                                        maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                       ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Text(
-                                            (shop['category'] ?? 'SERVIS').toString().toUpperCase(),
-                                            style: const TextStyle(
-                                              fontSize: 11.5,
-                                              color: Colors.blue,
-                                              fontWeight: FontWeight.bold,
-                                              letterSpacing: 0.8,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: statusColor.withValues(alpha: 0.18),
-                                              borderRadius: BorderRadius.circular(6),
-                                              border: Border.all(
-                                                color: statusColor.withValues(alpha: 0.5),
-                                                width: 0.8,
-                                              ),
-                                            ),
-                                            child: Text(
-                                              statusText,
-                                              style: TextStyle(
-                                                fontSize: 10,
+                                      const SizedBox(height: 6),
+                                      SingleChildScrollView(
+                                        scrollDirection: Axis.horizontal,
+                                        physics: const BouncingScrollPhysics(),
+                                        child: Row(
+                                          crossAxisAlignment: CrossAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              (shop['category'] ?? '').toString().toUpperCase(),
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.blue,
                                                 fontWeight: FontWeight.bold,
-                                                color: statusColor,
+                                                letterSpacing: 1.2,
                                               ),
                                             ),
-                                          ),
-                                        ],
+                                            const SizedBox(width: 10),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: statusColor.withValues(alpha: 0.2),
+                                                borderRadius: BorderRadius.circular(8),
+                                                border: Border.all(color: statusColor, width: 0.8),
+                                              ),
+                                              child: Text(
+                                                statusText,
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: statusColor,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(width: 10),
-                                // Close button (Circular Glass Pill)
-                                GestureDetector(
-                                  onTap: () {
-                                    _sheetController
-                                        .animateTo(0.0,
-                                            duration: const Duration(milliseconds: 180),
-                                            curve: Curves.easeOut)
-                                        .then((_) {
-                                      if (sheetContext.mounted) {
-                                        Navigator.of(sheetContext).pop();
-                                      }
-                                    });
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.all(7),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: isDark
-                                          ? Colors.white.withValues(alpha: 0.08)
-                                          : Colors.black.withValues(alpha: 0.05),
-                                      border: Border.all(
-                                        color: isDark
-                                            ? Colors.white.withValues(alpha: 0.12)
-                                            : Colors.black.withValues(alpha: 0.06),
-                                      ),
-                                    ),
-                                    child: HugeIcon(
-                                      icon: HugeIcons.strokeRoundedCancel01,
-                                      color: isDark ? Colors.white70 : Colors.black54,
-                                      size: 16,
-                                    ),
+                                const SizedBox(width: 12),
+                                _buildInnerGlassCard(
+                                  isDark: isDark,
+                                  radius: 100,
+                                  padding: const EdgeInsets.all(12),
+                                  child: HugeIcon(
+                                    icon: HugeIcons.strokeRoundedShare01,
+                                    color: isDark ? Colors.white : _lightModeGray,
+                                    size: 20,
+                                    strokeWidth: 2.0,
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Google Maps Quick Action Bar (Call, Chat, Directions, Share)
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _buildActionButton(
-                                    HugeIcons.strokeRoundedRoute01,
-                                    AppLocalizations.of(context)!.directions,
-                                    isDark,
-                                    true,
-                                    onTap: () => _getDirections(shop),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                _buildActionButton(
-                                  HugeIcons.strokeRoundedCall,
-                                  null,
-                                  isDark,
-                                  false,
-                                  onTap: _makeCall,
-                                ),
-                                const SizedBox(width: 8),
-                                _buildActionButton(
-                                  HugeIcons.strokeRoundedMessage02,
-                                  null,
-                                  isDark,
-                                  false,
-                                  onTap: () => _showMessageOptions(context, isDark),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 16),
 
-                            // Stats Dashboard (Rating, Reviews, Distance Away)
+                            // Stats Dashboard (Kompak & Pendek: padding vertical 11)
                             _buildInnerGlassCard(
                               isDark: isDark,
                               radius: 16.0,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 11),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                 children: [
@@ -4142,29 +4107,64 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                             ),
                             const SizedBox(height: 16),
 
-                            // Store Cover Image Banner with Overlaid Circle Logo
-                            _buildStoreCoverBanner(
-                              shop: shop,
-                              isDark: isDark,
-                              height: 160,
-                              logoSize: 76,
+                            // Shortcut Action Buttons (Call, Message, Directions)
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 1,
+                                  child: _buildActionButton(
+                                    HugeIcons.strokeRoundedCall,
+                                    null,
+                                    isDark,
+                                    false,
+                                    onTap: _makeCall,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  flex: 1,
+                                  child: _buildActionButton(
+                                    HugeIcons.strokeRoundedMessage02,
+                                    null,
+                                    isDark,
+                                    false,
+                                    onTap: () => _showMessageOptions(context, isDark),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  flex: 2,
+                                  child: _buildActionButton(
+                                    HugeIcons.strokeRoundedRoute01,
+                                    AppLocalizations.of(context)!.directions,
+                                    isDark,
+                                    true,
+                                    onTap: () => _getDirections(shop),
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 18),
+                            const SizedBox(height: 20),
 
-                            // Customer Reviews Section
+                            // Review & Rating Section (Lengkap dengan bar pecahan ulasan)
                             _buildDesktopReviewsSection(shop, isDark),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 12),
                           ],
                         ),
                       ),
 
-                      // 3. Pinned Bottom Action Bar (View Store & Book Now)
+                      // 3. Pinned Bottom Action Bar (View Profile & Book Now - Saiz Penuh & Selesa Ditekan)
                       Positioned(
+                        bottom: 0,
                         left: 0,
                         right: 0,
-                        bottom: 0,
                         child: Container(
-                          padding: EdgeInsets.fromLTRB(20, 10, 20, bottomSafeArea + 10),
+                          padding: EdgeInsets.only(
+                            left: 20,
+                            right: 20,
+                            bottom: bottomSafeArea + 14,
+                            top: 14,
+                          ),
                           decoration: BoxDecoration(
                             color: isDark
                                 ? const Color(0xFF0F1521).withValues(alpha: 0.94)
@@ -4180,7 +4180,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                           ),
                           child: Row(
                             children: [
-                              // Button 1: View Store
+                              // Button 1: View Profile
                               Expanded(
                                 child: _AnimatedPressable(
                                   onTap: () {
@@ -4196,13 +4196,13 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                   child: _buildInnerGlassCard(
                                     isDark: isDark,
                                     radius: 16.0,
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
                                     child: Center(
                                       child: Text(
                                         AppLocalizations.of(context)!.btnViewProfile,
                                         style: TextStyle(
                                           color: isDark ? Colors.white : Colors.black87,
-                                          fontSize: 14,
+                                          fontSize: 15,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -4210,9 +4210,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 10),
+                              const SizedBox(width: 12),
 
-                              // Button 2: Book / Queue (With Auth Guard)
+                              // Button 2: Book Now (WITH AUTH GUARD)
                               Expanded(
                                 child: _AnimatedPressable(
                                   onTap: () {
@@ -4241,15 +4241,15 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                     }
                                   },
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
                                     decoration: BoxDecoration(
                                       color: Colors.blue,
                                       borderRadius: BorderRadius.circular(16),
                                       boxShadow: [
                                         BoxShadow(
                                           color: Colors.blue.withValues(alpha: 0.35),
-                                          blurRadius: 14,
-                                          offset: const Offset(0, 5),
+                                          blurRadius: 16,
+                                          offset: const Offset(0, 6),
                                         ),
                                       ],
                                     ),
@@ -4258,7 +4258,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                         AppLocalizations.of(context)!.bookNow,
                                         style: const TextStyle(
                                           color: Colors.white,
-                                          fontSize: 14,
+                                          fontSize: 15,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
