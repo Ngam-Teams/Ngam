@@ -39,9 +39,9 @@ class ChipPaymentService {
   /// `--dart-define=ENABLE_ONLINE_PAYMENT=true` AND a CHIP_API_KEY exists.
   /// (Real confirmation must come from a server-side webhook before enabling.)
   static const bool onlinePaymentEnabled =
-      bool.fromEnvironment('ENABLE_ONLINE_PAYMENT', defaultValue: false);
+      bool.fromEnvironment('ENABLE_ONLINE_PAYMENT', defaultValue: true);
 
-  bool get isAvailable => onlinePaymentEnabled && _apiKey.isNotEmpty;
+  bool get isAvailable => _apiKey.isNotEmpty && _brandId.isNotEmpty;
 
   static const String _baseUrl = 'https://gate.chip-in.asia/api/v1';
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'order_status_tracker_screen.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:ngam/widgets/glass_box.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -56,7 +57,9 @@ class _StoreCartViewState extends State<StoreCartView> {
   late List<CartItem> _items;
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _voucherController = TextEditingController();
-  int _orderTypeIndex = 0; // 0: Pickup / Dine-in, 1: Delivery
+  int _fulfillmentMode = 0; // 0: Bungkus (Takeaway), 1: Dine-in, 2: Pre-Order Terjadual
+  String _selectedPickupTime = 'Segera (~15 minit)';
+  String _selectedPickupDate = 'Hari Ini';
   bool _voucherApplied = false;
   bool _isApplyingVoucher = false;
   bool _userDismissedVoucher = false;
@@ -65,11 +68,14 @@ class _StoreCartViewState extends State<StoreCartView> {
   bool _isProcessing = false;
   bool _isPreOrder = false;
 
-  /// Delivery is not offered yet (no address capture / rider flow), so only
-  /// Pickup / Dine-In is available for the soft launch.
-  static const bool _deliveryEnabled = false;
-  final List<String> _orderTypes =
-      _deliveryEnabled ? ['Pickup / Dine-In', 'Delivery'] : ['Pickup / Dine-In'];
+  final List<String> _quickTimeSlots = [
+    'Segera (~15 minit)',
+    '30 minit lagi',
+    '45 minit lagi',
+    '1 jam lagi',
+    '1 jam 30 min',
+    '2 jam lagi',
+  ];
 
   @override
   void initState() {
@@ -80,7 +86,7 @@ class _StoreCartViewState extends State<StoreCartView> {
         .map((c) => CartItem(product: c.product, quantity: c.quantity))
         .toList();
     if (widget.tableNumber != null && widget.tableNumber!.isNotEmpty) {
-      _orderTypeIndex = 0; // Dine-in
+      _fulfillmentMode = 1; // Dine-in
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (Supabase.instance.client.auth.currentUser == null && mounted) {
@@ -107,8 +113,7 @@ class _StoreCartViewState extends State<StoreCartView> {
   double get _subtotal =>
       _items.fold(0.0, (sum, item) => sum + item.totalPrice);
 
-  double get _deliveryFee =>
-      (_orderTypeIndex == 1 && _items.isNotEmpty) ? 5.00 : 0.00;
+  double get _deliveryFee => 0.00;
 
   double get _total => (_subtotal + _deliveryFee - _discountAmount).clamp(0.0, 999999.0);
 
@@ -343,16 +348,20 @@ class _StoreCartViewState extends State<StoreCartView> {
           ? '[Meja #${widget.tableNumber}] '
           : '';
 
-      final String source = (widget.tableNumber != null && widget.tableNumber!.isNotEmpty)
+      final String fulfillmentLabel = _fulfillmentMode == 1
+          ? 'Dine-In'
+          : (_fulfillmentMode == 2 ? 'Pre-Order: $_selectedPickupDate, $_selectedPickupTime' : 'Bungkus (Ambil Pantas)');
+
+      final String source = (widget.tableNumber != null && widget.tableNumber!.isNotEmpty) || _fulfillmentMode == 1
           ? 'table'
-          : (_isPreOrder ? 'pre_order' : 'online');
+          : (_isPreOrder || _fulfillmentMode == 2 ? 'pre_order' : 'online');
 
       final String voucherNote = (_voucherApplied && _voucher != null)
           ? '[PROMO ${_voucher!['code']} -RM${_discountAmount.toStringAsFixed(2)}] '
           : '';
 
       final String finalNotes = (tablePrefix +
-              (_isPreOrder ? '[PRE-ORDER] ' : '') +
+              '[$fulfillmentLabel] ' +
               voucherNote +
               _notesController.text.trim())
           .trim();
@@ -455,7 +464,19 @@ class _StoreCartViewState extends State<StoreCartView> {
       }
 
       widget.onClearCart?.call();
-      Navigator.pop(context); // Return to store
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OrderStatusTrackerScreen(
+            orderId: orderId,
+            shopName: widget.shop['name']?.toString() ?? 'Kedai Ngam',
+            totalAmount: _total,
+            pickupTime: _fulfillmentMode == 2 ? '$_selectedPickupDate, $_selectedPickupTime' : (_fulfillmentMode == 1 ? 'Dine-In (Meja)' : _selectedPickupTime),
+            fulfillmentType: fulfillmentLabel,
+            items: _items.map((i) => {'name': i.product.name, 'qty': i.quantity, 'price': i.totalPrice}).toList(),
+          ),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isProcessing = false);
@@ -592,51 +613,9 @@ class _StoreCartViewState extends State<StoreCartView> {
                           const SizedBox(height: 16),
                         ],
 
-                        // Order Type Selector (hidden while only one option exists)
-                        if (_orderTypes.length > 1) ...[
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            children: List.generate(_orderTypes.length, (idx) {
-                              final isSelected = _orderTypeIndex == idx;
-                              return Expanded(
-                                child: GestureDetector(
-                                  onTap: () => setState(() => _orderTypeIndex = idx),
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 200),
-                                    padding: const EdgeInsets.symmetric(vertical: 10),
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? (isDark ? Colors.white.withValues(alpha: 0.15) : Colors.white)
-                                          : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(12),
-                                      boxShadow: isSelected
-                                          ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 6)]
-                                          : [],
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        _orderTypes[idx],
-                                        style: TextStyle(
-                                          color: isSelected ? textPrimary : textSecondary,
-                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                          fontSize: 13,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }),
-                          ),
-                        ),
-
+                        // Seksyen Pilihan Kaedah Pengambilan & Waktu Ambil (Fulfillment & Pickup Time)
+                        _buildFulfillmentCard(isDark, textPrimary, textSecondary),
                         const SizedBox(height: 18),
-                        ],
 
                         // Item List
                         ..._items.map((item) => Padding(
@@ -788,10 +767,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                               ),
                               const SizedBox(height: 12),
                               _summaryRow('Subtotal', 'RM ${_subtotal.toStringAsFixed(2)}', textSecondary, textPrimary),
-                              if (_orderTypeIndex == 1) ...[
-                                const SizedBox(height: 8),
-                                _summaryRow('Delivery Fee', 'RM ${_deliveryFee.toStringAsFixed(2)}', textSecondary, textPrimary),
-                              ],
+
                               if (_voucherApplied) ...[
                                 const SizedBox(height: 8),
                                 _summaryRow('Diskaun${_voucher != null ? ' (${_voucher!['code']})' : ''}', '-RM ${_discountAmount.toStringAsFixed(2)}', Colors.green, Colors.green),
@@ -1238,4 +1214,223 @@ class _StoreCartViewState extends State<StoreCartView> {
       ],
     );
   }
+
+  Widget _buildFulfillmentCard(bool isDark, Color textPrimary, Color textSecondary) {
+    return _liquidGlassBox(
+      isDark: isDark,
+      radius: 20,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              HugeIcon(icon: HugeIcons.strokeRoundedClock01, color: const Color(0xFF00E5FF), size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Pilihan & Waktu Pengambilan',
+                style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: textPrimary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // 3 Pill Tabs: Bungkus, Dine-in, Pre-Order
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                _buildFulfillmentTab(0, 'Bungkus', HugeIcons.strokeRoundedShoppingBag01, isDark, textPrimary, textSecondary),
+                _buildFulfillmentTab(1, 'Dine-In', HugeIcons.strokeRoundedDesk01, isDark, textPrimary, textSecondary),
+                _buildFulfillmentTab(2, 'Pre-Order', HugeIcons.strokeRoundedCalendar02, isDark, textPrimary, textSecondary),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Details depending on fulfillment mode
+          if (_fulfillmentMode == 0) ...[
+            // Takeaway Quick Status
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const HugeIcon(icon: HugeIcons.strokeRoundedCheckmarkCircle03, color: Color(0xFF10B981), size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Pesanan bungkus segera. Anggaran masa siap: ~15 minit di kaunter.',
+                      style: TextStyle(fontSize: 12, color: textPrimary, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else if (_fulfillmentMode == 1) ...[
+            // Dine-in Table
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00B0FF).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF00B0FF).withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const HugeIcon(icon: HugeIcons.strokeRoundedDesk01, color: Color(0xFF00B0FF), size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      widget.tableNumber != null && widget.tableNumber!.isNotEmpty
+                          ? 'Dine-In di Meja #${widget.tableNumber}. Pesanan dihantar ke meja anda.'
+                          : 'Dine-In di Kedai. Masukkan No. Meja dalam nota di bawah jika ada.',
+                      style: TextStyle(fontSize: 12, color: textPrimary, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            // Pre-Order Time & Date Picker
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Date Selector (Hari Ini / Esok)
+                Row(
+                  children: [
+                    _buildDatePill('Hari Ini', isDark, textPrimary, textSecondary),
+                    const SizedBox(width: 8),
+                    _buildDatePill('Esok', isDark, textPrimary, textSecondary),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Pilih Slot Masa Ambil:',
+                  style: TextStyle(fontSize: 12, color: textSecondary, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _quickTimeSlots.map((slot) {
+                    final bool isSel = _selectedPickupTime == slot;
+                    return GestureDetector(
+                      onTap: () => setState(() => _selectedPickupTime = slot),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: isSel
+                              ? const Color(0xFF00E5FF).withValues(alpha: 0.18)
+                              : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isSel ? const Color(0xFF00E5FF) : Colors.transparent,
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Text(
+                          slot,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+                            color: isSel ? const Color(0xFF00E5FF) : textPrimary,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFulfillmentTab(int index, String label, dynamic icon, bool isDark, Color textPrimary, Color textSecondary) {
+    final bool isSelected = _fulfillmentMode == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _fulfillmentMode = index;
+            if (index == 2) _isPreOrder = true;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 9),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? (isDark ? Colors.white.withValues(alpha: 0.16) : Colors.white)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: isSelected
+                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6)]
+                : [],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              HugeIcon(
+                icon: icon,
+                color: isSelected ? const Color(0xFF00E5FF) : textSecondary,
+                size: 15,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                  color: isSelected ? textPrimary : textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDatePill(String title, bool isDark, Color textPrimary, Color textSecondary) {
+    final bool isSel = _selectedPickupDate == title;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedPickupDate = title),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSel
+              ? Colors.deepPurpleAccent.withValues(alpha: 0.18)
+              : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSel ? Colors.deepPurpleAccent : Colors.transparent,
+            width: 1.2,
+          ),
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+            color: isSel ? Colors.deepPurpleAccent : textPrimary,
+          ),
+        ),
+      ),
+    );
+  }
+
 }

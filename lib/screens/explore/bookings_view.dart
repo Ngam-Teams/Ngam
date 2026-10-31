@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import '../../widgets/glass_nav_button.dart';
 import 'package:flutter/services.dart'; //  REQUIRED for TextInputFormatter
 import 'package:hugeicons/hugeicons.dart';
 //  REQUIRED for LiquidGlassSettings
@@ -1340,14 +1341,27 @@ class _BookingsViewState extends State<BookingsView> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _buildGlassIconBox(HugeIcons.strokeRoundedArrowLeft01, isDark, onTap: () => Navigator.pop(context)),
-                          Row(
-                            children: [
-                              _buildGlassIconBox(_providerSummaryIcon, isDark, onTap: () {}),
-                              const SizedBox(width: 12),
-                              _buildGlassBadge("82", isDark),
+                          GlassNavButton(
+                            icon: HugeIcons.strokeRoundedArrowLeft01,
+                            isDark: isDark,
+                            onTap: () => Navigator.pop(context),
+                          ),
+                          GlassNavPill(
+                            isDark: isDark,
+                            height: 44,
+                            items: [
+                              GlassNavPillItem(
+                                icon: _providerSummaryIcon,
+                                tooltip: _providerSummaryLabel,
+                                onTap: () {},
+                              ),
+                              GlassNavPillItem(
+                                icon: HugeIcons.strokeRoundedTicket01,
+                                tooltip: 'Baucar & Ganjaran',
+                                onTap: () => _openBookingVoucherPicker(),
+                              ),
                             ],
-                          )
+                          ),
                         ],
                       ),
                     ),
@@ -1380,13 +1394,9 @@ class _BookingsViewState extends State<BookingsView> {
     );
   }
 
-  Widget _buildGlassIconBox(dynamic icon, bool isDark, {required VoidCallback onTap}) {
-    return _AnimatedPressable(onTap: onTap, child: _buildGlassBox(isDark: isDark, radius: 100, height: 44, width: 44, child: Center(child: HugeIcon(icon: icon, color: isDark ? Colors.white : Colors.black87, size: 20))));
-  }
 
-  Widget _buildGlassBadge(String text, bool isDark) {
-    return _AnimatedPressable(onTap: () {}, child: _buildGlassBox(isDark: isDark, radius: 100, height: 44, padding: const EdgeInsets.symmetric(horizontal: 16), child: Center(child: Text(text, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: isDark ? Colors.white : Colors.black87)))));
-  }
+
+
 
   //  Changed 'isFocused' to 'isActiveCard'
   Widget _buildExpandedGlassCard(Map<String, String> staff, bool isDark, bool isActiveCard) {
