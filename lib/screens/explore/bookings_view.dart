@@ -1132,6 +1132,19 @@ class _BookingsViewState extends State<BookingsView> {
   void initState() {
     super.initState();
     final currentUser = Supabase.instance.client.auth.currentUser;
+
+    // Jika pengguna belum log in, arahkan terus ke halaman log masuk
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (Supabase.instance.client.auth.currentUser == null && mounted) {
+        showGlassToast(
+          context,
+          'Sila log masuk untuk membuat tempahan servis.',
+          isError: true,
+        );
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    });
+
     String initName = UserData.userName.value.trim();
     if (initName.isEmpty || initName == 'Guest') {
       initName = (currentUser?.userMetadata?['full_name'] as String?) ??
@@ -1613,11 +1626,6 @@ class _BookingsViewState extends State<BookingsView> {
 
       var user = db.auth.currentUser;
       if (user == null) {
-        try {
-          user = (await db.auth.signInAnonymously()).user;
-        } catch (_) {}
-      }
-      if (user == null) {
         if (!mounted) return;
         showGlassToast(context, "Sila log masuk untuk membuat tempahan.", isError: true);
         Navigator.pushNamed(context, '/login');
@@ -1642,7 +1650,7 @@ class _BookingsViewState extends State<BookingsView> {
 
       Map<String, dynamic> basePayload(bool withCustomerId) => {
             'business_id': widget.shopId,
-            if (withCustomerId) 'customer_id': user!.id,
+            if (withCustomerId) 'customer_id': user.id,
             'customer_name': holdName,
             'service_name': 'Holding...',
             'booking_date': targetDate,
@@ -1651,7 +1659,7 @@ class _BookingsViewState extends State<BookingsView> {
             'pax': 1,
             if (staffUuid != null) 'staff_id': staffUuid,
             'booking_metadata': {
-              'customer_auth_id': user!.id,
+              'customer_auth_id': user.id,
               'provider_name': staff["name"],
               'phone': _customerPhoneCtrl.text.trim(),
             }

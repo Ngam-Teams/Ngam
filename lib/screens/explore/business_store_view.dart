@@ -130,6 +130,17 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
   int get _cartItemCount => _cart.fold(0, (sum, item) => sum + item.quantity);
 
   void _addToCart(ProductModel product) {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      showGlassToast(
+        context,
+        'Sila log masuk untuk membeli produk & barangan.',
+        isError: true,
+      );
+      Navigator.pushNamed(context, '/login');
+      return;
+    }
+
     setState(() {
       final index = _cart.indexWhere((c) => c.product.id == product.id);
       if (index >= 0) {
@@ -570,6 +581,17 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
   // ── Action Handlers ──────────────────────────────────────────
 
   void _openBookings() {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      showGlassToast(
+        context,
+        'Sila log masuk untuk membuat tempahan servis.',
+        isError: true,
+      );
+      Navigator.pushNamed(context, '/login');
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1606,6 +1628,16 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                 // Cart button
                 GestureDetector(
                   onTap: () {
+                    final user = Supabase.instance.client.auth.currentUser;
+                    if (user == null) {
+                      showGlassToast(
+                        context,
+                        'Sila log masuk untuk melihat troli & membuat pesanan.',
+                        isError: true,
+                      );
+                      Navigator.pushNamed(context, '/login');
+                      return;
+                    }
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -2207,6 +2239,16 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                    GestureDetector(
                                      onTap: () {
                                        Navigator.pop(context);
+                                       final user = Supabase.instance.client.auth.currentUser;
+                                       if (user == null) {
+                                         showGlassToast(
+                                           context,
+                                           'Sila log masuk untuk membuat tempahan servis.',
+                                           isError: true,
+                                         );
+                                         Navigator.pushNamed(context, '/login');
+                                         return;
+                                       }
                                        Navigator.push(
                                          context,
                                          MaterialPageRoute(

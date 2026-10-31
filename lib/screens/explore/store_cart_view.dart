@@ -82,14 +82,19 @@ class _StoreCartViewState extends State<StoreCartView> {
     if (widget.tableNumber != null && widget.tableNumber!.isNotEmpty) {
       _orderTypeIndex = 0; // Dine-in
     }
-    if (widget.promoCode != null && widget.promoCode!.isNotEmpty) {
-      _voucherController.text = widget.promoCode!;
-      _applyVoucher();
-    } else {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (Supabase.instance.client.auth.currentUser == null && mounted) {
+        showGlassToast(context, 'Sila log masuk untuk membuat pesanan & membeli.', isError: true);
+        Navigator.pushReplacementNamed(context, '/login');
+        return;
+      }
+      if (widget.promoCode != null && widget.promoCode!.isNotEmpty) {
+        _voucherController.text = widget.promoCode!;
+        _applyVoucher();
+      } else {
         _autoApplyBestVoucher();
-      });
-    }
+      }
+    });
   }
 
   @override

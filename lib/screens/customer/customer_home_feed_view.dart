@@ -906,7 +906,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // QR Button
+                // QR Button (Sentiasa kelihatan walaupun belum log in)
                 GestureDetector(
                   onTap: _openQrScanner,
                   behavior: HitTestBehavior.opaque,
@@ -920,68 +920,71 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                   ),
                 ),
 
-                // Saved (Disimpan) Bookmark Button
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const SavedScreen()),
-                    );
-                  },
-                  behavior: HitTestBehavior.opaque,
-                  child: Container(
-                    padding: const EdgeInsets.all(9),
-                    child: HugeIcon(
-                      icon: HugeIcons.strokeRoundedBookmark02,
-                      color: isDark ? Colors.white70 : const Color(0xFF1E293B),
-                      size: 20,
+                // Hanya tunjukkan Bookmark dan Bell jika pengguna sudah log in
+                if (Supabase.instance.client.auth.currentUser != null) ...[
+                  // Saved (Disimpan) Bookmark Button
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SavedScreen()),
+                      );
+                    },
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      padding: const EdgeInsets.all(9),
+                      child: HugeIcon(
+                        icon: HugeIcons.strokeRoundedBookmark02,
+                        color: isDark ? Colors.white70 : const Color(0xFF1E293B),
+                        size: 20,
+                      ),
                     ),
                   ),
-                ),
 
-                // Notification Bell Button with Red Dot
-                GestureDetector(
-                  onTap: () {
-                    showGlassToast(
-                      context,
-                      'Tiada notifikasi baru hari ini',
-                      icon: HugeIcons.strokeRoundedNotification01,
-                    );
-                  },
-                  behavior: HitTestBehavior.opaque,
-                  child: Container(
-                    padding: const EdgeInsets.all(9),
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        HugeIcon(
-                          icon: HugeIcons.strokeRoundedNotification01,
-                          color: isDark ? Colors.white70 : const Color(0xFF1E293B),
-                          size: 20,
-                        ),
-                        Positioned(
-                          top: -1,
-                          right: -1,
-                          child: Container(
-                            width: 7.5,
-                            height: 7.5,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFFF4757),
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Color(0xFFFF4757),
-                                  blurRadius: 4,
-                                  spreadRadius: 0.5,
-                                ),
-                              ],
+                  // Notification Bell Button with Red Dot
+                  GestureDetector(
+                    onTap: () {
+                      showGlassToast(
+                        context,
+                        'Tiada notifikasi baru hari ini',
+                        icon: HugeIcons.strokeRoundedNotification01,
+                      );
+                    },
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      padding: const EdgeInsets.all(9),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          HugeIcon(
+                            icon: HugeIcons.strokeRoundedNotification01,
+                            color: isDark ? Colors.white70 : const Color(0xFF1E293B),
+                            size: 20,
+                          ),
+                          Positioned(
+                            top: -1,
+                            right: -1,
+                            child: Container(
+                              width: 7.5,
+                              height: 7.5,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFFF4757),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Color(0xFFFF4757),
+                                    blurRadius: 4,
+                                    spreadRadius: 0.5,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
