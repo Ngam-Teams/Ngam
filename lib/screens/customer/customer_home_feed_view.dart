@@ -920,8 +920,27 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                   ),
                 ),
 
-                // Hanya tunjukkan Bookmark dan Bell jika pengguna sudah log in
+                // Hanya tunjukkan Bookmark, Bookings, dan Bell jika pengguna sudah log in
                 if (Supabase.instance.client.auth.currentUser != null) ...[
+                  // My Bookings (Tempahan Saya) Quick Button
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MyBookingsView()),
+                      );
+                    },
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      padding: const EdgeInsets.all(9),
+                      child: HugeIcon(
+                        icon: HugeIcons.strokeRoundedCalendar03,
+                        color: isDark ? Colors.white70 : const Color(0xFF1E293B),
+                        size: 20,
+                      ),
+                    ),
+                  ),
+
                   // Saved (Disimpan) Bookmark Button
                   GestureDetector(
                     onTap: () {

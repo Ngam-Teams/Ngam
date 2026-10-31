@@ -20,6 +20,7 @@ import 'saved_screen.dart';
 import 'my_stamp_cards_screen.dart';
 import 'voucher_screen.dart';
 import 'my_queue_ticket_screen.dart';
+import '../explore/my_bookings_view.dart';
 import '../../services/app_update_service.dart';
 
 import 'package:easy_localization/easy_localization.dart';
@@ -261,6 +262,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 _buildDivider(isDark),
                                 _buildSettingsTile(
                                   isDark,
+                                  HugeIcons.strokeRoundedCalendar03,
+                                  "profile.my_bookings".tr(),
+                                  trailing: _buildArrow(),
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const MyBookingsView(),
+                                    ),
+                                  ),
+                                ),
+                                _buildDivider(isDark),
+                                _buildSettingsTile(
+                                  isDark,
+                                  HugeIcons.strokeRoundedTicket01,
+                                  "profile.live_queue".tr(),
+                                  trailing: _buildArrow(),
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const MyQueueTicketScreen(),
+                                    ),
+                                  ),
+                                ),
+                                _buildDivider(isDark),
+                                _buildSettingsTile(
+                                  isDark,
                                   HugeIcons.strokeRoundedCreditCard,
                                   "wallet.title".tr(),
                                   trailing: _buildArrow(),
@@ -307,19 +334,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => const VoucherScreen(),
-                                    ),
-                                  ),
-                                ),
-                                _buildDivider(isDark),
-                                _buildSettingsTile(
-                                  isDark,
-                                  HugeIcons.strokeRoundedTicket01,
-                                  "profile.live_queue".tr(),
-                                  trailing: _buildArrow(),
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const MyQueueTicketScreen(),
                                     ),
                                   ),
                                 ),
