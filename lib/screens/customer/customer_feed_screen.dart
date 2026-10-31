@@ -1138,58 +1138,10 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                 ),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
+                  child: Stack(
+                    alignment: Alignment.center,
                     children: [
-                      // Logo Badge (Tap to refresh feed)
-                      GestureDetector(
-                        onTap: () {
-                          _fetchLivePosts();
-                          showGlassToast(
-                            context,
-                            'Memuat semula suapan Ngam...',
-                            icon: HugeIcons.strokeRoundedRefresh,
-                          );
-                        },
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2.5),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF00E5FF), Color(0xFF0284C7)],
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text(
-                                'NGAM',
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'FEED',
-                              style: TextStyle(
-                                color: (isDesktopLandscape && !isDark)
-                                    ? const Color(0xFF0F172A)
-                                    : Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const Spacer(),
-
-                      // Center Feed Switcher: 'Berhampiran' vs 'Untuk Anda'
+                      // Center Feed Switcher: 'Berhampiran' vs 'Untuk Anda' (TikTok Signature Style)
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 4, vertical: 2),
@@ -1285,36 +1237,37 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                         ),
                       ),
 
-                      const Spacer(),
-
-                      // Search / Discover shortcut
-                      GestureDetector(
-                        onTap: () {
-                          if (widget.onSwitchTab != null) {
-                            widget.onSwitchTab!(1); // Go to Discover Tab
-                          }
-                        },
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: (isDesktopLandscape && !isDark)
-                                ? Colors.black.withValues(alpha: 0.05)
-                                : Colors.black.withValues(alpha: 0.35),
-                            shape: BoxShape.circle,
-                            border: Border.all(
+                      // Search / Discover shortcut on the far right
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: GestureDetector(
+                          onTap: () {
+                            if (widget.onSwitchTab != null) {
+                              widget.onSwitchTab!(1); // Go to Discover Tab
+                            }
+                          },
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
                               color: (isDesktopLandscape && !isDark)
-                                  ? Colors.black12
-                                  : Colors.white12,
+                                  ? Colors.black.withValues(alpha: 0.05)
+                                  : Colors.black.withValues(alpha: 0.35),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: (isDesktopLandscape && !isDark)
+                                    ? Colors.black12
+                                    : Colors.white12,
+                              ),
                             ),
-                          ),
-                          child: Center(
-                            child: HugeIcon(
-                              icon: HugeIcons.strokeRoundedSearch01,
-                              color: (isDesktopLandscape && !isDark)
-                                  ? const Color(0xFF0F172A)
-                                  : Colors.white,
-                              size: 17,
+                            child: Center(
+                              child: HugeIcon(
+                                icon: HugeIcons.strokeRoundedSearch01,
+                                color: (isDesktopLandscape && !isDark)
+                                    ? const Color(0xFF0F172A)
+                                    : Colors.white,
+                                size: 17,
+                              ),
                             ),
                           ),
                         ),
