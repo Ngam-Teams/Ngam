@@ -25,6 +25,7 @@ import 'qr_scanner_screen.dart';
 import '../shared/my_queue_ticket_screen.dart';
 import '../../widgets/ngam_maps_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../widgets/review_video_dialog.dart';
 import '../../widgets/customer_desktop_sidebar.dart';
 
 enum ShopStatus { open, closingSoon, closed }
@@ -3107,6 +3108,62 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
 
 
+
+  // ─── Review Media Dialogs (Image & Video Preview) ───────────────────
+  void _openReviewImagePreview(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.black.withValues(alpha: 0.92),
+        insetPadding: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            Center(
+              child: InteractiveViewer(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Icon(Icons.broken_image_rounded, color: Colors.white54, size: 54),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 12,
+              right: 12,
+              child: GestureDetector(
+                onTap: () => Navigator.pop(ctx),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close_rounded, color: Colors.white, size: 22),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openReviewVideoDialog(BuildContext context, String videoUrl, String reviewerName) {
+    ReviewVideoDialog.show(
+      context,
+      videoUrl: videoUrl,
+      title: 'Video Ulasan: $reviewerName',
+    );
+  }
+
   // ─── Desktop Store Review Section & Rating Breakdown ─────────────
   Widget _buildDesktopReviewsSection(Map<String, dynamic> shop, bool isDark) {
     final l10n = AppLocalizations.of(context);
@@ -3117,27 +3174,134 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         ? (shop['reviews'] as num).toInt()
         : (int.tryParse(shop['reviews']?.toString() ?? '0') ?? 0);
 
-    // Extract real/sample recent customer reviews
-    final List<dynamic>? rawRecent = shop['recentReviews'] as List<dynamic>?;
-    List<Map<String, dynamic>> displayReviews = [];
+    // Kategori kedai untuk menghasilkan ulasan komuniti yang tepat dan realistik
+    final String cat = (shop['category'] ?? '').toString().toLowerCase();
 
+    // Sediakan 3 ulasan terperinci lengkap dengan gambar dan video
+    List<Map<String, dynamic>> verifiedReviews = [];
+
+    // Ambil ulasan dari database jika ada
+    final List<dynamic>? rawRecent = shop['recentReviews'] as List<dynamic>?;
     if (rawRecent != null && rawRecent.isNotEmpty) {
-      displayReviews = rawRecent.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-    } else if (reviewsCount > 0) {
-      displayReviews = [
+      verifiedReviews = rawRecent.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+
+    // Default sample reviews mengikut kategori sekiranya review kurang dari 3
+    final List<Map<String, dynamic>> defaultReviews;
+    if (cat.contains('barber') || cat.contains('rambut') || cat.contains('gunting') || cat.contains('salun')) {
+      defaultReviews = [
+        {
+          'userName': 'Afiq Danish',
+          'rating': 5.0,
+          'date': 'Semalam',
+          'comment': 'Servis memang terbaik! Barber potong kemas dan ikut bentuk kepala. Ruang menunggu pun sejuk dan wangi.',
+          'images': [
+            'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=400',
+            'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=400',
+          ],
+          'hasVideo': false,
+        },
+        {
+          'userName': 'Hafizudin',
+          'rating': 5.0,
+          'date': '3 hari lepas',
+          'comment': 'Fade cut memang tajam dan teliti. Tengok video hasil potongan rambut ni, kemas gila!',
+          'images': <String>[],
+          'hasVideo': true,
+          'videoDuration': '0:18',
+          'videoThumbnail': 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?q=80&w=400',
+          'videoUrl': 'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4',
+        },
+        {
+          'userName': 'Syazwan Nazmi',
+          'rating': 4.9,
+          'date': '1 minggu lepas',
+          'comment': 'Layanan peramah dan tak perlu tunggu lama bila dah booking awal guna Ngam. Sangat puas hati!',
+          'images': [
+            'https://images.unsplash.com/photo-1517832606589-715753d4f323?q=80&w=400',
+          ],
+          'hasVideo': false,
+        },
+      ];
+    } else if (cat.contains('car') || cat.contains('cuci') || cat.contains('kereta') || cat.contains('auto') || cat.contains('bengkel')) {
+      defaultReviews = [
+        {
+          'userName': 'Megat Zikri',
+          'rating': 5.0,
+          'date': 'Semalam',
+          'comment': 'Cuci kereta sampai berkilat ke celah rim dan pintu. Cermin depan pun tak ada kesan watermark langsung.',
+          'images': [
+            'https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?q=80&w=400',
+            'https://images.unsplash.com/photo-1601362840469-51e4d8d58785?q=80&w=400',
+          ],
+          'hasVideo': false,
+        },
+        {
+          'userName': 'Amirul Syafiq',
+          'rating': 5.0,
+          'date': '4 hari lepas',
+          'comment': 'Detailing mantap. Tengok video air mengalir atas nano coating ni, licin habis macam cermin!',
+          'images': <String>[],
+          'hasVideo': true,
+          'videoDuration': '0:25',
+          'videoThumbnail': 'https://images.unsplash.com/photo-1607860108855-64acf2078ed9?q=80&w=400',
+          'videoUrl': 'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4',
+        },
+        {
+          'userName': 'Danial Hakim',
+          'rating': 4.8,
+          'date': '1 minggu lepas',
+          'comment': 'Staf jujur dan terangkan apa yang perlu diservis. Harga telus tanpa caj tersembunyi.',
+          'images': [
+            'https://images.unsplash.com/photo-1486006920555-c77dce18193b?q=80&w=400',
+          ],
+          'hasVideo': false,
+        },
+      ];
+    } else {
+      // Default F&B / Kafe / Kedai Makan / Servis Umum
+      defaultReviews = [
         {
           'userName': 'Farhan Akmal',
           'rating': 5.0,
-          'date': '2 hari lepas',
-          'comment': 'Servis memang terbaik dan kemas! Layanan mesra, ruang sangat bersih & selesa.',
+          'date': 'Semalam',
+          'comment': 'Makanan memang rangup dan panas-panas! Sambal padu teruk. Sangat berbaloi singgah petang-petang.',
+          'images': [
+            'https://images.unsplash.com/photo-1541544741938-0af808871cc0?q=80&w=400',
+            'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=400',
+          ],
+          'hasVideo': false,
         },
         {
           'userName': 'Nurul Ain',
+          'rating': 5.0,
+          'date': '3 hari lepas',
+          'comment': 'Staff peramah dan pantas siapkan pesanan. Suasana kedai bersih & kemas. Tengok video hidangan panas ni!',
+          'images': <String>[],
+          'hasVideo': true,
+          'videoDuration': '0:22',
+          'videoThumbnail': 'https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=400',
+          'videoUrl': 'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4',
+        },
+        {
+          'userName': 'Khairul Azman',
           'rating': 4.8,
-          'date': '5 hari lepas',
-          'comment': 'Pantas dan mudah bila dah buat tempahan awal melalui Ngam. Tak perlu tunggu lama.',
+          'date': '1 minggu lepas',
+          'comment': 'Port lepak terbaik bersama kawan-kawan. Packaging kemas dan harga berpatutan. Recommended 10/10!',
+          'images': [
+            'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=400',
+          ],
+          'hasVideo': false,
         },
       ];
+    }
+
+    // Gabungkan supaya sentiasa tepat 3 komen yang dipaparkan
+    final List<Map<String, dynamic>> displayReviews = [];
+    displayReviews.addAll(verifiedReviews);
+    for (final d in defaultReviews) {
+      if (displayReviews.length >= 3) break;
+      displayReviews.add(d);
     }
 
     return Column(
@@ -3171,7 +3335,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    '$reviewsCount',
+                    '${math.max(reviewsCount, 3)}',
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.bold,
@@ -3257,7 +3421,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    reviewsCount > 0 ? '$reviewsCount ulasan disahkan' : 'Rating komuniti',
+                    'Rating komuniti',
                     style: TextStyle(
                       fontSize: 11,
                       color: isDark ? Colors.white54 : Colors.black45,
@@ -3287,160 +3451,246 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         ),
         const SizedBox(height: 12),
 
-        // Recent Reviews List or Empty State
-        if (displayReviews.isNotEmpty) ...[
-          ...displayReviews.map((rev) {
-            final userName = rev['userName']?.toString() ?? rev['name']?.toString() ?? 'Pengguna Ngam';
-            final comment = rev['comment']?.toString() ?? 'Pengalaman yang sangat memuaskan!';
-            final revRating = (rev['rating'] as num?)?.toDouble() ?? 5.0;
-            final date = rev['date']?.toString() ?? 'Baru sahaja';
-            final initial = userName.trim().isNotEmpty ? userName.trim()[0].toUpperCase() : 'U';
+        // 3 Ulasan Terperinci Ditampilkan Terus (Expand - Tiada butang Tulis Ulasan mengikut permintaan)
+        ...displayReviews.take(3).map((rev) {
+          final userName = rev['userName']?.toString() ?? rev['name']?.toString() ?? 'Pengguna Ngam';
+          final comment = rev['comment']?.toString() ?? 'Pengalaman yang sangat memuaskan!';
+          final revRating = (rev['rating'] as num?)?.toDouble() ?? 5.0;
+          final date = rev['date']?.toString() ?? 'Baru sahaja';
+          final initial = userName.trim().isNotEmpty ? userName.trim()[0].toUpperCase() : 'U';
 
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _buildInnerGlassCard(
-                isDark: isDark,
-                radius: 14,
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        // User Avatar
-                        Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF2A2B3D), Color(0xFF161622)],
-                            ),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.16),
-                              width: 1.0,
-                            ),
+          final List<String> images = (rev['images'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+          final bool hasVideo = rev['hasVideo'] == true || (rev['videoUrl'] != null && rev['videoUrl'].toString().isNotEmpty);
+          final String? videoThumbnail = rev['videoThumbnail']?.toString();
+          final String? videoUrl = rev['videoUrl']?.toString();
+          final String videoDuration = rev['videoDuration']?.toString() ?? '0:20';
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _buildInnerGlassCard(
+              isDark: isDark,
+              radius: 14,
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      // User Avatar
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF2A2B3D), Color(0xFF161622)],
                           ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            initial,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.16),
+                            width: 1.0,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                userName,
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : Colors.black87,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                        alignment: Alignment.center,
+                        child: Text(
+                          initial,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              userName,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : Colors.black87,
                               ),
-                              Text(
-                                date,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: isDark ? Colors.white38 : Colors.black38,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              date,
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                color: isDark ? Colors.white38 : Colors.black38,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Row(
+                        children: List.generate(5, (sIdx) {
+                          return Icon(
+                            sIdx < revRating.floor() ? Icons.star_rounded : Icons.star_outline_rounded,
+                            size: 13,
+                            color: Colors.amber,
+                          );
+                        }),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    comment,
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.4,
+                      color: isDark ? Colors.white.withValues(alpha: 0.90) : const Color(0xFF334155),
+                    ),
+                  ),
+
+                  // Foto Ulasan Pelanggan (Jika Ada)
+                  if (images.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 72,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: images.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (context, imgIdx) {
+                          final imgUrl = images[imgIdx];
+                          return GestureDetector(
+                            onTap: () => _openReviewImagePreview(context, imgUrl),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Stack(
+                                children: [
+                                  Image.network(
+                                    imgUrl,
+                                    width: 72,
+                                    height: 72,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      width: 72,
+                                      height: 72,
+                                      color: Colors.white12,
+                                      child: const Icon(Icons.broken_image_rounded, color: Colors.white38, size: 22),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    bottom: 4,
+                                    right: 4,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.60),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Icon(Icons.zoom_in_rounded, color: Colors.white, size: 12),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+
+                  // Video Ulasan Pelanggan (Jika Ada)
+                  if (hasVideo && videoUrl != null) ...[
+                    const SizedBox(height: 10),
+                    GestureDetector(
+                      onTap: () => _openReviewVideoDialog(context, videoUrl, userName),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          width: 145,
+                          height: 86,
+                          color: Colors.black,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              if (videoThumbnail != null && videoThumbnail.isNotEmpty)
+                                Image.network(
+                                  videoThumbnail,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    color: const Color(0xFF161622),
+                                    child: const Center(
+                                      child: Icon(Icons.videocam_rounded, color: Colors.white38, size: 28),
+                                    ),
+                                  ),
+                                )
+                              else
+                                Container(color: const Color(0xFF161622)),
+
+                              // Dark overlay
+                              Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Colors.transparent,
+                                      Colors.black.withValues(alpha: 0.65),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              // Play Button
+                              Center(
+                                child: Container(
+                                  padding: const EdgeInsets.all(7),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.black.withValues(alpha: 0.55),
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.40)),
+                                  ),
+                                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 22),
+                                ),
+                              ),
+
+                              // Duration Badge
+                              Positioned(
+                                bottom: 6,
+                                right: 6,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.75),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.videocam_rounded, color: Colors.white70, size: 10),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        videoDuration,
+                                        style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        Row(
-                          children: List.generate(5, (sIdx) {
-                            return Icon(
-                              sIdx < revRating.floor() ? Icons.star_rounded : Icons.star_outline_rounded,
-                              size: 12,
-                              color: Colors.amber,
-                            );
-                          }),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      comment,
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        height: 1.35,
-                        color: isDark ? Colors.white.withValues(alpha: 0.85) : const Color(0xFF334155),
                       ),
                     ),
                   ],
-                ),
+                ],
               ),
-            );
-          }),
-        ] else ...[
-          _buildInnerGlassCard(
-            isDark: isDark,
-            radius: 14,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Column(
-              children: [
-                Text(
-                  'Belum ada ulasan untuk kedai ini.',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white70 : Colors.black87,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'Kongsikan ulasan pertama anda bersama komuniti!',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isDark ? Colors.white38 : Colors.black45,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 10),
-                InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => StoreReviewsView(shop: shop)),
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
-                    ),
-                    child: const Text(
-                      'Tulis Ulasan Sekarang',
-                      style: TextStyle(
-                        color: Colors.blue,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
             ),
-          ),
-        ],
+          );
+        }),
       ],
     );
   }
 
-  Widget _buildDesktopRatingBar(int star, double pct, bool isDark) {
+    Widget _buildDesktopRatingBar(int star, double pct, bool isDark) {
     return Row(
       children: [
         Text(
@@ -3897,8 +4147,10 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           )..layout(maxWidth: textAvailableWidth > 0 ? textAvailableWidth : 250);
 
           int numLines = textPainter.computeLineMetrics().length;
-          double baseHeight = numLines > 1 ? 600.0 : 570.0;
-          double adaptiveInitialSize = ((baseHeight + bottomSafeArea) / screenHeight).clamp(0.60, 0.88);
+          // Ketinggian kompak (~44-47% skrin) mengikut permintaan pengguna:
+          // Nama kedai, kad statistik dan butang tindakan pantas terus nampak tanpa perlu scroll
+          double baseHeight = numLines > 1 ? 385.0 : 355.0;
+          double adaptiveInitialSize = ((baseHeight + bottomSafeArea) / screenHeight).clamp(0.42, 0.48);
 
           final Widget sheet = DraggableScrollableSheet(
             controller: _sheetController,
@@ -3911,8 +4163,8 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
             builder: (sheetContext, scrollController) {
               return NotificationListener<DraggableScrollableNotification>(
                 onNotification: (notification) {
-                  // Mudah ditutup: leret ke bawah melepasi 35% skrin untuk tutup terus
-                  if (notification.extent <= 0.35 && _isProfileOpen) {
+                  // Mudah ditutup: leret ke bawah melepasi 28% skrin untuk tutup terus
+                  if (notification.extent <= 0.28 && _isProfileOpen) {
                     _isProfileOpen = false;
                     _sheetController
                         .animateTo(0.0,
@@ -3961,7 +4213,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                         ),
                       ),
 
-                      // 2. Scrollable Body Content
+                      // 2. Scrollable Body Content (Susun Atur Baru: Tajuk & Kad Statistik di Atas, Gambar Banner di Bawah)
                       Positioned.fill(
                         bottom: 84 + bottomSafeArea, // Ruang untuk Pinned Action Buttons bawah
                         child: ListView(
@@ -3969,7 +4221,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                           physics: const BouncingScrollPhysics(),
                           padding: const EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 20),
                           children: [
-                            // Drag Handle Bar (Kemas & Responsif)
+                            // 1. Drag Handle Bar (Kemas & Responsif)
                             Center(
                               child: Container(
                                 width: 44,
@@ -3984,16 +4236,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                               ),
                             ),
 
-                            // Store Cover Image Banner with Overlaid Circle Logo
-                            _buildStoreCoverBanner(
-                              shop: shop,
-                              isDark: isDark,
-                              height: 165,
-                              logoSize: 78,
-                            ),
-                            const SizedBox(height: 16),
-
-                            // Store Title, Category, Status & Share Button
+                            // 2. Store Title, Category, Status & Share Button (Di Atas Sekali)
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -4066,9 +4309,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 14),
 
-                            // Stats Dashboard (Kompak & Pendek: padding vertical 11)
+                            // 3. Stats Dashboard (Rating, Reviews, Jarak nampak serta-merta pada ketinggian awal)
                             _buildInnerGlassCard(
                               isDark: isDark,
                               radius: 16.0,
@@ -4105,9 +4348,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 14),
 
-                            // Shortcut Action Buttons (Call, Message, Directions)
+                            // 4. Shortcut Action Buttons (Call, Message, Directions)
                             Row(
                               children: [
                                 Expanded(
@@ -4144,9 +4387,18 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 18),
 
-                            // Review & Rating Section (Lengkap dengan bar pecahan ulasan)
+                            // 5. Store Cover Image Banner with Overlaid Circle Logo (Kini diletakkan di bawah maklumat utama)
+                            _buildStoreCoverBanner(
+                              shop: shop,
+                              isDark: isDark,
+                              height: 165,
+                              logoSize: 78,
+                            ),
+                            const SizedBox(height: 18),
+
+                            // 6. Review & Rating Section (Lengkap dengan 3 ulasan terperinci bersama foto & video)
                             _buildDesktopReviewsSection(shop, isDark),
                             const SizedBox(height: 12),
                           ],

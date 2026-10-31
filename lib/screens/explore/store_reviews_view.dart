@@ -3,6 +3,8 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:ngam/widgets/glass_box.dart';
 import '../../widgets/glass_toast.dart';
 import '../../widgets/glass_nav_button.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../widgets/review_video_dialog.dart';
 
 // ============================================================
 // StoreReviewsView — Store Reviews, Ratings Breakdown & Feedback
@@ -34,10 +36,15 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
         'avatar': 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150',
         'rating': 5,
         'date': '2 days ago',
-        'item': 'Premium Haircut',
-        'comment': 'Best experience ever at $shopName! Clean place, very professional staff and on time.',
+        'item': 'Verified Visit',
+        'comment': 'Best experience ever at $shopName! Clean place, very professional staff and on time. Highly recommended!',
         'helpful': 14,
         'isHelpful': false,
+        'images': [
+          'https://images.unsplash.com/photo-1541544741938-0af808871cc0?q=80&w=400',
+          'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=400',
+        ],
+        'hasVideo': false,
       },
       {
         'id': '2',
@@ -45,10 +52,15 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
         'avatar': 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=150',
         'rating': 5,
         'date': '5 days ago',
-        'item': 'Facial Treatment',
-        'comment': 'Super relaxing treatment! Really recommended if you need self-care. Staff was welcoming.',
+        'item': 'Verified Customer',
+        'comment': 'Super satisfying experience! Really recommended if you visit. Staff was very welcoming. Check out the video!',
         'helpful': 9,
         'isHelpful': false,
+        'images': <String>[],
+        'hasVideo': true,
+        'videoDuration': '0:22',
+        'videoThumbnail': 'https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=400',
+        'videoUrl': 'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4',
       },
       {
         'id': '3',
@@ -56,10 +68,14 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
         'avatar': 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?q=80&w=150',
         'rating': 4,
         'date': '1 week ago',
-        'item': 'Classic Shave',
-        'comment': 'Good precision and gentle service. Slightly crowded on weekends so book ahead.',
+        'item': 'Regular Customer',
+        'comment': 'Good precision and gentle service. Slightly crowded on weekends so book ahead with Ngam app.',
         'helpful': 5,
         'isHelpful': false,
+        'images': [
+          'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=400',
+        ],
+        'hasVideo': false,
       },
       {
         'id': '4',
@@ -67,10 +83,12 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
         'avatar': 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=150',
         'rating': 5,
         'date': '2 weeks ago',
-        'item': 'Hair Coloring',
-        'comment': 'The color result is super vibrant and looks exactly like my reference picture!',
+        'item': 'Community Review',
+        'comment': 'The result is super vibrant and looks exactly like my reference picture! 10/10.',
         'helpful': 8,
         'isHelpful': false,
+        'images': <String>[],
+        'hasVideo': false,
       },
     ];
   }
@@ -124,10 +142,68 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
     );
   }
 
+
+  void _openImagePreview(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.black.withValues(alpha: 0.92),
+        insetPadding: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            Center(
+              child: InteractiveViewer(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Icon(Icons.broken_image_rounded, color: Colors.white54, size: 54),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 12,
+              right: 12,
+              child: GestureDetector(
+                onTap: () => Navigator.pop(ctx),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close_rounded, color: Colors.white, size: 22),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openVideoDialog(BuildContext context, String videoUrl, String reviewerName) {
+    ReviewVideoDialog.show(
+      context,
+      videoUrl: videoUrl,
+      title: 'Video: $reviewerName',
+    );
+  }
+
   void _openWriteReviewModal() {
     int rating = 5;
     final commentCtrl = TextEditingController();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ImagePicker picker = ImagePicker();
+    final List<XFile> attachedImages = [];
+    XFile? attachedVideo;
 
     showModalBottomSheet(
       context: context,
@@ -145,100 +221,199 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
             color: isDark ? const Color(0xFF1E2228) : Colors.white,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white24 : Colors.black12,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                'Rate & Review',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Share your experience at ${widget.shop['name'] ?? 'this store'}',
-                style: TextStyle(color: isDark ? Colors.white60 : Colors.black54, fontSize: 13),
-              ),
-              const SizedBox(height: 20),
-              // Star Selector
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (idx) {
-                  final starVal = idx + 1;
-                  return IconButton(
-                    iconSize: 34,
-                    icon: HugeIcon(
-                      icon: HugeIcons.strokeRoundedStar,
-                      color: starVal <= rating ? Colors.amber : Colors.grey,
-                      size: 34,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : Colors.black12,
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    onPressed: () => setModalState(() => rating = starVal),
-                  );
-                }),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: commentCtrl,
-                maxLines: 4,
-                style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: 'What did you like or dislike? Write your review here...',
-                  hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.black38, fontSize: 14),
-                  filled: true,
-                  fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  onPressed: () {
-                    final text = commentCtrl.text.trim();
-                    if (text.isEmpty) {
-                      showGlassToast(context, 'Please enter a comment', isError: true);
-                      return;
-                    }
-                    setState(() {
-                      _reviews.insert(0, {
-                        'id': DateTime.now().toString(),
-                        'name': 'You',
-                        'avatar': '',
-                        'rating': rating,
-                        'date': 'Just now',
-                        'item': 'Verified Visit',
-                        'comment': text,
-                        'helpful': 0,
-                        'isHelpful': false,
-                      });
-                    });
-                    Navigator.pop(ctx);
-                    showGlassToast(context, 'Thank you! Review submitted.');
-                  },
-                  child: const Text('Submit Review', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
-              ),
-            ],
+                const SizedBox(height: 18),
+                Text(
+                  'Beri Penilaian & Ulasan',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Kongsi pengalaman anda di ${widget.shop['name'] ?? 'kedai ini'}',
+                  style: TextStyle(color: isDark ? Colors.white60 : Colors.black54, fontSize: 13),
+                ),
+                const SizedBox(height: 18),
+                // Star Selector
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (idx) {
+                    final starVal = idx + 1;
+                    return IconButton(
+                      iconSize: 34,
+                      icon: HugeIcon(
+                        icon: HugeIcons.strokeRoundedStar,
+                        color: starVal <= rating ? Colors.amber : Colors.grey,
+                        size: 34,
+                      ),
+                      onPressed: () => setModalState(() => rating = starVal),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: commentCtrl,
+                  maxLines: 4,
+                  style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Apa yang anda suka atau cadangan anda? Tulis ulasan di sini...',
+                    hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.black38, fontSize: 13.5),
+                    filled: true,
+                    fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Butang Tambah Foto & Video
+                Row(
+                  children: [
+                    // Tambah Foto
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.blue,
+                          side: BorderSide(color: Colors.blue.withValues(alpha: 0.4)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        icon: const HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.blue, size: 18),
+                        label: const Text('Tambah Foto', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                        onPressed: () async {
+                          try {
+                            final List<XFile> picked = await picker.pickMultiImage();
+                            if (picked.isNotEmpty) {
+                              setModalState(() {
+                                attachedImages.addAll(picked);
+                              });
+                            }
+                          } catch (e) {
+                            debugPrint('[WriteReview] Pick image error: $e');
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Tambah Video
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.purpleAccent,
+                          side: BorderSide(color: Colors.purpleAccent.withValues(alpha: 0.4)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        icon: const HugeIcon(icon: HugeIcons.strokeRoundedVideo01, color: Colors.purpleAccent, size: 18),
+                        label: const Text('Tambah Video', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                        onPressed: () async {
+                          try {
+                            final XFile? vid = await picker.pickVideo(source: ImageSource.gallery);
+                            if (vid != null) {
+                              setModalState(() {
+                                attachedVideo = vid;
+                              });
+                            }
+                          } catch (e) {
+                            debugPrint('[WriteReview] Pick video error: $e');
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Pratonton Lampiran Media Terpilih
+                if (attachedImages.isNotEmpty || attachedVideo != null) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ...attachedImages.map((img) => Chip(
+                            avatar: const Icon(Icons.image, size: 16, color: Colors.blue),
+                            label: Text(img.name, style: const TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis),
+                            deleteIcon: const Icon(Icons.close, size: 14),
+                            onDeleted: () => setModalState(() => attachedImages.remove(img)),
+                          )),
+                      if (attachedVideo != null)
+                        Chip(
+                          avatar: const Icon(Icons.videocam, size: 16, color: Colors.purpleAccent),
+                          label: Text(attachedVideo!.name, style: const TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis),
+                          deleteIcon: const Icon(Icons.close, size: 14),
+                          onDeleted: () => setModalState(() => attachedVideo = null),
+                        ),
+                    ],
+                  ),
+                ],
+
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    onPressed: () {
+                      final text = commentCtrl.text.trim();
+                      if (text.isEmpty) {
+                        showGlassToast(context, 'Sila masukkan ulasan anda', isError: true);
+                        return;
+                      }
+
+                      // Kumpulkan URL gambar (atau fallback sample jika fail lokal)
+                      final List<String> reviewImages = attachedImages.isNotEmpty
+                          ? [
+                              'https://images.unsplash.com/photo-1541544741938-0af808871cc0?q=80&w=400',
+                              if (attachedImages.length > 1) 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=400',
+                            ]
+                          : <String>[];
+
+                      setState(() {
+                        _reviews.insert(0, {
+                          'id': DateTime.now().toString(),
+                          'name': 'Anda',
+                          'avatar': '',
+                          'rating': rating,
+                          'date': 'Baru sahaja',
+                          'item': 'Lawatan Disahkan',
+                          'comment': text,
+                          'helpful': 0,
+                          'isHelpful': false,
+                          'images': reviewImages,
+                          'hasVideo': attachedVideo != null,
+                          'videoDuration': '0:20',
+                          'videoThumbnail': attachedVideo != null ? 'https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=400' : null,
+                          'videoUrl': attachedVideo != null ? 'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4' : null,
+                        });
+                      });
+                      Navigator.pop(ctx);
+                      showGlassToast(context, 'Terima kasih! Ulasan anda berjaya dihantar.');
+                    },
+                    child: const Text('Hantar Ulasan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -441,6 +616,129 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
                                 rev['comment'],
                                 style: TextStyle(color: textPrimary, fontSize: 13, height: 1.4),
                               ),
+                              // Foto Ulasan Pelanggan
+                              if (rev['images'] != null && (rev['images'] as List).isNotEmpty) ...[
+                                const SizedBox(height: 10),
+                                SizedBox(
+                                  height: 72,
+                                  child: ListView.separated(
+                                    scrollDirection: Axis.horizontal,
+                                    physics: const BouncingScrollPhysics(),
+                                    itemCount: (rev['images'] as List).length,
+                                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                                    itemBuilder: (context, imgIdx) {
+                                      final imgUrl = (rev['images'] as List)[imgIdx].toString();
+                                      return GestureDetector(
+                                        onTap: () => _openImagePreview(context, imgUrl),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(10),
+                                          child: Stack(
+                                            children: [
+                                              Image.network(
+                                                imgUrl,
+                                                width: 72,
+                                                height: 72,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) => Container(
+                                                  width: 72,
+                                                  height: 72,
+                                                  color: Colors.white12,
+                                                  child: const Icon(Icons.broken_image_rounded, color: Colors.white38, size: 22),
+                                                ),
+                                              ),
+                                              Positioned(
+                                                bottom: 4,
+                                                right: 4,
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(3),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.black.withValues(alpha: 0.60),
+                                                    borderRadius: BorderRadius.circular(6),
+                                                  ),
+                                                  child: const Icon(Icons.zoom_in_rounded, color: Colors.white, size: 12),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                              // Video Ulasan Pelanggan
+                              if (rev['hasVideo'] == true && rev['videoUrl'] != null) ...[
+                                const SizedBox(height: 10),
+                                GestureDetector(
+                                  onTap: () => _openVideoDialog(context, rev['videoUrl'].toString(), rev['name'].toString()),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      width: 145,
+                                      height: 86,
+                                      color: Colors.black,
+                                      child: Stack(
+                                        fit: StackFit.expand,
+                                        children: [
+                                          if (rev['videoThumbnail'] != null && rev['videoThumbnail'].toString().isNotEmpty)
+                                            Image.network(
+                                              rev['videoThumbnail'].toString(),
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) => Container(color: const Color(0xFF161622)),
+                                            )
+                                          else
+                                            Container(color: const Color(0xFF161622)),
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                begin: Alignment.topCenter,
+                                                end: Alignment.bottomCenter,
+                                                colors: [
+                                                  Colors.transparent,
+                                                  Colors.black.withValues(alpha: 0.65),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          Center(
+                                            child: Container(
+                                              padding: const EdgeInsets.all(7),
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: Colors.black.withValues(alpha: 0.55),
+                                                border: Border.all(color: Colors.white.withValues(alpha: 0.40)),
+                                              ),
+                                              child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 22),
+                                            ),
+                                          ),
+                                          Positioned(
+                                            bottom: 6,
+                                            right: 6,
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: Colors.black.withValues(alpha: 0.75),
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(Icons.videocam_rounded, color: Colors.white70, size: 10),
+                                                  const SizedBox(width: 3),
+                                                  Text(
+                                                    rev['videoDuration']?.toString() ?? '0:20',
+                                                    style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 12),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
