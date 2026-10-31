@@ -1938,4 +1938,32 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get bookingRefundNote =>
       'Refund will be credited to your Ngam Wallet.';
+
+  @override
+  String get profileStampCards => 'Reward Stamp Cards';
+
+  @override
+  String get profileLiveQueue => 'Walk-In Queue Ticket (Live Queue)';
+
+  @override
+  String get profileCheckUpdates => 'Check for App Updates';
+
+  @override
+  String get profileGuestUser => 'Guest User';
+
+  @override
+  String get profileGuestSubtitle =>
+      'Sign in to manage your bookings and rewards.';
+
+  @override
+  String get profileLoginRegister => 'Sign In / Register';
+
+  @override
+  String get profileSaved => 'Saved';
+
+  @override
+  String get profileSavedShops => 'Saved Shops';
+
+  @override
+  String get profileSavedPosts => 'Saved Posts';
 }

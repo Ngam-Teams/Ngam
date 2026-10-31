@@ -3781,6 +3781,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Refund will be credited to your Ngam Wallet.'**
   String get bookingRefundNote;
+
+  /// No description provided for @profileStampCards.
+  ///
+  /// In en, this message translates to:
+  /// **'Reward Stamp Cards'**
+  String get profileStampCards;
+
+  /// No description provided for @profileLiveQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Walk-In Queue Ticket (Live Queue)'**
+  String get profileLiveQueue;
+
+  /// No description provided for @profileCheckUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for App Updates'**
+  String get profileCheckUpdates;
+
+  /// No description provided for @profileGuestUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Guest User'**
+  String get profileGuestUser;
+
+  /// No description provided for @profileGuestSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to manage your bookings and rewards.'**
+  String get profileGuestSubtitle;
+
+  /// No description provided for @profileLoginRegister.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign In / Register'**
+  String get profileLoginRegister;
+
+  /// No description provided for @profileSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get profileSaved;
+
+  /// No description provided for @profileSavedShops.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved Shops'**
+  String get profileSavedShops;
+
+  /// No description provided for @profileSavedPosts.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved Posts'**
+  String get profileSavedPosts;
 }
 
 class _AppLocalizationsDelegate

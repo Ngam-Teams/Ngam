@@ -31,9 +31,17 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     final start = widget.initialIndex.clamp(0, 4);
     _currentIndex = start;
     _initializedPages[start] = true;
-    // Buang splash screen lepas frame pertama di-render
+    // Buang splash screen lepas frame pertama di-render & panaskan (pre-warm) Feed di latar belakang
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FlutterNativeSplash.remove();
+      // Preload Feed tab secara senyap supaya video pertama sedia dimainkan serta-merta tanpa loading
+      Future.delayed(const Duration(milliseconds: 400), () {
+        if (mounted && !_initializedPages[2]) {
+          setState(() {
+            _initializedPages[2] = true;
+          });
+        }
+      });
       Future.delayed(const Duration(milliseconds: 1500), () {
         if (mounted) {
           AppUpdateService.checkOnStartup(context);
@@ -71,7 +79,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     final List<Widget> pages = [
       _initializedPages[0] ? CustomerHomeFeedView(onSwitchTab: _onTabTapped) : const SizedBox.shrink(),
       _initializedPages[1] ? const ExploreView() : const SizedBox.shrink(),
-      _currentIndex == 2 ? CustomerFeedScreen(onSwitchTab: _onTabTapped, isTabActive: true) : const SizedBox.shrink(),
+      _initializedPages[2] ? CustomerFeedScreen(onSwitchTab: _onTabTapped, isTabActive: _currentIndex == 2) : const SizedBox.shrink(),
       _initializedPages[3] ? const ChatScreen() : const SizedBox.shrink(),
       _initializedPages[4] ? const ProfileScreen() : const SizedBox.shrink(),
     ];

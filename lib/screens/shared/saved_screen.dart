@@ -866,10 +866,15 @@ class _SavedPostThumbnailState extends State<_SavedPostThumbnail> {
         !cleanCover.toLowerCase().endsWith('.mov') &&
         !cleanCover.toLowerCase().endsWith('.webm');
 
-    // Jika sudah ada cover statik sah, gunakan terus
-    if (hasValidCover) return;
+    final bool isRealVideoCover = hasValidCover &&
+        !cleanCover.contains('business_cover') &&
+        !cleanCover.contains('shop_cover');
 
-    // Jika video, inisialisasi VideoPlayerController untuk paparkan frame pertama (paused)
+    // Jika foto, gunakan cover terus. Jika video, hanya guna jika ada thumbnail video khas.
+    if (!widget.isVideo && hasValidCover) return;
+    if (widget.isVideo && isRealVideoCover) return;
+
+    // Untuk video hantaran, ambil frame video pertama sebenar (gaya TikTok)
     final cleanMedia = widget.mediaUrl.trim();
     if (widget.isVideo && cleanMedia.isNotEmpty) {
       try {
@@ -881,6 +886,8 @@ class _SavedPostThumbnailState extends State<_SavedPostThumbnail> {
           );
           _controller!.setVolume(0.0).catchError((_) {});
           _controller!.initialize().then((_) {
+            // Seek sedikit untuk pastikan frame video dipaparkan kemas
+            _controller!.seekTo(const Duration(milliseconds: 200)).catchError((_) {});
             if (mounted) {
               setState(() {
                 _isInitialized = true;
@@ -924,8 +931,12 @@ class _SavedPostThumbnailState extends State<_SavedPostThumbnail> {
         !cleanCover.toLowerCase().endsWith('.mov') &&
         !cleanCover.toLowerCase().endsWith('.webm');
 
-    // 1. Gambar cover statik
-    if (hasValidCover) {
+    final bool isRealVideoCover = hasValidCover &&
+        !cleanCover.contains('business_cover') &&
+        !cleanCover.contains('shop_cover');
+
+    // 1. Gambar cover statik khas (jika foto, atau video yang mempunyai poster khusus)
+    if ((!widget.isVideo && hasValidCover) || (widget.isVideo && isRealVideoCover)) {
       return CachedNetworkImage(
         imageUrl: cleanCover,
         fit: BoxFit.cover,
@@ -933,7 +944,7 @@ class _SavedPostThumbnailState extends State<_SavedPostThumbnail> {
       );
     }
 
-    // 2. Frame video sebenar (paused pada frame 0)
+    // 2. Frame video sebenar dari fail video (gaya TikTok)
     if (widget.isVideo && _isInitialized && _controller != null) {
       return FittedBox(
         fit: BoxFit.cover,

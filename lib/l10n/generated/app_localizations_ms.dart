@@ -1945,4 +1945,32 @@ class AppLocalizationsMs extends AppLocalizations {
   @override
   String get bookingRefundNote =>
       'Baki bayaran akan dikreditkan kembali ke Ngam Wallet anda.';
+
+  @override
+  String get profileStampCards => 'Kad Cop Ganjaran (Stamps)';
+
+  @override
+  String get profileLiveQueue => 'Tiket Giliran Walk-In (Live Queue)';
+
+  @override
+  String get profileCheckUpdates => 'Semak Kemas Kini Aplikasi';
+
+  @override
+  String get profileGuestUser => 'Tetamu (Guest)';
+
+  @override
+  String get profileGuestSubtitle =>
+      'Log masuk untuk mengurus pesanan dan ganjaran anda.';
+
+  @override
+  String get profileLoginRegister => 'Log Masuk / Daftar';
+
+  @override
+  String get profileSaved => 'Disimpan';
+
+  @override
+  String get profileSavedShops => 'Kedai Disimpan';
+
+  @override
+  String get profileSavedPosts => 'Hantaran Disimpan';
 }

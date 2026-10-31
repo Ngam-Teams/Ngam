@@ -16,7 +16,87 @@ import 'package:video_player/video_player.dart';
 import '../../widgets/glass_toast.dart';
 import '../../widgets/customer_desktop_sidebar.dart';
 import '../../services/saved_service.dart';
+import '../../widgets/glass_share_sheet.dart';
 import '../explore/business_store_view.dart';
+
+// ---------------------------------------------------------------------------
+// FeedVideoPreloadManager — Pengurus Pemuatan Awal Video (TikTok-Style Preloading)
+// Mengelakkan kelewatan (buffering) semasa klik tab & leret (scroll) video seterusnya
+// ---------------------------------------------------------------------------
+class FeedVideoPreloadManager {
+  static final Map<String, VideoPlayerController> _cache = {};
+  static final Map<String, Future<void>> _initFutures = {};
+
+  static VideoPlayerController? getController(String url) {
+    return _cache[url.trim()];
+  }
+
+  static Future<void>? getInitFuture(String url) {
+    return _initFutures[url.trim()];
+  }
+
+  static Future<VideoPlayerController?> preload(String url) async {
+    final clean = url.trim();
+    if (clean.isEmpty) return null;
+    if (_cache.containsKey(clean)) {
+      final ctrl = _cache[clean]!;
+      if (!ctrl.value.isInitialized && _initFutures.containsKey(clean)) {
+        await _initFutures[clean];
+      }
+      return ctrl;
+    }
+
+    try {
+      final ctrl = VideoPlayerController.networkUrl(
+        Uri.parse(clean),
+        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+      );
+      _cache[clean] = ctrl;
+      final future = ctrl.initialize().then((_) {
+        ctrl.setLooping(true);
+        ctrl.setVolume(0.0).catchError((_) {});
+      }).catchError((e) {
+        debugPrint('[FeedVideoPreloadManager] Preload error: $e');
+        _cache.remove(clean);
+      });
+      _initFutures[clean] = future;
+      await future;
+      return ctrl;
+    } catch (e) {
+      debugPrint('[FeedVideoPreloadManager] Init error: $e');
+      _cache.remove(clean);
+      return null;
+    }
+  }
+
+  static void pruneExcept(Set<String> keepUrls) {
+    final toRemove = <String>[];
+    for (final url in _cache.keys) {
+      if (!keepUrls.contains(url)) {
+        toRemove.add(url);
+      }
+    }
+    for (final url in toRemove) {
+      final ctrl = _cache.remove(url);
+      _initFutures.remove(url);
+      try {
+        ctrl?.pause();
+        ctrl?.dispose();
+      } catch (_) {}
+    }
+  }
+
+  static void disposeAll() {
+    for (final ctrl in _cache.values) {
+      try {
+        ctrl.pause();
+        ctrl.dispose();
+      } catch (_) {}
+    }
+    _cache.clear();
+    _initFutures.clear();
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Reusable Feed Avatar with Initial / Abjad Fallback
@@ -151,10 +231,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       'location': 'Bangi Sentral',
       'image':
           'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-      'cover':
-          'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=800',
-      'thumbnail':
-          'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=800',
+      'cover': '',
+      'thumbnail': '',
       'mediaType': 'video',
       'aspectRatio': 16 / 9,
       'title': 'Low Taper Fade + Beard Sculpting',
@@ -225,10 +303,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       'location': 'Seksyen 9, Bangi',
       'image':
           'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4',
-      'cover':
-          'https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?q=80&w=800',
-      'thumbnail':
-          'https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?q=80&w=800',
+      'cover': '',
+      'thumbnail': '',
       'mediaType': 'video',
       'aspectRatio': 16 / 9,
       'title': 'Cermin Kereta Bersinar Bak Kristal',
@@ -488,8 +564,12 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             'image': mediaUrl.isNotEmpty
                 ? mediaUrl
                 : 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=800',
-            'cover': (biz['business_cover_url'] as String?)?.trim() ?? '',
-            'thumbnail': (biz['business_cover_url'] as String?)?.trim() ?? '',
+            'cover': isVideo
+                ? (row['thumbnail_url'] ?? row['cover_url'] ?? '').toString().trim()
+                : ((biz['business_cover_url'] as String?)?.trim() ?? ''),
+            'thumbnail': isVideo
+                ? (row['thumbnail_url'] ?? row['cover_url'] ?? '').toString().trim()
+                : ((biz['business_cover_url'] as String?)?.trim() ?? ''),
             'mediaType': isVideo ? 'video' : (row['media_type'] ?? 'image'),
             'title': row['title'] ?? '',
             'caption': row['caption'] ?? '',
@@ -530,6 +610,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
               _currentPage = 0;
             }
           });
+          _preloadNearbyVideos(_currentPage);
         }
         return;
       }
@@ -547,7 +628,29 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         }
         _isLoading = false;
       });
+      _preloadNearbyVideos(_currentPage);
     }
+  }
+
+  /// Pemuatan awal video berdekatan secara pintar (gaya TikTok)
+  void _preloadNearbyVideos(int currentIndex) {
+    if (_posts.isEmpty) return;
+    final keepUrls = <String>{};
+    final int start = math.max(0, currentIndex - 1);
+    final int end = math.min(_posts.length - 1, currentIndex + 2);
+
+    for (int i = start; i <= end; i++) {
+      final p = _posts[i];
+      final mediaUrl = (p['image'] ?? '').toString().trim();
+      final bool isVid = (p['mediaType'] == 'video') ||
+          mediaUrl.toLowerCase().endsWith('.mp4') ||
+          mediaUrl.toLowerCase().contains('/video/');
+      if (isVid && mediaUrl.isNotEmpty) {
+        keepUrls.add(mediaUrl);
+        FeedVideoPreloadManager.preload(mediaUrl);
+      }
+    }
+    FeedVideoPreloadManager.pruneExcept(keepUrls);
   }
 
   /// Kira jumlah semua komen utama + balasan (replies) di bawah setiap komen
@@ -726,6 +829,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         _desktopCommentsPost = _posts[index];
       }
     });
+    _preloadNearbyVideos(index);
     if (index >= 0 && index < _posts.length) {
       final post = _posts[index];
       final postId = post['id']?.toString();
@@ -790,27 +894,36 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     );
   }
 
-  void _toggleSave(Map<String, dynamic> post) async {
-    final nowSaved = await SavedService.toggleSavePost(post);
+  void _toggleSave(Map<String, dynamic> post) {
+    final String postId = (post['id'] ?? '').toString();
+    final bool willBeSaved = !SavedService.isPostSaved(postId);
+
+    HapticFeedback.lightImpact();
     setState(() {
-      post['isSaved'] = nowSaved;
+      post['isSaved'] = willBeSaved;
     });
-    if (mounted) {
-      showGlassToast(
-        context,
-        nowSaved
-            ? 'Hantaran disimpan ke koleksi anda'
-            : 'Hantaran dikeluarkan dari simpanan',
-        icon: HugeIcons.strokeRoundedBookmark02,
-      );
-    }
+
+    showGlassToast(
+      context,
+      willBeSaved
+          ? 'Hantaran disimpan ke koleksi anda'
+          : 'Hantaran dikeluarkan dari simpanan',
+      icon: HugeIcons.strokeRoundedBookmark02,
+    );
+
+    SavedService.toggleSavePost(post);
   }
 
   void _sharePost(Map<String, dynamic> post) {
-    showGlassToast(
+    HapticFeedback.lightImpact();
+    showGlassShareSheet(
       context,
-      'Pautan ${post['shopName']} disalin ke papan klip!',
-      icon: HugeIcons.strokeRoundedShare01,
+      post: post,
+      onPostHidden: () {
+        setState(() {
+          _posts.removeWhere((p) => p['id']?.toString() == post['id']?.toString());
+        });
+      },
     );
   }
 
@@ -1824,7 +1937,6 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   }) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isLiked = post['isLiked'] ?? false;
-    final bool isSaved = post['isSaved'] ?? false;
     final bool isFollowed = post['isFollowed'] ?? false;
     final int likes = post['likes'] ?? 0;
     final int comments = post['comments'] ?? 0;
@@ -1920,15 +2032,22 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
 
         SizedBox(height: actionSpacing),
 
-        // Save / Bookmark Action
-        _buildRightActionButton(
-          hugeIcon: isSaved ? Icons.bookmark_rounded : HugeIcons.strokeRoundedBookmark02,
-          iconColor: isSaved ? const Color(0xFFFBBF24) : Colors.white,
-          label: 'Simpan',
-          isCompact: isShortPhone,
-          isDesktop: isDesktop,
-          isDark: isDark,
-          onTap: () => _toggleSave(post),
+        // Save / Bookmark Action (Reactive to SavedService)
+        ValueListenableBuilder<List<Map<String, dynamic>>>(
+          valueListenable: SavedService.savedPostsNotifier,
+          builder: (context, _, __) {
+            final String postId = (post['id'] ?? '').toString();
+            final bool isItemSaved = SavedService.isPostSaved(postId);
+            return _buildRightActionButton(
+              hugeIcon: isItemSaved ? Icons.bookmark_rounded : HugeIcons.strokeRoundedBookmark02,
+              iconColor: isItemSaved ? const Color(0xFFFBBF24) : Colors.white,
+              label: 'Simpan',
+              isCompact: isShortPhone,
+              isDesktop: isDesktop,
+              isDark: isDark,
+              onTap: () => _toggleSave(post),
+            );
+          },
         ),
 
         SizedBox(height: actionSpacing),
@@ -2161,6 +2280,9 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                   count,
                   updatedList,
                 );
+                if (mounted) {
+                  setState(() {});
+                }
               },
             ),
           ),
@@ -2231,6 +2353,16 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
         setState(() => _hasInputText = hasText);
       }
     });
+
+    // Muat komen secara segerak (synchronous) dari memori sedia ada supaya terbuka serta-merta tanpa loading
+    final rawList = widget.post['commentList'] as List?;
+    if (rawList != null && rawList.isNotEmpty) {
+      _comments.addAll(_normalizeCommentsList(rawList));
+    }
+    final int currentListItems =
+        _CustomerFeedScreenState.countAllCommentsAndReplies(_comments);
+    final int postMetaComments = (widget.post['comments'] as num?)?.toInt() ?? 0;
+    _baseCommentOffset = math.max(0, postMetaComments - currentListItems);
 
     _initAndFetchComments();
   }
@@ -3826,10 +3958,28 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
       return;
     }
 
-    _controller = VideoPlayerController.networkUrl(
-      Uri.parse(cleanUrl),
-      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
-    );
+    // Semak jika video telah siap dimuat awal (preloaded) di latar belakang!
+    final cached = FeedVideoPreloadManager.getController(cleanUrl);
+    if (cached != null) {
+      _controller = cached;
+      _controller.addListener(_videoListener);
+      if (_controller.value.isInitialized) {
+        _isInitialized = true;
+        _hasError = false;
+        final double aspect = _controller.value.aspectRatio;
+        if (aspect > 0) {
+          widget.onAspectRatioDetermined?.call(aspect);
+        }
+        _applyPlayState();
+        return;
+      }
+    } else {
+      _controller = VideoPlayerController.networkUrl(
+        Uri.parse(cleanUrl),
+        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+      );
+      FeedVideoPreloadManager._cache[cleanUrl] = _controller;
+    }
 
     _controller.initialize().then((_) {
       if (!mounted) return;
@@ -3844,32 +3994,12 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
       _controller.addListener(_videoListener);
       _controller.setLooping(true);
 
-      // Initial volume: 0.0 if muted, otherwise 1.0 (unmuted)
-      final double initialVolume = widget.isMuted ? 0.0 : 1.0;
-      _controller.setVolume(initialVolume).catchError((_) {});
-
-      if (widget.isCurrentPage && !widget.isPausedExternally && !_isUserPaused) {
-        _controller.play().then((_) {
-          if (mounted) {
-            widget.onPlayStateChanged?.call(true);
-          }
-        }).catchError((playErr) {
-          debugPrint('[FeedVideoPlayer] Unmuted autoplay blocked by browser policy, falling back to muted: $playErr');
-          _controller.setVolume(0.0).then((_) {
-            return _controller.play().then((_) {
-              if (mounted) widget.onPlayStateChanged?.call(true);
-            });
-          }).catchError((_) {});
-        });
-      } else {
-        _controller.pause();
-        widget.onPlayStateChanged?.call(false);
-      }
+      _applyPlayState();
     }).catchError((e) {
       debugPrint('[FeedVideoPlayer] Error loading video: $e (attempt $_retryCount)');
       if (_retryCount < 2 && mounted) {
         _retryCount++;
-        Future.delayed(const Duration(milliseconds: 400), () {
+        Future.delayed(const Duration(milliseconds: 300), () {
           if (mounted) _initializeController();
         });
         return;
@@ -3880,6 +4010,29 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
         });
       }
     });
+  }
+
+  void _applyPlayState() {
+    final double initialVolume = widget.isMuted ? 0.0 : 1.0;
+    _controller.setVolume(initialVolume).catchError((_) {});
+
+    if (widget.isCurrentPage && !widget.isPausedExternally && !_isUserPaused) {
+      _controller.play().then((_) {
+        if (mounted) {
+          widget.onPlayStateChanged?.call(true);
+        }
+      }).catchError((playErr) {
+        debugPrint('[FeedVideoPlayer] Unmuted autoplay blocked by browser policy, falling back to muted: $playErr');
+        _controller.setVolume(0.0).then((_) {
+          return _controller.play().then((_) {
+            if (mounted) widget.onPlayStateChanged?.call(true);
+          });
+        }).catchError((_) {});
+      });
+    } else {
+      _controller.pause();
+      widget.onPlayStateChanged?.call(false);
+    }
   }
 
   void _videoListener() {
@@ -3893,8 +4046,12 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
     super.didUpdateWidget(oldWidget);
     if (widget.videoUrl != oldWidget.videoUrl) {
       _controller.removeListener(_videoListener);
-      _controller.pause();
-      _controller.dispose();
+      if (FeedVideoPreloadManager.getController(oldWidget.videoUrl) == null) {
+        _controller.pause();
+        _controller.dispose();
+      } else {
+        _controller.pause();
+      }
       _isInitialized = false;
       _hasError = false;
       _retryCount = 0;
@@ -3936,8 +4093,12 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
   void dispose() {
     _playIndicatorTimer?.cancel();
     _controller.removeListener(_videoListener);
-    _controller.pause();
-    _controller.dispose();
+    if (FeedVideoPreloadManager.getController(widget.videoUrl) == null) {
+      _controller.pause();
+      _controller.dispose();
+    } else {
+      _controller.pause();
+    }
     super.dispose();
   }
 

@@ -124,21 +124,39 @@ class SavedService {
       current.removeAt(existingIndex);
       nowSaved = false;
     } else {
-      final String coverCandidate = (post['cover'] ??
-              post['thumbnail'] ??
-              post['coverUrl'] ??
-              post['shopCover'] ??
-              post['shopData']?['cover'] ??
-              post['shopData']?['business_cover_url'] ??
-              post['business_cover_url'] ??
-              '')
-          .toString();
-
       final String mediaUrl = (post['image'] ?? post['mediaUrl'] ?? '').toString();
       final bool isVideo = (post['mediaType'] == 'video') ||
           mediaUrl.toLowerCase().endsWith('.mp4') ||
           mediaUrl.toLowerCase().endsWith('.mov') ||
           mediaUrl.toLowerCase().endsWith('.webm');
+
+      // Untuk video, JANGAN gunakan gambar cover/kedai sebagai thumbnail.
+      // Hanya guna jika ia thumbnail khas video, atau biarkan kosong supaya pemain video menjana frame pertama terus (gaya TikTok)
+      String finalThumbnail = '';
+      if (isVideo) {
+        final rawThumb = (post['videoThumbnail'] ??
+                post['thumbnail_url'] ??
+                post['video_thumbnail'] ??
+                '')
+            .toString()
+            .trim();
+        final shopCover = (post['shopData']?['business_cover_url'] ??
+                post['business_cover_url'] ??
+                post['shopCover'] ??
+                '')
+            .toString()
+            .trim();
+        if (rawThumb.isNotEmpty && rawThumb != shopCover) {
+          finalThumbnail = rawThumb;
+        }
+      } else {
+        finalThumbnail = (post['cover'] ??
+                post['thumbnail'] ??
+                post['coverUrl'] ??
+                mediaUrl)
+            .toString()
+            .trim();
+      }
 
       current.insert(0, {
         'id': postId,
@@ -150,8 +168,8 @@ class SavedService {
         'title': post['title'] ?? '',
         'caption': post['caption'] ?? '',
         'image': mediaUrl,
-        'cover': coverCandidate,
-        'thumbnail': coverCandidate,
+        'cover': finalThumbnail,
+        'thumbnail': finalThumbnail,
         'mediaType': isVideo ? 'video' : (post['mediaType'] ?? 'image'),
         'likes': post['likes'] ?? 0,
         'comments': post['comments'] ?? 0,
