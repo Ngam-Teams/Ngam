@@ -842,7 +842,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
           GestureDetector(
             onTap: () => Navigator.of(context).pushNamed('/login'),
             child: Container(
-              height: 38,
+              height: 44,
               padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(24),
@@ -855,13 +855,13 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.login_rounded, size: 15, color: Color(0xFF64B5F6)),
-                  SizedBox(width: 5),
+                  Icon(Icons.login_rounded, size: 16, color: Color(0xFF64B5F6)),
+                  SizedBox(width: 6),
                   Text(
                     'Log Masuk',
                     style: TextStyle(
                       color: Color(0xFF64B5F6),
-                      fontSize: 12,
+                      fontSize: 12.5,
                       fontWeight: FontWeight.w700,
                     ),
                   ),

@@ -266,8 +266,54 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
 
   String get _statusText {
     final st = _status;
-    final closeStr = _formatTime(_closeHour, _closeMinute);
-    final openStr = _formatTime(_openHour, _openMinute);
+    final now = DateTime.now();
+    const dayNames = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday'
+    ];
+    final todayName = dayNames[now.weekday - 1];
+
+    int effectiveOpenH = _openHour;
+    int effectiveOpenM = _openMinute;
+    int effectiveCloseH = _closeHour;
+    int effectiveCloseM = _closeMinute;
+
+    if (_syncedWeeklySchedule.isNotEmpty) {
+      final todayItem = _syncedWeeklySchedule.firstWhere(
+        (s) => s['day']?.toString().toLowerCase() == todayName.toLowerCase(),
+        orElse: () => <String, dynamic>{},
+      );
+      if (todayItem.isNotEmpty) {
+        final openStr = todayItem['open']?.toString();
+        final closeStr = todayItem['close']?.toString();
+        if (openStr != null && openStr.contains(':')) {
+          final p = openStr.split(':');
+          final h = int.tryParse(p[0]);
+          final m = int.tryParse(p[1]);
+          if (h != null && m != null) {
+            effectiveOpenH = h;
+            effectiveOpenM = m;
+          }
+        }
+        if (closeStr != null && closeStr.contains(':')) {
+          final p = closeStr.split(':');
+          final h = int.tryParse(p[0]);
+          final m = int.tryParse(p[1]);
+          if (h != null && m != null) {
+            effectiveCloseH = h;
+            effectiveCloseM = m;
+          }
+        }
+      }
+    }
+
+    final closeStr = _formatTime(effectiveCloseH, effectiveCloseM);
+    final openStr = _formatTime(effectiveOpenH, effectiveOpenM);
 
     if (_syncedOperatingHours?['is_rush_mode'] == true) {
       return 'Tutup Sementara (Rush Hour)';
@@ -1642,7 +1688,11 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                       context,
                       MaterialPageRoute(
                         builder: (_) => StoreCartView(
-                          shop: widget.shop,
+                          shop: {
+                            ...widget.shop,
+                            if (_syncedOperatingHours != null)
+                              'operating_hours': _syncedOperatingHours,
+                          },
                           cartItems: _cart,
                           tableNumber: widget.tableNumber,
                           promoCode: widget.promoCode,

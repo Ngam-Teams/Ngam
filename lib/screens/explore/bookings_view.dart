@@ -1334,36 +1334,34 @@ class _BookingsViewState extends State<BookingsView> {
                     ],
                   ),
                 ),
-                    Positioned(
-                      top: 12,
-                      left: 20,
-                      right: 20,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          GlassNavButton(
-                            icon: HugeIcons.strokeRoundedArrowLeft01,
-                            isDark: isDark,
-                            onTap: () => Navigator.pop(context),
-                          ),
-                          GlassNavPill(
-                            isDark: isDark,
-                            height: 44,
-                            items: [
-                              GlassNavPillItem(
-                                icon: _providerSummaryIcon,
-                                tooltip: _providerSummaryLabel,
-                                onTap: () {},
-                              ),
-                              GlassNavPillItem(
-                                icon: HugeIcons.strokeRoundedTicket01,
-                                tooltip: 'Baucar & Ganjaran',
-                                onTap: () => _openBookingVoucherPicker(),
-                              ),
-                            ],
-                          ),
-                        ],
+                    FloatingTopBar(
+                      isDark: isDark,
+                      leading: GlassNavButton.back(
+                        context: context,
+                        isDark: isDark,
+                        size: 44,
+                        iconSize: 20,
                       ),
+                      title: widget.shopName,
+                      subtitle: widget.category,
+                      actions: [
+                        GlassNavPill(
+                          isDark: isDark,
+                          height: 44,
+                          items: [
+                            GlassNavPillItem(
+                              icon: _providerSummaryIcon,
+                              tooltip: _providerSummaryLabel,
+                              onTap: () {},
+                            ),
+                            GlassNavPillItem(
+                              icon: HugeIcons.strokeRoundedTicket01,
+                              tooltip: 'Baucar & Ganjaran',
+                              onTap: () => _openBookingVoucherPicker(),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ],
                 ),

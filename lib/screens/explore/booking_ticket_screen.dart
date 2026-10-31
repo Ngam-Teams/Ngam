@@ -1315,7 +1315,7 @@ Disahkan melalui aplikasi *Ngam*.
               leading: GlassNavButton.close(
                 context: context,
                 isDark: isDark,
-                size: 42,
+                size: 44,
                 iconSize: 20,
               ),
               title: l10n.ticketOrderTitle,
@@ -1324,7 +1324,7 @@ Disahkan melalui aplikasi *Ngam*.
                   icon: HugeIcons.strokeRoundedShare01,
                   tooltip: 'Kongsi Resit',
                   isDark: isDark,
-                  size: 42,
+                  size: 44,
                   iconSize: 20,
                   onTap: _shareTicketToWhatsApp,
                 ),

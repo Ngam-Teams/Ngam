@@ -209,10 +209,10 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                   ? GlassNavButton.back(
                       context: context,
                       isDark: isDark,
-                      size: 42,
+                      size: 44,
                       iconSize: 20,
                     )
-                  : const SizedBox(width: 42, height: 42),
+                  : const SizedBox(width: 44, height: 44),
               title: loc?.myBarbrTitle ?? "My Bookings",
             ),
           ],

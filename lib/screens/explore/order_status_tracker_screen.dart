@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
@@ -428,56 +429,68 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                 ),
 
                 // Floating Glass Top Navigation Bar
-                Positioned(
-                  top: 12,
-                  left: 20,
-                  right: 20,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      GlassNavButton(
-                        icon: HugeIcons.strokeRoundedArrowLeft01,
-                        isDark: isDark,
-                        onTap: () => Navigator.pop(context),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.white.withValues(alpha: 0.75),
-                          borderRadius: BorderRadius.circular(100),
-                          border: Border.all(
+                FloatingTopBar(
+                  isDark: isDark,
+                  leading: GlassNavButton.back(
+                    context: context,
+                    isDark: isDark,
+                    size: 44,
+                    iconSize: 20,
+                  ),
+                  title: widget.shopName,
+                  subtitle: 'Penjejakan Pesanan',
+                  actions: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(100),
+                      child: BackdropFilter(
+                        filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                        child: Container(
+                          height: 44,
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(100),
                             color: isDark
-                                ? Colors.white.withValues(alpha: 0.15)
-                                : Colors.black.withValues(alpha: 0.08),
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.white.withValues(alpha: 0.75),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.15)
+                                  : Colors.black.withValues(alpha: 0.08),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: _statusColor,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _statusTitle,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white : Colors.black87,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: _statusColor,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Penjejakan Langsung',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white : Colors.black87,
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
-                      const SizedBox(width: 44), // Balances the left button
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             );
