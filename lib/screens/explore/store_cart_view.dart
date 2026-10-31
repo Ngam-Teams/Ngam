@@ -57,9 +57,12 @@ class _StoreCartViewState extends State<StoreCartView> {
   late List<CartItem> _items;
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _voucherController = TextEditingController();
-  int _fulfillmentMode = 0; // 0: Bungkus (Takeaway), 1: Dine-in, 2: Pre-Order Terjadual
+  int _fulfillmentMode = 0; // 0: Bungkus (Takeaway), 1: Dine-in, 2: Pre-Order, 3: Delivery
   String _selectedPickupTime = 'Segera (~15 minit)';
   String _selectedPickupDate = 'Hari Ini';
+  DateTime? _customSelectedDate;
+  TimeOfDay? _customSelectedTime;
+  final TextEditingController _deliveryAddressController = TextEditingController();
   bool _voucherApplied = false;
   bool _isApplyingVoucher = false;
   bool _userDismissedVoucher = false;
@@ -107,6 +110,7 @@ class _StoreCartViewState extends State<StoreCartView> {
   void dispose() {
     _notesController.dispose();
     _voucherController.dispose();
+    _deliveryAddressController.dispose();
     super.dispose();
   }
 
@@ -348,23 +352,26 @@ class _StoreCartViewState extends State<StoreCartView> {
           ? '[Meja #${widget.tableNumber}] '
           : '';
 
-      final String fulfillmentLabel = _fulfillmentMode == 1
-          ? 'Dine-In'
-          : (_fulfillmentMode == 2 ? 'Pre-Order: $_selectedPickupDate, $_selectedPickupTime' : 'Bungkus (Ambil Pantas)');
+      final String deliveryAddress = _deliveryAddressController.text.trim();
+      final String scheduleInfo = _fulfillmentMode == 2
+          ? 'Pre-Order: $_selectedPickupDate, $_selectedPickupTime'
+          : (_fulfillmentMode == 3
+              ? 'Delivery: $_selectedPickupDate, $_selectedPickupTime${deliveryAddress.isNotEmpty ? " (Alamat: $deliveryAddress)" : ""}'
+              : (_fulfillmentMode == 1 ? 'Dine-In' : 'Bungkus (Ambil Pantas)'));
+
+      final String fulfillmentLabel = scheduleInfo;
 
       final String source = (widget.tableNumber != null && widget.tableNumber!.isNotEmpty) || _fulfillmentMode == 1
           ? 'table'
-          : (_isPreOrder || _fulfillmentMode == 2 ? 'pre_order' : 'online');
+          : (_fulfillmentMode == 3
+              ? 'delivery'
+              : (_isPreOrder || _fulfillmentMode == 2 ? 'pre_order' : 'online'));
 
       final String voucherNote = (_voucherApplied && _voucher != null)
           ? '[PROMO ${_voucher!['code']} -RM${_discountAmount.toStringAsFixed(2)}] '
           : '';
 
-      final String finalNotes = (tablePrefix +
-              '[$fulfillmentLabel] ' +
-              voucherNote +
-              _notesController.text.trim())
-          .trim();
+      final String finalNotes = '$tablePrefix[$fulfillmentLabel] $voucherNote${_notesController.text.trim()}'.trim();
 
       final baseOrderData = {
         'business_id': widget.shop['id'],
@@ -471,7 +478,9 @@ class _StoreCartViewState extends State<StoreCartView> {
             orderId: orderId,
             shopName: widget.shop['name']?.toString() ?? 'Kedai Ngam',
             totalAmount: _total,
-            pickupTime: _fulfillmentMode == 2 ? '$_selectedPickupDate, $_selectedPickupTime' : (_fulfillmentMode == 1 ? 'Dine-In (Meja)' : _selectedPickupTime),
+            pickupTime: (_fulfillmentMode == 2 || _fulfillmentMode == 3)
+                ? '$_selectedPickupDate, $_selectedPickupTime'
+                : (_fulfillmentMode == 1 ? 'Dine-In (Meja)' : _selectedPickupTime),
             fulfillmentType: fulfillmentLabel,
             items: _items.map((i) => {'name': i.product.name, 'qty': i.quantity, 'price': i.totalPrice}).toList(),
           ),
@@ -1216,6 +1225,11 @@ class _StoreCartViewState extends State<StoreCartView> {
   }
 
   Widget _buildFulfillmentCard(bool isDark, Color textPrimary, Color textSecondary) {
+    // Check if store supports delivery
+    final bool supportsDelivery = widget.shop['supports_delivery'] == true ||
+        widget.shop['enable_delivery'] == true ||
+        widget.shop['is_delivery_enabled'] == true;
+
     return _liquidGlassBox(
       isDark: isDark,
       radius: 20,
@@ -1225,7 +1239,7 @@ class _StoreCartViewState extends State<StoreCartView> {
         children: [
           Row(
             children: [
-              HugeIcon(icon: HugeIcons.strokeRoundedClock01, color: const Color(0xFF00E5FF), size: 20),
+              const HugeIcon(icon: HugeIcons.strokeRoundedClock01, color: Color(0xFF00E5FF), size: 20),
               const SizedBox(width: 8),
               Text(
                 'Pilihan & Waktu Pengambilan',
@@ -1235,7 +1249,7 @@ class _StoreCartViewState extends State<StoreCartView> {
           ),
           const SizedBox(height: 14),
 
-          // 3 Pill Tabs: Bungkus, Dine-in, Pre-Order
+          // Fulfillment Tabs: Bungkus, Dine-in, Pre-Order, and Delivery (if supported)
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
@@ -1247,6 +1261,8 @@ class _StoreCartViewState extends State<StoreCartView> {
                 _buildFulfillmentTab(0, 'Bungkus', HugeIcons.strokeRoundedShoppingBag01, isDark, textPrimary, textSecondary),
                 _buildFulfillmentTab(1, 'Dine-In', HugeIcons.strokeRoundedDesk01, isDark, textPrimary, textSecondary),
                 _buildFulfillmentTab(2, 'Pre-Order', HugeIcons.strokeRoundedCalendar02, isDark, textPrimary, textSecondary),
+                if (supportsDelivery)
+                  _buildFulfillmentTab(3, 'Delivery', HugeIcons.strokeRoundedDeliveryTruck01, isDark, textPrimary, textSecondary),
               ],
             ),
           ),
@@ -1301,55 +1317,200 @@ class _StoreCartViewState extends State<StoreCartView> {
               ),
             ),
           ] else ...[
-            // Pre-Order Time & Date Picker
+            // Pre-Order & Delivery: Date & Time Picker
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Date Selector (Hari Ini / Esok)
+                if (_fulfillmentMode == 3) ...[
+                  // Delivery Address field
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 14),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
+                    ),
+                    child: TextField(
+                      controller: _deliveryAddressController,
+                      style: TextStyle(color: textPrimary, fontSize: 13),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        icon: const HugeIcon(icon: HugeIcons.strokeRoundedLocation01, color: Color(0xFF00E5FF), size: 18),
+                        hintText: 'Masukkan alamat penghantaran...',
+                        hintStyle: TextStyle(color: textSecondary, fontSize: 12),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                ],
+
+                // Date Selector (Hari Ini / Esok / Pilih Tarikh)
                 Row(
                   children: [
                     _buildDatePill('Hari Ini', isDark, textPrimary, textSecondary),
                     const SizedBox(width: 8),
                     _buildDatePill('Esok', isDark, textPrimary, textSecondary),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _customSelectedDate ?? DateTime.now(),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime.now().add(const Duration(days: 30)),
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            _customSelectedDate = picked;
+                            _selectedPickupDate = '${picked.day}/${picked.month}/${picked.year}';
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: (_selectedPickupDate != 'Hari Ini' && _selectedPickupDate != 'Esok')
+                              ? Colors.deepPurpleAccent.withValues(alpha: 0.18)
+                              : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: (_selectedPickupDate != 'Hari Ini' && _selectedPickupDate != 'Esok')
+                                ? Colors.deepPurpleAccent
+                                : Colors.transparent,
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            HugeIcon(
+                              icon: HugeIcons.strokeRoundedCalendar03,
+                              color: (_selectedPickupDate != 'Hari Ini' && _selectedPickupDate != 'Esok')
+                                  ? Colors.deepPurpleAccent
+                                  : textSecondary,
+                              size: 14,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              (_selectedPickupDate != 'Hari Ini' && _selectedPickupDate != 'Esok')
+                                  ? _selectedPickupDate
+                                  : 'Pilih Tarikh',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: (_selectedPickupDate != 'Hari Ini' && _selectedPickupDate != 'Esok')
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                                color: (_selectedPickupDate != 'Hari Ini' && _selectedPickupDate != 'Esok')
+                                    ? Colors.deepPurpleAccent
+                                    : textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  'Pilih Slot Masa Ambil:',
-                  style: TextStyle(fontSize: 12, color: textSecondary, fontWeight: FontWeight.w600),
+                const SizedBox(height: 14),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _fulfillmentMode == 3 ? 'Pilih Waktu Hantar:' : 'Pilih Slot Masa Ambil:',
+                      style: TextStyle(fontSize: 12, color: textSecondary, fontWeight: FontWeight.w600),
+                    ),
+                    // Custom Time Picker Button
+                    GestureDetector(
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: _customSelectedTime ?? TimeOfDay.now(),
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            _customSelectedTime = picked;
+                            final period = picked.hour >= 12 ? 'PM' : 'AM';
+                            int h = picked.hour % 12;
+                            if (h == 0) h = 12;
+                            _selectedPickupTime = '${h.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')} $period';
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00E5FF).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.4), width: 0.8),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            HugeIcon(icon: HugeIcons.strokeRoundedClock01, color: Color(0xFF00E5FF), size: 13),
+                            SizedBox(width: 4),
+                            Text(
+                              'Masa Khusus',
+                              style: TextStyle(fontSize: 11, color: Color(0xFF00E5FF), fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: _quickTimeSlots.map((slot) {
-                    final bool isSel = _selectedPickupTime == slot;
-                    return GestureDetector(
-                      onTap: () => setState(() => _selectedPickupTime = slot),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: isSel
-                              ? const Color(0xFF00E5FF).withValues(alpha: 0.18)
-                              : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: isSel ? const Color(0xFF00E5FF) : Colors.transparent,
-                            width: 1.2,
+                  children: [
+                    ..._quickTimeSlots.map((slot) {
+                      final bool isSel = _selectedPickupTime == slot;
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedPickupTime = slot),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: isSel
+                                ? const Color(0xFF00E5FF).withValues(alpha: 0.18)
+                                : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isSel ? const Color(0xFF00E5FF) : Colors.transparent,
+                              width: 1.2,
+                            ),
+                          ),
+                          child: Text(
+                            slot,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+                              color: isSel ? const Color(0xFF00E5FF) : textPrimary,
+                            ),
                           ),
                         ),
+                      );
+                    }),
+                    if (!_quickTimeSlots.contains(_selectedPickupTime))
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00E5FF).withValues(alpha: 0.22),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFF00E5FF), width: 1.2),
+                        ),
                         child: Text(
-                          slot,
-                          style: TextStyle(
+                          _selectedPickupTime,
+                          style: const TextStyle(
                             fontSize: 12,
-                            fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
-                            color: isSel ? const Color(0xFF00E5FF) : textPrimary,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF00E5FF),
                           ),
                         ),
                       ),
-                    );
-                  }).toList(),
+                  ],
                 ),
               ],
             ),
