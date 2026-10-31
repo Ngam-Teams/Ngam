@@ -3827,10 +3827,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 );
   }
 
-  // --- 5. BOTTOM SHEET MODAL ---
+  // --- 5. BOTTOM SHEET MODAL (GOOGLE MAPS STYLE) ---
 
   void _showBusinessProfile(BuildContext context, Map<String, dynamic> shop) {
-    //  SAFELY set local state here, outside the sheet builder!
     setState(() {
       _selectedShop = shop;
       _isProfileOpen = true;
@@ -3878,221 +3877,315 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     final double bottomSafeArea = MediaQuery.of(context).padding.bottom;
     final double screenHeight = MediaQuery.of(context).size.height;
 
+    // Google Maps Snap-Points:
+    // 1. Minimized Peek: ~24% screen height (tunjuk tajuk, rating, status, & shortcut action buttons)
+    // 2. Medium Half-Sheet: 50% (separuh skrin kemas, peta masih nampak di atas)
+    // 3. Full Expanded: 88% (maklumat penuh, gambar banner, review & ulasan)
+    final double peekSize = ((200.0 + bottomSafeArea) / screenHeight).clamp(0.22, 0.32);
+    final double halfSize = 0.52;
+    final double fullSize = 0.88;
+
     _scaffoldKey.currentState!.showBottomSheet(
       backgroundColor: Colors.transparent,
       elevation: 0,
       enableDrag: false,
-      (context) {
-        return LayoutBuilder(builder: (context, constraints) {
-          final bool isDesktop = constraints.maxWidth >= 800;
-          final String shopName = shop['name'] ?? '';
-
-          double textAvailableWidth = (isDesktop ? math.min(constraints.maxWidth, 620.0) : constraints.maxWidth) - 108;
-          final TextPainter textPainter = TextPainter(
-            text: TextSpan(
-                text: shopName,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            textDirection: TextDirection.ltr,
-            maxLines: 2,
-          )..layout(maxWidth: textAvailableWidth);
-
-          int numLines = textPainter.computeLineMetrics().length;
-          double baseHeight = numLines > 1 ? 590.0 : 560.0;
-          double adaptiveInitialSize = (baseHeight + bottomSafeArea) / screenHeight;
-          adaptiveInitialSize = adaptiveInitialSize.clamp(0.55, 0.90);
+      (modalContext) {
+        return LayoutBuilder(builder: (ctx, constraints) {
+          final String shopName = (shop['name'] ?? shop['business_name'] ?? 'Kedai Ngam').toString();
 
           final Widget sheet = DraggableScrollableSheet(
             controller: _sheetController,
-            initialChildSize: adaptiveInitialSize,
+            initialChildSize: peekSize,
             minChildSize: 0.0,
-            maxChildSize: 1.0,
+            maxChildSize: fullSize,
             snap: true,
-            snapSizes: [0.0, adaptiveInitialSize],
+            snapSizes: [0.0, peekSize, halfSize, fullSize],
             expand: false,
-            builder: (modalContext, scrollController) {
+            builder: (sheetContext, scrollController) {
               return NotificationListener<DraggableScrollableNotification>(
                 onNotification: (notification) {
-                  // Auto-close when dragged below 25% of screen
-                  if (notification.extent <= 0.25 && _isProfileOpen) {
+                  // Tutup terus jika ditarik ke bawah melepasi separuh peek
+                  if (notification.extent <= (peekSize * 0.55) && _isProfileOpen) {
                     _isProfileOpen = false;
                     _sheetController
                         .animateTo(0.0,
-                            duration: const Duration(milliseconds: 200),
+                            duration: const Duration(milliseconds: 180),
                             curve: Curves.easeOut)
                         .then((_) {
-                      if (modalContext.mounted) {
-                        Navigator.of(modalContext).pop();
+                      if (sheetContext.mounted) {
+                        Navigator.of(sheetContext).pop();
                       }
                     });
                   }
                   return true;
                 },
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: GlassContainer(
-                        useOwnLayer: true,
-                        quality: GlassQuality.standard,
-                        shape: LiquidRoundedSuperellipse(borderRadius: 32.0),
-                        settings: _getGlassSettings(isDark, blur: 4),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
-                              width: 1.0,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                  child: Stack(
+                    children: [
+                      // 1. Frosted Glass Background
+                      Positioned.fill(
+                        child: GlassContainer(
+                          useOwnLayer: true,
+                          quality: GlassQuality.standard,
+                          shape: const LiquidRoundedSuperellipse(borderRadius: 28.0),
+                          settings: _getGlassSettings(isDark, blur: 16),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF0F1521).withValues(alpha: 0.88)
+                                  : Colors.white.withValues(alpha: 0.90),
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                              border: Border.all(
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.14)
+                                    : Colors.black.withValues(alpha: 0.08),
+                                width: 1.0,
                               ),
-                            ],
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.12),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, -4),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    ListView(
-                      controller: scrollController,
-                      padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 120),
-                      shrinkWrap: true,
-                      children: [
-                        Center(
-                            child: Container(
-                                width: 40,
-                                height: 4,
-                                decoration: BoxDecoration(
-                                    color: isDark ? Colors.white24 : _lightModeGray.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(10)))),
-                        const SizedBox(height: 16),
 
-                        // Store Cover Image Banner with Overlaid Circle Logo (Bigger than Business View)
-                        _buildStoreCoverBanner(
-                          shop: shop,
-                          isDark: isDark,
-                          height: 165,
-                          logoSize: 78,
-                        ),
-                        const SizedBox(height: 16),
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                      // 2. Scrollable Body Content
+                      Positioned.fill(
+                        bottom: 74 + bottomSafeArea, // Beri laluan kepada Pinned Bottom Action Bar
+                        child: ListView(
+                          controller: scrollController,
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+                          children: [
+                            // Drag Handle Pill (Google Maps style)
+                            Center(
+                              child: Container(
+                                width: 44,
+                                height: 4.5,
+                                margin: const EdgeInsets.only(bottom: 12),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.28)
+                                      : Colors.black.withValues(alpha: 0.20),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+
+                            // Store Header: Name, Category, Status Badge & Close (X)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        shopName,
+                                        style: TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: -0.3,
+                                          color: isDark ? Colors.white : _lightModeGray,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
                                         children: [
-                                          Text(shopName,
+                                          Text(
+                                            (shop['category'] ?? 'SERVIS').toString().toUpperCase(),
+                                            style: const TextStyle(
+                                              fontSize: 11.5,
+                                              color: Colors.blue,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 0.8,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: statusColor.withValues(alpha: 0.18),
+                                              borderRadius: BorderRadius.circular(6),
+                                              border: Border.all(
+                                                color: statusColor.withValues(alpha: 0.5),
+                                                width: 0.8,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              statusText,
                                               style: TextStyle(
-                                                  fontSize: 22,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: isDark ? Colors.white : _lightModeGray),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis),
-                                          const SizedBox(height: 6),
-                                          SingleChildScrollView(
-                                            scrollDirection: Axis.horizontal,
-                                            physics: const BouncingScrollPhysics(),
-                                            child: Row(
-                                              crossAxisAlignment: CrossAxisAlignment.center,
-                                              children: [
-                                                Text((shop['category'] ?? '').toUpperCase(),
-                                                    style: const TextStyle(
-                                                        fontSize: 12,
-                                                        color: Colors.blue,
-                                                        fontWeight: FontWeight.bold,
-                                                        letterSpacing: 1.2)),
-                                                const SizedBox(width: 12),
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                  decoration: BoxDecoration(
-                                                      color: statusColor.withValues(alpha: 0.2),
-                                                      borderRadius: BorderRadius.circular(8),
-                                                      border: Border.all(color: statusColor)),
-                                                  child: Text(statusText,
-                                                      style: TextStyle(
-                                                          fontSize: 10,
-                                                          fontWeight: FontWeight.bold,
-                                                          color: statusColor)),
-                                                ),
-                                              ],
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: statusColor,
+                                              ),
                                             ),
                                           ),
                                         ],
                                       ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    _buildInnerGlassCard(
-                                      isDark: isDark,
-                                      radius: 100,
-                                      padding: const EdgeInsets.all(12),
-                                      child: HugeIcon(
-                                          icon: HugeIcons.strokeRoundedShare01,
-                                          color: isDark ? Colors.white : _lightModeGray,
-                                          size: 20,
-                                          strokeWidth: 2.0),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 24),
-                                _buildInnerGlassCard(
-                                  isDark: isDark,
-                                  radius: 20.0,
-                                  padding: const EdgeInsets.symmetric(vertical: 18),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                    children: [
-                                      Expanded(child: _buildStatItem(HugeIcons.strokeRoundedStar, shop['rating'].toString(), AppLocalizations.of(context)!.rating, isDark)),
-                                      _buildVerticalDivider(isDark),
-                                      Expanded(child: _buildStatItem(HugeIcons.strokeRoundedComment01, shop['reviews'].toString(), AppLocalizations.of(context)!.reviews, isDark)),
-                                      _buildVerticalDivider(isDark),
-                                      Expanded(child: _buildStatItem(HugeIcons.strokeRoundedLocation01, _getDistanceString(shop['location']), AppLocalizations.of(context)!.away, isDark)),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 24),
-                                // REPLACE YOUR EXISTING ROW WITH THIS:
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      flex: 1,
-                                      child: _buildActionButton(
-                                        HugeIcons.strokeRoundedCall,
-                                        null,
-                                        isDark,
-                                        false,
-                                        onTap: _makeCall, //  Triggers phone call
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      flex: 1,
-                                      child: _buildActionButton(
-                                        HugeIcons.strokeRoundedMessage02,
-                                        null,
-                                        isDark,
-                                        false,
-                                        onTap: () => _showMessageOptions(context, isDark), //  Opens the message options popup
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      flex: 2,
-                                      child: _buildActionButton(
-                                        HugeIcons.strokeRoundedRoute01,
-                                        AppLocalizations.of(context)!.directions,
-                                        isDark,
-                                        true,
-                                        onTap: () => _getDirections(shop), //  Opens Google Maps / Apple Maps
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 24),
-                                //  VIEW STORE BUTTON → BusinessStoreView (main store page)
+                                const SizedBox(width: 10),
+                                // Close button (Circular Glass Pill)
                                 GestureDetector(
                                   onTap: () {
-                                    Navigator.pop(context); // Close bottom sheet first
+                                    _sheetController
+                                        .animateTo(0.0,
+                                            duration: const Duration(milliseconds: 180),
+                                            curve: Curves.easeOut)
+                                        .then((_) {
+                                      if (sheetContext.mounted) {
+                                        Navigator.of(sheetContext).pop();
+                                      }
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(7),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isDark
+                                          ? Colors.white.withValues(alpha: 0.08)
+                                          : Colors.black.withValues(alpha: 0.05),
+                                      border: Border.all(
+                                        color: isDark
+                                            ? Colors.white.withValues(alpha: 0.12)
+                                            : Colors.black.withValues(alpha: 0.06),
+                                      ),
+                                    ),
+                                    child: HugeIcon(
+                                      icon: HugeIcons.strokeRoundedCancel01,
+                                      color: isDark ? Colors.white70 : Colors.black54,
+                                      size: 16,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Google Maps Quick Action Bar (Call, Chat, Directions, Share)
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildActionButton(
+                                    HugeIcons.strokeRoundedRoute01,
+                                    AppLocalizations.of(context)!.directions,
+                                    isDark,
+                                    true,
+                                    onTap: () => _getDirections(shop),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                _buildActionButton(
+                                  HugeIcons.strokeRoundedCall,
+                                  null,
+                                  isDark,
+                                  false,
+                                  onTap: _makeCall,
+                                ),
+                                const SizedBox(width: 8),
+                                _buildActionButton(
+                                  HugeIcons.strokeRoundedMessage02,
+                                  null,
+                                  isDark,
+                                  false,
+                                  onTap: () => _showMessageOptions(context, isDark),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Stats Dashboard (Rating, Reviews, Distance Away)
+                            _buildInnerGlassCard(
+                              isDark: isDark,
+                              radius: 16.0,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  Expanded(
+                                    child: _buildStatItem(
+                                      HugeIcons.strokeRoundedStar,
+                                      (shop['rating'] ?? 5.0).toString(),
+                                      AppLocalizations.of(context)!.rating,
+                                      isDark,
+                                    ),
+                                  ),
+                                  _buildVerticalDivider(isDark),
+                                  Expanded(
+                                    child: _buildStatItem(
+                                      HugeIcons.strokeRoundedComment01,
+                                      (shop['reviews'] ?? 0).toString(),
+                                      AppLocalizations.of(context)!.reviews,
+                                      isDark,
+                                    ),
+                                  ),
+                                  _buildVerticalDivider(isDark),
+                                  Expanded(
+                                    child: _buildStatItem(
+                                      HugeIcons.strokeRoundedLocation01,
+                                      _getDistanceString(shop['location']),
+                                      AppLocalizations.of(context)!.away,
+                                      isDark,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Store Cover Image Banner with Overlaid Circle Logo
+                            _buildStoreCoverBanner(
+                              shop: shop,
+                              isDark: isDark,
+                              height: 160,
+                              logoSize: 76,
+                            ),
+                            const SizedBox(height: 18),
+
+                            // Customer Reviews Section
+                            _buildDesktopReviewsSection(shop, isDark),
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+                      ),
+
+                      // 3. Pinned Bottom Action Bar (View Store & Book Now)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          padding: EdgeInsets.fromLTRB(20, 10, 20, bottomSafeArea + 10),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF0F1521).withValues(alpha: 0.94)
+                                : Colors.white.withValues(alpha: 0.95),
+                            border: Border(
+                              top: BorderSide(
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.12)
+                                    : Colors.black.withValues(alpha: 0.08),
+                                width: 1.0,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              // Button 1: View Store
+                              Expanded(
+                                child: _AnimatedPressable(
+                                  onTap: () {
+                                    _searchFocus.unfocus();
+                                    Navigator.pop(sheetContext);
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
@@ -4102,132 +4195,88 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                   },
                                   child: _buildInnerGlassCard(
                                     isDark: isDark,
-                                    radius: 18.0,
-                                    padding: const EdgeInsets.symmetric(vertical: 20),
+                                    radius: 16.0,
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
                                     child: Center(
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          HugeIcon(icon: HugeIcons.strokeRoundedStore01, color: isDark ? Colors.white : Colors.black87, size: 22),
-                                          const SizedBox(width: 12),
-                                          Text(
-                                            "View Store",
-                                            style: TextStyle(
-                                              color: isDark ? Colors.white : Colors.black87,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold
-                                            )
-                                          ),
-                                        ],
+                                      child: Text(
+                                        AppLocalizations.of(context)!.btnViewProfile,
+                                        style: TextStyle(
+                                          color: isDark ? Colors.white : Colors.black87,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
+                              ),
+                              const SizedBox(width: 10),
 
-                              ],
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              left: 0,
-                              right: 0,
-                              child: Container(
-                                padding: EdgeInsets.only(left: 24, right: 24, bottom: bottomSafeArea + 16, top: 16),
-                                decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                        begin: Alignment.bottomCenter,
-                                        end: Alignment.topCenter,
-                                        colors: [
-                                          isDark ? const Color(0xFF1A1A1A) : const Color(0xFFEBE7E3),
-                                          isDark ? const Color(0xFF1A1A1A).withValues(alpha: 0.0) : const Color(0xFFEBE7E3).withValues(alpha: 0.0)
-                                        ])),
-                                child: Row(
-                                  children: [
-                                    //  BUTTON 1: View Store
-                                    Expanded(
-                                      child: _AnimatedPressable(
-                                        onTap: () {
-                                          _searchFocus.unfocus();
-                                          Navigator.pop(context); // Close the bottom sheet
-                                          // Navigate to the full detail screen
-                                          Navigator.push(context, MaterialPageRoute(builder: (context) => BusinessStoreView(shop: shop)));
-                                        },
-                                        //  CHANGED: Now uses the exact same frosted glass style as the Stats Dashboard!
-                                        child: _buildInnerGlassCard(
-                                          isDark: isDark,
-                                          radius: 18.0,
-                                          padding: const EdgeInsets.symmetric(vertical: 18),
-                                          child: Center(
-                                            child: Text(
-                                                AppLocalizations.of(context)!.btnViewProfile, //  Localized
-                                                style: TextStyle(
-                                                    color: isDark ? Colors.white : Colors.black87,
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold
-                                                )
-                                            ),
+                              // Button 2: Book / Queue (With Auth Guard)
+                              Expanded(
+                                child: _AnimatedPressable(
+                                  onTap: () {
+                                    _searchFocus.unfocus();
+                                    Navigator.pop(sheetContext);
+
+                                    if (Supabase.instance.client.auth.currentUser != null) {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => BookingsView(
+                                            shopId: shop["id"].toString(),
+                                            shopName: shop["name"] ?? "Unknown Shop",
+                                            category: (shop["business_industry"] ?? shop["category"] ?? "SERVICE").toString(),
+                                            shopImage: (shop["cover"] ?? shop["business_cover_url"] ?? shop["image"] ?? "").toString(),
                                           ),
                                         ),
-                                      ),
+                                      );
+                                    } else {
+                                      showGlassToast(
+                                        context,
+                                        "Please sign in or register to make a booking.",
+                                        isError: true,
+                                      );
+                                      Navigator.pushNamed(context, '/login');
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue,
+                                      borderRadius: BorderRadius.circular(16),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.blue.withValues(alpha: 0.35),
+                                          blurRadius: 14,
+                                          offset: const Offset(0, 5),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(width: 12),
-                                    //  BUTTON 2: Book Now (WITH AUTH GUARD)
-                                    Expanded(
-                                      child: _AnimatedPressable(
-                                        onTap: () {
-                                          _searchFocus.unfocus();
-                                          Navigator.pop(context); // Close the bottom sheet
-
-                                          //  THE AUTH GUARD LOGIC
-                                          if (Supabase.instance.client.auth.currentUser != null) {
-                                            //  USER IS LOGGED IN: Proceed to checkout/booking!
-                                            Navigator.push(context, MaterialPageRoute(builder: (context) => BookingsView(
-                                              shopId: shop["id"].toString(),
-                                              shopName: shop["name"] ?? "Unknown Shop",
-                                              category: (shop["business_industry"] ?? shop["category"] ?? "SERVICE").toString(),
-                                              shopImage: (shop["cover"] ?? shop["business_cover_url"] ?? shop["image"] ?? "").toString(),
-                                            )));
-                                          } else {
-                                            //  USER IS GUEST: Show Toast and Redirect to Login!
-                                            showGlassToast(
-                                                context,
-                                                "Please sign in or register to make a booking.",
-                                                isError: true
-                                            );
-
-                                            // Send them to the Auth Screen
-                                            Navigator.pushNamed(context, '/login');
-                                          }
-                                        },
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(vertical: 18),
-                                          decoration: BoxDecoration(
-                                              color: Colors.blue,
-                                              borderRadius: BorderRadius.circular(18),
-                                              boxShadow: [BoxShadow(color: Colors.blue.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))]),
-                                          child: Center(
-                                              child: Text(AppLocalizations.of(context)!.bookNow, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))),
+                                    child: Center(
+                                      child: Text(
+                                        AppLocalizations.of(context)!.bookNow,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ),
-                            ),
-                  ], // End Stack children
-                ), // End Stack
-              ); // End NotificationListener
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
             },
           );
 
-          if (isDesktop) {
-            return Align(
-              alignment: Alignment.bottomCenter,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 620),
-                child: sheet,
-              ),
-            );
-          }
           return sheet;
         });
       },
