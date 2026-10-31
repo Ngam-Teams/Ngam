@@ -10,7 +10,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../services/saved_service.dart';
 import 'glass_toast.dart';
 
-/// Membuka TikTok-style Liquid Glass Share Sheet serba moden
+/// Membuka TikTok-style Liquid Glass Share Sheet serba moden & estetik
 void showGlassShareSheet(
   BuildContext context, {
   required Map<String, dynamic> post,
@@ -20,7 +20,8 @@ void showGlassShareSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    barrierColor: Colors.black.withValues(alpha: 0.65),
+    elevation: 0,
+    barrierColor: Colors.black.withValues(alpha: 0.60),
     builder: (ctx) => _GlassShareSheetContent(
       post: post,
       onPostHidden: onPostHidden,
@@ -87,10 +88,10 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
     });
   }
 
-  void _shareToFacebook() {
+  void _shareToThreads() {
     Navigator.pop(context);
-    final encodedUrl = Uri.encodeComponent(_shareUrl);
-    _launchExternalUrl('https://www.facebook.com/sharer/sharer.php?u=$encodedUrl');
+    final encodedText = Uri.encodeComponent(_shareText);
+    _launchExternalUrl('https://www.threads.net/intent/post?text=$encodedText');
   }
 
   void _shareToX() {
@@ -98,6 +99,17 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
     final tweet = Uri.encodeComponent('$_title via @ngam_app');
     final encodedUrl = Uri.encodeComponent(_shareUrl);
     _launchExternalUrl('https://twitter.com/intent/tweet?text=$tweet&url=$encodedUrl');
+  }
+
+  void _shareToFacebook() {
+    Navigator.pop(context);
+    final encodedUrl = Uri.encodeComponent(_shareUrl);
+    _launchExternalUrl('https://www.facebook.com/sharer/sharer.php?u=$encodedUrl');
+  }
+
+  void _shareToInstagram() {
+    Navigator.pop(context);
+    _shareSystemNative();
   }
 
   void _shareToSms() {
@@ -156,27 +168,44 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.75),
+      barrierColor: Colors.black.withValues(alpha: 0.70),
       builder: (dlgCtx) => Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.symmetric(horizontal: 24),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(28),
           child: BackdropFilter(
-            filter: ui.ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+            filter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
             child: Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF131722).withValues(alpha: 0.92)
-                    : Colors.white.withValues(alpha: 0.94),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isDark
+                      ? [
+                          const Color(0xFF161F30).withValues(alpha: 0.92),
+                          const Color(0xFF0D131F).withValues(alpha: 0.95),
+                        ]
+                      : [
+                          Colors.white.withValues(alpha: 0.95),
+                          const Color(0xFFF1F5F9).withValues(alpha: 0.92),
+                        ],
+                ),
                 borderRadius: BorderRadius.circular(28),
                 border: Border.all(
                   color: isDark
-                      ? Colors.white.withValues(alpha: 0.14)
-                      : Colors.black.withValues(alpha: 0.08),
+                      ? Colors.white.withValues(alpha: 0.16)
+                      : Colors.white.withValues(alpha: 0.8),
                   width: 1.2,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    blurRadius: 36,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -188,27 +217,38 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
                         'Imbas Kod QR',
                         style: TextStyle(
                           fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
                         ),
                       ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(dlgCtx),
-                        icon: const Icon(Icons.close_rounded),
-                        visualDensity: VisualDensity.compact,
+                      GestureDetector(
+                        onTap: () => Navigator.pop(dlgCtx),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                            shape: BoxShape.circle,
+                          ),
+                          child: HugeIcon(
+                            icon: HugeIcons.strokeRoundedCancel01,
+                            color: isDark ? Colors.white70 : Colors.black87,
+                            size: 18,
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(22),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: 18,
-                          offset: const Offset(0, 4),
+                          blurRadius: 20,
+                          offset: const Offset(0, 6),
                         ),
                       ],
                     ),
@@ -226,7 +266,7 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -237,7 +277,7 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
                       color: isDark ? Colors.white60 : Colors.black54,
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
@@ -250,14 +290,15 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
                         color: Colors.white,
                         size: 18,
                       ),
-                      label: const Text('Salin Pautan'),
+                      label: const Text('Salin Pautan', style: TextStyle(fontWeight: FontWeight.w700)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2563EB),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 13),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(16),
                         ),
+                        elevation: 4,
                       ),
                     ),
                   ),
@@ -276,18 +317,32 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      elevation: 0,
       builder: (sheetCtx) => ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
         child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+          filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
           child: Container(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
             decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF131722).withValues(alpha: 0.95)
-                  : Colors.white.withValues(alpha: 0.96),
-              border: Border.all(
-                color: isDark ? Colors.white12 : Colors.black12,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: isDark
+                    ? [
+                        const Color(0xEB131B2B),
+                        const Color(0xF50B0F17),
+                      ]
+                    : [
+                        Colors.white.withValues(alpha: 0.94),
+                        const Color(0xFFF1F5F9).withValues(alpha: 0.96),
+                      ],
+              ),
+              border: Border(
+                top: BorderSide(
+                  color: isDark ? Colors.white.withValues(alpha: 0.16) : Colors.black.withValues(alpha: 0.08),
+                  width: 1.2,
+                ),
               ),
             ),
             child: Column(
@@ -296,48 +351,83 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
               children: [
                 Center(
                   child: Container(
-                    width: 36,
-                    height: 4,
+                    width: 38,
+                    height: 4.5,
                     decoration: BoxDecoration(
                       color: isDark ? Colors.white24 : Colors.black26,
-                      borderRadius: BorderRadius.circular(2),
+                      borderRadius: BorderRadius.circular(3),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Laporkan Kandungan',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const HugeIcon(
+                        icon: HugeIcons.strokeRoundedFlag01,
+                        color: Color(0xFFEF4444),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Laporkan Kandungan',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Text(
-                  'Pilih sebab laporan untuk pos ini:',
+                  'Pilih sebab laporan untuk video atau hantaran ini:',
                   style: TextStyle(
                     fontSize: 13,
                     color: isDark ? Colors.white60 : Colors.black54,
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 ...[
                   'Spam, penipuan atau iklan palsu',
                   'Kandungan tidak sesuai / sensitif',
                   'Maklumat kedai mengelirukan',
                   'Hak cipta atau pelanggaran privasi',
                 ].map(
-                  (reason) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                    leading: const Icon(Icons.flag_outlined, size: 20, color: Color(0xFFEF4444)),
-                    title: Text(reason, style: const TextStyle(fontSize: 14)),
-                    trailing: const Icon(Icons.chevron_right_rounded, size: 20),
-                    onTap: () {
-                      Navigator.pop(sheetCtx);
-                      showGlassToast(
-                        context,
-                        'Terima kasih. Laporan anda sedang disemak.',
-                        icon: HugeIcons.strokeRoundedCheckmarkCircle02,
-                      );
-                    },
+                  (reason) => Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+                      ),
+                    ),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                      dense: true,
+                      leading: const HugeIcon(
+                        icon: HugeIcons.strokeRoundedAlert02,
+                        size: 18,
+                        color: Color(0xFFEF4444),
+                      ),
+                      title: Text(reason, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                      trailing: HugeIcon(
+                        icon: HugeIcons.strokeRoundedArrowRight01,
+                        size: 16,
+                        color: isDark ? Colors.white38 : Colors.black38,
+                      ),
+                      onTap: () {
+                        Navigator.pop(sheetCtx);
+                        showGlassToast(
+                          context,
+                          'Terima kasih. Laporan anda sedang disemak oleh pasukan Ngam.',
+                          icon: HugeIcons.strokeRoundedTick01,
+                        );
+                      },
+                    ),
                   ),
                 ),
               ],
@@ -370,27 +460,45 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
         mediaUrl.toLowerCase().endsWith('.mp4');
 
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+        filter: ui.ImageFilter.blur(sigmaX: 32, sigmaY: 32),
         child: Container(
-          padding: const EdgeInsets.only(top: 12, bottom: 24),
+          padding: const EdgeInsets.only(top: 12, bottom: 26),
           decoration: BoxDecoration(
-            color: isDark
-                ? const Color(0xFF0F141F).withValues(alpha: 0.88)
-                : Colors.white.withValues(alpha: 0.90),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.12)
-                  : Colors.black.withValues(alpha: 0.08),
-              width: 1.2,
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: isDark
+                  ? [
+                      const Color(0xCC0D1424), // 80% opacity dark frosted glass
+                      const Color(0xE8080C14), // 91% opacity deep acrylic refraction
+                    ]
+                  : [
+                      Colors.white.withValues(alpha: 0.88),
+                      const Color(0xFFF1F5F9).withValues(alpha: 0.92),
+                    ],
+            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            border: Border(
+              top: BorderSide(
+                color: isDark ? Colors.white.withValues(alpha: 0.22) : Colors.white,
+                width: 1.4,
+              ),
+              left: BorderSide(
+                color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                width: 1.0,
+              ),
+              right: BorderSide(
+                color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                width: 1.0,
+              ),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.35),
-                blurRadius: 32,
-                offset: const Offset(0, -8),
+                color: Colors.black.withValues(alpha: 0.55),
+                blurRadius: 40,
+                offset: const Offset(0, -10),
               ),
             ],
           ),
@@ -403,11 +511,13 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
                 // Top drag pill handle
                 Center(
                   child: Container(
-                    width: 40,
+                    width: 42,
                     height: 4.5,
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.white24 : Colors.black26,
-                      borderRadius: BorderRadius.circular(3),
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.28)
+                          : Colors.black.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(4),
                     ),
                   ),
                 ),
@@ -435,9 +545,9 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
                             color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(
-                            Icons.close_rounded,
-                            size: 18,
+                          child: HugeIcon(
+                            icon: HugeIcons.strokeRoundedCancel01,
+                            size: 16,
                             color: isDark ? Colors.white70 : Colors.black87,
                           ),
                         ),
@@ -457,7 +567,7 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
                       color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                        color: isDark ? Colors.white.withValues(alpha: 0.10) : Colors.black.withValues(alpha: 0.06),
                       ),
                     ),
                     child: Row(
@@ -465,21 +575,27 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
                         ClipRRect(
                           borderRadius: BorderRadius.circular(10),
                           child: Container(
-                            width: 46,
-                            height: 46,
+                            width: 48,
+                            height: 48,
                             color: isDark ? Colors.white12 : Colors.black12,
                             child: previewImg.isNotEmpty
                                 ? CachedNetworkImage(
                                     imageUrl: previewImg,
                                     fit: BoxFit.cover,
-                                    errorWidget: (_, __, ___) => Icon(
-                                      isVideo ? Icons.videocam_rounded : Icons.image_rounded,
-                                      color: isDark ? Colors.white38 : Colors.black38,
+                                    errorWidget: (_, __, ___) => Center(
+                                      child: HugeIcon(
+                                        icon: isVideo ? HugeIcons.strokeRoundedVideo01 : HugeIcons.strokeRoundedImage01,
+                                        color: isDark ? Colors.white38 : Colors.black38,
+                                        size: 22,
+                                      ),
                                     ),
                                   )
-                                : Icon(
-                                    isVideo ? Icons.videocam_rounded : Icons.image_rounded,
-                                    color: isDark ? Colors.white38 : Colors.black38,
+                                : Center(
+                                    child: HugeIcon(
+                                      icon: isVideo ? HugeIcons.strokeRoundedVideo01 : HugeIcons.strokeRoundedImage01,
+                                      color: isDark ? Colors.white38 : Colors.black38,
+                                      size: 22,
+                                    ),
                                   ),
                           ),
                         ),
@@ -518,7 +634,7 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
 
                 const SizedBox(height: 16),
 
-                // ─── ROW 1: SOCIAL & MESSAGING APPS (TIKTOK STYLE) ───
+                // ─── ROW 1: SOCIAL & MESSAGING APPS (ORIGINAL BRAND LOGOS DENGAN HUGE ICONS) ───
                 SizedBox(
                   height: 94,
                   child: ListView(
@@ -529,44 +645,60 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
                       _buildSocialAppItem(
                         title: 'WhatsApp',
                         gradientColors: const [Color(0xFF25D366), Color(0xFF128C7E)],
-                        icon: Icons.chat_bubble_rounded,
+                        hugeIcon: HugeIcons.strokeRoundedWhatsapp,
                         onTap: _shareToWhatsApp,
                         isDark: isDark,
                       ),
                       _buildSocialAppItem(
                         title: 'Telegram',
                         gradientColors: const [Color(0xFF2AABEE), Color(0xFF229ED9)],
-                        icon: Icons.send_rounded,
+                        hugeIcon: HugeIcons.strokeRoundedTelegram,
                         onTap: _shareToTelegram,
+                        isDark: isDark,
+                      ),
+                      _buildSocialAppItem(
+                        title: 'Threads',
+                        gradientColors: isDark
+                            ? const [Color(0xFF262626), Color(0xFF0D0D0D)]
+                            : const [Color(0xFF1E293B), Color(0xFF0F172A)],
+                        hugeIcon: HugeIcons.strokeRoundedThreads,
+                        onTap: _shareToThreads,
+                        isDark: isDark,
+                      ),
+                      _buildSocialAppItem(
+                        title: 'X',
+                        gradientColors: isDark
+                            ? const [Color(0xFF222733), Color(0xFF0D111A)]
+                            : const [Color(0xFF0F172A), Color(0xFF020617)],
+                        hugeIcon: HugeIcons.strokeRoundedNewTwitter,
+                        onTap: _shareToX,
                         isDark: isDark,
                       ),
                       _buildSocialAppItem(
                         title: 'Facebook',
                         gradientColors: const [Color(0xFF1877F2), Color(0xFF0C5EC9)],
-                        icon: Icons.facebook,
+                        hugeIcon: HugeIcons.strokeRoundedFacebook02,
                         onTap: _shareToFacebook,
                         isDark: isDark,
                       ),
                       _buildSocialAppItem(
-                        title: 'X / Twitter',
-                        gradientColors: isDark
-                            ? const [Color(0xFF2C3240), Color(0xFF0F141E)]
-                            : const [Color(0xFF1E293B), Color(0xFF0F172A)],
-                        icon: Icons.alternate_email_rounded,
-                        onTap: _shareToX,
+                        title: 'Instagram',
+                        gradientColors: const [Color(0xFF833AB4), Color(0xFFFD1D1D), Color(0xFFFCB045)],
+                        hugeIcon: HugeIcons.strokeRoundedInstagram,
+                        onTap: _shareToInstagram,
                         isDark: isDark,
                       ),
                       _buildSocialAppItem(
                         title: 'Mesej',
                         gradientColors: const [Color(0xFF10B981), Color(0xFF059669)],
-                        icon: Icons.sms_rounded,
+                        hugeIcon: HugeIcons.strokeRoundedMessage01,
                         onTap: _shareToSms,
                         isDark: isDark,
                       ),
                       _buildSocialAppItem(
                         title: 'Lain-lain',
                         gradientColors: const [Color(0xFF6366F1), Color(0xFF4F46E5)],
-                        icon: Icons.share_rounded,
+                        hugeIcon: HugeIcons.strokeRoundedShare01,
                         onTap: _shareSystemNative,
                         isDark: isDark,
                       ),
@@ -584,7 +716,7 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
 
                 const SizedBox(height: 8),
 
-                // ─── ROW 2: ACTION BUTTONS (TIKTOK STYLE) ───
+                // ─── ROW 2: ACTION BUTTONS (HUGE ICONS + LIQUID GLASS CAPSULES) ───
                 SizedBox(
                   height: 94,
                   child: ListView(
@@ -594,7 +726,7 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
                     children: [
                       _buildActionItem(
                         title: _copied ? 'Disalin!' : 'Salin Pautan',
-                        icon: _copied ? Icons.check_circle_rounded : HugeIcons.strokeRoundedCopy01,
+                        hugeIcon: _copied ? HugeIcons.strokeRoundedTick01 : HugeIcons.strokeRoundedCopy01,
                         iconColor: _copied ? const Color(0xFF10B981) : (isDark ? Colors.white : Colors.black87),
                         bgColor: _copied
                             ? const Color(0xFF10B981).withValues(alpha: 0.2)
@@ -604,7 +736,7 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
                       ),
                       _buildActionItem(
                         title: isSaved ? 'Disimpan' : 'Simpan',
-                        icon: isSaved ? Icons.bookmark_rounded : HugeIcons.strokeRoundedBookmark02,
+                        hugeIcon: HugeIcons.strokeRoundedBookmark02,
                         iconColor: isSaved ? const Color(0xFFFBBF24) : (isDark ? Colors.white : Colors.black87),
                         bgColor: isSaved
                             ? const Color(0xFFFBBF24).withValues(alpha: 0.2)
@@ -614,7 +746,7 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
                       ),
                       _buildActionItem(
                         title: 'Kod QR',
-                        icon: HugeIcons.strokeRoundedQrCode,
+                        hugeIcon: HugeIcons.strokeRoundedQrCode,
                         iconColor: isDark ? Colors.white : Colors.black87,
                         bgColor: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
                         onTap: _showQrDialog,
@@ -622,7 +754,7 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
                       ),
                       _buildActionItem(
                         title: 'Laporkan',
-                        icon: HugeIcons.strokeRoundedAlert02,
+                        hugeIcon: HugeIcons.strokeRoundedAlert02,
                         iconColor: const Color(0xFFEF4444),
                         bgColor: const Color(0xFFEF4444).withValues(alpha: 0.12),
                         onTap: _showReportSheet,
@@ -630,7 +762,7 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
                       ),
                       _buildActionItem(
                         title: 'Tak Minat',
-                        icon: HugeIcons.strokeRoundedThumbsDown,
+                        hugeIcon: HugeIcons.strokeRoundedThumbsDown,
                         iconColor: isDark ? Colors.white70 : Colors.black54,
                         bgColor: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
                         onTap: _handleNotInterested,
@@ -650,7 +782,7 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
   Widget _buildSocialAppItem({
     required String title,
     required List<Color> gradientColors,
-    required IconData icon,
+    required dynamic hugeIcon,
     required VoidCallback onTap,
     required bool isDark,
   }) {
@@ -673,17 +805,21 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
                   end: Alignment.bottomRight,
                   colors: gradientColors,
                 ),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  width: 1.0,
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: gradientColors.first.withValues(alpha: 0.35),
-                    blurRadius: 10,
+                    blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
                 ],
               ),
               child: Center(
-                child: Icon(
-                  icon,
+                child: HugeIcon(
+                  icon: hugeIcon,
                   color: Colors.white,
                   size: 26,
                 ),
@@ -709,7 +845,7 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
 
   Widget _buildActionItem({
     required String title,
-    required dynamic icon,
+    required dynamic hugeIcon,
     required Color iconColor,
     required Color bgColor,
     required VoidCallback onTap,
@@ -736,9 +872,11 @@ class _GlassShareSheetContentState extends State<_GlassShareSheetContent> {
                 ),
               ),
               child: Center(
-                child: icon is IconData
-                    ? Icon(icon, color: iconColor, size: 24)
-                    : HugeIcon(icon: icon, color: iconColor, size: 22),
+                child: HugeIcon(
+                  icon: hugeIcon,
+                  color: iconColor,
+                  size: 22,
+                ),
               ),
             ),
             const SizedBox(height: 7),
