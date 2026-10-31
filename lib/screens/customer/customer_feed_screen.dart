@@ -4454,47 +4454,76 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
           ),
         ),
 
-        // 5. Floating Scrub Timestamp Bubble when Dragging Timeline
+        // 5. Floating Scrub Timestamp Bubble when Dragging Timeline (TikTok Style Pill)
         if (_isScrubbing)
           Positioned(
-            bottom: widget.isDesktop ? 32 : (widget.bottomOffset + 24),
+            bottom: widget.isDesktop ? 48 : (widget.bottomOffset + 140),
             left: 0,
             right: 0,
             child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.85),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white24),
-                  boxShadow: const [
-                    BoxShadow(color: Colors.black54, blurRadius: 10),
-                  ],
-                ),
-                child: Text(
-                  '${_formatDuration(scrubTime)} / ${_formatDuration(duration)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    letterSpacing: 0.5,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.75),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: const Color(0xFF00E5FF).withValues(alpha: 0.6),
+                        width: 1.2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF00E5FF).withValues(alpha: 0.35),
+                          blurRadius: 18,
+                        ),
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const HugeIcon(
+                          icon: HugeIcons.strokeRoundedPlay,
+                          color: Color(0xFF00E5FF),
+                          size: 14,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${_formatDuration(scrubTime)} / ${_formatDuration(duration)}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
 
-        // 6. Interactive Video Timeline Scrubber (TikTok Style Progress Bar)
+        // 6. Interactive Video Timeline Scrubber (TikTok Signature Ultra-Clean Progress Bar)
         Positioned(
           left: 0,
           right: 0,
-          bottom: widget.isDesktop ? 2 : (widget.bottomOffset - 16),
+          bottom: widget.isDesktop ? 2 : (widget.bottomOffset - 10),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final barWidth = constraints.maxWidth;
               return GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onHorizontalDragStart: (details) {
+                  HapticFeedback.selectionClick();
                   setState(() {
                     _isScrubbing = true;
                     _scrubRatio = (details.localPosition.dx / barWidth).clamp(0.0, 1.0);
@@ -4508,39 +4537,88 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
                 onHorizontalDragEnd: (details) {
                   final targetMs = (duration.inMilliseconds * _scrubRatio).toInt();
                   _controller.seekTo(Duration(milliseconds: targetMs));
+                  HapticFeedback.lightImpact();
                   setState(() => _isScrubbing = false);
                 },
                 onTapDown: (details) {
+                  HapticFeedback.selectionClick();
                   final ratio = (details.localPosition.dx / barWidth).clamp(0.0, 1.0);
                   final targetMs = (duration.inMilliseconds * ratio).toInt();
                   _controller.seekTo(Duration(milliseconds: targetMs));
                 },
                 child: Container(
-                  height: 24, // Touch target
+                  height: 38, // Large touch hit target for effortless scrubbing
                   alignment: Alignment.center,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Stack(
                     alignment: Alignment.centerLeft,
                     children: [
-                      // Base track
+                      // Base background track with subtle glass/shadow effect
                       Container(
-                        height: _isScrubbing ? 5.5 : 2.5,
+                        height: _isScrubbing ? 6.0 : 3.0,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.28),
-                          borderRadius: BorderRadius.circular(3),
+                          color: Colors.white.withValues(alpha: _isScrubbing ? 0.35 : 0.22),
+                          borderRadius: BorderRadius.circular(4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.5),
+                              blurRadius: 3,
+                            ),
+                          ],
                         ),
                       ),
-                      // Progress track
+                      // Progress track with glowing cyan / bright white accent
                       FractionallySizedBox(
                         widthFactor: currentRatio,
                         child: Container(
-                          height: _isScrubbing ? 5.5 : 2.5,
+                          height: _isScrubbing ? 6.0 : 3.0,
                           decoration: BoxDecoration(
-                            color: _isScrubbing ? const Color(0xFF00E5FF) : Colors.white.withValues(alpha: 0.85),
-                            borderRadius: BorderRadius.circular(3),
+                            gradient: _isScrubbing
+                                ? const LinearGradient(
+                                    colors: [Color(0xFF00E5FF), Color(0xFF38BDF8)],
+                                  )
+                                : null,
+                            color: _isScrubbing ? null : Colors.white.withValues(alpha: 0.88),
+                            borderRadius: BorderRadius.circular(4),
+                            boxShadow: _isScrubbing
+                                ? [
+                                    BoxShadow(
+                                      color: const Color(0xFF00E5FF).withValues(alpha: 0.8),
+                                      blurRadius: 8,
+                                    ),
+                                  ]
+                                : null,
                           ),
                         ),
                       ),
+                      // Glowing scrubber thumb when dragging (like TikTok)
+                      if (_isScrubbing)
+                        Align(
+                          alignment: Alignment(-1.0 + (currentRatio * 2.0), 0.0),
+                          child: Container(
+                            width: 14,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(0xFF00E5FF),
+                                width: 2.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF00E5FF).withValues(alpha: 0.9),
+                                  blurRadius: 10,
+                                  spreadRadius: 2,
+                                ),
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.5),
+                                  blurRadius: 6,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
