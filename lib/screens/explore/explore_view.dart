@@ -3397,93 +3397,104 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         ),
         const SizedBox(height: 12),
 
-        // Rating Overview Card with Progress Breakdown
-        _buildInnerGlassCard(
-          isDark: isDark,
-          radius: 16,
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // Left score column
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        rating.toStringAsFixed(1),
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                          color: isDark ? Colors.white : Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '/ 5.0',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? Colors.white38 : Colors.black38,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: List.generate(5, (index) {
-                      return Icon(
-                        index < rating.floor() ? Icons.star_rounded : (index < rating ? Icons.star_half_rounded : Icons.star_outline_rounded),
-                        size: 15,
-                        color: Colors.amber,
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Rating komuniti',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isDark ? Colors.white54 : Colors.black45,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 18),
-              // Right progress bars breakdown
-              Expanded(
-                child: Column(
-                  children: [
-                    _buildDesktopRatingBar(5, 0.88, isDark),
-                    const SizedBox(height: 3),
-                    _buildDesktopRatingBar(4, 0.10, isDark),
-                    const SizedBox(height: 3),
-                    _buildDesktopRatingBar(3, 0.02, isDark),
-                    const SizedBox(height: 3),
-                    _buildDesktopRatingBar(2, 0.00, isDark),
-                    const SizedBox(height: 3),
-                    _buildDesktopRatingBar(1, 0.00, isDark),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // 3 Ulasan Terperinci Ditampilkan Dalam Satu Kad Bersatu dengan Divider Ber-padding
+        // Gabungan Bersatu: Rating Overview & Ulasan Pelanggan Dalam Satu Kad dengan Divider Ber-padding
         Builder(
           builder: (context) {
             final reviewsToShow = displayReviews.take(3).toList();
             return _buildInnerGlassCard(
               isDark: isDark,
               radius: 18,
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              padding: const EdgeInsets.symmetric(vertical: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // 1. Ringkasan Rating Overview & Progress Breakdown
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        // Left score column
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.baseline,
+                              textBaseline: TextBaseline.alphabetic,
+                              children: [
+                                Text(
+                                  rating.toStringAsFixed(1),
+                                  style: TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w900,
+                                    color: isDark ? Colors.white : Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '/ 5.0',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDark ? Colors.white38 : Colors.black38,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: List.generate(5, (index) {
+                                return Icon(
+                                  index < rating.floor() ? Icons.star_rounded : (index < rating ? Icons.star_half_rounded : Icons.star_outline_rounded),
+                                  size: 15,
+                                  color: Colors.amber,
+                                );
+                              }),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Rating komuniti',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark ? Colors.white54 : Colors.black45,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 18),
+                        // Right progress bars breakdown
+                        Expanded(
+                          child: Column(
+                            children: [
+                              _buildDesktopRatingBar(5, 0.88, isDark),
+                              const SizedBox(height: 3),
+                              _buildDesktopRatingBar(4, 0.10, isDark),
+                              const SizedBox(height: 3),
+                              _buildDesktopRatingBar(3, 0.02, isDark),
+                              const SizedBox(height: 3),
+                              _buildDesktopRatingBar(2, 0.00, isDark),
+                              const SizedBox(height: 3),
+                              _buildDesktopRatingBar(1, 0.00, isDark),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Divider antara Ringkasan Rating dan Senarai Komen
+                  if (reviewsToShow.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Container(
+                        height: 1.0,
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.10)
+                            : Colors.black.withValues(alpha: 0.07),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
                   for (int i = 0; i < reviewsToShow.length; i++) ...[
                     Builder(
                       builder: (context) {
