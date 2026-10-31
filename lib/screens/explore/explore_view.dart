@@ -3956,23 +3956,34 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                 ),
               ),
 
-              // Pinned Bottom Action Bar (Static View Store & Book Now)
+              // Pinned Bottom Action Bar (Kemas Mengikut Lengkung Bawah & Vertically Centered)
               Container(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 decoration: BoxDecoration(
                   color: isDark
-                      ? const Color(0xFF0F1521).withValues(alpha: 0.88)
-                      : Colors.white.withValues(alpha: 0.92),
-                  border: Border(
-                    top: BorderSide(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.12)
-                          : Colors.black.withValues(alpha: 0.08),
-                      width: 1.0,
-                    ),
+                      ? const Color(0xFF0F1521).withValues(alpha: 0.92)
+                      : Colors.white.withValues(alpha: 0.94),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                    bottom: Radius.circular(28),
                   ),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.14)
+                        : Colors.black.withValues(alpha: 0.08),
+                    width: 1.0,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.08),
+                      blurRadius: 16,
+                      offset: const Offset(0, -4),
+                    ),
+                  ],
                 ),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     // Button 1: View Store Profile
                     Expanded(
@@ -4437,32 +4448,42 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                         ),
                       ),
 
-                      // 3. Pinned Bottom Action Bar (View Profile & Book Now - Saiz Penuh & Selesa Ditekan)
+                      // 3. Pinned Bottom Action Bar (Kemas Mengikut Lengkung Bawah & Vertically Centered)
                       Positioned(
                         bottom: 0,
                         left: 0,
                         right: 0,
                         child: Container(
+                          alignment: Alignment.center,
                           padding: EdgeInsets.only(
                             left: 20,
                             right: 20,
-                            bottom: bottomSafeArea + 14,
-                            top: 14,
+                            top: 16,
+                            bottom: bottomSafeArea > 0 ? bottomSafeArea + 12 : 16,
                           ),
                           decoration: BoxDecoration(
                             color: isDark
                                 ? const Color(0xFF0F1521).withValues(alpha: 0.94)
                                 : Colors.white.withValues(alpha: 0.95),
-                            border: Border(
-                              top: BorderSide(
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.12)
-                                    : Colors.black.withValues(alpha: 0.08),
-                                width: 1.0,
-                              ),
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(26),
                             ),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.14)
+                                  : Colors.black.withValues(alpha: 0.08),
+                              width: 1.0,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                                blurRadius: 18,
+                                offset: const Offset(0, -4),
+                              ),
+                            ],
                           ),
                           child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               // Button 1: View Profile
                               Expanded(
