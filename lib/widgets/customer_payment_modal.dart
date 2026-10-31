@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -233,22 +234,27 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
       child: Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF141920) : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            border: Border.all(
-              color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: isDark ? Colors.black87 : Colors.black.withValues(alpha: 0.15),
-                blurRadius: 28,
-                offset: const Offset(0, -6),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF10151E).withValues(alpha: 0.85) : Colors.white.withValues(alpha: 0.90),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                border: Border.all(
+                  color: isDark ? Colors.white.withValues(alpha: 0.14) : Colors.black.withValues(alpha: 0.08),
+                  width: 1.0,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.15),
+                    blurRadius: 32,
+                    offset: const Offset(0, -6),
+                  ),
+                ],
               ),
-            ],
-          ),
           child: SafeArea(
             child: SingleChildScrollView(
               child: Column(
@@ -610,58 +616,82 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                     ],
                   ],
 
-                  // STEP 3: RESIT DIGITAL LENGKAP (DIGITAL RECEIPT)
+                  // STEP 3: RESIT DIGITAL LENGKAP (DIGITAL RECEIPT - GLASSMORPHISM)
                   if (_currentStep == PaymentStep.receipt) ...[
-                    // Ikon Kejayaan
+                    // Ikon Kejayaan Glassmorphic (Checkmark Circle 03)
                     Container(
-                      width: 68,
-                      height: 68,
+                      width: 72,
+                      height: 72,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF10B981).withValues(alpha: 0.15),
                         shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFF10B981), width: 2),
+                        color: const Color(0xFF10B981).withValues(alpha: 0.14),
+                        border: Border.all(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.60),
+                          width: 1.8,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.25),
+                            blurRadius: 24,
+                            spreadRadius: 2,
+                          ),
+                        ],
                       ),
                       child: const Center(
                         child: HugeIcon(
-                          icon: HugeIcons.strokeRoundedCheckmarkBadge01,
+                          icon: HugeIcons.strokeRoundedCheckmarkCircle03,
                           color: Color(0xFF10B981),
-                          size: 34,
+                          size: 36,
                         ),
                       ),
                     ),
 
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
 
                     Text(
                       _isCash ? 'Pesanan Diterima!' : 'Bayaran Berjaya!',
                       style: TextStyle(
                         color: isDark ? Colors.white : const Color(0xFF0F172A),
-                        fontSize: 20,
+                        fontSize: 22,
                         fontWeight: FontWeight.w900,
+                        letterSpacing: -0.3,
                       ),
                     ),
-                    Text(
-                      _isCash
-                          ? 'Pesanan anda telah dihantar ke kedai. Sila bayar di kaunter semasa mengambil pesanan.'
-                          : 'Pesanan anda telah disahkan dan dihantar ke kedai.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: isDark ? Colors.white60 : const Color(0xFF64748B),
-                        fontSize: 12,
+                    const SizedBox(height: 6),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        _isCash
+                            ? 'Pesanan anda telah dihantar ke kedai. Sila bayar di kaunter semasa mengambil pesanan.'
+                            : 'Pesanan anda telah disahkan dan dihantar ke kedai.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: isDark ? Colors.white.withValues(alpha: 0.65) : const Color(0xFF64748B),
+                          fontSize: 12.5,
+                          height: 1.45,
+                        ),
                       ),
                     ),
 
                     const SizedBox(height: 20),
 
-                    // Kotak Resit Digital
+                    // Kotak Resit Digital (Glass Container)
                     Container(
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF0F141A) : const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(20),
+                        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                        borderRadius: BorderRadius.circular(22),
                         border: Border.all(
-                          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.08),
+                          color: isDark ? Colors.white.withValues(alpha: 0.14) : Colors.black.withValues(alpha: 0.08),
+                          width: 1.0,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                            blurRadius: 18,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       child: Column(
                         children: [
@@ -670,43 +700,68 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                             children: [
                               Text(
                                 'No. Pesanan',
-                                style: TextStyle(color: isDark ? Colors.white54 : const Color(0xFF64748B), fontSize: 12),
+                                style: TextStyle(
+                                  color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                               Text(
                                 '#${widget.orderId.length > 8 ? widget.orderId.substring(0, 8).toUpperCase() : widget.orderId}',
                                 style: TextStyle(
                                   color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 13,
+                                  letterSpacing: 0.3,
                                 ),
                               ),
                             ],
                           ),
-                          const Divider(height: 16),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Container(
+                              height: 1.0,
+                              color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+                            ),
+                          ),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
                                 'Kedai',
-                                style: TextStyle(color: isDark ? Colors.white54 : const Color(0xFF64748B), fontSize: 12),
+                                style: TextStyle(
+                                  color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                               Text(
                                 widget.shopName,
                                 style: TextStyle(
                                   color: isDark ? Colors.white : const Color(0xFF0F172A),
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 12,
+                                  fontSize: 13,
                                 ),
                               ),
                             ],
                           ),
-                          const Divider(height: 16),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Container(
+                              height: 1.0,
+                              color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+                            ),
+                          ),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
                                 'Kaedah Bayaran',
-                                style: TextStyle(color: isDark ? Colors.white54 : const Color(0xFF64748B), fontSize: 12),
+                                style: TextStyle(
+                                  color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                               Text(
                                 _selectedMethod == 'duitnow'
@@ -714,32 +769,49 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                                     : (_selectedMethod == 'fpx_card' ? 'FPX / Kad (Chip)' : 'Tunai Kaunter'),
                                 style: const TextStyle(
                                   color: Color(0xFF00E5FF),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12.5,
                                 ),
                               ),
                             ],
                           ),
-                          const Divider(height: 16),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Container(
+                              height: 1.0,
+                              color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+                            ),
+                          ),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
                                 'Rujukan Transaksi',
-                                style: TextStyle(color: isDark ? Colors.white54 : const Color(0xFF64748B), fontSize: 12),
+                                style: TextStyle(
+                                  color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                               Text(
                                 _transactionRef.length > 12 ? _transactionRef.substring(0, 12) : _transactionRef,
                                 style: TextStyle(
                                   color: isDark ? Colors.white70 : const Color(0xFF334155),
-                                  fontSize: 11,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
                                   fontFeatures: const [FontFeature.tabularFigures()],
                                 ),
                               ),
                             ],
                           ),
                           if (widget.discountAmount != null && widget.discountAmount! > 0) ...[
-                            const Divider(height: 16),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: Container(
+                                height: 1.0,
+                                color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+                              ),
+                            ),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -749,7 +821,7 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                                     const SizedBox(width: 6),
                                     Text(
                                       'Diskaun Baucar ${widget.voucherCode != null ? "(${widget.voucherCode})" : ""}',
-                                      style: const TextStyle(color: Color(0xFF10B981), fontSize: 12, fontWeight: FontWeight.bold),
+                                      style: const TextStyle(color: Color(0xFF10B981), fontSize: 12.5, fontWeight: FontWeight.bold),
                                     ),
                                   ],
                                 ),
@@ -758,13 +830,19 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                                   style: const TextStyle(
                                     color: Color(0xFF10B981),
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 12,
+                                    fontSize: 12.5,
                                   ),
                                 ),
                               ],
                             ),
                           ],
-                          const Divider(height: 16),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Container(
+                              height: 1.0,
+                              color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+                            ),
+                          ),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -772,7 +850,7 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                                 _isCash ? 'Jumlah Perlu Dibayar' : 'Jumlah Dibayar',
                                 style: TextStyle(
                                   color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                  fontSize: 14,
+                                  fontSize: 14.5,
                                   fontWeight: FontWeight.w900,
                                 ),
                               ),
@@ -780,7 +858,7 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                                 currencyFormat.format(widget.amount),
                                 style: const TextStyle(
                                   color: Color(0xFF10B981),
-                                  fontSize: 16,
+                                  fontSize: 17,
                                   fontWeight: FontWeight.w900,
                                 ),
                               ),
@@ -790,52 +868,103 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                       ),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 22),
 
-                    // Butang Tindakan Resit
+                    // Butang Tindakan Resit (Glass Pills)
                     Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: isDark ? Colors.white : Colors.black,
-                              side: BorderSide(color: isDark ? Colors.white24 : Colors.black12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white.withValues(alpha: 0.07) : Colors.black.withValues(alpha: 0.04),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isDark ? Colors.white.withValues(alpha: 0.16) : Colors.black.withValues(alpha: 0.12),
+                              ),
                             ),
-                            onPressed: () {
-                              Clipboard.setData(ClipboardData(
-                                text: 'Resit Ngam\nKedai: ${widget.shopName}\nOrder: #${widget.orderId}\nJumlah: ${currencyFormat.format(widget.amount)}\nRef: $_transactionRef\nStatus: ${_isCash ? 'BELUM BAYAR (Tunai di Kaunter)' : 'LULUS BAYAR'}',
-                              ));
-                              showGlassToast(context, 'Butiran resit disalin ke papan klip!', icon: HugeIcons.strokeRoundedCopy01);
-                            },
-                            icon: const HugeIcon(icon: HugeIcons.strokeRoundedCopy01, size: 16),
-                            label: const Text('Salin Resit', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: () {
+                                  Clipboard.setData(ClipboardData(
+                                    text: 'Resit Ngam\nKedai: ${widget.shopName}\nOrder: #${widget.orderId}\nJumlah: ${currencyFormat.format(widget.amount)}\nRef: $_transactionRef\nStatus: ${_isCash ? "BELUM BAYAR (Tunai di Kaunter)" : "LULUS BAYAR"}',
+                                  ));
+                                  showGlassToast(context, 'Butiran resit disalin ke papan klip!', icon: HugeIcons.strokeRoundedCopy01);
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      HugeIcon(
+                                        icon: HugeIcons.strokeRoundedCopy01,
+                                        size: 16,
+                                        color: isDark ? Colors.white : Colors.black87,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Salin Resit',
+                                        style: TextStyle(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: isDark ? Colors.white : Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         Expanded(
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF00E5FF),
-                              foregroundColor: Colors.black,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF00E5FF),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF00E5FF).withValues(alpha: 0.35),
+                                  blurRadius: 18,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
-                            onPressed: () => Navigator.pop(context, true),
-                            child: const Text('Selesai', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900)),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: () => Navigator.pop(context, true),
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 14),
+                                  child: Center(
+                                    child: Text(
+                                      'Selesai',
+                                      style: TextStyle(
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w900,
+                                        color: Colors.black,
+                                        letterSpacing: 0.2,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ],
-                    ),
-                  ],
+                    ),                  ],
                 ],
               ),
             ),
           ),
         ),
       ),
+    ),
+    ),
     ),
     );
   }
