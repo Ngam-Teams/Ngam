@@ -3789,75 +3789,79 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
             children: [
               Column(
                 children: [
-                  // Header bar dengan status kedai & kategori (diberi ruang kanan untuk butang X)
+                  // 1. Nama Kedai & Status/Kategori (Diberi ruang kanan untuk butang Tutup X)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 16, 56, 12),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: statusColor.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: statusColor.withValues(alpha: 0.4)),
+                        Text(
+                          shopName,
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.3,
+                            color: isDark ? Colors.white : _lightModeGray,
                           ),
-                          child: Text(
-                            statusText,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: statusColor,
-                            ),
-                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            (shop['category'] ?? '').toString().toUpperCase(),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.blue,
-                              letterSpacing: 0.8,
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: statusColor.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: statusColor.withValues(alpha: 0.4)),
+                              ),
+                              child: Text(
+                                statusText,
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: statusColor,
+                                ),
+                              ),
                             ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                (shop['category'] ?? '').toString().toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.blue,
+                                  letterSpacing: 0.8,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
 
-                  // Scrollable Body
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Store Cover Image Banner with Overlaid Circle Logo (Bigger than Business View)
-                      _buildStoreCoverBanner(
-                        shop: shop,
-                        isDark: isDark,
-                        height: 180,
-                        logoSize: 82,
-                      ),
-                      const SizedBox(height: 16),
+                  // Scrollable Body (Susunan: 2. Gambar Logo -> 3. Statcard -> Tindakan -> Ulasan)
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 2. Gambar Logo (Store Cover Image Banner with Overlaid Circle Logo)
+                          _buildStoreCoverBanner(
+                            shop: shop,
+                            isDark: isDark,
+                            height: 180,
+                            logoSize: 82,
+                          ),
+                          const SizedBox(height: 16),
 
-                      // Store Name
-                      Text(
-                        shopName,
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : _lightModeGray,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 14),
-
-                      // Stat Card (Rating, Reviews, Distance)
+                          // Stat Card (Rating, Reviews, Distance)
                       _buildInnerGlassCard(
                         isDark: isDark,
                         radius: 18.0,
