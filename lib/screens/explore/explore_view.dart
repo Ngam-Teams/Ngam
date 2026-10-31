@@ -3451,241 +3451,269 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         ),
         const SizedBox(height: 12),
 
-        // 3 Ulasan Terperinci Ditampilkan Terus (Expand - Tiada butang Tulis Ulasan mengikut permintaan)
-        ...displayReviews.take(3).map((rev) {
-          final userName = rev['userName']?.toString() ?? rev['name']?.toString() ?? 'Pengguna Ngam';
-          final comment = rev['comment']?.toString() ?? 'Pengalaman yang sangat memuaskan!';
-          final revRating = (rev['rating'] as num?)?.toDouble() ?? 5.0;
-          final date = rev['date']?.toString() ?? 'Baru sahaja';
-          final initial = userName.trim().isNotEmpty ? userName.trim()[0].toUpperCase() : 'U';
-
-          final List<String> images = (rev['images'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
-          final bool hasVideo = rev['hasVideo'] == true || (rev['videoUrl'] != null && rev['videoUrl'].toString().isNotEmpty);
-          final String? videoThumbnail = rev['videoThumbnail']?.toString();
-          final String? videoUrl = rev['videoUrl']?.toString();
-          final String videoDuration = rev['videoDuration']?.toString() ?? '0:20';
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _buildInnerGlassCard(
+        // 3 Ulasan Terperinci Ditampilkan Dalam Satu Kad Bersatu dengan Divider Ber-padding
+        Builder(
+          builder: (context) {
+            final reviewsToShow = displayReviews.take(3).toList();
+            return _buildInnerGlassCard(
               isDark: isDark,
-              radius: 14,
-              padding: const EdgeInsets.all(14),
+              radius: 18,
+              padding: const EdgeInsets.symmetric(vertical: 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      // User Avatar
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF2A2B3D), Color(0xFF161622)],
-                          ),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.16),
-                            width: 1.0,
-                          ),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          initial,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              userName,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white : Colors.black87,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              date,
-                              style: TextStyle(
-                                fontSize: 10.5,
-                                color: isDark ? Colors.white38 : Colors.black38,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Row(
-                        children: List.generate(5, (sIdx) {
-                          return Icon(
-                            sIdx < revRating.floor() ? Icons.star_rounded : Icons.star_outline_rounded,
-                            size: 13,
-                            color: Colors.amber,
-                          );
-                        }),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    comment,
-                    style: TextStyle(
-                      fontSize: 12,
-                      height: 1.4,
-                      color: isDark ? Colors.white.withValues(alpha: 0.90) : const Color(0xFF334155),
-                    ),
-                  ),
+                  for (int i = 0; i < reviewsToShow.length; i++) ...[
+                    Builder(
+                      builder: (context) {
+                        final rev = reviewsToShow[i];
+                        final userName = rev['userName']?.toString() ?? rev['name']?.toString() ?? 'Pengguna Ngam';
+                        final comment = rev['comment']?.toString() ?? 'Pengalaman yang sangat memuaskan!';
+                        final revRating = (rev['rating'] as num?)?.toDouble() ?? 5.0;
+                        final date = rev['date']?.toString() ?? 'Baru sahaja';
+                        final initial = userName.trim().isNotEmpty ? userName.trim()[0].toUpperCase() : 'U';
 
-                  // Foto Ulasan Pelanggan (Jika Ada)
-                  if (images.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      height: 72,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: images.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 8),
-                        itemBuilder: (context, imgIdx) {
-                          final imgUrl = images[imgIdx];
-                          return GestureDetector(
-                            onTap: () => _openReviewImagePreview(context, imgUrl),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Stack(
+                        final List<String> images = (rev['images'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+                        final bool hasVideo = rev['hasVideo'] == true || (rev['videoUrl'] != null && rev['videoUrl'].toString().isNotEmpty);
+                        final String? videoThumbnail = rev['videoThumbnail']?.toString();
+                        final String? videoUrl = rev['videoUrl']?.toString();
+                        final String videoDuration = rev['videoDuration']?.toString() ?? '0:20';
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
                                 children: [
-                                  Image.network(
-                                    imgUrl,
-                                    width: 72,
-                                    height: 72,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(
-                                      width: 72,
-                                      height: 72,
-                                      color: Colors.white12,
-                                      child: const Icon(Icons.broken_image_rounded, color: Colors.white38, size: 22),
+                                  // User Avatar
+                                  Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: const LinearGradient(
+                                        colors: [Color(0xFF2A2B3D), Color(0xFF161622)],
+                                      ),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(alpha: 0.16),
+                                        width: 1.0,
+                                      ),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      initial,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
-                                  Positioned(
-                                    bottom: 4,
-                                    right: 4,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(3),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withValues(alpha: 0.60),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: const Icon(Icons.zoom_in_rounded, color: Colors.white, size: 12),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          userName,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: isDark ? Colors.white : Colors.black87,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        Text(
+                                          date,
+                                          style: TextStyle(
+                                            fontSize: 10.5,
+                                            color: isDark ? Colors.white38 : Colors.black38,
+                                          ),
+                                        ),
+                                      ],
                                     ),
+                                  ),
+                                  Row(
+                                    children: List.generate(5, (sIdx) {
+                                      return Icon(
+                                        sIdx < revRating.floor() ? Icons.star_rounded : Icons.star_outline_rounded,
+                                        size: 13,
+                                        color: Colors.amber,
+                                      );
+                                    }),
                                   ),
                                 ],
                               ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+                              const SizedBox(height: 8),
+                              Text(
+                                comment,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  height: 1.4,
+                                  color: isDark ? Colors.white.withValues(alpha: 0.90) : const Color(0xFF334155),
+                                ),
+                              ),
 
-                  // Video Ulasan Pelanggan (Jika Ada)
-                  if (hasVideo && videoUrl != null) ...[
-                    const SizedBox(height: 10),
-                    GestureDetector(
-                      onTap: () => _openReviewVideoDialog(context, videoUrl, userName),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          width: 145,
-                          height: 86,
-                          color: Colors.black,
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              if (videoThumbnail != null && videoThumbnail.isNotEmpty)
-                                Image.network(
-                                  videoThumbnail,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    color: const Color(0xFF161622),
-                                    child: const Center(
-                                      child: Icon(Icons.videocam_rounded, color: Colors.white38, size: 28),
+                              // Foto Ulasan Pelanggan (Jika Ada)
+                              if (images.isNotEmpty) ...[
+                                const SizedBox(height: 10),
+                                SizedBox(
+                                  height: 72,
+                                  child: ListView.separated(
+                                    scrollDirection: Axis.horizontal,
+                                    physics: const BouncingScrollPhysics(),
+                                    itemCount: images.length,
+                                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                                    itemBuilder: (context, imgIdx) {
+                                      final imgUrl = images[imgIdx];
+                                      return GestureDetector(
+                                        onTap: () => _openReviewImagePreview(context, imgUrl),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(10),
+                                          child: Stack(
+                                            children: [
+                                              Image.network(
+                                                imgUrl,
+                                                width: 72,
+                                                height: 72,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) => Container(
+                                                  width: 72,
+                                                  height: 72,
+                                                  color: Colors.white12,
+                                                  child: const Icon(Icons.broken_image_rounded, color: Colors.white38, size: 22),
+                                                ),
+                                              ),
+                                              Positioned(
+                                                bottom: 4,
+                                                right: 4,
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(3),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.black.withValues(alpha: 0.60),
+                                                    borderRadius: BorderRadius.circular(6),
+                                                  ),
+                                                  child: const Icon(Icons.zoom_in_rounded, color: Colors.white, size: 12),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+
+                              // Video Ulasan Pelanggan (Jika Ada)
+                              if (hasVideo && videoUrl != null) ...[
+                                const SizedBox(height: 10),
+                                GestureDetector(
+                                  onTap: () => _openReviewVideoDialog(context, videoUrl, userName),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      width: 145,
+                                      height: 86,
+                                      color: Colors.black,
+                                      child: Stack(
+                                        fit: StackFit.expand,
+                                        children: [
+                                          if (videoThumbnail != null && videoThumbnail.isNotEmpty)
+                                            Image.network(
+                                              videoThumbnail,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) => Container(
+                                                color: const Color(0xFF161622),
+                                                child: const Center(
+                                                  child: Icon(Icons.videocam_rounded, color: Colors.white38, size: 28),
+                                                ),
+                                              ),
+                                            )
+                                          else
+                                            Container(color: const Color(0xFF161622)),
+
+                                          // Dark overlay
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                begin: Alignment.topCenter,
+                                                end: Alignment.bottomCenter,
+                                                colors: [
+                                                  Colors.transparent,
+                                                  Colors.black.withValues(alpha: 0.65),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+
+                                          // Play Button
+                                          Center(
+                                            child: Container(
+                                              padding: const EdgeInsets.all(7),
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: Colors.black.withValues(alpha: 0.55),
+                                                border: Border.all(color: Colors.white.withValues(alpha: 0.40)),
+                                              ),
+                                              child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 22),
+                                            ),
+                                          ),
+
+                                          // Duration Badge
+                                          Positioned(
+                                            bottom: 6,
+                                            right: 6,
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: Colors.black.withValues(alpha: 0.75),
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(Icons.videocam_rounded, color: Colors.white70, size: 10),
+                                                  const SizedBox(width: 3),
+                                                  Text(
+                                                    videoDuration,
+                                                    style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                )
-                              else
-                                Container(color: const Color(0xFF161622)),
-
-                              // Dark overlay
-                              Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      Colors.transparent,
-                                      Colors.black.withValues(alpha: 0.65),
-                                    ],
-                                  ),
                                 ),
-                              ),
-
-                              // Play Button
-                              Center(
-                                child: Container(
-                                  padding: const EdgeInsets.all(7),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.black.withValues(alpha: 0.55),
-                                    border: Border.all(color: Colors.white.withValues(alpha: 0.40)),
-                                  ),
-                                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 22),
-                                ),
-                              ),
-
-                              // Duration Badge
-                              Positioned(
-                                bottom: 6,
-                                right: 6,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.75),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.videocam_rounded, color: Colors.white70, size: 10),
-                                      const SizedBox(width: 3),
-                                      Text(
-                                        videoDuration,
-                                        style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
+                              ],
                             ],
                           ),
+                        );
+                      },
+                    ),
+                    if (i < reviewsToShow.length - 1) ...[
+                      const SizedBox(height: 14),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Container(
+                          height: 1.0,
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.10)
+                              : Colors.black.withValues(alpha: 0.07),
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 14),
+                    ],
                   ],
                 ],
               ),
-            ),
-          );
-        }),
+            );
+          },
+        ),
       ],
     );
   }
