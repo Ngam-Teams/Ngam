@@ -407,7 +407,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     setState(() {}); // Kemas kini anjakan komponen desktop mengikut kelebaran sidebar
 
     // Kira semula titik tengah peta dan gerakkan kamera secara lancar
-    if (_selectedShop != null) {
+    if (_isNavigating && _routePoints.isNotEmpty) {
+      _fitRouteBounds(_routePoints);
+    } else if (_selectedShop != null) {
       double currentZoom = _mapController.camera.zoom;
       LatLng newCenter = _getDynamicCenterOffset(_selectedShop!, currentZoom);
       _animatedMapMove(newCenter, currentZoom);
@@ -1330,10 +1332,30 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         if (p.longitude > maxLng) maxLng = p.longitude;
       }
       final bounds = LatLngBounds(LatLng(minLat, minLng), LatLng(maxLat, maxLng));
+
+      final double screenWidth = MediaQuery.of(context).size.width;
+      final bool isDesktop = screenWidth >= 800;
+      final double leftPad;
+      final double rightPad;
+
+      if (isDesktop) {
+        final bool isSidebarExpanded = CustomerDesktopSidebar.isExpandedNotifier.value;
+        final double sidebarWidth = isSidebarExpanded ? 276.0 : 88.0;
+        final bool isPanelActive = _isProfileOpen && _selectedShop != null;
+        final double panelWidth = isPanelActive ? ((screenWidth * 0.30).clamp(350.0, 440.0) + 18.0) : 0.0;
+        final double leftObstruction = sidebarWidth + panelWidth;
+        // Berikan ruang selamat tambahan ~140px supaya marker pin dan kad popup kedai di atasnya (lebar ~188px) tidak terlindung di sebalik sidebar
+        leftPad = leftObstruction + 140.0;
+        rightPad = 80.0;
+      } else {
+        leftPad = 50.0;
+        rightPad = 50.0;
+      }
+
       _mapController.fitCamera(
         CameraFit.bounds(
           bounds: bounds,
-          padding: const EdgeInsets.fromLTRB(60, 140, 60, 140),
+          padding: EdgeInsets.fromLTRB(leftPad, 140, rightPad, 140),
         ),
       );
     } catch (e) {
