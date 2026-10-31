@@ -18,6 +18,7 @@ import 'privacy_security_screen.dart';
 import 'wallet_screen.dart';
 import 'saved_screen.dart';
 import 'my_stamp_cards_screen.dart';
+import 'voucher_screen.dart';
 import 'my_queue_ticket_screen.dart';
 import '../../services/app_update_service.dart';
 
@@ -293,6 +294,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => const MyStampCardsScreen(),
+                                    ),
+                                  ),
+                                ),
+                                _buildDivider(isDark),
+                                _buildSettingsTile(
+                                  isDark,
+                                  HugeIcons.strokeRoundedDiscount01,
+                                  "profile.vouchers".tr(),
+                                  trailing: _buildArrow(),
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const VoucherScreen(),
                                     ),
                                   ),
                                 ),
