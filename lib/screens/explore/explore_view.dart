@@ -118,7 +118,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         'icon': HugeIcons.strokeRoundedScissor,
         'sub': [
           {'label': l10n.exploreCatBarber, 'id': 'barber'},
-          {'label': l10n.exploreCatHealth, 'id': 'health'},
+          {'label': l10n.exploreCatHealth, 'id': 'health'}, {'label': 'Salun & Spa', 'id': 'salon'},
         ]
       },
       {
