@@ -161,24 +161,18 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                     size: 42,
                     iconSize: 22,
                   ),
-                  Row(
-                    children: [
-                      GlassNavButton(
+                  GlassNavPill(
+                    isDark: true,
+                    items: [
+                      GlassNavPillItem(
                         icon: HugeIcons.strokeRoundedImage01,
                         tooltip: 'Pilih dari Galeri',
-                        isDark: true,
-                        size: 42,
-                        iconSize: 20,
                         onTap: _pickFromGallery,
                       ),
-                      const SizedBox(width: 8),
-                      GlassNavButton(
+                      GlassNavPillItem(
                         icon: _torchEnabled ? HugeIcons.strokeRoundedFlash : HugeIcons.strokeRoundedFlashOff,
                         iconColor: _torchEnabled ? Colors.amber : Colors.white,
                         tooltip: 'Lampu Kilat',
-                        isDark: true,
-                        size: 42,
-                        iconSize: 20,
                         onTap: () {
                           controller.toggleTorch();
                           setState(() => _torchEnabled = !_torchEnabled);

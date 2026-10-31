@@ -497,24 +497,22 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
               isDark: isDark,
               title: 'Tiket Giliran Walk-In',
               actions: [
-                GlassNavButton(
-                  icon: HugeIcons.strokeRoundedQrCode,
-                  iconColor: const Color(0xFF42A5F5),
-                  tooltip: 'Imbas QR Giliran',
+                GlassNavPill(
                   isDark: isDark,
-                  size: 40,
-                  iconSize: 20,
-                  onTap: _scanQueueQr,
-                ),
-                const SizedBox(width: 8),
-                GlassNavButton(
-                  icon: HugeIcons.strokeRoundedRefresh,
-                  iconColor: const Color(0xFF42A5F5),
-                  tooltip: 'Segarkan Status',
-                  isDark: isDark,
-                  size: 40,
-                  iconSize: 20,
-                  onTap: () => _loadCustomerTicket(),
+                  items: [
+                    GlassNavPillItem(
+                      icon: HugeIcons.strokeRoundedQrCode,
+                      iconColor: const Color(0xFF42A5F5),
+                      tooltip: 'Imbas QR Giliran',
+                      onTap: _scanQueueQr,
+                    ),
+                    GlassNavPillItem(
+                      icon: HugeIcons.strokeRoundedRefresh,
+                      iconColor: const Color(0xFF42A5F5),
+                      tooltip: 'Segarkan Status',
+                      onTap: () => _loadCustomerTicket(),
+                    ),
+                  ],
                 ),
               ],
             ),

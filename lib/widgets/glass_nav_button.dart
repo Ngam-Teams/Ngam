@@ -2,9 +2,156 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-/// A premium, reusable glass-morphism circular/pill navigation button.
-/// Matches the design aesthetic of the Home screen top bar pill buttons:
-/// circular/pill shape with backdrop blur, subtle frosted surface, gentle border and shadow.
+/// Single item within a GlassNavPill
+class GlassNavPillItem {
+  final dynamic icon;
+  final VoidCallback? onTap;
+  final String? tooltip;
+  final Color? iconColor;
+  final Widget? badge;
+
+  const GlassNavPillItem({
+    required this.icon,
+    this.onTap,
+    this.tooltip,
+    this.iconColor,
+    this.badge,
+  });
+}
+
+/// A connected glass-morphism pill container that merges 2 (or more) buttons into
+/// a single sleek pill, matching the top-right button on the Home screen (QR + Saved + Notification).
+class GlassNavPill extends StatelessWidget {
+  final List<GlassNavPillItem> items;
+  final bool isDark;
+  final double height;
+  final EdgeInsetsGeometry? margin;
+
+  const GlassNavPill({
+    super.key,
+    required this.items,
+    required this.isDark,
+    this.height = 44.0,
+    this.margin,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    Widget pill = ClipRRect(
+      borderRadius: BorderRadius.circular(100),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          height: height,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(100),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.white.withValues(alpha: 0.70),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.15)
+                  : Colors.black.withValues(alpha: 0.08),
+              width: 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (int i = 0; i < items.length; i++) ...[
+                _buildItem(items[i]),
+                if (i < items.length - 1)
+                  Container(
+                    width: 1.0,
+                    height: 20,
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.12)
+                        : Colors.black.withValues(alpha: 0.08),
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (margin != null) {
+      pill = Padding(padding: margin!, child: pill);
+    }
+
+    return pill;
+  }
+
+  Widget _buildItem(GlassNavPillItem item) {
+    final Color effectiveIconColor = item.iconColor ??
+        (isDark ? Colors.white.withValues(alpha: 0.90) : const Color(0xFF1E293B));
+
+    Widget content = Center(
+      child: item.icon is IconData
+          ? Icon(
+              item.icon as IconData,
+              size: 20,
+              color: effectiveIconColor,
+            )
+          : HugeIcon(
+              icon: item.icon,
+              size: 20,
+              color: effectiveIconColor,
+            ),
+    );
+
+    if (item.badge != null) {
+      content = Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          content,
+          Positioned(
+            top: 2,
+            right: 2,
+            child: item.badge!,
+          ),
+        ],
+      );
+    }
+
+    Widget button = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: item.onTap,
+        borderRadius: BorderRadius.circular(100),
+        splashColor: isDark ? Colors.white12 : Colors.black12,
+        highlightColor: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+        child: SizedBox(
+          width: height,
+          height: height,
+          child: content,
+        ),
+      ),
+    );
+
+    if (item.tooltip != null && item.tooltip!.isNotEmpty) {
+      button = Tooltip(message: item.tooltip!, child: button);
+    }
+
+    return button;
+  }
+}
+
+/// A premium, reusable glass-morphism circular navigation button.
+/// Matches the design aesthetic of the Home screen top bar buttons:
+/// circular shape with backdrop blur, subtle frosted surface, gentle border and shadow.
 class GlassNavButton extends StatelessWidget {
   final dynamic icon;
   final VoidCallback? onTap;
@@ -20,7 +167,7 @@ class GlassNavButton extends StatelessWidget {
     required this.icon,
     this.onTap,
     this.tooltip,
-    this.size = 40.0,
+    this.size = 44.0,
     this.iconSize = 20.0,
     this.iconColor,
     required this.isDark,
@@ -33,7 +180,7 @@ class GlassNavButton extends StatelessWidget {
     required BuildContext context,
     required bool isDark,
     VoidCallback? onBack,
-    double size = 40.0,
+    double size = 44.0,
     double iconSize = 20.0,
     EdgeInsetsGeometry? margin,
   }) {
@@ -55,7 +202,7 @@ class GlassNavButton extends StatelessWidget {
     required BuildContext context,
     required bool isDark,
     VoidCallback? onClose,
-    double size = 40.0,
+    double size = 44.0,
     double iconSize = 20.0,
     EdgeInsetsGeometry? margin,
   }) {
@@ -140,8 +287,8 @@ class GlassNavButton extends StatelessWidget {
 }
 
 /// A floating top bar overlay placed inside a `Stack` (`Positioned(top: ..., left: ..., right: ...)`).
-/// Does NOT wrap the entire row in a solid/full-width bar container — only the buttons and optional
-/// title pill float cleanly over the underlying scrollable content.
+/// All elements have standardized height (44px) matching the Home screen top bar buttons.
+/// When multiple action buttons are provided, they can be merged into a single pill using `GlassNavPill`.
 class FloatingTopBar extends StatelessWidget {
   final Widget? leading;
   final String? title;
@@ -176,10 +323,8 @@ class FloatingTopBar extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: 18,
-              vertical: (subtitle != null && subtitle!.isNotEmpty) ? 6 : 9,
-            ),
+            height: 44, // Standard 44px height matching all nav buttons
+            padding: const EdgeInsets.symmetric(horizontal: 18),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(100),
               color: isDark
@@ -200,6 +345,7 @@ class FloatingTopBar extends StatelessWidget {
               ],
             ),
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: centerTitle
                   ? CrossAxisAlignment.center
@@ -211,7 +357,7 @@ class FloatingTopBar extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: textPrimary,
-                    fontSize: 15,
+                    fontSize: (subtitle != null && subtitle!.isNotEmpty) ? 14 : 15,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.2,
                   ),
@@ -223,7 +369,7 @@ class FloatingTopBar extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: textSecondary,
-                      fontSize: 10.5,
+                      fontSize: 10,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -240,12 +386,13 @@ class FloatingTopBar extends StatelessWidget {
       right: horizontal,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           leading ??
               GlassNavButton.back(
                 context: context,
                 isDark: isDark,
-                size: 42,
+                size: 44,
                 iconSize: 20,
               ),
           if (titleWidget != null) ...[
@@ -264,10 +411,9 @@ class FloatingTopBar extends StatelessWidget {
               children: actions!,
             )
           else if (titleWidget != null && centerTitle)
-            const SizedBox(width: 42),
+            const SizedBox(width: 44),
         ],
       ),
     );
   }
 }
-
