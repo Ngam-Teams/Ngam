@@ -156,35 +156,21 @@
       user-select: none;
     }
     .splash-logo {
-      width: 76px;
-      height: 76px;
-      border-radius: 18px;
-      box-shadow: 0 10px 30px rgba(33, 150, 243, 0.25);
-      margin-bottom: 22px;
+      width: 52px;
+      height: 52px;
+      border-radius: 13px;
+      box-shadow: 0 4px 16px rgba(33, 150, 243, 0.2);
       animation: splash-pulse 2s infinite ease-in-out;
-    }
-    .splash-spinner {
-      width: 24px;
-      height: 24px;
-      border: 2.5px solid rgba(255, 255, 255, 0.12);
-      border-top-color: #2196F3;
-      border-radius: 50%;
-      animation: splash-spin 0.8s linear infinite;
-    }
-    @keyframes splash-spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
     }
     @keyframes splash-pulse {
       0%, 100% { transform: scale(1); opacity: 0.95; }
-      50% { transform: scale(1.04); opacity: 1; filter: drop-shadow(0 0 16px rgba(33, 150, 243, 0.45)); }
+      50% { transform: scale(1.04); opacity: 1; filter: drop-shadow(0 0 12px rgba(33, 150, 243, 0.35)); }
     }
   </style>
 </head>
 <body style="background-color: #0A0A14;">
   <div id="ngam-splash">
     <img src="icons/Icon-192.png" alt="Ngam" class="splash-logo">
-    <div class="splash-spinner"></div>
   </div>
   <script>
     window.addEventListener('flutter-first-frame', function () {
