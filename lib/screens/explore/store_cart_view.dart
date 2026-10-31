@@ -3,9 +3,11 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:ngam/widgets/glass_box.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/product_model.dart';
+import '../../services/voucher_service.dart';
 import '../../widgets/glass_toast.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../../widgets/customer_payment_modal.dart';
+import '../../widgets/voucher_selection_sheet.dart';
 
 // ============================================================
 // CartItem Model
@@ -57,6 +59,7 @@ class _StoreCartViewState extends State<StoreCartView> {
   int _orderTypeIndex = 0; // 0: Pickup / Dine-in, 1: Delivery
   bool _voucherApplied = false;
   bool _isApplyingVoucher = false;
+  bool _userDismissedVoucher = false;
   double _discountAmount = 0.0;
   Map<String, dynamic>? _voucher;
   bool _isProcessing = false;
@@ -82,6 +85,10 @@ class _StoreCartViewState extends State<StoreCartView> {
     if (widget.promoCode != null && widget.promoCode!.isNotEmpty) {
       _voucherController.text = widget.promoCode!;
       _applyVoucher();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _autoApplyBestVoucher();
+      });
     }
   }
 
@@ -100,125 +107,129 @@ class _StoreCartViewState extends State<StoreCartView> {
 
   double get _total => (_subtotal + _deliveryFee - _discountAmount).clamp(0.0, 999999.0);
 
-  String _escapeLike(String s) =>
-      s.replaceAll(r'\', r'\\').replaceAll('%', r'\%').replaceAll('_', r'\_');
 
-  /// Base amount a voucher applies to (whole cart, or only specific products).
-  double _voucherBase(Map<String, dynamic> v) {
-    if ((v['applicable_scope'] ?? 'all') == 'specific_products') {
-      final ids = (v['applicable_ids'] is List)
-          ? (v['applicable_ids'] as List).map((e) => e.toString()).toSet()
-          : <String>{};
-      return _items
-          .where((i) => ids.contains(i.product.id.toString()))
-          .fold(0.0, (s, i) => s + i.totalPrice);
+
+  /// Cari dan auto-apply baucar terbaik untuk troli semasa
+  Future<void> _autoApplyBestVoucher() async {
+    if (_userDismissedVoucher || _voucherApplied || _items.isEmpty) return;
+    try {
+      final best = await VoucherService.getBestAutoVoucher(
+        businessId: widget.shop['id']?.toString(),
+        subtotal: _subtotal,
+      );
+      if (best != null && mounted && !_userDismissedVoucher && !_voucherApplied) {
+        final d = (best['calculated_discount'] as num?)?.toDouble() ??
+            VoucherService.computeDiscount(best, _subtotal);
+        if (d > 0) {
+          setState(() {
+            _voucher = best;
+            _voucherApplied = true;
+            _discountAmount = d;
+            _voucherController.text = (best['code'] ?? '').toString();
+          });
+          showGlassToast(context, 'Baucar ${best['code']} (Jimat RM ${d.toStringAsFixed(2)}) auto-digunakan! 🎟️');
+        }
+      }
+    } catch (e) {
+      debugPrint('[StoreCartView] Auto-apply voucher error: $e');
     }
-    return _subtotal;
   }
 
-  double _computeDiscount(Map<String, dynamic> v) {
-    final base = _voucherBase(v);
-    if (base <= 0) return 0.0;
-    final value = (v['discount_value'] as num?)?.toDouble() ?? 0.0;
-    double d;
-    if (v['discount_type'] == 'percentage') {
-      d = base * value / 100.0;
-      final cap = (v['max_discount_amount'] as num?)?.toDouble();
-      if (cap != null && cap > 0 && d > cap) d = cap;
-    } else {
-      d = value;
+  /// Buka sheet pilihan baucar
+  Future<void> _openVoucherPicker() async {
+    final selected = await VoucherSelectionSheet.show(
+      context: context,
+      businessId: widget.shop['id']?.toString(),
+      subtotal: _subtotal,
+      currentVoucherCode: _voucher?['code']?.toString(),
+    );
+
+    if (selected == null) return;
+    if (selected['clear'] == true) {
+      setState(() {
+        _voucher = null;
+        _voucherApplied = false;
+        _discountAmount = 0.0;
+        _userDismissedVoucher = true;
+        _voucherController.clear();
+      });
+      if (mounted) showGlassToast(context, 'Baucar telah dibatalkan');
+      return;
     }
-    if (d > base) d = base;
-    return double.parse(d.toStringAsFixed(2));
+
+    final d = (selected['calculated_discount'] as num?)?.toDouble() ??
+        VoucherService.computeDiscount(selected, _subtotal);
+    if (!mounted) return;
+    setState(() {
+      _voucher = selected;
+      _voucherApplied = true;
+      _discountAmount = d;
+      _userDismissedVoucher = false;
+      _voucherController.text = (selected['code'] ?? '').toString();
+    });
+    showGlassToast(context, 'Baucar ${selected['code']} digunakan! Jimat RM ${d.toStringAsFixed(2)}');
   }
 
-  /// Validates the promo code against the merchant's real vouchers.
+  /// Validates the promo code against available vouchers.
   Future<void> _applyVoucher() async {
     final code = _voucherController.text.trim();
     if (code.isEmpty || _isApplyingVoucher) return;
-    final bizId = widget.shop['id']?.toString();
-    if (bizId == null || bizId.isEmpty) return;
 
     setState(() => _isApplyingVoucher = true);
-    try {
-      final v = await Supabase.instance.client
-          .from('vouchers')
-          .select()
-          .eq('business_id', bizId)
-          .eq('is_active', true)
-          .ilike('code', _escapeLike(code))
-          .maybeSingle();
+    final res = await VoucherService.validateAndApplyCode(
+      code: code,
+      businessId: widget.shop['id']?.toString(),
+      subtotal: _subtotal,
+    );
 
-      if (!mounted) return;
-      String? error;
-      if (v == null) {
-        error = 'Kod promo tidak sah.';
-      } else {
-        final now = DateTime.now().toUtc();
-        final start = DateTime.tryParse('${v['start_date']}');
-        final endD = v['end_date'] == null ? null : DateTime.tryParse('${v['end_date']}');
-        final limit = v['total_usage_limit'] as num?;
-        final used = (v['times_used'] as num?) ?? 0;
-        final minSpend = (v['min_spend'] as num?)?.toDouble() ?? 0.0;
-        final scope = (v['applicable_scope'] ?? 'all').toString();
-        final eligibility = (v['customer_eligibility'] ?? 'all').toString();
+    if (!mounted) return;
+    setState(() => _isApplyingVoucher = false);
 
-        if (start != null && start.toUtc().isAfter(now)) {
-          error = 'Kod promo belum bermula.';
-        } else if (endD != null && endD.toUtc().isBefore(now)) {
-          error = 'Kod promo telah tamat tempoh.';
-        } else if (limit != null && used >= limit) {
-          error = 'Kuota kod promo telah habis.';
-        } else if (eligibility != 'all') {
-          error = 'Kod promo ini hanya untuk pelanggan tertentu.';
-        } else if (scope == 'category') {
-          error = 'Kod promo ini tidak boleh digunakan di sini.';
-        } else if (_subtotal < minSpend) {
-          error = 'Belanja minimum RM ${minSpend.toStringAsFixed(2)} diperlukan.';
-        } else if (_computeDiscount(Map<String, dynamic>.from(v)) <= 0) {
-          error = 'Kod promo tidak terpakai untuk item dalam troli.';
-        }
-      }
-
-      if (error != null) {
-        setState(() {
-          _voucher = null;
-          _voucherApplied = false;
-          _discountAmount = 0.0;
-          _isApplyingVoucher = false;
-        });
-        showGlassToast(context, error, isError: true);
-        return;
-      }
-
-      final voucher = Map<String, dynamic>.from(v!);
+    if (res['success'] == true && res['voucher'] != null) {
+      final v = Map<String, dynamic>.from(res['voucher'] as Map);
+      final d = (v['calculated_discount'] as num?)?.toDouble() ??
+          VoucherService.computeDiscount(v, _subtotal);
       setState(() {
-        _voucher = voucher;
+        _voucher = v;
         _voucherApplied = true;
-        _discountAmount = _computeDiscount(voucher);
-        _isApplyingVoucher = false;
+        _discountAmount = d;
+        _userDismissedVoucher = false;
       });
-      showGlassToast(context, 'Promo digunakan! Diskaun RM ${_discountAmount.toStringAsFixed(2)}.');
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isApplyingVoucher = false);
-      showGlassToast(context, 'Tidak dapat semak kod promo. Cuba lagi.', isError: true);
+      showGlassToast(context, 'Promo digunakan! Diskaun RM ${d.toStringAsFixed(2)}.');
+    } else {
+      setState(() {
+        _voucher = null;
+        _voucherApplied = false;
+        _discountAmount = 0.0;
+      });
+      showGlassToast(context, res['message'] ?? 'Kod promo tidak sah.', isError: true);
     }
   }
 
   /// Re-evaluates the applied voucher after the cart changes.
   void _refreshVoucher() {
-    final v = _voucher;
-    if (v == null) return;
-    final minSpend = (v['min_spend'] as num?)?.toDouble() ?? 0.0;
-    final d = _computeDiscount(v);
-    if (_subtotal < minSpend || d <= 0) {
+    if (_voucher == null) {
+      if (!_userDismissedVoucher && _items.isNotEmpty) {
+        _autoApplyBestVoucher();
+      }
+      return;
+    }
+    final status = VoucherService.checkVoucherEligibility(
+      _voucher!,
+      businessId: widget.shop['id']?.toString(),
+      subtotal: _subtotal,
+    );
+    if (status['isEligible'] != true) {
       _voucher = null;
       _voucherApplied = false;
       _discountAmount = 0.0;
-      showGlassToast(context, 'Kod promo dibatalkan kerana troli tidak lagi layak.', isError: true);
+      showGlassToast(context, status['reason'] ?? 'Baucar tidak lagi layak untuk troli semasa.', isError: true);
+      if (!_userDismissedVoucher) {
+        _autoApplyBestVoucher();
+      }
     } else {
-      _discountAmount = d;
+      _discountAmount = (status['discountAmount'] as num?)?.toDouble() ??
+          VoucherService.computeDiscount(_voucher!, _subtotal);
     }
   }
 
@@ -395,6 +406,8 @@ class _StoreCartViewState extends State<StoreCartView> {
                 })
             .toList(),
         customerName: customerName,
+        voucherCode: (_voucherApplied && _voucher != null) ? _voucher!['code']?.toString() : null,
+        discountAmount: (_voucherApplied && _discountAmount > 0) ? _discountAmount : null,
       );
 
       if (!mounted) return;
@@ -717,43 +730,8 @@ class _StoreCartViewState extends State<StoreCartView> {
 
                         const SizedBox(height: 14),
 
-                        // Voucher field
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _liquidGlassBox(
-                                isDark: isDark,
-                                radius: 16,
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                child: TextField(
-                                  controller: _voucherController,
-                                  textCapitalization: TextCapitalization.characters,
-                                  style: TextStyle(color: textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
-                                  decoration: InputDecoration(
-                                    hintText: 'Kod Promo (jika ada)',
-                                    hintStyle: TextStyle(color: textSecondary, fontSize: 13, fontWeight: FontWeight.normal),
-                                    border: InputBorder.none,
-                                    prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                                     prefixIcon: UnconstrainedBox(child: HugeIcon(icon: HugeIcons.strokeRoundedDiscount01, color: textSecondary, size: 18)),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _voucherApplied ? Colors.green : Colors.blue,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                              ),
-                              onPressed: _isApplyingVoucher ? null : _applyVoucher,
-                              child: _isApplyingVoucher
-                                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                  : Text(_voucherApplied ? 'Applied' : 'Apply', style: const TextStyle(fontWeight: FontWeight.bold)),
-                            ),
-                          ],
-                        ),
+                        // Interactive Voucher Section
+                        _buildVoucherSection(isDark, textPrimary, textSecondary),
 
                         const SizedBox(height: 20),
 
@@ -1009,6 +987,195 @@ class _StoreCartViewState extends State<StoreCartView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildVoucherSection(bool isDark, Color textPrimary, Color textSecondary) {
+    if (_voucherApplied && _voucher != null) {
+      final code = (_voucher!['code'] ?? '').toString().toUpperCase();
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF10B981).withValues(alpha: isDark ? 0.12 : 0.08),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: const Color(0xFF10B981).withValues(alpha: 0.4),
+            width: 1.2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const HugeIcon(
+                icon: HugeIcons.strokeRoundedTicket01,
+                color: Color(0xFF10B981),
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        code,
+                        style: const TextStyle(
+                          color: Color(0xFF10B981),
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'Digunakan',
+                          style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Jimat RM ${_discountAmount.toStringAsFixed(2)} untuk pesanan ini',
+                    style: TextStyle(
+                      color: isDark ? Colors.white70 : const Color(0xFF334155),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.blue,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              onPressed: _openVoucherPicker,
+              child: const Text('Tukar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            ),
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _voucher = null;
+                  _voucherApplied = false;
+                  _discountAmount = 0.0;
+                  _userDismissedVoucher = true;
+                  _voucherController.clear();
+                });
+                showGlassToast(context, 'Baucar dibatalkan');
+              },
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
+                  shape: BoxShape.circle,
+                ),
+                child: const HugeIcon(icon: HugeIcons.strokeRoundedCancel01, size: 14, color: Colors.grey),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: _openVoucherPicker,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const HugeIcon(
+                icon: HugeIcons.strokeRoundedDiscount01,
+                color: Colors.blue,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Baucar & Kod Diskaun',
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    'Pilih baucar atau masukkan kod promo',
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Pilih Baucar',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(width: 4),
+                  HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, color: Colors.blue, size: 12),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

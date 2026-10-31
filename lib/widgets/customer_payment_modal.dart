@@ -19,6 +19,8 @@ class CustomerPaymentModal extends StatefulWidget {
   final List<Map<String, dynamic>> items;
   final String? customerName;
   final String? customerPhone;
+  final String? voucherCode;
+  final double? discountAmount;
   final Future<void> Function(String method, String transactionRef)? onPaymentSuccess;
 
   const CustomerPaymentModal({
@@ -30,6 +32,8 @@ class CustomerPaymentModal extends StatefulWidget {
     this.items = const [],
     this.customerName,
     this.customerPhone,
+    this.voucherCode,
+    this.discountAmount,
     this.onPaymentSuccess,
   });
 
@@ -42,6 +46,8 @@ class CustomerPaymentModal extends StatefulWidget {
     List<Map<String, dynamic>> items = const [],
     String? customerName,
     String? customerPhone,
+    String? voucherCode,
+    double? discountAmount,
     Future<void> Function(String method, String transactionRef)? onPaymentSuccess,
   }) async {
     final res = await showModalBottomSheet<bool>(
@@ -58,6 +64,8 @@ class CustomerPaymentModal extends StatefulWidget {
         items: items,
         customerName: customerName,
         customerPhone: customerPhone,
+        voucherCode: voucherCode,
+        discountAmount: discountAmount,
         onPaymentSuccess: onPaymentSuccess,
       ),
     );
@@ -284,21 +292,37 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                             ),
                           ],
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF00E5FF).withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.3)),
-                          ),
-                          child: Text(
-                            currencyFormat.format(widget.amount),
-                            style: const TextStyle(
-                              color: Color(0xFF00E5FF),
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF00E5FF).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.3)),
+                              ),
+                              child: Text(
+                                currencyFormat.format(widget.amount),
+                                style: const TextStyle(
+                                  color: Color(0xFF00E5FF),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
                             ),
-                          ),
+                            if (widget.discountAmount != null && widget.discountAmount! > 0) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                'Jimat RM ${widget.discountAmount!.toStringAsFixed(2)} (${widget.voucherCode ?? 'Baucar'})',
+                                style: const TextStyle(
+                                  color: Color(0xFF10B981),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),
@@ -714,6 +738,32 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                               ),
                             ],
                           ),
+                          if (widget.discountAmount != null && widget.discountAmount! > 0) ...[
+                            const Divider(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    const HugeIcon(icon: HugeIcons.strokeRoundedTicket01, color: Color(0xFF10B981), size: 14),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Diskaun Baucar ${widget.voucherCode != null ? "(${widget.voucherCode})" : ""}',
+                                      style: const TextStyle(color: Color(0xFF10B981), fontSize: 12, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  '-RM ${widget.discountAmount!.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF10B981),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                           const Divider(height: 16),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,

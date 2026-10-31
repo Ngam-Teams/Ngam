@@ -9,6 +9,8 @@ import 'package:ngam/l10n/generated/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/booking_notification_service.dart'; //  ADD THIS LINE
 import '../../widgets/glass_toast.dart'; //  ADD THIS TO YOUR IMPORTS
+import '../../services/voucher_service.dart';
+import '../../widgets/voucher_selection_sheet.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:math'; //  Required for generating the short ID
 import 'dart:async';
@@ -59,6 +61,9 @@ class _BookingsViewState extends State<BookingsView> {
   int _selectedPaymentIndex = 0;
   int _selectedCardIndex = 0;
   int _selectedBankIndex = 0;
+  Map<String, dynamic>? _selectedVoucher;
+  double _voucherDiscount = 0.0;
+  bool _userDismissedVoucher = false;
 
   int _frontCardIndex = 0;
   int _currentStep = 0;
@@ -541,10 +546,16 @@ class _BookingsViewState extends State<BookingsView> {
 
   String _fmtMoney(double v) => v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);
 
-  double get _totalPrice {
+  double get _subtotal {
     double total = 0;
     for (int i in _selectedServices) { if (i >= 0 && i < _servicesList.length) total += _parseMoney(_servicesList[i]["price"] ?? ''); }
     for (int i in _selectedAddons) { if (i >= 0 && i < _addonsList.length) total += _parseMoney(_addonsList[i]["price"] ?? ''); }
+    return double.parse(total.toStringAsFixed(2));
+  }
+
+  double get _totalPrice {
+    final sub = _subtotal;
+    final total = (sub - _voucherDiscount).clamp(0.0, 999999.0);
     return double.parse(total.toStringAsFixed(2));
   }
 
@@ -781,6 +792,91 @@ class _BookingsViewState extends State<BookingsView> {
     if (mainNames.isEmpty) return 'Servis Pilihan';
     if (addonNames.isEmpty) return mainNames.join(', ');
     return '${mainNames.join(', ')} + ${addonNames.join(', ')}';
+  }
+
+  Future<void> _autoApplyVoucher() async {
+    if (_userDismissedVoucher || _selectedVoucher != null || _subtotal <= 0) return;
+    try {
+      final best = await VoucherService.getBestAutoVoucher(
+        businessId: widget.shopId,
+        subtotal: _subtotal,
+        category: widget.category,
+      );
+      if (best != null && mounted && !_userDismissedVoucher && _selectedVoucher == null) {
+        final d = (best['calculated_discount'] as num?)?.toDouble() ??
+            VoucherService.computeDiscount(best, _subtotal);
+        if (d > 0) {
+          setState(() {
+            _selectedVoucher = best;
+            _voucherDiscount = d;
+          });
+          showGlassToast(context, 'Baucar ${best['code']} (Jimat RM ${_fmtMoney(d)}) auto-digunakan! 🎟️');
+        }
+      }
+    } catch (e) {
+      debugPrint('[BookingsView] Auto-apply voucher error: $e');
+    }
+  }
+
+  void _refreshBookingVoucher() {
+    if (_selectedVoucher == null) {
+      if (!_userDismissedVoucher && _subtotal > 0) {
+        _autoApplyVoucher();
+      }
+      return;
+    }
+    final status = VoucherService.checkVoucherEligibility(
+      _selectedVoucher!,
+      businessId: widget.shopId,
+      subtotal: _subtotal,
+      category: widget.category,
+    );
+    if (status['isEligible'] != true) {
+      setState(() {
+        _selectedVoucher = null;
+        _voucherDiscount = 0.0;
+      });
+      showGlassToast(context, status['reason'] ?? 'Baucar tidak lagi layak untuk tempahan ini.', isError: true);
+      if (!_userDismissedVoucher) {
+        _autoApplyVoucher();
+      }
+    } else {
+      setState(() {
+        _voucherDiscount = (status['discountAmount'] as num?)?.toDouble() ??
+            VoucherService.computeDiscount(_selectedVoucher!, _subtotal);
+      });
+    }
+  }
+
+  Future<void> _openBookingVoucherPicker() async {
+    final selected = await VoucherSelectionSheet.show(
+      context: context,
+      businessId: widget.shopId,
+      subtotal: _subtotal,
+      currentVoucherCode: _selectedVoucher?['code']?.toString(),
+      category: widget.category,
+    );
+
+    if (selected == null) return;
+    if (selected['clear'] == true) {
+      setState(() {
+        _selectedVoucher = null;
+        _voucherDiscount = 0.0;
+        _userDismissedVoucher = true;
+      });
+      if (mounted) showGlassToast(context, 'Baucar telah dibatalkan');
+      return;
+    }
+
+    final d = (selected['calculated_discount'] as num?)?.toDouble() ??
+        VoucherService.computeDiscount(selected, _subtotal);
+    if (!mounted) return;
+    setState(() {
+      _selectedVoucher = selected;
+      _voucherDiscount = d;
+      _userDismissedVoucher = false;
+    });
+    showGlassToast(context, 'Baucar ${selected['code']} digunakan! Jimat RM ${_fmtMoney(d)}');
   }
 
   String get _notesHintText {
@@ -1621,6 +1717,7 @@ class _BookingsViewState extends State<BookingsView> {
         return;
       }
       setState(() => _currentStep++);
+      _autoApplyVoucher();
       return;
     }
 
@@ -1689,6 +1786,9 @@ class _BookingsViewState extends State<BookingsView> {
       'payment_method': _paymentMethods[_selectedPaymentIndex]["name"],
       'payment_status': 'unpaid',
       'total_price': "RM$_totalPriceLabel",
+      if (_selectedVoucher != null) 'voucher_code': _selectedVoucher!['code'],
+      if (_voucherDiscount > 0) 'discount_amount': _voucherDiscount,
+      if (_voucherDiscount > 0) 'original_subtotal': "RM${_fmtMoney(_subtotal)}",
       'shop_name': widget.shopName,
       'shop_image': widget.shopImage,
       'category': widget.category,
@@ -2312,7 +2412,12 @@ class _BookingsViewState extends State<BookingsView> {
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
+
+          // --- VOUCHER SELECTION SECTION ---
+          _buildBookingVoucherSection(isDark),
+
+          const SizedBox(height: 12),
 
           Text("Payment Method", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black87)),
           const SizedBox(height: 16),
@@ -2480,6 +2585,35 @@ class _BookingsViewState extends State<BookingsView> {
 
           const SizedBox(height: 24),
 
+          // Summary Breakdown with Voucher
+          if (_voucherDiscount > 0) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Subtotal Servis", style: TextStyle(fontSize: 14, color: isDark ? Colors.white60 : Colors.black54)),
+                Text("RM${_fmtMoney(_subtotal)}", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white70 : Colors.black87)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const HugeIcon(icon: HugeIcons.strokeRoundedTicket01, color: Color(0xFF10B981), size: 14),
+                    const SizedBox(width: 6),
+                    Text(
+                      "Diskaun Baucar ${_selectedVoucher != null ? '(${_selectedVoucher!['code']})' : ''}",
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                    ),
+                  ],
+                ),
+                Text("-RM${_fmtMoney(_voucherDiscount)}", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+
           // Grand Total
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2495,6 +2629,188 @@ class _BookingsViewState extends State<BookingsView> {
     );
   }
 
+
+  Widget _buildBookingVoucherSection(bool isDark) {
+    if (_selectedVoucher != null && _voucherDiscount > 0) {
+      final code = (_selectedVoucher!['code'] ?? '').toString().toUpperCase();
+      return Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF10B981).withValues(alpha: isDark ? 0.12 : 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFF10B981).withValues(alpha: 0.4),
+            width: 1.2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const HugeIcon(
+                icon: HugeIcons.strokeRoundedTicket01,
+                color: Color(0xFF10B981),
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        code,
+                        style: const TextStyle(
+                          color: Color(0xFF10B981),
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'Digunakan',
+                          style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Jimat RM ${_fmtMoney(_voucherDiscount)} untuk tempahan ini',
+                    style: TextStyle(
+                      color: isDark ? Colors.white70 : const Color(0xFF334155),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.blue,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              onPressed: _openBookingVoucherPicker,
+              child: const Text('Tukar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            ),
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedVoucher = null;
+                  _voucherDiscount = 0.0;
+                  _userDismissedVoucher = true;
+                });
+                showGlassToast(context, 'Baucar dibatalkan');
+              },
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
+                  shape: BoxShape.circle,
+                ),
+                child: const HugeIcon(icon: HugeIcons.strokeRoundedCancel01, size: 14, color: Colors.grey),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: _openBookingVoucherPicker,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const HugeIcon(
+                icon: HugeIcons.strokeRoundedDiscount01,
+                color: Colors.blue,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Baucar & Diskaun Tempahan',
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    'Pilih baucar atau masukkan kod promo',
+                    style: TextStyle(
+                      color: isDark ? Colors.white60 : Colors.black54,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Pilih Baucar',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(width: 4),
+                  HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, color: Colors.blue, size: 12),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildReceiptRow(String title, String price, bool isDark) {
     return Padding(
@@ -2623,6 +2939,7 @@ class _BookingsViewState extends State<BookingsView> {
             stateSet.clear(); stateSet.add(index);
           }
         });
+        _refreshBookingVoucher();
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),

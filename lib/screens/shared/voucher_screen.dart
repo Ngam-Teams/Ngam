@@ -10,9 +10,21 @@ import '../../services/voucher_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/glass_toast.dart';
 import '../../widgets/glass_nav_button.dart';
+import '../explore/business_store_view.dart';
 
 class VoucherScreen extends StatefulWidget {
-  const VoucherScreen({super.key});
+  final bool isPicker;
+  final String? businessId;
+  final double? currentSubtotal;
+  final String? category;
+
+  const VoucherScreen({
+    super.key,
+    this.isPicker = false,
+    this.businessId,
+    this.currentSubtotal,
+    this.category,
+  });
 
   @override
   State<VoucherScreen> createState() => _VoucherScreenState();
@@ -24,66 +36,9 @@ class _VoucherScreenState extends State<VoucherScreen> {
   bool _isClaiming = false;
   List<Map<String, dynamic>> _exploreVouchers = [];
 
-  // Default curated demo offers when user opens "Teroka Baucar" tab
-  final List<Map<String, dynamic>> _curatedPromos = [
-    {
-      'id': 'promo_ngam_welcome',
-      'code': 'NGAMBARU',
-      'title': 'Diskaun Pengguna Baru RM5',
-      'shop_name': 'Semua Rakan Niaga Ngam',
-      'shop_logo': null,
-      'discount_type': 'fixed',
-      'discount_value': 5.0,
-      'min_spend': 15.0,
-      'end_date': DateTime.now().add(const Duration(days: 45)).toIso8601String(),
-      'description': 'Diskaun RM5 untuk tempahan atau pesanan pertama anda di aplikasi Ngam.',
-      'badge': 'Paling Hangat',
-      'gradient': [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-    },
-    {
-      'id': 'promo_barber_cut',
-      'code': 'STYLE10',
-      'title': 'Potongan 10% Servis Gunting Rambut',
-      'shop_name': 'Barber King Studio & Gunting',
-      'shop_logo': null,
-      'discount_type': 'percentage',
-      'discount_value': 10.0,
-      'min_spend': 25.0,
-      'max_discount_amount': 5.0,
-      'end_date': DateTime.now().add(const Duration(days: 20)).toIso8601String(),
-      'description': 'Potongan 10% untuk pakej Haircut & Beard Grooming di cawangan terpilih.',
-      'badge': 'Servis Barber',
-      'gradient': [Color(0xFF7C3AED), Color(0xFF6D28D9)],
-    },
-    {
-      'id': 'promo_coffee_fever',
-      'code': 'KOPINGAM',
-      'title': 'Jimat RM3 Segelas Kopi & Pastri',
-      'shop_name': 'The Daily Grind Cafe & Bistro',
-      'shop_logo': null,
-      'discount_type': 'fixed',
-      'discount_value': 3.0,
-      'min_spend': 12.0,
-      'end_date': DateTime.now().add(const Duration(days: 14)).toIso8601String(),
-      'description': 'Nikmati jimat RM3 bila pesan kopi artisan atau pastry combo petang.',
-      'badge': 'Kafe & Minuman',
-      'gradient': [Color(0xFF059669), Color(0xFF047857)],
-    },
-    {
-      'id': 'promo_carwash_shine',
-      'code': 'KILAT5',
-      'title': 'Rebat RM5 Cuci Salji & Wax Kereta',
-      'shop_name': 'AutoSpa Carwash & Detailing',
-      'shop_logo': null,
-      'discount_type': 'fixed',
-      'discount_value': 5.0,
-      'min_spend': 20.0,
-      'end_date': DateTime.now().add(const Duration(days: 30)).toIso8601String(),
-      'description': 'Rebat segera RM5 untuk carwash pakej Snow & Wax cuci kilat.',
-      'badge': 'Cuci Kereta',
-      'gradient': [Color(0xFFD97706), Color(0xFFB45309)],
-    },
-  ];
+  // Curated demo and platform offers sourced centrally from VoucherService
+  List<Map<String, dynamic>> get _curatedPromos => VoucherService.curatedPromos;
+
 
   @override
   void initState() {
@@ -155,6 +110,45 @@ class _VoucherScreenState extends State<VoucherScreen> {
       showGlassToast(context, res['message'] ?? 'Baucar berjaya disimpan!');
     } else {
       showGlassToast(context, res['message'] ?? 'Gagal menyimpan baucar', isError: true);
+    }
+  }
+
+  Future<void> _useVoucherNow(Map<String, dynamic> voucher) async {
+    final code = (voucher['code'] ?? '').toString().toUpperCase();
+    await VoucherService.saveVoucher(voucher);
+    Clipboard.setData(ClipboardData(text: code));
+    if (!mounted) return;
+
+    if (widget.isPicker) {
+      Navigator.pop(context, voucher);
+      return;
+    }
+
+    final bizId = voucher['business_id']?.toString();
+    if (bizId != null && bizId.isNotEmpty) {
+      showGlassToast(
+        context,
+        'Kod $code disalin! Membuka halaman kedai...',
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => BusinessStoreView(
+            shop: {
+              'id': bizId,
+              'name': voucher['shop_name'] ?? 'Kedai',
+              'business_logo_url': voucher['shop_logo'],
+            },
+            promoCode: code,
+          ),
+        ),
+      );
+    } else {
+      showGlassToast(
+        context,
+        'Kod $code telah disalin! Baucar aktif & sedia digunakan di troli atau checkout. 🎟️',
+      );
+      Navigator.pop(context, voucher);
     }
   }
 
@@ -597,7 +591,7 @@ class _VoucherScreenState extends State<VoucherScreen> {
             // Floating Top Bar inside Stack
             FloatingTopBar(
               isDark: isDark,
-              title: 'Baucar & Ganjaran',
+              title: widget.isPicker ? 'Pilih Baucar' : 'Baucar & Ganjaran',
             ),
           ],
         ),
@@ -1015,14 +1009,55 @@ class _VoucherScreenState extends State<VoucherScreen> {
                               ),
                             ),
                             const Spacer(),
-                            const Text(
-                              'Lihat Info >',
-                              style: TextStyle(
-                                color: AppTheme.primary,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
+                            if (widget.isPicker)
+                              GestureDetector(
+                                onTap: () => Navigator.pop(context, v),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primary,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Text(
+                                    'Guna',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              GestureDetector(
+                                onTap: () => _useVoucherNow(v),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primary.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Guna Sekarang',
+                                        style: TextStyle(
+                                          color: AppTheme.primary,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(width: 2),
+                                      HugeIcon(
+                                        icon: HugeIcons.strokeRoundedArrowRight01,
+                                        color: AppTheme.primary,
+                                        size: 11,
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       ],
