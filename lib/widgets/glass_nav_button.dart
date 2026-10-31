@@ -67,20 +67,7 @@ class GlassNavPill extends StatelessWidget {
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
-            children: [
-              for (int i = 0; i < items.length; i++) ...[
-                _buildItem(items[i]),
-                if (i < items.length - 1)
-                  Container(
-                    width: 1.0,
-                    height: 20,
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.12)
-                        : Colors.black.withValues(alpha: 0.08),
-                  ),
-              ],
-            ],
+            children: items.map(_buildItem).toList(),
           ),
         ),
       ),
