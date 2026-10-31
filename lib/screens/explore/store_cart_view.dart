@@ -351,26 +351,56 @@ class _StoreCartViewState extends State<StoreCartView> {
           ? '[PROMO ${_voucher!['code']} -RM${_discountAmount.toStringAsFixed(2)}] '
           : '';
 
-      final orderData = {
+      final String finalNotes = (tablePrefix +
+              (_isPreOrder ? '[PRE-ORDER] ' : '') +
+              voucherNote +
+              _notesController.text.trim())
+          .trim();
+
+      final baseOrderData = {
         'business_id': widget.shop['id'],
         'owner_user_id': user.id,
         'customer_name': customerName,
         'total': _total,
         'status': 'pending',
         'source': source,
-        'payment_method': 'cash',
-        'notes': (tablePrefix +
-                (_isPreOrder ? '[PRE-ORDER] ' : '') +
-                voucherNote +
-                _notesController.text.trim())
-            .trim(),
+        'notes': finalNotes,
       };
 
-      final orderRes = await Supabase.instance.client
-          .from('orders')
-          .insert(orderData)
-          .select('id')
-          .single();
+      Map<String, dynamic> orderRes;
+      try {
+        orderRes = await Supabase.instance.client
+            .from('orders')
+            .insert({
+              ...baseOrderData,
+              'payment_method': 'cash',
+            })
+            .select('id')
+            .single();
+      } catch (insertErr) {
+        debugPrint('[StoreCartView] Insert with payment_method failed ($insertErr), attempting fallback...');
+        try {
+          orderRes = await Supabase.instance.client
+              .from('orders')
+              .insert(baseOrderData)
+              .select('id')
+              .single();
+        } catch (sourceErr) {
+          // Fallback sekiranya DB check constraint hanya terima source 'online' atau 'pos'
+          if (sourceErr.toString().contains('source') || sourceErr.toString().contains('check constraint')) {
+            orderRes = await Supabase.instance.client
+                .from('orders')
+                .insert({
+                  ...baseOrderData,
+                  'source': 'online',
+                })
+                .select('id')
+                .single();
+          } else {
+            rethrow;
+          }
+        }
+      }
 
       final String orderId = orderRes['id'].toString();
 
