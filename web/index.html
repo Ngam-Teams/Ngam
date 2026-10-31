@@ -179,32 +179,7 @@
       0%, 100% { transform: scale(1); opacity: 0.95; }
       50% { transform: scale(1.04); opacity: 1; filter: drop-shadow(0 0 16px rgba(33, 150, 243, 0.45)); }
     }
-
-    /* PWA Standalone Mode: Minimalist compact logo without spinner */
-    body.is-standalone .splash-logo {
-      width: 52px;
-      height: 52px;
-      border-radius: 13px;
-      box-shadow: 0 4px 16px rgba(33, 150, 243, 0.2);
-      margin-bottom: 0;
-    }
-    body.is-standalone .splash-spinner {
-      display: none !important;
-    }
   </style>
-  <script>
-    (function() {
-      var isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                         window.navigator.standalone === true ||
-                         document.referrer.includes('android-app://');
-      if (isStandalone) {
-        document.documentElement.classList.add('is-standalone');
-        window.addEventListener('DOMContentLoaded', function() {
-          if (document.body) document.body.classList.add('is-standalone');
-        });
-      }
-    })();
-  </script>
 </head>
 <body style="background-color: #0A0A14;">
   <div id="ngam-splash">
