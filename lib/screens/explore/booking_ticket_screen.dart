@@ -875,101 +875,17 @@ Disahkan melalui aplikasi *Ngam*.
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF13171B) : const Color(0xFFE5ECF1),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 12.0),
-          child: Center(
-            child: GlassNavButton.close(
-              context: context,
-              isDark: isDark,
-              size: 40,
-              iconSize: 20,
-            ),
-          ),
-        ),
-        title: Text(
-          l10n.ticketOrderTitle,
-          style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 6.0),
-            child: Center(
-              child: GlassNavButton(
-                icon: HugeIcons.strokeRoundedShare01,
-                tooltip: 'Kongsi Resit',
-                isDark: isDark,
-                size: 40,
-                iconSize: 20,
-                onTap: _shareTicketToWhatsApp,
-              ),
-            ),
-          ),
-          PopupMenuButton<String>(
-            icon: HugeIcon(
-              icon: HugeIcons.strokeRoundedMoreHorizontal,
-              color: isDark ? Colors.white : Colors.black,
-              size: 22.0,
-            ),
-            color: isDark ? const Color(0xFF1E242B) : Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            onSelected: (value) {
-              if (value == 'cancel') {
-                _showCancellationModal();
-              } else if (value == 'dispute') {
-                _showDisputeModal();
-              } else if (value == 'share') {
-                _shareTicketToWhatsApp();
-              }
-            },
-            itemBuilder: (context) => [
-              if (_currentStatus != 'cancelled' && _currentStatus != 'completed' && _currentStatus != 'disputed')
-                const PopupMenuItem(
-                  value: 'cancel',
-                  child: Row(
-                    children: [
-                      HugeIcon(icon: HugeIcons.strokeRoundedCancel01, color: Colors.redAccent, size: 18),
-                      SizedBox(width: 10),
-                      Text('Batal Tempahan', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ),
-              if (_currentStatus != 'cancelled' && _currentStatus != 'disputed')
-                const PopupMenuItem(
-                  value: 'dispute',
-                  child: Row(
-                    children: [
-                      HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.orangeAccent, size: 18),
-                      SizedBox(width: 10),
-                      Text('Laporkan Isu / Pertikaian', style: TextStyle(fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ),
-              const PopupMenuItem(
-                value: 'share',
-                child: Row(
-                  children: [
-                    HugeIcon(icon: HugeIcons.strokeRoundedShare01, color: Colors.blueAccent, size: 18),
-                    SizedBox(width: 10),
-                    Text('Kongsi Slip Tempahan', style: TextStyle(fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      //  CHANGED: We now use a Column to separate the Scrollable Ticket from the Sticky Bottom Buttons
-      body: Column(
-        children: [
-          // --- SCROLLABLE TICKET AREA ---
-          Expanded(
-            child: SingleChildScrollView(
-              //  FIX: Added bottom: 40 padding so it doesn't get stuck behind buttons
-              padding: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 40),
+      body: SafeArea(
+        bottom: false,
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                // --- SCROLLABLE TICKET AREA ---
+                Expanded(
+                  child: SingleChildScrollView(
+                    //  FIX: Added bottom: 40 padding so it doesn't get stuck behind buttons
+                    padding: const EdgeInsets.only(left: 20, right: 20, top: 68, bottom: 40),
               physics: const BouncingScrollPhysics(),
               child: Column(
                 children: [
@@ -1393,6 +1309,82 @@ Disahkan melalui aplikasi *Ngam*.
             ),
           )
         ],
+      ),
+            FloatingTopBar(
+              isDark: isDark,
+              leading: GlassNavButton.close(
+                context: context,
+                isDark: isDark,
+                size: 42,
+                iconSize: 20,
+              ),
+              title: l10n.ticketOrderTitle,
+              actions: [
+                GlassNavButton(
+                  icon: HugeIcons.strokeRoundedShare01,
+                  tooltip: 'Kongsi Resit',
+                  isDark: isDark,
+                  size: 42,
+                  iconSize: 20,
+                  onTap: _shareTicketToWhatsApp,
+                ),
+                const SizedBox(width: 8),
+                PopupMenuButton<String>(
+                  icon: HugeIcon(
+                    icon: HugeIcons.strokeRoundedMoreHorizontal,
+                    color: isDark ? Colors.white : Colors.black,
+                    size: 22.0,
+                  ),
+                  color: isDark ? const Color(0xFF1E242B) : Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  onSelected: (value) {
+                    if (value == 'cancel') {
+                      _showCancellationModal();
+                    } else if (value == 'dispute') {
+                      _showDisputeModal();
+                    } else if (value == 'share') {
+                      _shareTicketToWhatsApp();
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    if (_currentStatus != 'cancelled' && _currentStatus != 'completed' && _currentStatus != 'disputed')
+                      const PopupMenuItem(
+                        value: 'cancel',
+                        child: Row(
+                          children: [
+                            HugeIcon(icon: HugeIcons.strokeRoundedCancel01, color: Colors.redAccent, size: 18),
+                            SizedBox(width: 10),
+                            Text('Batal Tempahan', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                    if (_currentStatus != 'cancelled' && _currentStatus != 'disputed')
+                      const PopupMenuItem(
+                        value: 'dispute',
+                        child: Row(
+                          children: [
+                            HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.orangeAccent, size: 18),
+                            SizedBox(width: 10),
+                            Text('Laporkan Isu / Pertikaian', style: TextStyle(fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                    const PopupMenuItem(
+                      value: 'share',
+                      child: Row(
+                        children: [
+                          HugeIcon(icon: HugeIcons.strokeRoundedShare01, color: Colors.blueAccent, size: 18),
+                          SizedBox(width: 10),
+                          Text('Kongsi Slip Tempahan', style: TextStyle(fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

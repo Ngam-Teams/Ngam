@@ -242,77 +242,13 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
     final isRunner = context.watch<AuthProvider>().isRunner;
 
     final bgColor = isDark ? const Color(0xFF0C0E17) : const Color(0xFFF8FAFC);
-    final textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
 
     return Scaffold(
       backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 12.0),
-          child: Center(
-            child: GlassNavButton.back(
-              context: context,
-              isDark: isDark,
-              size: 40,
-              iconSize: 20,
-            ),
-          ),
-        ),
-        title: Text(
-          "account.title".tr().isNotEmpty ? "account.title".tr() : "Butiran Akaun",
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 17,
-            letterSpacing: -0.2,
-            color: textPrimary,
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: TextButton.icon(
-              onPressed: _isLoading ? null : _saveChanges,
-              style: TextButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB).withValues(alpha: 0.15),
-                foregroundColor: const Color(0xFF38BDF8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(
-                    color: const Color(0xFF38BDF8).withValues(alpha: 0.35),
-                  ),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              ),
-              icon: _isLoading
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Color(0xFF38BDF8),
-                      ),
-                    )
-                  : const HugeIcon(
-                      icon: HugeIcons.strokeRoundedCheckmarkBadge01,
-                      color: Color(0xFF38BDF8),
-                      size: 16,
-                    ),
-              label: Text(
-                _isLoading ? "Menyimpan..." : "Simpan",
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF38BDF8),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: LayoutBuilder(
+      body: SafeArea(
+        child: Stack(
+          children: [
+            LayoutBuilder(
         builder: (context, constraints) {
           final isWide = constraints.maxWidth >= 900;
 
@@ -527,7 +463,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
             // Dual Column Responsive Tablet / Desktop View
             final leftWidth = (constraints.maxWidth * 0.35).clamp(320.0, 420.0);
             return SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+              padding: const EdgeInsets.fromLTRB(32, 68, 32, 24),
               physics: const BouncingScrollPhysics(),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -547,7 +483,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
 
           // Mobile View
           return SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: const EdgeInsets.fromLTRB(20, 68, 20, 16),
             physics: const BouncingScrollPhysics(),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -559,6 +495,24 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
             ),
           );
         },
+      ),
+            FloatingTopBar(
+              isDark: isDark,
+              title: "account.title".tr().isNotEmpty ? "account.title".tr() : "Butiran Akaun",
+              actions: [
+                GlassNavButton(
+                  icon: HugeIcons.strokeRoundedCheckmarkBadge01,
+                  iconColor: const Color(0xFF38BDF8),
+                  tooltip: _isLoading ? "Menyimpan..." : "Simpan",
+                  isDark: isDark,
+                  size: 42,
+                  iconSize: 20,
+                  onTap: _isLoading ? null : _saveChanges,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

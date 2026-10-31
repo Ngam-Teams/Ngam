@@ -56,53 +56,17 @@ class ShopDetailScreen extends StatelessWidget {
           // --- 2. MAIN SCROLLABLE CONTENT ---
           SafeArea(
             bottom: false,
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                SliverAppBar(
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  leading: Padding(
-                    padding: const EdgeInsets.only(left: 16.0),
-                    child: _buildGlassIconButton(HugeIcons.strokeRoundedArrowLeft01, context, isDark),
-                  ),
-                  actions: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 16.0),
-                      child: ValueListenableBuilder<List<Map<String, dynamic>>>(
-                        valueListenable: SavedService.savedShopsNotifier,
-                        builder: (context, _, __) {
-                          final String shopId = (shop['id'] ?? shop['shopId'] ?? '').toString();
-                          final bool isSaved = SavedService.isShopSaved(shopId);
-                          return _buildGlassIconButton(
-                            isSaved ? Icons.bookmark_rounded : HugeIcons.strokeRoundedBookmark02,
-                            context,
-                            isDark,
-                            iconColor: isSaved ? const Color(0xFFFBBF24) : null,
-                            onTap: () async {
-                              final nowSaved = await SavedService.toggleSaveShop(shop);
-                              if (context.mounted) {
-                                showGlassToast(
-                                  context,
-                                  nowSaved
-                                      ? 'Kedai disimpan ke koleksi anda'
-                                      : 'Kedai dikeluarkan dari simpanan',
-                                  icon: HugeIcons.strokeRoundedBookmark02,
-                                );
-                              }
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      top: MediaQuery.of(context).size.height * 0.15,
-                      left: 20, right: 20, bottom: 120, // Space for bottom button
-                    ),
+            child: Stack(
+              children: [
+                CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          top: MediaQuery.of(context).size.height * 0.15 + 56,
+                          left: 20, right: 20, bottom: 120, // Space for bottom button
+                        ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -175,6 +139,44 @@ class ShopDetailScreen extends StatelessWidget {
                           )
                       ],
                     ),
+                  ),
+                ),
+              ],
+            ),
+                Positioned(
+                  top: 12,
+                  left: 20,
+                  right: 20,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildGlassIconButton(HugeIcons.strokeRoundedArrowLeft01, context, isDark),
+                      ValueListenableBuilder<List<Map<String, dynamic>>>(
+                        valueListenable: SavedService.savedShopsNotifier,
+                        builder: (context, _, __) {
+                          final String shopId = (shop['id'] ?? shop['shopId'] ?? '').toString();
+                          final bool isSaved = SavedService.isShopSaved(shopId);
+                          return _buildGlassIconButton(
+                            isSaved ? Icons.bookmark_rounded : HugeIcons.strokeRoundedBookmark02,
+                            context,
+                            isDark,
+                            iconColor: isSaved ? const Color(0xFFFBBF24) : null,
+                            onTap: () async {
+                              final nowSaved = await SavedService.toggleSaveShop(shop);
+                              if (context.mounted) {
+                                showGlassToast(
+                                  context,
+                                  nowSaved
+                                      ? 'Kedai disimpan ke koleksi anda'
+                                      : 'Kedai dikeluarkan dari simpanan',
+                                  icon: HugeIcons.strokeRoundedBookmark02,
+                                );
+                              }
+                            },
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ),
               ],

@@ -1120,26 +1120,14 @@ class _BookingsViewState extends State<BookingsView> {
 
               SafeArea(
                 bottom: false,
-                child: SingleChildScrollView(
-                  //  RESTORED: Left and Right padding! The cards are no longer infinite width.
-                  padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 40),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Stack(
+                  children: [
+                    SingleChildScrollView(
+                      //  RESTORED: Left and Right padding! The cards are no longer infinite width.
+                      padding: const EdgeInsets.only(left: 20, right: 20, top: 76, bottom: 40),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildGlassIconBox(HugeIcons.strokeRoundedArrowLeft01, isDark, onTap: () => Navigator.pop(context)),
-                          Row(
-                            children: [
-                              _buildGlassIconBox(_providerSummaryIcon, isDark, onTap: () {}),
-                              const SizedBox(width: 12),
-                              _buildGlassBadge("82", isDark),
-                            ],
-                          )
-                        ],
-                      ),
-                      const SizedBox(height: 16),
 
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 300),
@@ -1235,6 +1223,26 @@ class _BookingsViewState extends State<BookingsView> {
                       ),
                     ],
                   ),
+                ),
+                    Positioned(
+                      top: 12,
+                      left: 20,
+                      right: 20,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildGlassIconBox(HugeIcons.strokeRoundedArrowLeft01, isDark, onTap: () => Navigator.pop(context)),
+                          Row(
+                            children: [
+                              _buildGlassIconBox(_providerSummaryIcon, isDark, onTap: () {}),
+                              const SizedBox(width: 12),
+                              _buildGlassBadge("82", isDark),
+                            ],
+                          )
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

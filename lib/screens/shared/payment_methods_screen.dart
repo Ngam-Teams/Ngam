@@ -658,45 +658,29 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text("wallet.title".tr(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 12.0),
-          child: Center(
-            child: GlassNavButton.back(
-              context: context,
-              isDark: Theme.of(context).brightness == Brightness.dark,
-              size: 40,
-              iconSize: 20,
-            ),
-          ),
-        ),
-      ),
-      body: Stack(
-        children: [
-          ValueListenableBuilder<List<Map<String, dynamic>>>(
-            valueListenable: PaymentData.savedPaymentMethods,
-            builder: (context, methods, child) {
+      body: SafeArea(
+        child: Stack(
+          children: [
+            ValueListenableBuilder<List<Map<String, dynamic>>>(
+              valueListenable: PaymentData.savedPaymentMethods,
+              builder: (context, methods, child) {
 
-              final cardMethods = methods.where((m) => m["type"] == "card").toList();
-              final bankMethods = methods.where((m) => m["type"] == "bank").toList();
-              final duitnowMethods = methods.where((m) => m["type"] == "duitnow_qr").toList();
+                final cardMethods = methods.where((m) => m["type"] == "card").toList();
+                final bankMethods = methods.where((m) => m["type"] == "bank").toList();
+                final duitnowMethods = methods.where((m) => m["type"] == "duitnow_qr").toList();
 
-              // ðŸŸ¢ TAMBAH TINGGI (DYNAMIC HEIGHT) DEKAT SINI:
-              double extraHeight = 10; // Padding untuk satu kad
-              if (cardMethods.length == 2) extraHeight = 20; // Kasi sama offset macam kad nombor 2
-              if (cardMethods.length >= 3) extraHeight = 30 ; // Kasi sama offset macam kad nombor 3
-              final stackHeight = cardHeight + extraHeight;
+                // ðŸŸ¢ TAMBAH TINGGI (DYNAMIC HEIGHT) DEKAT SINI:
+                double extraHeight = 10; // Padding untuk satu kad
+                if (cardMethods.length == 2) extraHeight = 20; // Kasi sama offset macam kad nombor 2
+                if (cardMethods.length >= 3) extraHeight = 30 ; // Kasi sama offset macam kad nombor 3
+                final stackHeight = cardHeight + extraHeight;
 
-              return Stack(
-                children: [
-                  Positioned.fill(
-                    child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 120),
+                return Stack(
+                  children: [
+                    Positioned.fill(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.only(left: 16, right: 16, top: 68, bottom: 120),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -744,7 +728,12 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
               );
             },
           ),
+          FloatingTopBar(
+            isDark: isDark,
+            title: "wallet.title".tr(),
+          ),
         ],
+        ),
       ),
     );
   }

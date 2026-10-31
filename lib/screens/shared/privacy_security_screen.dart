@@ -271,27 +271,12 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text("privacy.title".tr(),
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, fontFamily: 'Inter')),
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 12.0),
-          child: Center(
-            child: GlassNavButton.back(
-              context: context,
-              isDark: isDark,
-              size: 40,
-              iconSize: 20,
-            ),
-          ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.all(24),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(24, 68, 24, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -415,7 +400,14 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
             ),
           ],
         ),
-      )
+      ),
+            FloatingTopBar(
+              isDark: isDark,
+              title: "privacy.title".tr(),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

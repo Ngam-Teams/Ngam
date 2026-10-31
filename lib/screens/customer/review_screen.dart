@@ -104,27 +104,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
         'Tempahan Selesai';
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 12.0),
-          child: Center(
-            child: GlassNavButton.back(
-              context: context,
-              isDark: isDark,
-              size: 40,
-              iconSize: 20,
-            ),
-          ),
-        ),
-        title: Text(
-          'Ulasan & Penarafan',
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 68, 24, 24),
         child: Column(
           children: [
             const SizedBox(height: 10),
@@ -301,6 +285,13 @@ class _ReviewScreenState extends State<ReviewScreen> {
                         ),
                       ),
               ),
+            ),
+          ],
+        ),
+      ),
+            FloatingTopBar(
+              isDark: isDark,
+              title: 'Ulasan & Penarafan',
             ),
           ],
         ),

@@ -125,66 +125,48 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 12.0),
-          child: Center(
-            child: GlassNavButton.back(
-              context: context,
-              isDark: isDark,
-              size: 40,
-              iconSize: 20,
-            ),
-          ),
-        ),
-        title: Text(
-          'Kad Cop Digital Saya',
-          style: GoogleFonts.outfit(
-            color: isDark ? Colors.white : Colors.black87,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12.0),
-            child: Center(
-              child: GlassNavButton(
-                icon: HugeIcons.strokeRoundedQrCode,
-                iconColor: const Color(0xFF42A5F5),
-                tooltip: 'Tunjuk QR Saya',
-                isDark: isDark,
-                size: 40,
-                iconSize: 22,
-                onTap: () => _showCustomerQrSheet(phone, name),
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      body: SafeArea(
+        child: Stack(
           children: [
-            // Top ID Card Banner
-            _buildPassIdBanner(phone, name),
-            const SizedBox(height: 20),
+            SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 68, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top ID Card Banner
+                  _buildPassIdBanner(phone, name),
+                  const SizedBox(height: 20),
 
-            Text(
-              'Kad Cop Aktif (${_myCards.length})',
-              style: GoogleFonts.outfit(
-                color: isDark ? Colors.white : Colors.black87,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+                  Text(
+                    'Kad Cop Aktif (${_myCards.length})',
+                    style: GoogleFonts.outfit(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  ..._myCards.map((card) => _buildStampCardItem(card, isDark)),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
 
-            ..._myCards.map((card) => _buildStampCardItem(card, isDark)),
+            FloatingTopBar(
+              isDark: isDark,
+              title: 'Kad Cop Digital Saya',
+              actions: [
+                GlassNavButton(
+                  icon: HugeIcons.strokeRoundedQrCode,
+                  iconColor: const Color(0xFF42A5F5),
+                  tooltip: 'Tunjuk QR Saya',
+                  isDark: isDark,
+                  size: 42,
+                  iconSize: 22,
+                  onTap: () => _showCustomerQrSheet(phone, name),
+                ),
+              ],
+            ),
           ],
         ),
       ),

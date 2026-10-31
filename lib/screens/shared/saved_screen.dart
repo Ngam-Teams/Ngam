@@ -1,6 +1,4 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -8,6 +6,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../services/saved_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/glass_toast.dart';
+import '../../widgets/glass_nav_button.dart';
 import '../explore/business_store_view.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
@@ -104,104 +103,77 @@ class _SavedScreenState extends State<SavedScreen> {
       body: Container(
         decoration: BoxDecoration(gradient: bgGradient),
         child: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              // ─── APP BAR ──────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  children: [
-                    _buildGlassIconButton(
-                      icon: HugeIcons.strokeRoundedArrowLeft01,
-                      isDark: isDark,
-                      onTap: () => Navigator.pop(context),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'profile.saved'.tr(),
-                            style: GoogleFonts.outfit(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : Colors.black87,
-                            ),
-                          ),
-                          Text(
-                            'Koleksi rujukan & kedai pilihan anda',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDark ? Colors.white54 : Colors.black54,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              Column(
+                children: [
+                  const SizedBox(height: 68),
 
-              const SizedBox(height: 8),
-
-              // ─── 2 PILL TABS (KEDAI vs HANTARAN) ──────────────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: ValueListenableBuilder<List<Map<String, dynamic>>>(
-                  valueListenable: SavedService.savedShopsNotifier,
-                  builder: (context, savedShops, _) {
-                    return ValueListenableBuilder<List<Map<String, dynamic>>>(
-                      valueListenable: SavedService.savedPostsNotifier,
-                      builder: (context, savedPosts, _) {
-                        return Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.06)
-                                : Colors.black.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.1)
-                                  : Colors.black.withValues(alpha: 0.05),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              _buildPillTab(
-                                index: 0,
-                                label: 'profile.saved_shops'.tr(),
-                                icon: HugeIcons.strokeRoundedStore01,
-                                count: savedShops.length,
-                                isDark: isDark,
+                  // â”€â”€â”€ 2 PILL TABS (KEDAI vs HANTARAN) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: ValueListenableBuilder<List<Map<String, dynamic>>>(
+                      valueListenable: SavedService.savedShopsNotifier,
+                      builder: (context, savedShops, _) {
+                        return ValueListenableBuilder<List<Map<String, dynamic>>>(
+                          valueListenable: SavedService.savedPostsNotifier,
+                          builder: (context, savedPosts, _) {
+                            return Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.06)
+                                    : Colors.black.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.1)
+                                      : Colors.black.withValues(alpha: 0.05),
+                                ),
                               ),
-                              _buildPillTab(
-                                index: 1,
-                                label: 'profile.saved_posts'.tr(),
-                                icon: HugeIcons.strokeRoundedBookmark02,
-                                count: savedPosts.length,
-                                isDark: isDark,
+                              child: Row(
+                                children: [
+                                  _buildPillTab(
+                                    index: 0,
+                                    label: 'profile.saved_shops'.tr(),
+                                    icon: HugeIcons.strokeRoundedStore01,
+                                    count: savedShops.length,
+                                    isDark: isDark,
+                                  ),
+                                  _buildPillTab(
+                                    index: 1,
+                                    label: 'profile.saved_posts'.tr(),
+                                    icon: HugeIcons.strokeRoundedBookmark02,
+                                    count: savedPosts.length,
+                                    isDark: isDark,
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            );
+                          },
                         );
                       },
-                    );
-                  },
-                ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // â”€â”€â”€ TAB CONTENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      child: _selectedTab == 0
+                          ? _buildShopsTab(isDark)
+                          : _buildPostsTab(isDark),
+                    ),
+                  ),
+                ],
               ),
 
-              const SizedBox(height: 16),
-
-              // ─── TAB CONTENT ──────────────────────────────────
-              Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  child: _selectedTab == 0
-                      ? _buildShopsTab(isDark)
-                      : _buildPostsTab(isDark),
-                ),
+              // â”€â”€â”€ FLOATING TOP BAR IN STACK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              FloatingTopBar(
+                isDark: isDark,
+                title: 'profile.saved'.tr(),
               ),
             ],
           ),
@@ -210,7 +182,7 @@ class _SavedScreenState extends State<SavedScreen> {
     );
   }
 
-  // ─── WIDGET: PILL TAB ITEM ─────────────────────────────────────
+  // â”€â”€â”€ WIDGET: PILL TAB ITEM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildPillTab({
     required int index,
     required String label,
@@ -291,7 +263,7 @@ class _SavedScreenState extends State<SavedScreen> {
     );
   }
 
-  // ─── TAB 1: KEDAI DISIMPAN ─────────────────────────────────────
+  // â”€â”€â”€ TAB 1: KEDAI DISIMPAN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildShopsTab(bool isDark) {
     return ValueListenableBuilder<List<Map<String, dynamic>>>(
       valueListenable: SavedService.savedShopsNotifier,
@@ -438,7 +410,7 @@ class _SavedScreenState extends State<SavedScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text('•', style: TextStyle(color: isDark ? Colors.white24 : Colors.black26)),
+                    Text('â€¢', style: TextStyle(color: isDark ? Colors.white24 : Colors.black26)),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -522,7 +494,7 @@ class _SavedScreenState extends State<SavedScreen> {
     );
   }
 
-  // ─── TAB 2: HANTARAN DISIMPAN ──────────────────────────────────
+  // â”€â”€â”€ TAB 2: HANTARAN DISIMPAN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildPostsTab(bool isDark) {
     return ValueListenableBuilder<List<Map<String, dynamic>>>(
       valueListenable: SavedService.savedPostsNotifier,
@@ -781,7 +753,7 @@ class _SavedScreenState extends State<SavedScreen> {
     );
   }
 
-  // ─── EMPTY STATE WIDGET ────────────────────────────────────────  // ─── EMPTY STATE WIDGET ────────────────────────────────────────
+  // â”€â”€â”€ EMPTY STATE WIDGET â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€  // â”€â”€â”€ EMPTY STATE WIDGET â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildEmptyState({
     required dynamic icon,
     required String title,
@@ -833,59 +805,10 @@ class _SavedScreenState extends State<SavedScreen> {
       ),
     );
   }
-
-  Widget _buildGlassIconButton({
-    required dynamic icon,
-    required bool isDark,
-    required VoidCallback onTap,
-  }) {
-    return ClipOval(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.08)
-                : Colors.white.withValues(alpha: 0.70),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.15)
-                  : Colors.black.withValues(alpha: 0.08),
-              width: 1.0,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onTap,
-              customBorder: const CircleBorder(),
-              child: Center(
-                child: HugeIcon(
-                  icon: icon,
-                  color: isDark ? Colors.white : const Color(0xFF1E293B),
-                  size: 20,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 
-// ─── WIDGET: SMART VIDEO THUMBNAIL (FIRST FRAME / STATIC COVER / AESTHETIC FALLBACK) ────
+// â”€â”€â”€ WIDGET: SMART VIDEO THUMBNAIL (FIRST FRAME / STATIC COVER / AESTHETIC FALLBACK) â”€â”€â”€â”€
 class _SavedPostThumbnail extends StatefulWidget {
   final String mediaUrl;
   final String coverUrl;
@@ -1046,7 +969,7 @@ class _SavedPostThumbnailState extends State<_SavedPostThumbnail> {
   }
 }
 
-// ─── WIDGET: INTERACTIVE MODAL VIDEO PLAYER (WATCH SAVED VIDEO) ─────────
+// â”€â”€â”€ WIDGET: INTERACTIVE MODAL VIDEO PLAYER (WATCH SAVED VIDEO) â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _SavedPostViewerModal extends StatefulWidget {
   final Map<String, dynamic> post;
   final bool isDark;

@@ -6,6 +6,7 @@ import 'package:ngam/widgets/glass_box.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../models/product_model.dart';
+import '../../widgets/glass_nav_button.dart';
 
 // ============================================================
 // BusinessProductsView — Full product search & browse page
@@ -361,69 +362,12 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
       resizeToAvoidBottomInset: false,
       body: SizedBox.expand(
         child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Stack(
             children: [
-              const SizedBox(height: 16),
-
-              // ── APP BAR ─────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: _liquidGlassBox(
-                        isDark: isDark,
-                        radius: 100,
-                        child: SizedBox(
-                          width: 44,
-                          height: 44,
-                          child: Center(
-                            child: HugeIcon(
-                              icon: HugeIcons.strokeRoundedArrowLeft01,
-                              color: isDark
-                                  ? Colors.white
-                                  : const Color(0xFF1C1C1E),
-                              size: 22,
-                              strokeWidth: 2.0,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Text(
-                      widget.shopName,
-                      style: TextStyle(
-                        color: textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    _liquidGlassBox(
-                      isDark: isDark,
-                      radius: 100,
-                      child: SizedBox(
-                        width: 44,
-                        height: 44,
-                        child: Center(
-                          child: HugeIcon(
-                            icon: HugeIcons.strokeRoundedShoppingBag01,
-                            color: isDark
-                                ? Colors.white
-                                : const Color(0xFF1C1C1E),
-                            size: 22,
-                            strokeWidth: 2.0,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 68),
 
               // ── SEARCH BAR ──────────────────────────────────────
               Padding(
@@ -820,6 +764,21 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
                           },
                         ),
                       ),
+              ),
+                ],
+              ),
+              FloatingTopBar(
+                isDark: isDark,
+                title: widget.shopName,
+                actions: [
+                  GlassNavButton(
+                    icon: HugeIcons.strokeRoundedShoppingBag01,
+                    isDark: isDark,
+                    size: 42,
+                    iconSize: 20,
+                    onTap: () {},
+                  ),
+                ],
               ),
             ],
           ),

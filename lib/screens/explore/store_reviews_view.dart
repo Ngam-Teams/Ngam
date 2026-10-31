@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:ngam/widgets/glass_box.dart';
 import '../../widgets/glass_toast.dart';
+import '../../widgets/glass_nav_button.dart';
 
 // ============================================================
 // StoreReviewsView — Store Reviews, Ratings Breakdown & Feedback
@@ -261,81 +262,12 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // Top Bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: _liquidGlassBox(
-                      isDark: isDark,
-                      radius: 100,
-                      child: SizedBox(
-                        width: 44,
-                        height: 44,
-                        child: Center(
-                          child: HugeIcon(
-                            icon: HugeIcons.strokeRoundedArrowLeft01,
-                            color: textPrimary,
-                            size: 22,
-                            strokeWidth: 2.0,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Reviews & Ratings',
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          shopName,
-                          style: TextStyle(
-                            color: textSecondary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: _openWriteReviewModal,
-                    child: _liquidGlassBox(
-                      isDark: isDark,
-                      radius: 100,
-                      child: const SizedBox(
-                        width: 44,
-                        height: 44,
-                        child: Center(
-                          child: HugeIcon(icon: HugeIcons.strokeRoundedEdit02, color: Colors.blue, size: 20),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
             // Scrollable list
-            Expanded(
-              child: ListView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ListView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 68, 20, 12),
                 children: [
                   // Overall Rating Box
                   _liquidGlassBox(
@@ -549,6 +481,20 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
                   const SizedBox(height: 30),
                 ],
               ),
+            FloatingTopBar(
+              isDark: isDark,
+              title: 'Reviews & Ratings',
+              subtitle: shopName,
+              actions: [
+                GlassNavButton(
+                  icon: HugeIcons.strokeRoundedEdit02,
+                  iconColor: Colors.blue,
+                  isDark: isDark,
+                  size: 42,
+                  iconSize: 20,
+                  onTap: _openWriteReviewModal,
+                ),
+              ],
             ),
           ],
         ),

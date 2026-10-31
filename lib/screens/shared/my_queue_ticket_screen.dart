@@ -481,65 +481,46 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 12.0),
-          child: Center(
-            child: GlassNavButton.back(
-              context: context,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 56),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _activeTicket == null || _activeTicket!['status'] == 'cancelled'
+                      ? _buildEmptyState(isDark)
+                      : _buildTicketContent(isDark),
+            ),
+
+            FloatingTopBar(
               isDark: isDark,
-              size: 40,
-              iconSize: 20,
+              title: 'Tiket Giliran Walk-In',
+              actions: [
+                GlassNavButton(
+                  icon: HugeIcons.strokeRoundedQrCode,
+                  iconColor: const Color(0xFF42A5F5),
+                  tooltip: 'Imbas QR Giliran',
+                  isDark: isDark,
+                  size: 40,
+                  iconSize: 20,
+                  onTap: _scanQueueQr,
+                ),
+                const SizedBox(width: 8),
+                GlassNavButton(
+                  icon: HugeIcons.strokeRoundedRefresh,
+                  iconColor: const Color(0xFF42A5F5),
+                  tooltip: 'Segarkan Status',
+                  isDark: isDark,
+                  size: 40,
+                  iconSize: 20,
+                  onTap: () => _loadCustomerTicket(),
+                ),
+              ],
             ),
-          ),
+          ],
         ),
-        title: Text(
-          'Tiket Giliran Walk-In',
-          style: GoogleFonts.outfit(
-            color: isDark ? Colors.white : Colors.black87,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 6.0),
-            child: Center(
-              child: GlassNavButton(
-                icon: HugeIcons.strokeRoundedQrCode,
-                iconColor: const Color(0xFF42A5F5),
-                tooltip: 'Imbas QR Giliran',
-                isDark: isDark,
-                size: 38,
-                iconSize: 20,
-                onTap: _scanQueueQr,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12.0),
-            child: Center(
-              child: GlassNavButton(
-                icon: HugeIcons.strokeRoundedRefresh,
-                iconColor: const Color(0xFF42A5F5),
-                tooltip: 'Segarkan Status',
-                isDark: isDark,
-                size: 38,
-                iconSize: 20,
-                onTap: () => _loadCustomerTicket(),
-              ),
-            ),
-          ),
-        ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _activeTicket == null || _activeTicket!['status'] == 'cancelled'
-              ? _buildEmptyState(isDark)
-              : _buildTicketContent(isDark),
     );
   }
 

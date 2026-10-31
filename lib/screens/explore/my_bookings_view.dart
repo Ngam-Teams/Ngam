@@ -37,37 +37,11 @@ class _MyBookingsViewState extends State<MyBookingsView> {
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: Navigator.canPop(context)
-            ? Padding(
-                padding: const EdgeInsets.only(left: 12.0),
-                child: Center(
-                  child: GlassNavButton.back(
-                    context: context,
-                    isDark: isDark,
-                    size: 40,
-                    iconSize: 20,
-                  ),
-                ),
-              )
-            : null,
-        title: Text(
-          loc?.myBarbrTitle ?? "My Bookings",
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w900,
-            color: isDark ? Colors.white : const Color(0xFF0F172A),
-          ),
-        ),
-        centerTitle: false,
-      ),
       body: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 68, 20, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -228,6 +202,20 @@ class _MyBookingsViewState extends State<MyBookingsView> {
               ),
             ],
           ),
+        ),
+            FloatingTopBar(
+              isDark: isDark,
+              leading: Navigator.canPop(context)
+                  ? GlassNavButton.back(
+                      context: context,
+                      isDark: isDark,
+                      size: 42,
+                      iconSize: 20,
+                    )
+                  : const SizedBox(width: 42, height: 42),
+              title: loc?.myBarbrTitle ?? "My Bookings",
+            ),
+          ],
         ),
       ),
     );

@@ -171,24 +171,6 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       floatingActionButton: _buildAddButton(context, isDark),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text("wallet.title".tr(), style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 12.0),
-          child: Center(
-            child: GlassNavButton.back(
-              context: context,
-              isDark: isDark,
-              size: 40,
-              iconSize: 20,
-            ),
-          ),
-        ),
-      ),
       body: Stack(
         children: [
           // Orbs Bercahaya kat Background
@@ -221,14 +203,14 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 final isNgamPayActive = currentMethod["id"] == "ngam_pay";
 
                 final safeHeight = MediaQuery.of(context).size.height - MediaQuery.of(context).padding.top - MediaQuery.of(context).padding.bottom;
-                final contentHeight = 20 + stackHeight + (virtualCards.length > 1 ? 44 : 24) + 60 + 70; // padding atas + stack + hint + butang-butang + gap kasi besar
+                final contentHeight = 68 + stackHeight + (virtualCards.length > 1 ? 44 : 24) + 60 + 70; // padding atas + stack + hint + butang-butang + gap kasi besar
                 final drawerSize = (1.0 - (contentHeight / safeHeight)).clamp(0.2, 0.85);
 
                 return Stack(
                   children: [
                     Column(
                       children: [
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 68),
                         // TIMBUNAN KAD (STACK)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 0),
@@ -269,6 +251,11 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                       builder: (context, scrollController) {
                         return _buildTransactionsDrawer(isDark, scrollController);
                       }
+                    ),
+
+                    FloatingTopBar(
+                      isDark: isDark,
+                      title: "wallet.title".tr(),
                     ),
                   ],
                 );

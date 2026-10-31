@@ -454,175 +454,150 @@ class _VoucherScreenState extends State<VoucherScreen> {
     return Scaffold(
       backgroundColor: bgColor,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // Top App Bar with standardized GlassNavButton
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  GlassNavButton.back(
-                    context: context,
-                    isDark: isDark,
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+            Column(
+              children: [
+                const SizedBox(height: 68),
+                // Claim Voucher Code Box
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: cardBg,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
                       children: [
-                        Text(
-                          'Baucar & Ganjaran',
-                          style: GoogleFonts.outfit(
-                            color: textPrimary,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                        const SizedBox(width: 12),
+                        const HugeIcon(
+                          icon: HugeIcons.strokeRoundedDiscount01,
+                          color: AppTheme.primary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: _claimCodeController,
+                            textCapitalization: TextCapitalization.characters,
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'Masukkan kod baucar (cth: NGAMBARU)',
+                              hintStyle: TextStyle(
+                                color: textSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.normal,
+                                letterSpacing: 0,
+                              ),
+                              border: InputBorder.none,
+                              isDense: true,
+                            ),
                           ),
                         ),
-                        Text(
-                          'Simpan kod promosi & tebus diskaun eksklusif',
-                          style: TextStyle(
-                            color: textSecondary,
-                            fontSize: 11,
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                           ),
+                          onPressed: _isClaiming ? null : _claimCode,
+                          child: _isClaiming
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  'Simpan',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            // Claim Voucher Code Box
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: cardBg,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
                 ),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 12),
-                    const HugeIcon(
-                      icon: HugeIcons.strokeRoundedDiscount01,
-                      color: AppTheme.primary,
-                      size: 20,
+
+                const SizedBox(height: 12),
+
+                // Tab Selector (Baucar Saya vs Teroka Baucar)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF141424) : Colors.black.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(18),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: _claimCodeController,
-                        textCapitalization: TextCapitalization.characters,
-                        style: TextStyle(
-                          color: textPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: 'Masukkan kod baucar (cth: NGAMBARU)',
-                          hintStyle: TextStyle(
-                            color: textSecondary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.normal,
-                            letterSpacing: 0,
-                          ),
-                          border: InputBorder.none,
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                      ),
-                      onPressed: _isClaiming ? null : _claimCode,
-                      child: _isClaiming
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : const Text(
-                              'Simpan',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
+                    child: ValueListenableBuilder<List<Map<String, dynamic>>>(
+                      valueListenable: VoucherService.savedVouchersNotifier,
+                      builder: (context, savedVouchers, _) {
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: _buildTabItem(
+                                index: 0,
+                                label: 'Baucar Saya',
+                                icon: HugeIcons.strokeRoundedBookmark02,
+                                count: savedVouchers.length,
+                                isDark: isDark,
                               ),
                             ),
+                            Expanded(
+                              child: _buildTabItem(
+                                index: 1,
+                                label: 'Tawaran Hebat',
+                                icon: HugeIcons.strokeRoundedFire,
+                                isDark: isDark,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
-                  ],
+                  ),
                 ),
-              ),
+
+                const SizedBox(height: 12),
+
+                // Tab Content
+                Expanded(
+                  child: _selectedTab == 0
+                      ? _buildSavedVouchersList(isDark, cardBg, textPrimary, textSecondary)
+                      : _buildExploreVouchersList(isDark, cardBg, textPrimary, textSecondary),
+                ),
+              ],
             ),
 
-            const SizedBox(height: 12),
-
-            // Tab Selector (Baucar Saya vs Teroka Baucar)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF141424) : Colors.black.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: ValueListenableBuilder<List<Map<String, dynamic>>>(
-                  valueListenable: VoucherService.savedVouchersNotifier,
-                  builder: (context, savedVouchers, _) {
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: _buildTabItem(
-                            index: 0,
-                            label: 'Baucar Saya',
-                            icon: HugeIcons.strokeRoundedBookmark02,
-                            count: savedVouchers.length,
-                            isDark: isDark,
-                          ),
-                        ),
-                        Expanded(
-                          child: _buildTabItem(
-                            index: 1,
-                            label: 'Tawaran Hebat',
-                            icon: HugeIcons.strokeRoundedFire,
-                            isDark: isDark,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Tab Content
-            Expanded(
-              child: _selectedTab == 0
-                  ? _buildSavedVouchersList(isDark, cardBg, textPrimary, textSecondary)
-                  : _buildExploreVouchersList(isDark, cardBg, textPrimary, textSecondary),
+            // Floating Top Bar inside Stack
+            FloatingTopBar(
+              isDark: isDark,
+              title: 'Baucar & Ganjaran',
             ),
           ],
         ),

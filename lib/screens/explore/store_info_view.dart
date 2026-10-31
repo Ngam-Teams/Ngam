@@ -4,6 +4,7 @@ import 'package:ngam/widgets/glass_box.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../widgets/glass_toast.dart';
+import '../../widgets/glass_nav_button.dart';
 
 // ============================================================
 // StoreInfoView — Store Information, Realtime 7-Day Hours & Holiday Closures
@@ -184,71 +185,16 @@ class _StoreInfoViewState extends State<StoreInfoView> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // Top Bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: _liquidGlassBox(
-                      isDark: isDark,
-                      radius: 100,
-                      child: SizedBox(
-                        width: 44,
-                        height: 44,
-                        child: Center(
-                          child: HugeIcon(
-                            icon: HugeIcons.strokeRoundedArrowLeft01,
-                            color: textPrimary,
-                            size: 22,
-                            strokeWidth: 2.0,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Store Information',
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          shopName,
-                          style: TextStyle(
-                            color: textSecondary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
             // Main Content
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _fetchLiveOperatingHours,
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics(),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            RefreshIndicator(
+              onRefresh: _fetchLiveOperatingHours,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                padding: const EdgeInsets.fromLTRB(20, 68, 20, 12),
                   children: [
                   // Store Hero Card
                   _liquidGlassBox(
@@ -721,7 +667,11 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                 ],
               ),
             ),
-          ),
+            FloatingTopBar(
+              isDark: isDark,
+              title: 'Store Information',
+              subtitle: shopName,
+            ),
           ],
         ),
       ),

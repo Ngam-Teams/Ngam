@@ -4,6 +4,7 @@ import 'package:ngam/widgets/glass_box.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/product_model.dart';
 import '../../widgets/glass_toast.dart';
+import '../../widgets/glass_nav_button.dart';
 import '../../widgets/customer_payment_modal.dart';
 
 // ============================================================
@@ -435,84 +436,14 @@ class _StoreCartViewState extends State<StoreCartView> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // ── Top Header ──────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: _liquidGlassBox(
-                      isDark: isDark,
-                      radius: 100,
-                      child: SizedBox(
-                        width: 44,
-                        height: 44,
-                        child: Center(
-                          child: HugeIcon(
-                            icon: HugeIcons.strokeRoundedArrowLeft01,
-                            color: textPrimary,
-                            size: 22,
-                            strokeWidth: 2.0,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Your Cart',
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          widget.shop['name'] ?? 'Store',
-                          style: TextStyle(
-                            color: textSecondary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (_items.isNotEmpty)
-                    GestureDetector(
-                      onTap: () {
-                        setState(() => _items.clear());
-                        widget.onClearCart?.call();
-                      },
-                      child: _liquidGlassBox(
-                        isDark: isDark,
-                        radius: 100,
-                        child: const SizedBox(
-                          width: 44,
-                          height: 44,
-                          child: Center(
-                            child: HugeIcon(icon: HugeIcons.strokeRoundedDelete02, color: Colors.redAccent, size: 22),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-
-            // ── Body ──────────────────────────────────────────────
-            Expanded(
-              child: _items.isEmpty
-                  ? Center(
+            Column(
+              children: [
+                // ── Body ──────────────────────────────────────────────
+                Expanded(
+                  child: _items.isEmpty
+                      ? Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -560,7 +491,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                     )
                   : ListView(
                       physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      padding: const EdgeInsets.fromLTRB(20, 68, 20, 12),
                       children: [
                         if (!widget.isStoreOpen) ...[
                           _buildClosedStoreBanner(isDark, textPrimary, textSecondary),
@@ -934,6 +865,28 @@ class _StoreCartViewState extends State<StoreCartView> {
                   ),
                 ),
               ),
+          ],
+        ),
+            FloatingTopBar(
+              isDark: isDark,
+              title: 'Your Cart',
+              subtitle: widget.shop['name'] ?? 'Store',
+              actions: _items.isNotEmpty
+                  ? [
+                      GlassNavButton(
+                        icon: HugeIcons.strokeRoundedDelete02,
+                        iconColor: Colors.redAccent,
+                        isDark: isDark,
+                        size: 42,
+                        iconSize: 20,
+                        onTap: () {
+                          setState(() => _items.clear());
+                          widget.onClearCart?.call();
+                        },
+                      ),
+                    ]
+                  : null,
+            ),
           ],
         ),
       ),
