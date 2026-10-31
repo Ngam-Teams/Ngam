@@ -134,7 +134,7 @@
   <link rel="manifest" href="manifest.json">
   <style>
     html, body {
-      background-color: #0A0A14;
+      background-color: #000000;
       margin: 0;
       padding: 0;
       overflow: hidden;
@@ -150,7 +150,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background-color: #0A0A14;
+      background-color: #000000;
       z-index: 99999;
       transition: opacity 0.35s ease-out;
       user-select: none;
@@ -179,11 +179,30 @@
       0%, 100% { transform: scale(1); opacity: 0.95; }
       50% { transform: scale(1.04); opacity: 1; filter: drop-shadow(0 0 16px rgba(33, 150, 243, 0.45)); }
     }
+      /* Sembunyikan #ngam-splash jika dibuka sebagai PWA Standalone di Android/iOS */
+    /* Chrome WebAPK sudah ada native OS splash screen sendiri, elak duplicate splash */
+    @media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
+      #ngam-splash {
+        display: none !important;
+      }
+    }
   </style>
+  <script>
+    (function() {
+      var isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                         window.navigator.standalone === true ||
+                         document.referrer.includes('android-app://');
+      if (isStandalone) {
+        var style = document.createElement('style');
+        style.textContent = '#ngam-splash { display: none !important; }';
+        document.head.appendChild(style);
+      }
+    })();
+  </script>
 </head>
-<body style="background-color: #0A0A14;">
+<body style="background-color: #000000;">
   <div id="ngam-splash">
-    <img src="icons/Icon-192.png" alt="Ngam" class="splash-logo">
+    <img src="icons/splash-logo.png" alt="Ngam" class="splash-logo">
     <div class="splash-spinner"></div>
   </div>
   <script>
