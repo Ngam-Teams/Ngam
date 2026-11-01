@@ -24,6 +24,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/explore/store_route_loader.dart';
 import 'screens/shared/my_queue_ticket_screen.dart';
 import 'screens/customer/post_route_loader.dart';
+import 'screens/receipt/payment_result_screen.dart';
 import 'core/router/url_strategy.dart';
 
 import 'widgets/app_lock_wrapper.dart';
@@ -207,6 +208,22 @@ Route<dynamic>? _generateRoute(RouteSettings settings) {
                   return MaterialPageRoute(settings: settings, builder: (_) => const ProfileScreen());
               }
 
+              // 0.1 Payment Receipt / Gateway Redirect: /receipt/:status (e.g. /receipt/success, /receipt/failed, /receipt/cancel)
+              if (segments.isNotEmpty && segments.first == 'receipt') {
+                final status = segments.length > 1 ? segments[1] : 'success';
+                final orderId = uri.queryParameters['order_id'] ??
+                    uri.queryParameters['reference'] ??
+                    uri.queryParameters['id'] ??
+                    '';
+                return MaterialPageRoute(
+                  settings: settings,
+                  builder: (_) => PaymentResultScreen(
+                    status: status,
+                    orderId: orderId,
+                  ),
+                );
+              }
+
               // Deep Link Custom Scheme: ngam://reset-password
               if (uri.scheme == 'ngam' && uri.host == 'reset-password') {
                 return PageRouteBuilder(
@@ -295,7 +312,7 @@ Route<dynamic>? _generateRoute(RouteSettings settings) {
                 'customer-home', 'review', 'profile', 'explore', 'bookings',
                 'cart', 'chat', 'wallet', 'orders', 'notifications', 'search',
                 'privacy', 'terms', 'support', 'about', 'feed', 'api', 'assets',
-                'p', 'post'
+                'p', 'post', 'receipt', 'payment'
               };
               if (segments.isNotEmpty && !reservedRoutes.contains(segments.first.toLowerCase())) {
                 final rawHandle = Uri.decodeComponent(segments.first);

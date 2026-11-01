@@ -83,9 +83,21 @@ serve(async (req: Request) => {
           ],
         },
         success_callback: webhookCallbackUrl,
-        success_redirect: payload.success_redirect || "https://ngam.dev/receipt/success",
-        failure_redirect: payload.failure_redirect || "https://ngam.dev/receipt/failed",
-        cancel_redirect: payload.cancel_redirect || "https://ngam.dev/receipt/cancel",
+        success_redirect:
+          payload.success_redirect ||
+          (reference
+            ? `https://ngam.dev/receipt/success?order_id=${encodeURIComponent(reference)}`
+            : "https://ngam.dev/receipt/success"),
+        failure_redirect:
+          payload.failure_redirect ||
+          (reference
+            ? `https://ngam.dev/receipt/failed?order_id=${encodeURIComponent(reference)}`
+            : "https://ngam.dev/receipt/failed"),
+        cancel_redirect:
+          payload.cancel_redirect ||
+          (reference
+            ? `https://ngam.dev/receipt/cancel?order_id=${encodeURIComponent(reference)}`
+            : "https://ngam.dev/receipt/cancel"),
       };
 
       if (Array.isArray(whitelist) && whitelist.length > 0) {

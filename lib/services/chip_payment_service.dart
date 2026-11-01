@@ -85,6 +85,15 @@ class ChipPaymentService {
           'client_email': (clientEmail != null && clientEmail.isNotEmpty) ? clientEmail : 'pelanggan@ngam.dev',
           'client_phone': (clientPhone != null && clientPhone.isNotEmpty) ? clientPhone : '+601115892468',
           'brand_id': _brandId,
+          'success_redirect': (reference != null && reference.isNotEmpty)
+              ? 'https://ngam.dev/receipt/success?order_id=$reference'
+              : 'https://ngam.dev/receipt/success',
+          'failure_redirect': (reference != null && reference.isNotEmpty)
+              ? 'https://ngam.dev/receipt/failed?order_id=$reference'
+              : 'https://ngam.dev/receipt/failed',
+          'cancel_redirect': (reference != null && reference.isNotEmpty)
+              ? 'https://ngam.dev/receipt/cancel?order_id=$reference'
+              : 'https://ngam.dev/receipt/cancel',
           if (paymentMethodWhitelist != null) 'payment_method_whitelist': paymentMethodWhitelist,
         }),
       );
@@ -145,9 +154,15 @@ class ChipPaymentService {
         ],
       },
       'success_callback': _edgeFunctionUrl,
-      'success_redirect': 'https://ngam.dev/receipt/success',
-      'failure_redirect': 'https://ngam.dev/receipt/failed',
-      'cancel_redirect': 'https://ngam.dev/receipt/cancel',
+      'success_redirect': (reference != null && reference.isNotEmpty)
+          ? 'https://ngam.dev/receipt/success?order_id=$reference'
+          : 'https://ngam.dev/receipt/success',
+      'failure_redirect': (reference != null && reference.isNotEmpty)
+          ? 'https://ngam.dev/receipt/failed?order_id=$reference'
+          : 'https://ngam.dev/receipt/failed',
+      'cancel_redirect': (reference != null && reference.isNotEmpty)
+          ? 'https://ngam.dev/receipt/cancel?order_id=$reference'
+          : 'https://ngam.dev/receipt/cancel',
       if (paymentMethodWhitelist != null) 'payment_method_whitelist': paymentMethodWhitelist,
     };
 
