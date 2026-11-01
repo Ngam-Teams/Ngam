@@ -218,6 +218,9 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   // Double-tap heart animation items
   final List<_FloatingHeart> _hearts = [];
 
+  // Expanded caption post IDs (TikTok style "... lagi" / "Ringkaskan")
+  final Set<String> _expandedCaptionPosts = {};
+
   // Feed posts dataset fallback (Demo)
   static final List<Map<String, dynamic>> _demoPosts = [
     {
@@ -1522,7 +1525,13 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            _buildMediaContent(post, index, bottomOffset: 16, isDesktop: true),
+                            _buildMediaContent(
+                              post,
+                              index,
+                              bottomOffset: 16,
+                              isDesktop: true,
+                              bottomContent: _buildBottomContent(post),
+                            ),
 
                             // Top shadow gradient
                             Positioned(
@@ -1570,13 +1579,14 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                               ),
                             ),
 
-                            // Caption & CTA overlay inside card
-                            Positioned(
-                              left: 14,
-                              right: 14,
-                              bottom: 16,
-                              child: _buildBottomContent(post),
-                            ),
+                            // Caption & CTA overlay inside card (for images only; video handles it inside _FeedVideoPlayerItem)
+                            if (!isVideoMedia)
+                              Positioned(
+                                left: 14,
+                                right: 14,
+                                bottom: 16,
+                                child: _buildBottomContent(post),
+                              ),
                           ],
                         ),
                       ),
@@ -1619,7 +1629,13 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           child: Stack(
             fit: StackFit.expand,
             children: [
-              _buildMediaContent(post, index, bottomOffset: bottomOffset, isDesktop: false),
+              _buildMediaContent(
+                post,
+                index,
+                bottomOffset: bottomOffset,
+                isDesktop: false,
+                bottomContent: _buildBottomContent(post),
+              ),
 
               // Top dark shadow gradient
               Positioned(
@@ -1681,13 +1697,14 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           ),
         ),
 
-        // 3. BOTTOM CONTENT OVERLAY (Mobile)
-        Positioned(
-          left: 16,
-          right: 76,
-          bottom: bottomOffset,
-          child: _buildBottomContent(post),
-        ),
+        // 3. BOTTOM CONTENT OVERLAY (Mobile - for images only; video handles it inside _FeedVideoPlayerItem)
+        if (!isVideoMedia)
+          Positioned(
+            left: 16,
+            right: 76,
+            bottom: bottomOffset,
+            child: _buildBottomContent(post),
+          ),
       ],
     );
   }
@@ -1698,6 +1715,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     int index, {
     required double bottomOffset,
     bool isDesktop = false,
+    Widget? bottomContent,
   }) {
     final String mediaUrl = post['image']?.toString() ?? '';
     final String cleanMedia = mediaUrl.trim().toLowerCase();
@@ -1717,6 +1735,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         isMuted: _isMuted,
         bottomOffset: bottomOffset,
         isDesktop: isDesktop,
+        bottomContent: bottomContent,
         onToggleMute: _toggleMute,
         onDoubleTap: (pos) => _handleDoubleTap(pos, post),
         onAspectRatioDetermined: (aspect) {
@@ -1863,20 +1882,120 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
 
         const SizedBox(height: 6),
 
-        // Post Caption & Hashtags
-        Text(
-          post['caption'],
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12.5,
-            height: 1.35,
-            fontWeight: FontWeight.w500,
-            shadows: [
-              Shadow(color: Colors.black87, blurRadius: 6),
-            ],
-          ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
+        // Post Caption & Hashtags (TikTok-Style Expandable Caption with "... lagi" / "Ringkaskan")
+        Builder(
+          builder: (context) {
+            final String postId = (post['id'] ?? '').toString();
+            final String rawCaption = (post['caption'] ?? '').toString();
+            final bool isExpanded = _expandedCaptionPosts.contains(postId);
+            final bool isLong = rawCaption.length > 70 || rawCaption.contains('\n');
+
+            if (!isLong) {
+              return Text(
+                rawCaption,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12.5,
+                  height: 1.35,
+                  fontWeight: FontWeight.w500,
+                  shadows: [
+                    Shadow(color: Colors.black87, blurRadius: 6),
+                  ],
+                ),
+              );
+            }
+
+            if (!isExpanded) {
+              final int cutIndex = rawCaption.length > 68 ? 68 : rawCaption.length;
+              final String truncated = rawCaption.substring(0, cutIndex).trimRight();
+
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _expandedCaptionPosts.add(postId);
+                  });
+                },
+                child: Text.rich(
+                  TextSpan(
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12.5,
+                      height: 1.35,
+                      fontWeight: FontWeight.w500,
+                      shadows: [
+                        Shadow(color: Colors.black87, blurRadius: 6),
+                      ],
+                    ),
+                    children: [
+                      TextSpan(text: '$truncated... '),
+                      const TextSpan(
+                        text: 'lagi',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          decoration: TextDecoration.underline,
+                          decorationColor: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 180),
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Text(
+                      rawCaption,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12.5,
+                        height: 1.35,
+                        fontWeight: FontWeight.w500,
+                        shadows: [
+                          Shadow(color: Colors.black87, blurRadius: 6),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _expandedCaptionPosts.remove(postId);
+                    });
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: const Text(
+                      'Ringkaskan',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -3863,6 +3982,7 @@ class _FeedVideoPlayerItem extends StatefulWidget {
   final bool isMuted;
   final double bottomOffset;
   final bool isDesktop;
+  final Widget? bottomContent;
   final VoidCallback onToggleMute;
   final void Function(Offset position)? onDoubleTap;
   final void Function(double aspectRatio)? onAspectRatioDetermined;
@@ -3876,6 +3996,7 @@ class _FeedVideoPlayerItem extends StatefulWidget {
     required this.isMuted,
     required this.bottomOffset,
     required this.isDesktop,
+    this.bottomContent,
     required this.onToggleMute,
     this.onDoubleTap,
     this.onAspectRatioDetermined,
@@ -3895,8 +4016,38 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
   bool _is2xSpeed = false;
   bool _isScrubbing = false;
   double _scrubRatio = 0.0;
+  double _dragStartX = 0.0;
+  double _dragStartRatio = 0.0;
   bool _showPlayIndicator = false;
   Timer? _playIndicatorTimer;
+
+  void _onRegionScrubStart(double globalX, double currentRatio) {
+    HapticFeedback.selectionClick();
+    _dragStartX = globalX;
+    _dragStartRatio = currentRatio;
+    setState(() {
+      _isScrubbing = true;
+      _scrubRatio = currentRatio;
+    });
+  }
+
+  void _onRegionScrubUpdate(double globalX, double barWidth) {
+    if (!_isScrubbing) return;
+    final double deltaX = globalX - _dragStartX;
+    final double deltaRatio = deltaX / (barWidth * 0.85);
+    final double newRatio = (_dragStartRatio + deltaRatio).clamp(0.0, 1.0);
+    setState(() {
+      _scrubRatio = newRatio;
+    });
+  }
+
+  void _onRegionScrubEnd(Duration duration) {
+    if (!_isScrubbing) return;
+    final targetMs = (duration.inMilliseconds * _scrubRatio).toInt();
+    _controller.seekTo(Duration(milliseconds: targetMs));
+    HapticFeedback.lightImpact();
+    setState(() => _isScrubbing = false);
+  }
 
   @override
   void initState() {
@@ -4209,17 +4360,8 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
         final double videoAspect = _controller.value.aspectRatio;
         final bool isLandscape = videoAspect > 1.05;
 
-        // Calculate landscape video frame geometry:
-        // Video height when fitWidth is used = maxWidth / videoAspect
-        final double safeAspect = videoAspect > 0.1 ? videoAspect : (16 / 9);
-        final double videoHeight = constraints.maxWidth / safeAspect;
-        // Distance from bottom of screen to the bottom edge of the vertically centered video frame
-        final double videoBottomDistance = (constraints.maxHeight - videoHeight) / 2;
-        // Position the "Lihat Melintang" pill in the open space below the video,
-        // strictly higher than the bottom CTA and caption overlay zone
-        final double minSafeBottom = widget.bottomOffset + 120;
-        final double targetBottom = videoBottomDistance - 48;
-        final double pillBottom = targetBottom > minSafeBottom ? targetBottom : minSafeBottom;
+        // Position the "Lihat Melintang" pill safely above bottom content if landscape
+        final double pillBottom = widget.bottomOffset + 140;
 
         return Stack(
           fit: StackFit.expand,
@@ -4231,10 +4373,10 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
                 alignment: Alignment.center,
                 child: FittedBox(
                   // On desktop widescreen, contain ensures landscape video expands fully with zero distortion
-                  // On mobile portrait, cover fills vertical immersive
+                  // On mobile portrait, cover fills vertical immersive (edge-to-edge from top, no black gap)
                   fit: widget.isDesktop
                       ? (isLandscape ? BoxFit.contain : BoxFit.cover)
-                      : (isLandscape ? BoxFit.fitWidth : BoxFit.cover),
+                      : BoxFit.cover,
                   clipBehavior: Clip.hardEdge,
                   child: SizedBox(
                     width: _controller.value.size.width > 0 ? _controller.value.size.width : 720,
@@ -4410,7 +4552,7 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
         // 5. Floating Scrub Timestamp Bubble when Dragging Timeline (TikTok Style Pill)
         if (_isScrubbing)
           Positioned(
-            bottom: widget.isDesktop ? 48 : (widget.bottomOffset + 140),
+            bottom: widget.isDesktop ? 60 : (widget.bottomOffset + 140),
             left: 0,
             right: 0,
             child: Center(
@@ -4421,10 +4563,10 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.75),
+                      color: Colors.black.withValues(alpha: 0.82),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: const Color(0xFF00E5FF).withValues(alpha: 0.6),
+                        color: const Color(0xFF00E5FF).withValues(alpha: 0.65),
                         width: 1.2,
                       ),
                       boxShadow: [
@@ -4465,33 +4607,60 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
             ),
           ),
 
-        // 6. Interactive Video Timeline Scrubber (TikTok Signature Ultra-Clean Progress Bar)
+        // 6. Unified TikTok Bottom Interactive Zone (Caption + Scrubber with Auto Horizontal Slide Drag)
+        Positioned(
+          left: 0,
+          right: widget.isDesktop ? 0 : 76,
+          bottom: 0,
+          height: widget.isDesktop ? 220 : (widget.bottomOffset + 240),
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onHorizontalDragStart: (details) {
+              _onRegionScrubStart(details.globalPosition.dx, currentRatio);
+            },
+            onHorizontalDragUpdate: (details) {
+              _onRegionScrubUpdate(details.globalPosition.dx, constraints.maxWidth);
+            },
+            onHorizontalDragEnd: (details) {
+              _onRegionScrubEnd(duration);
+            },
+            onHorizontalDragCancel: () {
+              setState(() => _isScrubbing = false);
+            },
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // Bottom Content (Caption, Store info, CTA)
+                if (widget.bottomContent != null)
+                  Positioned(
+                    left: 16,
+                    right: 0,
+                    bottom: widget.bottomOffset,
+                    child: widget.bottomContent!,
+                  ),
+              ],
+            ),
+          ),
+        ),
+
+        // 7. Interactive Video Timeline Scrubber (TikTok Signature Ultra-Clean Progress Bar)
         Positioned(
           left: 0,
           right: 0,
           bottom: widget.isDesktop ? 2 : (widget.bottomOffset - 10),
           child: LayoutBuilder(
-            builder: (context, constraints) {
-              final barWidth = constraints.maxWidth;
+            builder: (context, barConstraints) {
+              final barWidth = barConstraints.maxWidth;
               return GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onHorizontalDragStart: (details) {
-                  HapticFeedback.selectionClick();
-                  setState(() {
-                    _isScrubbing = true;
-                    _scrubRatio = (details.localPosition.dx / barWidth).clamp(0.0, 1.0);
-                  });
+                  _onRegionScrubStart(details.globalPosition.dx, currentRatio);
                 },
                 onHorizontalDragUpdate: (details) {
-                  setState(() {
-                    _scrubRatio = (details.localPosition.dx / barWidth).clamp(0.0, 1.0);
-                  });
+                  _onRegionScrubUpdate(details.globalPosition.dx, barWidth);
                 },
                 onHorizontalDragEnd: (details) {
-                  final targetMs = (duration.inMilliseconds * _scrubRatio).toInt();
-                  _controller.seekTo(Duration(milliseconds: targetMs));
-                  HapticFeedback.lightImpact();
-                  setState(() => _isScrubbing = false);
+                  _onRegionScrubEnd(duration);
                 },
                 onTapDown: (details) {
                   HapticFeedback.selectionClick();
