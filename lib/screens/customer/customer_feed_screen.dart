@@ -953,8 +953,9 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     final bool isDark = themeProvider?.isDarkMode ?? (Theme.of(context).brightness == Brightness.dark);
     final Color scaffoldBg = isDark ? const Color(0xFF0B0F17) : const Color(0xFFF8FAFC);
     
-    // Bottom padding to position feed content nicely above the lowered floating navbar (50% gap reduction)
-    final double bottomOffset = (safeBottom > 0 ? (safeBottom * 0.5) : 10) + 68;
+    // Bottom padding to position feed content comfortably and cleanly above the floating navbar
+    final double adjustedSafeBottom = safeBottom > 0 ? (safeBottom * 0.5) : 10.0;
+    final double bottomOffset = adjustedSafeBottom + 88.0;
 
     return Focus(
       autofocus: true,
@@ -1689,7 +1690,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         // 2. RIGHT-SIDE FLOATING ACTION BAR (Mobile)
         Positioned(
           right: 12,
-          bottom: bottomOffset + 6,
+          bottom: bottomOffset + 8,
           child: _buildActionBar(
             post,
             isShortPhone: isShortPhone,
@@ -1702,7 +1703,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           Positioned(
             left: 16,
             right: 76,
-            bottom: bottomOffset,
+            bottom: bottomOffset + 6,
             child: _buildBottomContent(post),
           ),
       ],
@@ -4612,7 +4613,7 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
           left: 0,
           right: widget.isDesktop ? 0 : 76,
           bottom: 0,
-          height: widget.isDesktop ? 220 : (widget.bottomOffset + 240),
+          height: widget.isDesktop ? 220 : (widget.bottomOffset + 260),
           child: GestureDetector(
             behavior: HitTestBehavior.translucent,
             onHorizontalDragStart: (details) {
@@ -4635,7 +4636,7 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
                   Positioned(
                     left: 16,
                     right: 0,
-                    bottom: widget.bottomOffset,
+                    bottom: widget.bottomOffset + 6,
                     child: widget.bottomContent!,
                   ),
               ],
@@ -4647,7 +4648,7 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
         Positioned(
           left: 0,
           right: 0,
-          bottom: widget.isDesktop ? 2 : (widget.bottomOffset - 10),
+          bottom: widget.isDesktop ? 2 : (widget.bottomOffset - 16),
           child: LayoutBuilder(
             builder: (context, barConstraints) {
               final barWidth = barConstraints.maxWidth;
