@@ -19,7 +19,9 @@ import 'dart:async';
 
 enum BookingType {
   service,
+  barber,
   dining,
+  hospitality,
   automotive,
   health,
   facility,
@@ -84,7 +86,39 @@ class _BookingsViewState extends State<BookingsView> {
     final cat = (overrideCategory ?? widget.category).toLowerCase().trim();
     final name = (overrideName ?? widget.shopName).toLowerCase().trim();
 
-    // 1. DINING / KEDAI MAKAN / RESTORAN / F&B
+    // 1. HOSPITALITY / HOTEL / RESORT / HOMESTAY / PENGINAPAN
+    if (cat.contains('hotel') ||
+        cat.contains('resort') ||
+        cat.contains('homestay') ||
+        cat.contains('chalet') ||
+        cat.contains('motel') ||
+        cat.contains('lodge') ||
+        cat.contains('villa') ||
+        cat.contains('vila') ||
+        cat.contains('stay') ||
+        cat.contains('penginapan') ||
+        cat.contains('bilik') ||
+        cat.contains('guesthouse') ||
+        cat.contains('hostel') ||
+        cat.contains('glamping') ||
+        cat.contains('airbnb') ||
+        cat.contains('dorm') ||
+        name.contains('hotel') ||
+        name.contains('resort') ||
+        name.contains('homestay') ||
+        name.contains('chalet') ||
+        name.contains('motel') ||
+        name.contains('villa') ||
+        name.contains('vila') ||
+        name.contains('lodge') ||
+        name.contains('stay') ||
+        name.contains('glamping') ||
+        name.contains('guesthouse') ||
+        name.contains('hostel')) {
+      return BookingType.hospitality;
+    }
+
+    // 2. DINING / KEDAI MAKAN / RESTORAN / F&B
     if (cat == 'fnb' ||
         cat.contains('fnb') ||
         cat.contains('f&b') ||
@@ -146,7 +180,53 @@ class _BookingsViewState extends State<BookingsView> {
       return BookingType.dining;
     }
 
-    // 2. AUTOMOTIVE / BENGKEL
+    // 3. BARBER / SALON LELAKI / GUNTING RAMBUT
+    if (cat.contains('barber') ||
+        cat.contains('gunting rambut') ||
+        cat.contains('fade') ||
+        cat.contains('pomade') ||
+        cat.contains('salon lelaki') ||
+        name.contains('barber') ||
+        name.contains('gunting rambut') ||
+        name.contains('barbershop') ||
+        name.contains('fade') ||
+        name.contains('pomade')) {
+      return BookingType.barber;
+    }
+
+    // 4. FACILITY / COURT / SUKAN
+    if (cat.contains('sport') ||
+        cat.contains('sukan') ||
+        cat.contains('court') ||
+        cat.contains('gelanggang') ||
+        cat.contains('futsal') ||
+        cat.contains('badminton') ||
+        cat.contains('pickleball') ||
+        cat.contains('tennis') ||
+        cat.contains('squash') ||
+        cat.contains('padang') ||
+        cat.contains('kemudahan') ||
+        cat.contains('arena') ||
+        cat.contains('gym') ||
+        cat.contains('fitness') ||
+        cat.contains('swimming') ||
+        cat.contains('renang') ||
+        name.contains('sport') ||
+        name.contains('sukan') ||
+        name.contains('futsal') ||
+        name.contains('badminton') ||
+        name.contains('pickleball') ||
+        name.contains('tennis') ||
+        name.contains('court') ||
+        name.contains('gelanggang') ||
+        name.contains('arena') ||
+        name.contains('gym') ||
+        name.contains('fitness') ||
+        name.contains('padang')) {
+      return BookingType.facility;
+    }
+
+    // 5. AUTOMOTIVE / BENGKEL
     if (cat.contains('workshop') ||
         cat.contains('auto') ||
         cat.contains('car') ||
@@ -170,7 +250,7 @@ class _BookingsViewState extends State<BookingsView> {
       return BookingType.automotive;
     }
 
-    // 3. HEALTH / KLINIK / PERUBATAN
+    // 6. HEALTH / KLINIK / PERUBATAN
     if (cat.contains('health') ||
         cat.contains('clinic') ||
         cat.contains('klinik') ||
@@ -181,6 +261,7 @@ class _BookingsViewState extends State<BookingsView> {
         cat.contains('pharmacy') ||
         cat.contains('poliklinik') ||
         cat.contains('doktor') ||
+        cat.contains('fisioterapi') ||
         name.contains('clinic') ||
         name.contains('klinik') ||
         name.contains('dental') ||
@@ -191,27 +272,7 @@ class _BookingsViewState extends State<BookingsView> {
       return BookingType.health;
     }
 
-    // 4. FACILITY / COURT / SUKAN
-    if (cat.contains('sport') ||
-        cat.contains('sukan') ||
-        cat.contains('court') ||
-        cat.contains('gelanggang') ||
-        cat.contains('futsal') ||
-        cat.contains('badminton') ||
-        cat.contains('kemudahan') ||
-        cat.contains('arena') ||
-        cat.contains('gym') ||
-        cat.contains('padang') ||
-        name.contains('futsal') ||
-        name.contains('badminton') ||
-        name.contains('court') ||
-        name.contains('arena') ||
-        name.contains('gym') ||
-        name.contains('padang')) {
-      return BookingType.facility;
-    }
-
-    // 5. BEAUTY / SALON / SPA / ESTETIKA
+    // 7. BEAUTY / SALON / SPA / ESTETIKA
     if (cat.contains('salon') ||
         cat.contains('spa') ||
         cat.contains('facial') ||
@@ -249,7 +310,7 @@ class _BookingsViewState extends State<BookingsView> {
       return BookingType.beauty;
     }
 
-    // 6. RETAIL / SHOPPING / BUTIK / KEDAI RUNCIT
+    // 8. RETAIL / SHOPPING / BUTIK / KEDAI RUNCIT
     if (cat.contains('retail') ||
         cat.contains('runcit') ||
         cat.contains('pasar') ||
@@ -286,7 +347,7 @@ class _BookingsViewState extends State<BookingsView> {
       return BookingType.retail;
     }
 
-    // 7. SERVICE / BARBER / KHIDMAT AM
+    // 9. SERVICE / KHIDMAT AM & JURUTEKNIK
     return BookingType.service;
   }
 
@@ -297,34 +358,132 @@ class _BookingsViewState extends State<BookingsView> {
       case BookingType.dining:
         _staffs = [
           {
-            "name": "Meja Standard (2-4 Pax)",
-            "specialty": "Zon Dalaman Berhawa Dingin",
+            "name": "Meja Santai Tingkap (2-4 Pax)",
+            "specialty": "Pemandangan Luar & Pencahayaan Cantik",
             "rating": "5.0",
             "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400",
           },
           {
-            "name": "Meja Keluarga (5-8 Pax)",
-            "specialty": "Ruang Santai & Selesa",
+            "name": "Meja Booth Sofa (4-6 Pax)",
+            "specialty": "Ruang Privasi & Selesa Berkumpul",
             "rating": "4.9",
             "image": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=400",
           },
           {
-            "name": "Bilik Privasi / VIP (8-12 Pax)",
-            "specialty": "Ruang Eksklusif & Keraian",
+            "name": "Meja Jamuan Keluarga (6-10 Pax)",
+            "specialty": "Ruang Luas Tengah Restoran",
             "rating": "4.9",
+            "image": "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?q=80&w=400",
+          },
+          {
+            "name": "Bilik VIP Eksklusif (10-15 Pax)",
+            "specialty": "Bilik Tertutup Berhawa Dingin & TV",
+            "rating": "5.0",
             "image": "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=400",
           },
         ];
         _servicesList = [
           {"name": "Tempahan Meja Santai (Walk-in Hold)", "price": "RM0", "time": "90m"},
-          {"name": "Pakej Makan Malam / Lunch Set", "price": "RM50", "time": "90m"},
-          {"name": "Pakej Sambutan Hari Jadi / VIP", "price": "RM80", "time": "120m"},
+          {"name": "Pakej Makan Malam Kombo Keluarga", "price": "RM120", "time": "90m"},
+          {"name": "Pakej Sambutan Hari Jadi / Ulang Tahun", "price": "RM85", "time": "120m"},
+          {"name": "Set Minum Petang Hi-Tea & Pastri", "price": "RM45", "time": "60m"},
+          {"name": "Pakej Chef Tasting / Omakase Khas", "price": "RM180", "time": "120m"},
         ];
         _addonsList = [
           {"name": "Kerusi Bayi (Baby Chair)", "price": "+RM0", "time": "+0m"},
-          {"name": "Dekorasi Meja & Bunga Khas", "price": "+RM30", "time": "+0m"},
-          {"name": "Piring Kek & Lilin Sambutan", "price": "+RM15", "time": "+0m"},
-          {"name": "Pilihan Meja Tepi Tingkap", "price": "+RM0", "time": "+0m"},
+          {"name": "Hiasan Meja Hari Jadi & Belon Eksklusif", "price": "+RM35", "time": "+0m"},
+          {"name": "Kek Coklat Fudge Mini & Lilin Sambutan", "price": "+RM25", "time": "+0m"},
+          {"name": "Pilihan Meja Berhawa Dingin Sejuk", "price": "+RM0", "time": "+0m"},
+          {"name": "Jug Jus Buah Segar (Untuk 4 Pax)", "price": "+RM18", "time": "+0m"},
+        ];
+        break;
+
+      case BookingType.hospitality:
+        _staffs = [
+          {
+            "name": "Standard Queen Room (1-2 Pax)",
+            "specialty": "Katil Queen Selesa & Bilik Mandi En-Suite",
+            "rating": "4.9",
+            "image": "https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=400",
+          },
+          {
+            "name": "Deluxe King Suite (2 Pax)",
+            "specialty": "Pemandangan Menarik, Balkoni & Tab Mandi",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1566665797739-1674de7a421a?q=80&w=400",
+          },
+          {
+            "name": "Family Suite Room (3-5 Pax)",
+            "specialty": "2 Katil Queen, Ruang Tamu & Dapur Kecil",
+            "rating": "4.9",
+            "image": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=400",
+          },
+          {
+            "name": "Private Pool Villa / Homestay (6-10 Pax)",
+            "specialty": "Kolam Peribadi, Kawasan BBQ & 3 Bilik Tidur",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=400",
+          },
+        ];
+        _servicesList = [
+          {"name": "Penginapan 1 Malam (Bilik Sahaja / Room Only)", "price": "RM150", "time": "1440m"},
+          {"name": "Pakej Staycation + Sarapan Pagi Bufet (2 Pax)", "price": "RM210", "time": "1440m"},
+          {"name": "Pakej Percutian Keluarga Penuh (Bilik + Makan + Kolam)", "price": "RM350", "time": "1440m"},
+          {"name": "Day Use Room / Transit Rehat (6 Jam)", "price": "RM80", "time": "360m"},
+          {"name": "Pakej Romantik Bulan Madu / Honeymoon Surprise", "price": "RM290", "time": "1440m"},
+        ];
+        _addonsList = [
+          {"name": "Sarapan Pagi Bufet Tambahan (Dewasa/Kanak)", "price": "+RM25", "time": "+0m"},
+          {"name": "Katil Tambahan (Extra Bed & Bantal)", "price": "+RM45", "time": "+0m"},
+          {"name": "Daftar Keluar Lewat (Late Check-Out hingga 2:00 PM)", "price": "+RM30", "time": "+0m"},
+          {"name": "Hiasan Bilik Romantik & Sejambak Bunga", "price": "+RM60", "time": "+0m"},
+          {"name": "Set Arang & Peralatan Barbeku (BBQ Pit)", "price": "+RM40", "time": "+0m"},
+          {"name": "Slot Parkir Kereta Berbumbung Terjamin", "price": "+RM10", "time": "+0m"},
+        ];
+        break;
+
+      case BookingType.barber:
+        _staffs = [
+          {
+            "name": "Mana-mana Barber Bertugas (Paling Pantas)",
+            "specialty": "Giliran Pertama Tanpa Tunggu Lama",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=400",
+          },
+          {
+            "name": "Adi Mawi (Master Barber)",
+            "specialty": "Fade King & Pakar Pompadour Klasik",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400",
+          },
+          {
+            "name": "Haris Iqram (Senior Barber & Beard Master)",
+            "specialty": "Pakar Guntingan Moden, Taper & Shave",
+            "rating": "4.9",
+            "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400",
+          },
+          {
+            "name": "Zul 'The Barber' (Founder & Stylist)",
+            "specialty": "Konsultasi Bentuk Wajah & Gaya Premium",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=400",
+          },
+        ];
+        _servicesList = [
+          {"name": "Signature Fade & Scissor Haircut", "price": "RM35", "time": "30m"},
+          {"name": "Guntingan Rambut Asas & Trim Kemas", "price": "RM25", "time": "20m"},
+          {"name": "Gunting Rambut Kanak-kanak / Pelajar", "price": "RM20", "time": "20m"},
+          {"name": "Full Royal Shave & Hot Towel", "price": "RM30", "time": "25m"},
+          {"name": "Pakej Gentleman (Haircut + Shave + Wash + Massage)", "price": "RM65", "time": "50m"},
+          {"name": "Rawatan Kelemumur & Kulit Kepala (Scalp Treatment)", "price": "RM45", "time": "35m"},
+          {"name": "Pewarna Rambut / Bleach & Tone", "price": "RM80", "time": "60m"},
+        ];
+        _addonsList = [
+          {"name": "Rawatan Tuala Panas & Minyak Herba", "price": "+RM15", "time": "+10m"},
+          {"name": "Cuci Rambut Menthol Dingin & Blow Dry", "price": "+RM10", "time": "+10m"},
+          {"name": "Urutan Leher & Bahu Santai (Massage)", "price": "+RM12", "time": "+10m"},
+          {"name": "Trim & Bentuk Janggut / Misai Rapi", "price": "+RM10", "time": "+10m"},
+          {"name": "Sapuan Pomade / Hair Wax Premium", "price": "+RM5", "time": "+0m"},
         ];
         break;
 
@@ -332,167 +491,198 @@ class _BookingsViewState extends State<BookingsView> {
         _staffs = [
           {
             "name": "Stesen Servis Pantas",
-            "specialty": "Semua Juruteknik Bertugas",
+            "specialty": "Tukar Minyak, Filter & Diagnostic Komputer",
             "rating": "5.0",
             "image": "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?q=80&w=400",
           },
           {
-            "name": "Bay Cuci Kereta & Detailing",
-            "specialty": "Pakar Cucian & Salun Kilat",
+            "name": "Bay Cuci Kereta Snow Wash & Detailing",
+            "specialty": "Salun Kilat, Nano Coating & Interior Vacuum",
             "rating": "4.9",
             "image": "https://images.unsplash.com/photo-1601362840469-51e4d8d58785?q=80&w=400",
           },
           {
-            "name": "Pusat Diagnostik & Tayar",
-            "specialty": "Pakar Mekanikal Bertauliah",
+            "name": "Pusat Diagnostik & Tayar 3D Laser",
+            "specialty": "Pakar Mekanikal Bertauliah & Balancing",
             "rating": "4.8",
             "image": "https://images.unsplash.com/photo-1486006920555-c77dce18193b?q=80&w=400",
           },
         ];
         _servicesList = [
-          {"name": "Cuci Kereta & Vacuum Luar Dalam", "price": "RM20", "time": "30m"},
-          {"name": "Servis Minyak Hitam & Filter Asas", "price": "RM120", "time": "45m"},
-          {"name": "Wax & Polish Kilat Premium", "price": "RM70", "time": "60m"},
-          {"name": "Pemeriksaan Keselamatan 21 Titik", "price": "RM30", "time": "25m"},
+          {"name": "Cuci Salji Snow Wash & Vacuum Dalaman", "price": "RM20", "time": "30m"},
+          {"name": "Servis Minyak Hitam Semi-Sintetik & Filter", "price": "RM110", "time": "45m"},
+          {"name": "Servis Minyak Hitam Fully Synthetic (10k km)", "price": "RM180", "time": "50m"},
+          {"name": "Wax & Polish Kilat Body 3-Lapisan", "price": "RM75", "time": "60m"},
+          {"name": "Alignment 3D Komputer & Balancing 4 Roda", "price": "RM45", "time": "35m"},
+          {"name": "Pemeriksaan Keselamatan 25 Titik", "price": "RM0", "time": "20m"},
         ];
         _addonsList = [
-          {"name": "Cuci Ruang Enjin (Engine Bay)", "price": "+RM25", "time": "+20m"},
-          {"name": "Sanitasi Anti-Bakteria Kabin", "price": "+RM20", "time": "+15m"},
-          {"name": "Tukar Wiper Blade Depan", "price": "+RM35", "time": "+10m"},
-          {"name": "Top-up Coolant & Minyak Brek", "price": "+RM15", "time": "+10m"},
+          {"name": "Cuci Ruang Enjin Menggunakan Stim", "price": "+RM25", "time": "+20m"},
+          {"name": "Sanitasi Asap Fogging Anti-Bakteria Kabin", "price": "+RM20", "time": "+15m"},
+          {"name": "Tukar Bilah Wiper Silikon Baharu Depan", "price": "+RM35", "time": "+10m"},
+          {"name": "Top-up Radiator Coolant & Minyak Brek", "price": "+RM15", "time": "+5m"},
+          {"name": "Coating Cermin Anti-Hujan Rain-Repellent", "price": "+RM25", "time": "+10m"},
         ];
         break;
 
       case BookingType.health:
         _staffs = [
           {
+            "name": "Doktor Perubatan Am Bertugas Seterusnya",
+            "specialty": "Giliran Pantas & Rawatan Segera",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?q=80&w=400",
+          },
+          {
             "name": "Dr. Amirul Hakim",
-            "specialty": "Doktor Perubatan Am",
+            "specialty": "Pakar Kesihatan Keluarga & Kronik",
             "rating": "5.0",
             "image": "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400",
           },
           {
             "name": "Dr. Farah Nadhirah",
-            "specialty": "Pakar Kesihatan Wanita & Kanak-kanak",
+            "specialty": "Pakar Kesihatan Kanak-kanak & Wanita",
             "rating": "4.9",
             "image": "https://images.unsplash.com/photo-1594824813590-78531e217277?q=80&w=400",
           },
           {
-            "name": "Doktor Bertugas Seterusnya",
-            "specialty": "Paling Cepat / Giliran Segera",
-            "rating": "4.9",
-            "image": "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?q=80&w=400",
+            "name": "Dr. Dental (Pakar Pergigian)",
+            "specialty": "Pembersihan Karang Gigi, Tampalan & Pemutihan",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1629909613654-28e377c37b09?q=80&w=400",
           },
         ];
         _servicesList = [
-          {"name": "Konsultasi Am Doktor & Pemeriksaan", "price": "RM40", "time": "20m"},
-          {"name": "Pemeriksaan Kesihatan Komprehensif", "price": "RM85", "time": "40m"},
-          {"name": "Rawatan Ringan & Dressing Luka", "price": "RM35", "time": "25m"},
+          {"name": "Konsultasi Am Doktor & Pemeriksaan Kesihatan", "price": "RM40", "time": "20m"},
+          {"name": "Pakej Cuci Karang Gigi (Scaling & Polishing)", "price": "RM85", "time": "35m"},
+          {"name": "Pemeriksaan Kesihatan Komprehensif Eksekutif", "price": "RM120", "time": "45m"},
+          {"name": "Rawatan Ringan, Jahitan & Dressing Luka", "price": "RM45", "time": "25m"},
+          {"name": "Suntikan Vaksin / Vitamin Booster", "price": "RM50", "time": "15m"},
         ];
         _addonsList = [
-          {"name": "Ujian Glukosa & Kolesterol Pantas", "price": "+RM20", "time": "+10m"},
-          {"name": "Ujian Tekanan Darah & ECG", "price": "+RM30", "time": "+15m"},
-          {"name": "Suntikan Vaksin / Vitamin Booster", "price": "+RM45", "time": "+10m"},
+          {"name": "Ujian Pantas Glukosa (Gula) & Kolesterol", "price": "+RM20", "time": "+10m"},
+          {"name": "Ujian Tekanan Darah & ECG Jantung", "price": "+RM35", "time": "+15m"},
+          {"name": "Ujian Air Kencing Urine Test Analisis", "price": "+RM15", "time": "+10m"},
+          {"name": "Ubat-ubatan Tambahan Asas (Demam/Batuk)", "price": "+RM20", "time": "+0m"},
         ];
         break;
 
       case BookingType.facility:
         _staffs = [
           {
-            "name": "Court 1 (Standard Indoor)",
-            "specialty": "Lantai Getah Rubberized",
-            "rating": "4.9",
+            "name": "Court 1 (Badminton Rubber Mat BWF Approved)",
+            "specialty": "Lantai Getah Hijau BWF & Pencahayaan Anti-Glare",
+            "rating": "5.0",
             "image": "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?q=80&w=400",
           },
           {
-            "name": "Court 2 (Tournament Grade)",
-            "specialty": "Pencahayaan LED Tanpa Silau",
-            "rating": "5.0",
+            "name": "Court 2 (Pickleball Tournament Indoor)",
+            "specialty": "Lantai Khas Pickleball & Jaring Bertauliah",
+            "rating": "4.9",
             "image": "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=400",
           },
           {
-            "name": "Court VIP / Berhawa Dingin",
-            "specialty": "Sewa Khas Tertutup",
-            "rating": "4.8",
+            "name": "Gelanggang Futsal Sintetik Premium",
+            "specialty": "Rumput Tiruan Lembut Bertaraf Antarabangsa",
+            "rating": "4.9",
+            "image": "https://images.unsplash.com/photo-1529900240041-22f1df4d189a?q=80&w=400",
+          },
+          {
+            "name": "Court VIP Berhawa Dingin (Aircond Lounge)",
+            "specialty": "Kawasan Eksklusif Tertutup & Ruang Rehat VIP",
+            "rating": "5.0",
             "image": "https://images.unsplash.com/photo-1526676037777-05a232554f77?q=80&w=400",
           },
         ];
         _servicesList = [
-          {"name": "Sesi 1 Jam Permainan", "price": "RM25", "time": "60m"},
-          {"name": "Sesi 2 Jam Kombo", "price": "RM45", "time": "120m"},
-          {"name": "Sesi 3 Jam Latihan Pasukan", "price": "RM65", "time": "180m"},
+          {"name": "Sesi 1 Jam Permainan Santai", "price": "RM25", "time": "60m"},
+          {"name": "Sesi 2 Jam Kombo Perlawanan", "price": "RM45", "time": "120m"},
+          {"name": "Sesi 3 Jam Latihan Pasukan / Liga Mini", "price": "RM65", "time": "180m"},
+          {"name": "Pas Pasukan / Kelab (Slot Bulanan)", "price": "RM160", "time": "240m"},
         ];
         _addonsList = [
-          {"name": "Sewa 2x Raket & 1 Tiub Bulu Tangkis", "price": "+RM15", "time": "+0m"},
-          {"name": "Sewa Kasut Sukan (Saiz Biasa)", "price": "+RM8", "time": "+0m"},
-          {"name": "Air Mineral Sejuk (2 Botol)", "price": "+RM5", "time": "+0m"},
+          {"name": "Sewa 2x Raket & 1 Tiub Bulu Tangkis (3 Biji)", "price": "+RM15", "time": "+0m"},
+          {"name": "Sewa Raket Pickleball & 2 Bola Khas", "price": "+RM12", "time": "+0m"},
+          {"name": "Sewa Bibs Pasukan (2 Warna Berbeza)", "price": "+RM10", "time": "+0m"},
+          {"name": "Sewa Bola Futsal Rasmi FIFA", "price": "+RM8", "time": "+0m"},
+          {"name": "Pek Air Mineral Sejuk (3 Botol 1.5L)", "price": "+RM10", "time": "+0m"},
+          {"name": "Sewa Kasut Sukan (Saiz Biasa 38-44)", "price": "+RM8", "time": "+0m"},
         ];
         break;
 
       case BookingType.beauty:
         _staffs = [
           {
-            "name": "Mana-mana Terapis Bertugas",
-            "specialty": "Paling Cepat / Giliran Segera",
+            "name": "Mana-mana Terapis Wanita Bertugas",
+            "specialty": "Giliran Pantas & Layanan Lembut",
             "rating": "5.0",
             "image": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=400",
           },
           {
-            "name": "Siti Nurhaliza (Senior Aesthetician)",
-            "specialty": "Pakar Kulit Wajah & Facial Glow",
-            "rating": "4.9",
+            "name": "Puan Farhana (Senior Aesthetician)",
+            "specialty": "Pakar Kulit Wajah, Facial Glowing & Anti-Aging",
+            "rating": "5.0",
             "image": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=400",
           },
           {
             "name": "Kak Lily (Pakar Urutan & Spa)",
-            "specialty": "Aromaterapi & Refleksologi",
-            "rating": "5.0",
+            "specialty": "Urutan Tradisional, Herba & Refleksologi",
+            "rating": "4.9",
             "image": "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=400",
+          },
+          {
+            "name": "Sarah (Nail & Lash Specialist)",
+            "specialty": "Manicure Gel, Nail Art & Lash Lift Lentik",
+            "rating": "4.9",
+            "image": "https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=400",
           },
         ];
         _servicesList = [
-          {"name": "Urutan Aromaterapi & Refleksologi (60m)", "price": "RM75", "time": "60m"},
-          {"name": "Rawatan Facial Glowing & Cuci Muka (75m)", "price": "RM85", "time": "75m"},
-          {"name": "Rawatan Rambut Spa & Masker Herba (45m)", "price": "RM60", "time": "45m"},
-          {"name": "Manicure & Pedicure Spa Bersih (40m)", "price": "RM45", "time": "40m"},
+          {"name": "Rawatan Glowing Facial & Hydrating Spa", "price": "RM85", "time": "75m"},
+          {"name": "Urutan Aromaterapi Seluruh Badan & Refleksologi", "price": "RM75", "time": "60m"},
+          {"name": "Pakej Spa Herba Tradisional & Mandian Bunga", "price": "RM120", "time": "90m"},
+          {"name": "Manicure & Pedicure Gel Spa Bersih", "price": "RM55", "time": "50m"},
+          {"name": "Rawatan Rambut Spa Muslimah & Masker Keratin", "price": "RM70", "time": "60m"},
+          {"name": "Lash Lift & Tinting Bulu Mata Lentik", "price": "RM50", "time": "45m"},
         ];
         _addonsList = [
-          {"name": "Minyak Aroma Essential Pilihan", "price": "+RM15", "time": "+0m"},
-          {"name": "Lulur Badan & Body Scrub Herba", "price": "+RM25", "time": "+15m"},
-          {"name": "Masker Mata Anti-Sembap / Collagen", "price": "+RM10", "time": "+0m"},
-          {"name": "Serum Booster & Ampoule Wajah", "price": "+RM20", "time": "+0m"},
+          {"name": "Lulur Badan & Body Scrub Herba Wangi", "price": "+RM25", "time": "+15m"},
+          {"name": "Minyak Aromaterapi Essential Khas", "price": "+RM15", "time": "+0m"},
+          {"name": "Masker Kolagen Emas Anti-Kedut Wajah", "price": "+RM20", "time": "+0m"},
+          {"name": "Urutan Batu Panas (Hot Stone Therapy)", "price": "+RM30", "time": "+15m"},
+          {"name": "Serum Rambut Argan Oil & Vitamin Booster", "price": "+RM15", "time": "+0m"},
         ];
         break;
 
       case BookingType.retail:
         _staffs = [
           {
-            "name": "Sesi Personal Shopper & Gaya",
+            "name": "Personal Shopper & Perunding Gaya",
             "specialty": "Bimbingan Produk, Padanan & Saiz",
             "rating": "5.0",
             "image": "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=400",
           },
           {
-            "name": "Bilik Fitting & Percubaan Eksklusif",
-            "specialty": "Ruang Percubaan Pakaian VIP",
+            "name": "Bilik Fitting & Percubaan Eksklusif VIP",
+            "specialty": "Ruang Percubaan Pakaian VIP Selesa",
             "rating": "4.9",
             "image": "https://images.unsplash.com/photo-1472851294608-062f824d29cc?q=80&w=400",
           },
           {
             "name": "Slot Ambil Barang Ekspres (Click & Collect)",
-            "specialty": "Pengambilan Pantas Tanpa Beratur",
+            "specialty": "Pengambilan Pantas Tanpa Perlu Beratur",
             "rating": "5.0",
             "image": "https://images.unsplash.com/photo-1526178613552-2b45c6c302f0?q=80&w=400",
           },
         ];
         _servicesList = [
-          {"name": "Janji Temu Lawatan Butik / Kedai", "price": "RM0", "time": "30m"},
-          {"name": "Sesi Konsultasi Fesyen & Ukuran", "price": "RM25", "time": "45m"},
-          {"name": "Slot Pratonton Koleksi Khas / VIP", "price": "RM50", "time": "60m"},
+          {"name": "Janji Temu Lawatan Butik & Akses Koleksi", "price": "RM0", "time": "30m"},
+          {"name": "Sesi Konsultasi Fesyen & Ukuran Khas", "price": "RM30", "time": "45m"},
+          {"name": "Sesi Fitting Baju Pengantin / Busana Majlis VIP", "price": "RM60", "time": "60m"},
         ];
         _addonsList = [
-          {"name": "Bungkusan Hadiah & Kad Eksklusif", "price": "+RM10", "time": "+0m"},
-          {"name": "Perkhidmatan Potong & Jahit Alteration", "price": "+RM15", "time": "+0m"},
+          {"name": "Khidmat Ukur & Jahit Alteration Segera", "price": "+RM20", "time": "+15m"},
+          {"name": "Balutan Hadiah Eksklusif & Kad Ucapan Khas", "price": "+RM15", "time": "+0m"},
           {"name": "Penghantaran Terus ke Kenderaan (Curbside)", "price": "+RM0", "time": "+0m"},
         ];
         break;
@@ -500,34 +690,44 @@ class _BookingsViewState extends State<BookingsView> {
       case BookingType.service:
         _staffs = [
           {
-            "name": "Mana-mana Staf (Paling Cepat)",
-            "specialty": "Pakar Bertugas Seterusnya",
+            "name": "Juruteknik Bertauliah Seterusnya (Segera)",
+            "specialty": "Pakar Khidmat Am & Giliran Paling Cepat",
             "rating": "5.0",
-            "image": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=400",
+            "image": "https://images.unsplash.com/photo-1581092921461-eab62e97a780?q=80&w=400",
           },
           {
-            "name": "Adi Mawi",
-            "specialty": "Pakar Rambut & Gaya Klasik",
+            "name": "Pak Din (Pakar Servis Aircond & Elektrik)",
+            "specialty": "Berpengalaman 12 Tahun, Kemas & Pantas",
             "rating": "5.0",
-            "image": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400",
+            "image": "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=400",
           },
           {
-            "name": "Haris Iqram",
-            "specialty": "Senior Stylist & Fade Master",
+            "name": "Crew Bersih Pro (Pakar Pembersihan Rumah)",
+            "specialty": "Deep Cleaning & Sanitasi Menyeluruh",
             "rating": "4.9",
-            "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400",
+            "image": "https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=400",
+          },
+          {
+            "name": "Studio Foto & Potret Kreatif",
+            "specialty": "Sesi Penggambaran Profil & Studio",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1520854221256-17451cc331bf?q=80&w=400",
           },
         ];
         _servicesList = [
-          {"name": "Premium Haircut & Styling", "price": "RM35", "time": "30m"},
-          {"name": "Standard Haircut & Trim", "price": "RM25", "time": "20m"},
-          {"name": "Buzz Cut & Clean Shave", "price": "RM18", "time": "15m"},
+          {"name": "Servis Cuci Aircond Kimia Asas (1 Unit / 1.0-1.5HP)", "price": "RM75", "time": "45m"},
+          {"name": "Servis Aircond Overhaul Kimia Lengkap (1 Unit)", "price": "RM130", "time": "75m"},
+          {"name": "Pemeriksaan & Pembaikan Pendawaian Elektrik", "price": "RM60", "time": "45m"},
+          {"name": "Deep Cleaning Rumah / Apartment (Asas 2 Jam)", "price": "RM110", "time": "120m"},
+          {"name": "Pemeriksaan & Servis Paip Tersumbat / Bocor", "price": "RM70", "time": "45m"},
+          {"name": "Sesi Fotografi Studio / Potret Profil (1 Jam)", "price": "RM150", "time": "60m"},
         ];
         _addonsList = [
-          {"name": "Rawatan Tuala Panas & Trim", "price": "+RM20", "time": "+20m"},
-          {"name": "Urutan Kulit Kepala (Scalp Massage)", "price": "+RM15", "time": "+15m"},
-          {"name": "Cuci Rambut & Blow Dry", "price": "+RM10", "time": "+10m"},
-          {"name": "Minyak Janggut & Styling", "price": "+RM5", "time": "+5m"},
+          {"name": "Tambah Gas Aircond R32 / R410A Penuh", "price": "+RM35", "time": "+15m"},
+          {"name": "Pembersihan Outdoor Unit Condenser Ekstra", "price": "+RM25", "time": "+15m"},
+          {"name": "Sanitasi Kabus Anti-Bakteria & Virus", "price": "+RM30", "time": "+15m"},
+          {"name": "Tukar Soket / Suis Lampu Tambahan", "price": "+RM20", "time": "+10m"},
+          {"name": "Pembersihan Karpet / Kusyen Ekstra", "price": "+RM25", "time": "+15m"},
         ];
         break;
     }
@@ -582,6 +782,14 @@ class _BookingsViewState extends State<BookingsView> {
         if (_currentStep == 0) return "Pilih saiz meja:";
         if (_currentStep == 1) return "Pakej & keperluan meja:";
         return "Sahkan tempahan meja:";
+      case BookingType.hospitality:
+        if (_currentStep == 0) return "Pilih jenis bilik / suite:";
+        if (_currentStep == 1) return "Pakej penginapan & tambahan:";
+        return "Sahkan tempahan penginapan:";
+      case BookingType.barber:
+        if (_currentStep == 0) return "Pilih tukang gunting / barber:";
+        if (_currentStep == 1) return "Pilih gaya potongan & rawatan:";
+        return "Sahkan tempahan barber:";
       case BookingType.automotive:
         if (_currentStep == 0) return "Pilih stesen servis:";
         if (_currentStep == 1) return "Pilih pakej kenderaan:";
@@ -603,15 +811,17 @@ class _BookingsViewState extends State<BookingsView> {
         if (_currentStep == 1) return "Pakej & keperluan lawatan:";
         return "Sahkan janji temu butik:";
       case BookingType.service:
-        if (_currentStep == 0) return "Pilih pakar / barber:";
+        if (_currentStep == 0) return "Pilih juruteknik / pakar:";
         if (_currentStep == 1) return "Pilih servis & tambahan:";
-        return "Sahkan tempahan:";
+        return "Sahkan tempahan servis:";
     }
   }
 
   String get _mainServiceTitle {
     switch (_bookingType) {
       case BookingType.dining: return "Pilihan Meja / Pakej Makan";
+      case BookingType.hospitality: return "Pilihan Bilik & Pakej Penginapan";
+      case BookingType.barber: return "Pakej Potongan & Penggayaan";
       case BookingType.automotive: return "Pakej Servis Kenderaan";
       case BookingType.health: return "Pilihan Rawatan & Konsultasi";
       case BookingType.facility: return "Tempoh Sesi Permainan";
@@ -624,6 +834,8 @@ class _BookingsViewState extends State<BookingsView> {
   String get _addonsTitle {
     switch (_bookingType) {
       case BookingType.dining: return "Permintaan & Kemudahan Khas";
+      case BookingType.hospitality: return "Kemudahan & Fasiliti Tambahan";
+      case BookingType.barber: return "Servis Tambahan & Rawatan";
       case BookingType.automotive: return "Servis Tambahan Pilihan";
       case BookingType.health: return "Ujian & Rawatan Lanjutan";
       case BookingType.facility: return "Sewa Peralatan Tambahan";
@@ -636,36 +848,42 @@ class _BookingsViewState extends State<BookingsView> {
   String get _healthToggleTitle {
     switch (_bookingType) {
       case BookingType.dining: return "Alergi Makanan / Keperluan Diet Khas?";
+      case BookingType.hospitality: return "Bilik Bebas Asap Rokok (Non-Smoking) / Aras Tinggi?";
+      case BookingType.barber: return "Kulit Kepala Sensitif atau Alahan Sabun/Pewarna?";
       case BookingType.automotive: return "Kenderaan Saiz Besar (SUV / 4x4 / MPV)?";
       case BookingType.health: return "Alahan Ubat-ubatan (Drug Allergies)?";
       case BookingType.facility: return "Perlu Bantuan Fasilitator / Pengadil?";
       case BookingType.beauty: return "Kulit Sensitif atau Mengandung?";
       case BookingType.retail: return "Perlukan Bantuan Aksesibiliti?";
-      case BookingType.service: return "Alahan Kulit Kepala atau Sensitiviti?";
+      case BookingType.service: return "Lokasi Bertingkat / Perlukan Tangga Khas?";
     }
   }
 
   String get _healthToggleSubtitle {
     switch (_bookingType) {
       case BookingType.dining: return "Tandakan jika ada alahan kacang, makanan laut atau gluten";
+      case BookingType.hospitality: return "Tandakan untuk mengutamakan bilik bebas bau rokok atau bilik aras tinggi";
+      case BookingType.barber: return "Kulit sensitif terhadap sabun pencuci, minyak wangi atau pewarna rambut";
       case BookingType.automotive: return "Tandakan jika kenderaan anda memerlukan ruang bay besar";
       case BookingType.health: return "Tandakan jika ada alahan kepada sebarang jenis ubat";
       case BookingType.facility: return "Tandakan jika memerlukan bantuan fasilitator perlawanan";
       case BookingType.beauty: return "Tandakan jika ada alahan produk kulit atau perlukan minyak mesra ibu mengandung";
       case BookingType.retail: return "Tandakan jika memerlukan bantuan kerusi roda atau panduan khas";
-      case BookingType.service: return "Kulit sensitif terhadap sabun, pencuci atau minyak wangi";
+      case BookingType.service: return "Tandakan jika perlu membawa tangga panjang atau alat pemanjat khas";
     }
   }
 
   String get _providerSummaryLabel {
     switch (_bookingType) {
       case BookingType.dining: return "Pilihan Meja";
+      case BookingType.hospitality: return "Pilihan Bilik / Suite";
+      case BookingType.barber: return "Pakar Barber";
       case BookingType.automotive: return "Stesen / Servis";
       case BookingType.health: return "Doktor / Pakar";
       case BookingType.facility: return "Gelanggang / Bilik";
       case BookingType.beauty: return "Terapis / Bilik";
       case BookingType.retail: return "Sesi / Butik";
-      case BookingType.service: return "Pakar / Staf";
+      case BookingType.service: return "Juruteknik / Staf";
     }
   }
 
@@ -673,18 +891,22 @@ class _BookingsViewState extends State<BookingsView> {
     switch (_bookingType) {
       case BookingType.dining:
         return HugeIcons.strokeRoundedRestaurant01;
+      case BookingType.hospitality:
+        return HugeIcons.strokeRoundedBedDouble;
+      case BookingType.barber:
+        return HugeIcons.strokeRoundedScissor;
       case BookingType.automotive:
         return HugeIcons.strokeRoundedCar01;
       case BookingType.health:
         return HugeIcons.strokeRoundedHospital02;
       case BookingType.facility:
-        return HugeIcons.strokeRoundedLocation01;
+        return HugeIcons.strokeRoundedBadminton;
       case BookingType.beauty:
         return HugeIcons.strokeRoundedSparkles;
       case BookingType.retail:
         return HugeIcons.strokeRoundedShoppingBag02;
       case BookingType.service:
-        return HugeIcons.strokeRoundedUser;
+        return HugeIcons.strokeRoundedWrench01;
     }
   }
 
@@ -890,6 +1112,10 @@ class _BookingsViewState extends State<BookingsView> {
     switch (_bookingType) {
       case BookingType.dining:
         return 'Cth: 4 Dewasa, 1 Kerusi Bayi / Meja tepi tingkap';
+      case BookingType.hospitality:
+        return 'Cth: Tiba lewat sekitar 8:00 PM / minta katil saiz King';
+      case BookingType.barber:
+        return 'Cth: Gaya Low Fade & kemaskan janggut';
       case BookingType.automotive:
         return 'Cth: No. Plat VAB 1234 (Honda Civic Putih)';
       case BookingType.health:
@@ -901,7 +1127,7 @@ class _BookingsViewState extends State<BookingsView> {
       case BookingType.retail:
         return 'Cth: Saiz M & L / warna tema pastel';
       case BookingType.service:
-        return 'Cth: Gaya potongan Low Taper Fade';
+        return 'Cth: Aircond bilik utama kurang sejuk & berbunyi';
     }
   }
 
@@ -1065,8 +1291,9 @@ class _BookingsViewState extends State<BookingsView> {
       debugPrint('Error fetching business_products in booking: $e');
     }
 
-    // 3. Dapatkan staf sebenar dari team_members (hanya jika jenis service/health/automotive)
+    // 3. Dapatkan staf sebenar dari team_members (hanya jika jenis service/barber/health/automotive/beauty)
     if (_bookingType == BookingType.service ||
+        _bookingType == BookingType.barber ||
         _bookingType == BookingType.health ||
         _bookingType == BookingType.beauty ||
         _bookingType == BookingType.automotive) {
