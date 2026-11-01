@@ -781,9 +781,9 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: isDark ? Colors.white : const Color(0xFF1E293B),
-                  fontSize: 22,
+                  fontSize: 16.5,
                   fontWeight: FontWeight.w800,
-                  letterSpacing: -0.4,
+                  letterSpacing: -0.3,
                 ),
               ),
               const SizedBox(height: 3),
@@ -837,42 +837,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
 
         const SizedBox(width: 12),
 
-        // Optional Quick Login Pill for Guests
-        if (Supabase.instance.client.auth.currentUser == null) ...[
-          GestureDetector(
-            onTap: () => Navigator.of(context).pushNamed('/login'),
-            child: Container(
-              height: 44,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                color: const Color(0xFF2196F3).withValues(alpha: 0.15),
-                border: Border.all(
-                  color: const Color(0xFF2196F3).withValues(alpha: 0.4),
-                  width: 1,
-                ),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.login_rounded, size: 16, color: Color(0xFF64B5F6)),
-                  SizedBox(width: 6),
-                  Text(
-                    'Log Masuk',
-                    style: TextStyle(
-                      color: Color(0xFF64B5F6),
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
-
-        // Right: Connected Twin Glass Pill (QR Scan + Divider + Notification)
+        // Right: Connected Twin Glass Pill (QR Scan + Login if Guest, or Bookings + Saved + Notification if Logged In)
         GlassContainer(
           useOwnLayer: true,
           quality: GlassQuality.standard,
@@ -885,7 +850,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
           ),
           child: Container(
             height: 44,
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 2),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(50),
               color: isDark
@@ -906,23 +871,45 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // QR Button (Sentiasa kelihatan walaupun belum log in)
+                // QR Button (Sentiasa kelihatan, 44x44 tepat)
                 GestureDetector(
                   onTap: _openQrScanner,
                   behavior: HitTestBehavior.opaque,
-                  child: Container(
-                    padding: const EdgeInsets.all(9),
-                    child: HugeIcon(
-                      icon: HugeIcons.strokeRoundedQrCode01,
-                      color: isDark ? Colors.white70 : const Color(0xFF1E293B),
-                      size: 20,
+                  child: SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: Center(
+                      child: HugeIcon(
+                        icon: HugeIcons.strokeRoundedQrCode01,
+                        color: isDark ? Colors.white70 : const Color(0xFF1E293B),
+                        size: 20,
+                      ),
                     ),
                   ),
                 ),
 
-                // Hanya tunjukkan Bookmark, Bookings, dan Bell jika pengguna sudah log in
-                if (Supabase.instance.client.auth.currentUser != null) ...[
-                  // My Bookings (Tempahan Saya) Quick Button
+                // Jika tetamu / belum log masuk: Gabungkan butang Log Masuk di sini (ikon sahaja tanpa teks)
+                if (Supabase.instance.client.auth.currentUser == null) ...[
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pushNamed('/login'),
+                    behavior: HitTestBehavior.opaque,
+                    child: SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Center(
+                        child: Tooltip(
+                          message: 'Log Masuk / Daftar',
+                          child: HugeIcon(
+                            icon: HugeIcons.strokeRoundedLogin02,
+                            color: const Color(0xFF2196F3),
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  // My Bookings (Tempahan Saya) Quick Button (44x44 tepat)
                   GestureDetector(
                     onTap: () {
                       Navigator.push(
@@ -931,17 +918,20 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                       );
                     },
                     behavior: HitTestBehavior.opaque,
-                    child: Container(
-                      padding: const EdgeInsets.all(9),
-                      child: HugeIcon(
-                        icon: HugeIcons.strokeRoundedCalendar03,
-                        color: isDark ? Colors.white70 : const Color(0xFF1E293B),
-                        size: 20,
+                    child: SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Center(
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedCalendar03,
+                          color: isDark ? Colors.white70 : const Color(0xFF1E293B),
+                          size: 20,
+                        ),
                       ),
                     ),
                   ),
 
-                  // Saved (Disimpan) Bookmark Button
+                  // Saved (Disimpan) Bookmark Button (44x44 tepat)
                   GestureDetector(
                     onTap: () {
                       Navigator.push(
@@ -950,17 +940,20 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                       );
                     },
                     behavior: HitTestBehavior.opaque,
-                    child: Container(
-                      padding: const EdgeInsets.all(9),
-                      child: HugeIcon(
-                        icon: HugeIcons.strokeRoundedBookmark02,
-                        color: isDark ? Colors.white70 : const Color(0xFF1E293B),
-                        size: 20,
+                    child: SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Center(
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedBookmark02,
+                          color: isDark ? Colors.white70 : const Color(0xFF1E293B),
+                          size: 20,
+                        ),
                       ),
                     ),
                   ),
 
-                  // Notification Bell Button with Red Dot
+                  // Notification Bell Button with Red Dot (44x44 tepat)
                   GestureDetector(
                     onTap: () {
                       showGlassToast(
@@ -970,36 +963,40 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                       );
                     },
                     behavior: HitTestBehavior.opaque,
-                    child: Container(
-                      padding: const EdgeInsets.all(9),
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          HugeIcon(
-                            icon: HugeIcons.strokeRoundedNotification01,
-                            color: isDark ? Colors.white70 : const Color(0xFF1E293B),
-                            size: 20,
-                          ),
-                          Positioned(
-                            top: -1,
-                            right: -1,
-                            child: Container(
-                              width: 7.5,
-                              height: 7.5,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFFF4757),
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Color(0xFFFF4757),
-                                    blurRadius: 4,
-                                    spreadRadius: 0.5,
-                                  ),
-                                ],
+                    child: SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Center(
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          alignment: Alignment.center,
+                          children: [
+                            HugeIcon(
+                              icon: HugeIcons.strokeRoundedNotification01,
+                              color: isDark ? Colors.white70 : const Color(0xFF1E293B),
+                              size: 20,
+                            ),
+                            Positioned(
+                              top: 11,
+                              right: 11,
+                              child: Container(
+                                width: 7.5,
+                                height: 7.5,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFFF4757),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Color(0xFFFF4757),
+                                      blurRadius: 4,
+                                      spreadRadius: 0.5,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
