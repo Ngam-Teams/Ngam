@@ -4373,15 +4373,15 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
         return Stack(
           fit: StackFit.expand,
           children: [
-            // 1. Base Video Surface (Edge-to-edge full bleed covering from top to bottom)
+            // 1. Base Video Surface (TikTok Style: fit-width edge-to-edge from top without side cropping)
             IgnorePointer(
               child: SizedBox.expand(
                 child: FittedBox(
                   fit: widget.isDesktop
                       ? (isLandscape ? BoxFit.contain : BoxFit.cover)
-                      : BoxFit.cover,
+                      : (isLandscape ? BoxFit.contain : BoxFit.fitWidth),
                   clipBehavior: Clip.hardEdge,
-                  alignment: Alignment.center,
+                  alignment: widget.isDesktop ? Alignment.center : Alignment.topCenter,
                   child: SizedBox(
                     width: _controller.value.size.width > 0 ? _controller.value.size.width : 720,
                     height: _controller.value.size.height > 0 ? _controller.value.size.height : 1280,

@@ -140,9 +140,10 @@
       overflow: hidden;
       height: 100%;
     }
-    /* Pastikan video player di Web/PWA sentiasa edge-to-edge memenuhi viewport dari puncak atas tanpa jurang hitam */
+    /* Video player TikTok style: fit width penuh bermula dari puncak atas tanpa potong bahagian tepi */
     video {
-      object-fit: cover !important;
+      object-fit: contain !important;
+      object-position: top center !important;
       width: 100% !important;
       height: 100% !important;
       top: 0 !important;
