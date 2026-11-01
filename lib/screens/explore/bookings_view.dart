@@ -742,6 +742,9 @@ class _BookingsViewState extends State<BookingsView> {
 
   String _lastPaymentStatus = 'unpaid';
   String _lastPaymentMethod = 'Bayar di Kedai (Tunai)';
+  int _paxCount = 2;
+  int _nightsCount = 1;
+  final TextEditingController _industryDetailCtrl = TextEditingController();
 
   final List<String> _banksList = ["Maybank2u", "CIMB Clicks", "Public Bank", "RHB Now"];
 
@@ -755,8 +758,17 @@ class _BookingsViewState extends State<BookingsView> {
 
   double get _subtotal {
     double total = 0;
-    for (int i in _selectedServices) { if (i >= 0 && i < _servicesList.length) total += _parseMoney(_servicesList[i]["price"] ?? ''); }
-    for (int i in _selectedAddons) { if (i >= 0 && i < _addonsList.length) total += _parseMoney(_addonsList[i]["price"] ?? ''); }
+    final int multiplier = _bookingType == BookingType.hospitality ? _nightsCount : 1;
+    for (int i in _selectedServices) {
+      if (i >= 0 && i < _servicesList.length) {
+        total += _parseMoney(_servicesList[i]["price"] ?? '') * multiplier;
+      }
+    }
+    for (int i in _selectedAddons) {
+      if (i >= 0 && i < _addonsList.length) {
+        total += _parseMoney(_addonsList[i]["price"] ?? '');
+      }
+    }
     return double.parse(total.toStringAsFixed(2));
   }
 
@@ -925,7 +937,33 @@ class _BookingsViewState extends State<BookingsView> {
     if (_isStaleHold(b)) return false;
     final String bDate = b['booking_date']?.toString() ?? '';
     final String bTime = b['booking_time']?.toString() ?? '';
-    if (bDate != targetDate || bTime != timeStr) return false;
+    if (bDate != targetDate) return false;
+
+    int? parseMins(String t) {
+      final p = t.split(':');
+      if (p.length < 2) return null;
+      final h = int.tryParse(p[0]);
+      final m = int.tryParse(p[1]);
+      if (h == null || m == null) return null;
+      return h * 60 + m;
+    }
+
+    final int? slotMins = parseMins(timeStr);
+    final int? bookedStartMins = parseMins(bTime);
+    if (slotMins == null || bookedStartMins == null) {
+      if (bTime != timeStr) return false;
+    } else {
+      final metaMap = (b['booking_metadata'] is Map)
+          ? Map<String, dynamic>.from(b['booking_metadata'] as Map)
+          : <String, dynamic>{};
+      final int bookedDur = (metaMap['estimated_duration_mins'] as num?)?.toInt() ?? 60;
+      final int effectiveBookedDur = bookedDur > 60 ? bookedDur : 60;
+      final int myDur = _totalTime > 60 ? _totalTime : 60;
+      final int bookedEndMins = bookedStartMins + effectiveBookedDur;
+      final int slotEndMins = slotMins + myDur;
+      final bool overlaps = slotMins < bookedEndMins && slotEndMins > bookedStartMins;
+      if (!overlaps) return false;
+    }
 
     if (isSpecificStaff) {
       final meta = (b['booking_metadata'] is Map)
@@ -1897,7 +1935,7 @@ class _BookingsViewState extends State<BookingsView> {
             'booking_date': targetDate,
             'booking_time': targetTime,
             'status': 'holding',
-            'pax': 1,
+            'pax': _paxCount,
             if (staffUuid != null) 'staff_id': staffUuid,
             'booking_metadata': {
               'customer_auth_id': user.id,
@@ -2079,8 +2117,25 @@ class _BookingsViewState extends State<BookingsView> {
       'shop_image': widget.shopImage,
       'category': widget.category,
       'booking_type': _bookingType.name,
+      'pax': _paxCount,
+      if (_bookingType == BookingType.hospitality) 'nights_count': _nightsCount,
+      if (_industryDetailCtrl.text.trim().isNotEmpty) 'industry_detail': _industryDetailCtrl.text.trim(),
       'has_allergies_or_notes': _hasAllergies,
-      'notes': combinedNotes.isNotEmpty ? combinedNotes : 'Tempahan melalui Aplikasi Ngam',
+      'notes': [
+        if (_bookingType == BookingType.dining || _bookingType == BookingType.hospitality || _bookingType == BookingType.facility)
+          '$_paxCount Pax',
+        if (_bookingType == BookingType.hospitality) '$_nightsCount Malam',
+        if (_industryDetailCtrl.text.trim().isNotEmpty) _industryDetailCtrl.text.trim(),
+        if (combinedNotes.isNotEmpty) combinedNotes,
+      ].join(' • ').isNotEmpty
+          ? [
+              if (_bookingType == BookingType.dining || _bookingType == BookingType.hospitality || _bookingType == BookingType.facility)
+                '$_paxCount Pax',
+              if (_bookingType == BookingType.hospitality) '$_nightsCount Malam',
+              if (_industryDetailCtrl.text.trim().isNotEmpty) _industryDetailCtrl.text.trim(),
+              if (combinedNotes.isNotEmpty) combinedNotes,
+            ].join(' • ')
+          : 'Tempahan melalui Aplikasi Ngam',
     };
 
     String? savedId;
@@ -2115,7 +2170,7 @@ class _BookingsViewState extends State<BookingsView> {
           'booking_date': targetDate,
           'booking_time': targetTime,
           'status': 'pending',
-          'pax': 1,
+          'pax': _paxCount,
           'total_price': _totalPrice,
           if (staffId != null) 'staff_id': staffId,
           'booking_metadata': metadataPayload,
@@ -2508,6 +2563,164 @@ class _BookingsViewState extends State<BookingsView> {
                     }),
                   ),
                 ),
+                if (_bookingType == BookingType.hospitality ||
+                    _bookingType == BookingType.dining ||
+                    _bookingType == BookingType.facility) ...[
+                  const SizedBox(height: 22),
+                  _buildGlassBox(
+                    isDark: isDark,
+                    radius: 18,
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _bookingType == BookingType.hospitality
+                                      ? 'Bilangan Tetamu (Dewasa/Kanak-kanak)'
+                                      : (_bookingType == BookingType.dining
+                                          ? 'Bilangan Tetamu Meja (Pax)'
+                                          : 'Bilangan Pemain (Pax)'),
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? Colors.white : Colors.black87,
+                                  ),
+                                ),
+                                Text(
+                                  'Sila tetapkan jumlah kehadiran',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isDark ? Colors.white54 : Colors.black54,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                GestureDetector(
+                                  onTap: () {
+                                    if (_paxCount > 1) setState(() => _paxCount--);
+                                  },
+                                  child: Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(Icons.remove, size: 16, color: isDark ? Colors.white : Colors.black87),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  child: Text(
+                                    '$_paxCount Pax',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w900,
+                                      color: isDark ? Colors.white : Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () {
+                                    if (_paxCount < 30) setState(() => _paxCount++);
+                                  },
+                                  child: Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.blue,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.add, size: 16, color: Colors.white),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        if (_bookingType == BookingType.hospitality) ...[
+                          const Divider(height: 24),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Tempoh Penginapan (Malam)',
+                                    style: TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark ? Colors.white : Colors.black87,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Check-out: ${_selectedCalendarDate.add(Duration(days: _nightsCount)).day}/${_selectedCalendarDate.add(Duration(days: _nightsCount)).month}/${_selectedCalendarDate.add(Duration(days: _nightsCount)).year}',
+                                    style: const TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blueAccent,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () {
+                                      if (_nightsCount > 1) setState(() => _nightsCount--);
+                                    },
+                                    child: Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: BoxDecoration(
+                                        color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(Icons.remove, size: 16, color: isDark ? Colors.white : Colors.black87),
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    child: Text(
+                                      '$_nightsCount Malam',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w900,
+                                        color: isDark ? Colors.white : Colors.black87,
+                                      ),
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () {
+                                      if (_nightsCount < 30) setState(() => _nightsCount++);
+                                    },
+                                    child: Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.blue,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.add, size: 16, color: Colors.white),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 10),
               ],
             );
@@ -2685,6 +2898,23 @@ class _BookingsViewState extends State<BookingsView> {
                   controller: _customerPhoneCtrl,
                   keyboardType: TextInputType.phone,
                 ),
+                if (_bookingType == BookingType.automotive || _bookingType == BookingType.service) ...[
+                  const SizedBox(height: 10),
+                  _buildPremiumInput(
+                    isDark: isDark,
+                    label: _bookingType == BookingType.automotive
+                        ? "No. Plat & Model Kenderaan"
+                        : "Alamat Rumah / Lokasi Servis",
+                    hint: _bookingType == BookingType.automotive
+                        ? "Cth: VAB 1234 (Honda City)"
+                        : "Masukkan alamat penuh jika servis ke rumah",
+                    icon: _bookingType == BookingType.automotive
+                        ? HugeIcons.strokeRoundedCar01
+                        : HugeIcons.strokeRoundedLocation01,
+                    controller: _industryDetailCtrl,
+                    keyboardType: TextInputType.text,
+                  ),
+                ],
                 const SizedBox(height: 10),
                 _buildPremiumInput(
                   isDark: isDark,

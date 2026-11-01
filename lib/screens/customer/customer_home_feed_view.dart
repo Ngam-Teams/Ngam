@@ -17,6 +17,7 @@ import '../../widgets/glass_toast.dart';
 import '../explore/business_store_view.dart';
 import '../explore/explore_view.dart';
 import '../explore/my_bookings_view.dart';
+import '../explore/order_status_tracker_screen.dart';
 import '../explore/qr_scanner_screen.dart';
 import '../explore/store_route_loader.dart';
 import '../shared/my_queue_ticket_screen.dart';
@@ -1377,8 +1378,152 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
   }
 
   // --- WIDGET 5: DIGITAL STAMP CARD & LIVE QUEUE STATUS (FROSTED GLASS) ---
+  Widget _buildActiveOrderBanner(bool isDark) {
+    final myUid = Supabase.instance.client.auth.currentUser?.id;
+    if (myUid == null) return const SizedBox.shrink();
+
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: Supabase.instance.client
+          .from('orders')
+          .stream(primaryKey: ['id'])
+          .eq('owner_user_id', myUid)
+          .order('created_at', ascending: false),
+      builder: (context, snapshot) {
+        final activeOrders = (snapshot.data ?? []).where((o) {
+          final st = (o['status']?.toString() ?? '').toLowerCase();
+          return st == 'pending' || st == 'preparing' || st == 'in_progress' || st == 'ready';
+        }).toList();
+
+        if (activeOrders.isEmpty) return const SizedBox.shrink();
+        final latest = activeOrders.first;
+        final String orderId = latest['id']?.toString() ?? '';
+        final String status = (latest['status']?.toString() ?? 'pending').toLowerCase();
+        final double total = (latest['total'] as num?)?.toDouble() ?? 0.0;
+        final String shortId = orderId.length > 6 ? orderId.substring(0, 6).toUpperCase() : orderId.toUpperCase();
+
+        final String statusLabel = status == 'ready'
+            ? 'Sedia Untuk Diambil!'
+            : (status == 'preparing' || status == 'in_progress'
+                ? 'Sedang Disediakan di Dapur'
+                : 'Pesanan Diterima (Menunggu Kedai)');
+        final Color statusColor = status == 'ready'
+            ? const Color(0xFF00E676)
+            : (status == 'preparing' || status == 'in_progress'
+                ? const Color(0xFF00B0FF)
+                : const Color(0xFFFFB300));
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => OrderStatusTrackerScreen(
+                    orderId: orderId,
+                    shopName: 'Pesanan #$shortId',
+                    totalAmount: total,
+                    shopId: latest['business_id']?.toString(),
+                  ),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    statusColor.withValues(alpha: isDark ? 0.22 : 0.15),
+                    const Color(0xFF2196F3).withValues(alpha: isDark ? 0.16 : 0.10),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: statusColor.withValues(alpha: 0.45), width: 1.3),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: HugeIcon(
+                      icon: status == 'ready'
+                          ? HugeIcons.strokeRoundedShoppingBag01
+                          : HugeIcons.strokeRoundedRestaurant01,
+                      color: statusColor,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'PESANAN AKTIF #$shortId',
+                              style: TextStyle(
+                                color: statusColor,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '• RM ${total.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                color: isDark ? Colors.white70 : Colors.black54,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          statusLabel,
+                          style: TextStyle(
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'Jejak & QR',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildDigitalStampAndQueueCard(bool isDark) {
-    return GlassContainer(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildActiveOrderBanner(isDark),
+        GlassContainer(
       useOwnLayer: true,
       quality: GlassQuality.standard,
       shape: const LiquidRoundedSuperellipse(borderRadius: 24.0),
@@ -1650,7 +1795,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                       ),
                     ),
                     child: Text(
-                      'Sejarah',
+                      'Tempahan & Pesanan',
                       style: TextStyle(
                         color: isDark ? Colors.white70 : const Color(0xFF475569),
                         fontSize: 12,
@@ -1664,6 +1809,8 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
           ],
         ),
       ),
+        ),
+      ],
     );
   }
 

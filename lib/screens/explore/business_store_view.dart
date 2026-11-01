@@ -129,7 +129,12 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
 
   int get _cartItemCount => _cart.fold(0, (sum, item) => sum + item.quantity);
 
-  void _addToCart(ProductModel product) {
+  void _addToCart(
+    ProductModel product, {
+    String? selectedOption,
+    String? itemNote,
+    double optionExtraPrice = 0.0,
+  }) {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
       showGlassToast(
@@ -142,14 +147,23 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
     }
 
     setState(() {
-      final index = _cart.indexWhere((c) => c.product.id == product.id);
+      final index = _cart.indexWhere((c) =>
+          c.product.id == product.id &&
+          (c.selectedOption ?? '') == (selectedOption ?? '') &&
+          (c.itemNote ?? '') == (itemNote ?? ''));
       if (index >= 0) {
         _cart[index].quantity += 1;
       } else {
-        _cart.add(CartItem(product: product, quantity: 1));
+        _cart.add(CartItem(
+          product: product,
+          quantity: 1,
+          selectedOption: selectedOption,
+          itemNote: itemNote,
+          optionExtraPrice: optionExtraPrice,
+        ));
       }
     });
-    showGlassToast(context, 'Added "${product.name}" to cart!');
+    showGlassToast(context, 'Ditambah "${product.name}" ke dalam troli!');
   }
 
   // ── Status Helpers ───────────────────────────────────────────

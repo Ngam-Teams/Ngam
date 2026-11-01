@@ -17,10 +17,32 @@ import '../../widgets/voucher_selection_sheet.dart';
 class CartItem {
   final ProductModel product;
   int quantity;
+  String? selectedOption;
+  String? itemNote;
+  double optionExtraPrice;
 
-  CartItem({required this.product, this.quantity = 1});
+  CartItem({
+    required this.product,
+    this.quantity = 1,
+    this.selectedOption,
+    this.itemNote,
+    this.optionExtraPrice = 0.0,
+  });
 
-  double get totalPrice => product.price * quantity;
+  double get unitPriceWithOption => product.price + optionExtraPrice;
+  double get totalPrice => unitPriceWithOption * quantity;
+
+  String get formattedProductName {
+    final parts = <String>[];
+    if (selectedOption != null && selectedOption!.trim().isNotEmpty) {
+      parts.add(selectedOption!.trim());
+    }
+    if (itemNote != null && itemNote!.trim().isNotEmpty) {
+      parts.add(itemNote!.trim());
+    }
+    if (parts.isEmpty) return product.name;
+    return '${product.name} (${parts.join(' • ')})';
+  }
 }
 
 // ============================================================
@@ -88,7 +110,13 @@ class _StoreCartViewState extends State<StoreCartView> {
     // Copy each CartItem: the view mutates quantities locally and reports the
     // delta to the parent via onUpdateQuantity (sharing instances double-counted).
     _items = widget.cartItems
-        .map((c) => CartItem(product: c.product, quantity: c.quantity))
+        .map((c) => CartItem(
+              product: c.product,
+              quantity: c.quantity,
+              selectedOption: c.selectedOption,
+              itemNote: c.itemNote,
+              optionExtraPrice: c.optionExtraPrice,
+            ))
         .toList();
     if (widget.tableNumber != null && widget.tableNumber!.isNotEmpty) {
       _fulfillmentMode = 1; // Dine-in
@@ -119,7 +147,7 @@ class _StoreCartViewState extends State<StoreCartView> {
   double get _subtotal =>
       _items.fold(0.0, (sum, item) => sum + item.totalPrice);
 
-  double get _deliveryFee => 0.00;
+  double get _deliveryFee => _fulfillmentMode == 3 ? (_subtotal >= 50.0 ? 0.0 : 5.00) : 0.00;
 
   double get _total => (_subtotal + _deliveryFee - _discountAmount).clamp(0.0, 999999.0);
 
@@ -375,10 +403,17 @@ class _StoreCartViewState extends State<StoreCartView> {
 
       final String finalNotes = '$tablePrefix[$fulfillmentLabel] $voucherNote${_notesController.text.trim()}'.trim();
 
+      final String customerPhone = (user.phone?.isNotEmpty == true)
+          ? user.phone!
+          : ((user.userMetadata?['phone'] as String?) ??
+              (user.userMetadata?['phone_number'] as String?) ??
+              '');
+
       final baseOrderData = {
         'business_id': widget.shop['id'],
         'owner_user_id': user.id,
         'customer_name': customerName,
+        if (customerPhone.isNotEmpty) 'customer_phone': customerPhone,
         'total': _total,
         'status': 'pending',
         'source': source,
@@ -433,9 +468,9 @@ class _StoreCartViewState extends State<StoreCartView> {
             .map((item) => {
                   'order_id': orderId,
                   'product_id': item.product.id,
-                  'product_name': item.product.name,
+                  'product_name': item.formattedProductName,
                   'quantity': item.quantity,
-                  'unit_price': item.product.price,
+                  'unit_price': item.unitPriceWithOption,
                   'subtotal': item.totalPrice,
                 })
             .toList();
@@ -508,6 +543,103 @@ class _StoreCartViewState extends State<StoreCartView> {
       setState(() => _isProcessing = false);
       showGlassToast(context, 'Pesanan gagal dihantar: ${e.toString().replaceFirst('Exception: ', '')}', isError: true);
     }
+  }
+
+  Future<void> _editItemOptionDialog(CartItem item, bool isDark) async {
+    final options = ['Biasa', 'Kurang Manis', 'Lebih Pedas', 'Kurang Ais', 'Besar (+RM2.00)', 'Tambah Cheese (+RM2.00)'];
+    String selectedOpt = item.selectedOption ?? '';
+    final noteCtrl = TextEditingController(text: item.itemNote ?? '');
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModal) => Container(
+          padding: EdgeInsets.fromLTRB(22, 22, 22, MediaQuery.of(ctx).viewInsets.bottom + 22),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF161B22) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Pilihan & Nota: ${item.product.name}',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: options.map((opt) {
+                  final isSel = selectedOpt == opt;
+                  return GestureDetector(
+                    onTap: () => setModal(() => selectedOpt = isSel ? '' : opt),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSel ? Colors.blue : (isDark ? Colors.white10 : Colors.grey.shade100),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        opt,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isSel ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: noteCtrl,
+                style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: 'Nota khas item (cth: Tak nak bawang / Asing kuah)...',
+                  hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.black38),
+                  filled: true,
+                  fillColor: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade100,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      item.selectedOption = selectedOpt.isEmpty ? null : selectedOpt;
+                      item.itemNote = noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim();
+                      item.optionExtraPrice = selectedOpt.contains('+RM2.00') ? 2.0 : 0.0;
+                    });
+                    Navigator.pop(ctx);
+                  },
+                  child: const Text('Simpan Pilihan', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   /// Customers may only move their own pending orders to 'cancelled' (RLS).
@@ -689,11 +821,34 @@ class _StoreCartViewState extends State<StoreCartView> {
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
-                                            'RM ${item.product.price.toStringAsFixed(2)}',
+                                            'RM ${item.unitPriceWithOption.toStringAsFixed(2)}',
                                             style: const TextStyle(
                                               color: Colors.blue,
                                               fontSize: 13,
                                               fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          GestureDetector(
+                                            onTap: () => _editItemOptionDialog(item, isDark),
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue.withValues(alpha: 0.1),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                (item.selectedOption?.isNotEmpty == true || item.itemNote?.isNotEmpty == true)
+                                                    ? '${item.selectedOption ?? ''}${item.selectedOption != null && item.itemNote != null ? ' • ' : ''}${item.itemNote ?? ''}'
+                                                    : '+ Pilihan / Nota Item',
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  color: Colors.blue,
+                                                  fontSize: 10.5,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
                                             ),
                                           ),
                                         ],
@@ -798,6 +953,15 @@ class _StoreCartViewState extends State<StoreCartView> {
                               ),
                               const SizedBox(height: 12),
                               _summaryRow('Subtotal', 'RM ${_subtotal.toStringAsFixed(2)}', textSecondary, textPrimary),
+                              if (_fulfillmentMode == 3) ...[
+                                const SizedBox(height: 8),
+                                _summaryRow(
+                                  'Caj Penghantaran (Delivery)',
+                                  _deliveryFee == 0 ? 'PERCUMA' : 'RM ${_deliveryFee.toStringAsFixed(2)}',
+                                  textSecondary,
+                                  _deliveryFee == 0 ? Colors.green : textPrimary,
+                                ),
+                              ],
 
                               if (_voucherApplied) ...[
                                 const SizedBox(height: 8),

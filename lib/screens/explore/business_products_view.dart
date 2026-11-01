@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../models/product_model.dart';
 import '../../widgets/glass_nav_button.dart';
+import '../../widgets/glass_toast.dart';
 
 // ============================================================
 // BusinessProductsView — Full product search & browse page
@@ -17,12 +18,14 @@ class BusinessProductsView extends StatefulWidget {
   final String shopId;
   final String shopName;
   final String initialSearchQuery;
+  final void Function(ProductModel product)? onAddToCart;
 
   const BusinessProductsView({
     super.key,
     required this.shopId,
     required this.shopName,
     this.initialSearchQuery = '',
+    this.onAddToCart,
   });
 
   @override
@@ -307,7 +310,14 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
                             ),
                             const SizedBox(height: 32),
                             GestureDetector(
-                              onTap: () => Navigator.pop(context),
+                              onTap: () {
+                                Navigator.pop(context);
+                                if (widget.onAddToCart != null) {
+                                  widget.onAddToCart!(product);
+                                } else {
+                                  showGlassToast(this.context, 'Added "${product.name}" to cart!');
+                                }
+                              },
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 16,
