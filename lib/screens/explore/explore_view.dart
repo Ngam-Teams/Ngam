@@ -65,9 +65,28 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   String _navDistance = '';
   String _navDuration = '';
   String _navInstruction = '';
+  String _nextManeuverDistance = '';
+  double _navBearing = 0.0;
+  bool _isNavStepsExpanded = false;
+  List<Map<String, dynamic>> _parsedNavSteps = [];
   dynamic _navManeuverIcon = HugeIcons.strokeRoundedNavigation03;
   Map<String, dynamic>? _navTargetShop;
   final DraggableScrollableController _sheetController = DraggableScrollableController();
+
+  double _calculateBearing(LatLng start, LatLng end) {
+    final double startLat = start.latitude * (math.pi / 180.0);
+    final double startLng = start.longitude * (math.pi / 180.0);
+    final double endLat = end.latitude * (math.pi / 180.0);
+    final double endLng = end.longitude * (math.pi / 180.0);
+
+    final double dLng = endLng - startLng;
+    final double y = math.sin(dLng) * math.cos(endLat);
+    final double x = math.cos(startLat) * math.sin(endLat) -
+        math.sin(startLat) * math.cos(endLat) * math.cos(dLng);
+
+    final double initialBearing = math.atan2(y, x);
+    return (initialBearing * 180.0 / math.pi + 360.0) % 360.0;
+  }
 
   Timer? _minuteTicker;
 
@@ -1232,42 +1251,78 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
           String instruction = 'Menuju ke arah ${shop['name'] ?? 'destinasi'}';
           dynamic maneuverIcon = HugeIcons.strokeRoundedNavigation03;
+          String nextManeuverDist = '';
+          final List<Map<String, dynamic>> parsedSteps = [];
+
           final legs = route['legs'] as List<dynamic>?;
           if (legs != null && legs.isNotEmpty && legs[0]['steps'] != null) {
             final steps = legs[0]['steps'] as List<dynamic>;
-            if (steps.length > 1) {
-              final nextStep = steps[1];
-              final name = nextStep['name']?.toString() ?? '';
-              final man = nextStep['maneuver'] as Map<String, dynamic>?;
+
+            for (int i = 0; i < steps.length; i++) {
+              final step = steps[i];
+              final double sDist = (step['distance'] as num?)?.toDouble() ?? 0.0;
+              final String sName = step['name']?.toString() ?? '';
+              final man = step['maneuver'] as Map<String, dynamic>?;
               final modifier = man?['modifier']?.toString().toLowerCase() ?? '';
               final type = man?['type']?.toString().toLowerCase() ?? '';
 
+              String stepDistStr = sDist >= 1000 ? '${(sDist / 1000).toStringAsFixed(1)} km' : '${sDist.round()} m';
+              dynamic stepIcon = HugeIcons.strokeRoundedArrowUp01;
+              String stepInstruction = '';
+
               if (modifier.contains('left')) {
-                maneuverIcon = HugeIcons.strokeRoundedArrowTurnBackward;
-                instruction = name.isNotEmpty ? 'Belok kiri ke $name' : 'Belok kiri di hadapan';
+                stepIcon = HugeIcons.strokeRoundedArrowTurnBackward;
+                stepInstruction = sName.isNotEmpty ? 'Belok kiri ke $sName' : 'Belok kiri di hadapan';
               } else if (modifier.contains('right')) {
-                maneuverIcon = HugeIcons.strokeRoundedArrowTurnForward;
-                instruction = name.isNotEmpty ? 'Belok kanan ke $name' : 'Belok kanan di hadapan';
+                stepIcon = HugeIcons.strokeRoundedArrowTurnForward;
+                stepInstruction = sName.isNotEmpty ? 'Belok kanan ke $sName' : 'Belok kanan di hadapan';
               } else if (modifier.contains('u-turn') || modifier.contains('uturn')) {
-                maneuverIcon = HugeIcons.strokeRoundedNavigation03;
-                instruction = 'Buat pusingan U';
+                stepIcon = HugeIcons.strokeRoundedNavigation03;
+                stepInstruction = 'Buat pusingan U';
               } else if (type == 'arrive') {
-                maneuverIcon = HugeIcons.strokeRoundedFlag01;
-                instruction = 'Tiba di ${shop['name']}';
+                stepIcon = HugeIcons.strokeRoundedFlag01;
+                stepInstruction = 'Tiba di ${shop['name'] ?? 'Destinasi'}';
               } else {
-                maneuverIcon = HugeIcons.strokeRoundedArrowUp01;
-                instruction = name.isNotEmpty ? 'Terus ke $name' : 'Teruskan perjalanan';
+                stepIcon = HugeIcons.strokeRoundedArrowUp01;
+                stepInstruction = sName.isNotEmpty ? 'Terus ke $sName' : 'Teruskan perjalanan';
+              }
+
+              parsedSteps.add({
+                'distance': stepDistStr,
+                'rawDistance': sDist,
+                'instruction': stepInstruction,
+                'icon': stepIcon,
+                'name': sName,
+              });
+            }
+
+            if (steps.isNotEmpty) {
+              final double nextDist = (steps[0]['distance'] as num?)?.toDouble() ?? 0.0;
+              nextManeuverDist = nextDist >= 1000 ? '${(nextDist / 1000).toStringAsFixed(1)} km' : '${nextDist.round()} m';
+              if (steps.length > 1 && parsedSteps.length > 1) {
+                instruction = parsedSteps[1]['instruction'];
+                maneuverIcon = parsedSteps[1]['icon'];
               }
             }
           }
 
+          double initialBearing = 0.0;
+          if (points.length >= 2) {
+            initialBearing = _calculateBearing(points[0], points[1]);
+          }
+
           if (mounted) {
+            BottomNavCustomer.isVisible.value = false;
             setState(() {
               _routePoints = points;
               _navDistance = distStr;
               _navDuration = durStr;
               _navInstruction = instruction;
               _navManeuverIcon = maneuverIcon;
+              _nextManeuverDistance = nextManeuverDist.isNotEmpty ? nextManeuverDist : distStr;
+              _navBearing = initialBearing;
+              _parsedNavSteps = parsedSteps;
+              _isNavStepsExpanded = false;
               _isNavigating = true;
             });
             _fitRouteBounds(points);
@@ -1281,12 +1336,17 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
     // Fallback: If route fetch fails, draw straight-line route and alert user
     if (mounted) {
+      BottomNavCustomer.isVisible.value = false;
       setState(() {
         _routePoints = [_currentLocation, LatLng(destLat, destLng)];
         _navDistance = _getDistanceString(shop['location']);
         _navDuration = '~10 min';
         _navInstruction = 'Menuju ke arah ${shop['name']}';
+        _nextManeuverDistance = _navDistance;
+        _navBearing = _calculateBearing(_currentLocation, LatLng(destLat, destLng));
         _navManeuverIcon = HugeIcons.strokeRoundedNavigation03;
+        _parsedNavSteps = [];
+        _isNavStepsExpanded = false;
         _isNavigating = true;
       });
       _fitRouteBounds(_routePoints);
@@ -1294,11 +1354,17 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   }
 
   void _stopNavigation() {
+    BottomNavCustomer.isVisible.value = true;
     setState(() {
       _isNavigating = false;
       _routePoints = [];
       _navTargetShop = null;
+      _parsedNavSteps = [];
+      _isNavStepsExpanded = false;
     });
+    try {
+      _mapController.rotate(0.0);
+    } catch (_) {}
     showGlassToast(
       context,
       'Mod pandu arah ditamatkan',
@@ -1368,27 +1434,27 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: isDark
-            ? const Color(0xFF10151E).withValues(alpha: 0.92)
-            : Colors.white.withValues(alpha: 0.95),
+            ? const Color(0xFF0F1522).withValues(alpha: 0.94)
+            : Colors.white.withValues(alpha: 0.96),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.16) : Colors.black.withValues(alpha: 0.08),
+          color: const Color(0xFF00E5FF).withValues(alpha: 0.35),
           width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.15),
+            color: const Color(0xFF00E5FF).withValues(alpha: 0.18),
             blurRadius: 20,
-            offset: const Offset(0, 8),
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Row(
         children: [
-          // Maneuver Icon
+          // Maneuver Icon in glowing cyan circle
           Container(
-            width: 44,
-            height: 44,
+            width: 46,
+            height: 46,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: const LinearGradient(
@@ -1396,8 +1462,8 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF00E5FF).withValues(alpha: 0.35),
-                  blurRadius: 8,
+                  color: const Color(0xFF00E5FF).withValues(alpha: 0.45),
+                  blurRadius: 10,
                 ),
               ],
             ),
@@ -1405,46 +1471,40 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
               child: HugeIcon(
                 icon: _navManeuverIcon,
                 color: Colors.black,
-                size: 22,
+                size: 24,
               ),
             ),
           ),
           const SizedBox(width: 12),
-          // Instruction & Route Stats
+          // Prominent Distance & Instruction (Just like Tesla / Cockpit HUD)
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  _navInstruction,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w800,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 3),
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Text(
-                      _navDistance,
-                      style: const TextStyle(
-                        color: Color(0xFF00E5FF),
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
+                    if (_nextManeuverDistance.isNotEmpty) ...[
+                      Text(
+                        _nextManeuverDistance,
+                        style: const TextStyle(
+                          color: Color(0xFF00E5FF),
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    Flexible(
+                      const SizedBox(width: 8),
+                    ],
+                    Expanded(
                       child: Text(
-                        '•  $_navDuration  •  ${_navTargetShop?['name'] ?? ''}',
+                        _navInstruction,
                         style: TextStyle(
-                          color: isDark ? Colors.white60 : const Color(0xFF64748B),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w800,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1452,59 +1512,325 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                     ),
                   ],
                 ),
+                const SizedBox(height: 2),
+                Text(
+                  '•  $_navDuration  •  $_navDistance  •  ${_navTargetShop?['name'] ?? ''}',
+                  style: TextStyle(
+                    color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          // External Map Launcher button (Google Maps / Waze)
-          Tooltip(
-            message: 'Buka di Google Maps / Waze',
-            child: GestureDetector(
-              onTap: () => _openExternalMaps(_navTargetShop),
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
-                  border: Border.all(
-                    color: isDark ? Colors.white12 : Colors.black12,
-                  ),
-                ),
-                child: Center(
-                  child: HugeIcon(
-                    icon: HugeIcons.strokeRoundedRoute01,
-                    color: isDark ? Colors.white70 : const Color(0xFF334155),
-                    size: 16,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Close / Stop Navigation
+          // Close button
           Tooltip(
             message: 'Tamat Navigasi',
             child: GestureDetector(
               onTap: _stopNavigation,
               child: Container(
-                width: 36,
-                height: 36,
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.redAccent.withValues(alpha: 0.15),
                   border: Border.all(
-                    color: Colors.redAccent.withValues(alpha: 0.4),
+                    color: Colors.redAccent.withValues(alpha: 0.35),
                   ),
                 ),
                 child: const Center(
                   child: HugeIcon(
                     icon: HugeIcons.strokeRoundedCancel01,
                     color: Colors.redAccent,
-                    size: 16,
+                    size: 15,
                   ),
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Sleek Navigation Bottom Card: Shows destination details, ETA/distance, turn-by-turn steps, and external app launch
+  Widget _buildNavigationBottomCard(bool isDark, {required bool isDesktop}) {
+    if (_navTargetShop == null) return const SizedBox.shrink();
+
+    final shop = _navTargetShop!;
+    final String name = shop['name']?.toString() ?? 'Destinasi';
+    final String? logoUrl = (shop['business_logo_url'] ?? shop['logo_url'] ?? shop['image'])?.toString().trim();
+    final String category = shop['category']?.toString() ?? 'Perniagaan';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F1522).withValues(alpha: 0.94) : Colors.white.withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? const Color(0xFF00E5FF).withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.1),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? const Color(0xFF00E5FF).withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.12),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Destination header row
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+            child: Row(
+              children: [
+                // Thumbnail
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    color: isDark ? Colors.white10 : Colors.black12,
+                    child: (logoUrl != null && logoUrl.isNotEmpty)
+                        ? Image.network(
+                            logoUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.storefront_rounded, color: Color(0xFF00E5FF)),
+                          )
+                        : const Icon(Icons.storefront_rounded, color: Color(0xFF00E5FF)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Title & Category
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              _navDuration,
+                              style: const TextStyle(
+                                color: Color(0xFF00E5FF),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11.5,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              '• $_navDistance • $category',
+                              style: TextStyle(
+                                color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Toggle steps button
+                if (_parsedNavSteps.isNotEmpty)
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isNavStepsExpanded = !_isNavStepsExpanded;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Laluan',
+                            style: TextStyle(
+                              color: isDark ? Colors.white70 : const Color(0xFF334155),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            _isNavStepsExpanded ? Icons.keyboard_arrow_down_rounded : Icons.keyboard_arrow_up_rounded,
+                            color: isDark ? Colors.white70 : const Color(0xFF334155),
+                            size: 18,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // Expandable turn-by-turn steps
+          if (_isNavStepsExpanded && _parsedNavSteps.isNotEmpty)
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              constraints: const BoxConstraints(maxHeight: 180),
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.black.withValues(alpha: 0.25) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ListView.separated(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                itemCount: _parsedNavSteps.length,
+                separatorBuilder: (_, __) => Divider(
+                  height: 8,
+                  color: isDark ? Colors.white10 : Colors.black12,
+                ),
+                itemBuilder: (context, i) {
+                  final step = _parsedNavSteps[i];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
+                          ),
+                          child: Center(
+                            child: HugeIcon(
+                              icon: step['icon'] ?? HugeIcons.strokeRoundedArrowUp01,
+                              color: const Color(0xFF00E5FF),
+                              size: 14,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            step['instruction'] ?? '',
+                            style: TextStyle(
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          step['distance'] ?? '',
+                          style: TextStyle(
+                            color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+
+          // Action buttons bar
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 14),
+            child: Row(
+              children: [
+                // Buka di Waze / Google Maps
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _openExternalMaps(shop),
+                    icon: const HugeIcon(
+                      icon: HugeIcons.strokeRoundedRoute01,
+                      color: Colors.black,
+                      size: 18,
+                    ),
+                    label: const Text(
+                      'Buka Waze / Maps',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF00E5FF),
+                      foregroundColor: Colors.black,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // Recenter Route
+                IconButton.filledTonal(
+                  onPressed: () => _fitRouteBounds(_routePoints),
+                  icon: const HugeIcon(
+                    icon: HugeIcons.strokeRoundedTarget02,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  style: IconButton.styleFrom(
+                    backgroundColor: isDark ? Colors.white12 : Colors.black12,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    padding: const EdgeInsets.all(12),
+                  ),
+                  tooltip: 'Pusatkan Laluan',
+                ),
+                const SizedBox(width: 6),
+                // Tamat Navigasi
+                IconButton.filled(
+                  onPressed: _stopNavigation,
+                  icon: const HugeIcon(
+                    icon: HugeIcons.strokeRoundedCancel01,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.redAccent.withValues(alpha: 0.85),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    padding: const EdgeInsets.all(12),
+                  ),
+                  tooltip: 'Tamat Pandu Arah',
+                ),
+              ],
             ),
           ),
         ],
@@ -1712,19 +2038,33 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                       },
                     ),
 
-                    // ROUTE POLYLINE LAYER (In-App Direction)
+                    // ROUTE POLYLINE LAYER (In-App 3D Cyberpunk Neon Glow)
                     if (_routePoints.isNotEmpty)
                       PolylineLayer(
                         polylines: [
+                          // 1. Outermost soft diffuse neon glow
                           Polyline(
                             points: _routePoints,
-                            strokeWidth: 8.0,
-                            color: const Color(0xFF003852).withValues(alpha: 0.8),
+                            strokeWidth: 16.0,
+                            color: const Color(0xFF00E5FF).withValues(alpha: 0.16),
                           ),
+                          // 2. Mid vibrant laser aura
                           Polyline(
                             points: _routePoints,
-                            strokeWidth: 4.8,
+                            strokeWidth: 9.0,
+                            color: const Color(0xFF0284C7).withValues(alpha: 0.65),
+                          ),
+                          // 3. Electric cyan core line
+                          Polyline(
+                            points: _routePoints,
+                            strokeWidth: 5.0,
                             color: const Color(0xFF00E5FF),
+                          ),
+                          // 4. White high-beam specular highlight
+                          Polyline(
+                            points: _routePoints,
+                            strokeWidth: 1.8,
+                            color: Colors.white.withValues(alpha: 0.90),
                           ),
                         ],
                       ),
@@ -1784,7 +2124,10 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                           point: _currentLocation,
                           width: 60,
                           height: 60,
-                          child: const _PulsingUserMarker()
+                          child: _PulsingUserMarker(
+                            isNavigating: _isNavigating,
+                            bearing: _navBearing,
+                          )
                       ),
                       if (_selectedShop != null)
                         Marker(
@@ -1814,7 +2157,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                   ],
                 ),
               ),
-              // 0. In-App Navigation HUD
+              // 0. In-App Navigation Top Maneuver HUD
               if (_isNavigating && _navTargetShop != null)
                 AnimatedPositioned(
                   duration: const Duration(milliseconds: 280),
@@ -1823,6 +2166,17 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                   left: isDesktop ? (screenWidth * 0.5 - 260) : 16.0,
                   right: isDesktop ? (screenWidth * 0.5 - 260) : 16.0,
                   child: _buildNavigationHUD(isDark, isDesktop: isDesktop),
+                ),
+
+              // 0B. In-App Navigation Bottom Destination & Route Card
+              if (_isNavigating && _navTargetShop != null)
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOutCubic,
+                  bottom: isDesktop ? 24.0 : (MediaQuery.of(context).padding.bottom + 16.0),
+                  left: isDesktop ? (screenWidth * 0.5 - 260) : 16.0,
+                  right: isDesktop ? (screenWidth * 0.5 - 260) : 16.0,
+                  child: _buildNavigationBottomCard(isDark, isDesktop: isDesktop),
                 ),
 
               // 1. Search Bar (Hadkan 40% dari kanan di desktop, disembunyikan semasa navigasi aktif)
@@ -4766,14 +5120,14 @@ class _AnimatedPressableState extends State<_AnimatedPressable> with SingleTicke
 }
 
 class _PulsingUserMarker extends StatefulWidget {
-  const _PulsingUserMarker();
+  final bool isNavigating;
+  final double bearing;
+  const _PulsingUserMarker({this.isNavigating = false, this.bearing = 0.0});
   @override
   State<_PulsingUserMarker> createState() => _PulsingUserMarkerState();
 }
 class _PulsingUserMarkerState extends State<_PulsingUserMarker> with SingleTickerProviderStateMixin {
   late AnimationController _c;
-
-
 
   @override
   void initState() { super.initState(); _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat(); }
@@ -4781,6 +5135,60 @@ class _PulsingUserMarkerState extends State<_PulsingUserMarker> with SingleTicke
   void dispose() { _c.dispose(); super.dispose(); }
   @override
   Widget build(BuildContext context) {
+    if (widget.isNavigating) {
+      // Cyberpunk 3D Navigation Vehicle Puck (Rotating to route bearing)
+      return Stack(
+        alignment: Alignment.center,
+        children: [
+          // Radar pulse ring
+          FadeTransition(
+            opacity: ReverseAnimation(Tween<double>(begin: 0.0, end: 1.0).animate(_c)),
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 1.0, end: 2.6).animate(_c),
+              child: Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF00E5FF).withValues(alpha: 0.35),
+                ),
+              ),
+            ),
+          ),
+          // Directional Vehicle Marker
+          Transform.rotate(
+            angle: widget.bearing * (math.pi / 180.0),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF0F1522),
+                border: Border.all(
+                  color: const Color(0xFF00E5FF),
+                  width: 2.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF00E5FF).withValues(alpha: 0.55),
+                    blurRadius: 14,
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedNavigation03,
+                  color: Color(0xFF00E5FF),
+                  size: 20,
+                  strokeWidth: 2.8,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     return Stack(alignment: Alignment.center, children: [
       FadeTransition(opacity: ReverseAnimation(Tween<double>(begin: 0.0, end: 1.0).animate(_c)), child: ScaleTransition(scale: Tween<double>(begin: 1.0, end: 2.5).animate(_c), child: Container(width: 30, height: 30, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.blue.withValues(alpha: 0.3))))),
       Container(width: 30, height: 30, decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), shape: BoxShape.circle, border: Border.all(color: Colors.blue.withValues(alpha: 0.2), width: 1.5)), child: const Center(child: HugeIcon(icon: HugeIcons.strokeRoundedLocationUser01, color: Colors.blue, size: 20, strokeWidth: 2.5))),
