@@ -1016,6 +1016,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           return Scaffold(
         backgroundColor: scaffoldBg,
         body: Stack(
+        fit: StackFit.expand,
         children: [
           // 0. Continuous Unified Ambient Mesh/Radial Gradient for Desktop
           if (isDesktopLandscape)
@@ -1041,12 +1042,17 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
               ),
             ),
 
-          // 1. VERTICAL FULL SCREEN PAGEVIEW (TIKTOK STYLE)
-          RefreshIndicator(
-            color: const Color(0xFF00E5FF),
-            backgroundColor: isDark ? const Color(0xFF141920) : Colors.white,
-            onRefresh: _fetchLivePosts,
-            child: _posts.isEmpty
+          // 1. VERTICAL FULL SCREEN PAGEVIEW (TIKTOK STYLE - EDGE TO EDGE FULL BLEED)
+          Positioned.fill(
+            child: RefreshIndicator(
+              color: const Color(0xFF00E5FF),
+              backgroundColor: isDark ? const Color(0xFF141920) : Colors.white,
+              onRefresh: _fetchLivePosts,
+              child: MediaQuery.removePadding(
+                context: context,
+                removeTop: true,
+                removeBottom: true,
+                child: _posts.isEmpty
                 ? ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     children: [
@@ -1123,6 +1129,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                       );
                     },
                   ),
+              ),
+            ),
           ),
 
           // 2. DOUBLE-TAP POPPING HEARTS OVERLAY
@@ -1534,51 +1542,50 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                               bottomContent: _buildBottomContent(post),
                             ),
 
-                            // Top shadow gradient
-                            Positioned(
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              height: 100,
-                              child: IgnorePointer(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                        Colors.black.withValues(alpha: 0.6),
-                                        Colors.transparent,
-                                      ],
+                            // For photo media only: subtle ambient gradients behind caption
+                            if (!isVideoMedia) ...[
+                              Positioned(
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                height: 80,
+                                child: IgnorePointer(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [
+                                          Colors.black.withValues(alpha: 0.35),
+                                          Colors.transparent,
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-
-                            // Bottom shadow gradient
-                            Positioned(
-                              bottom: 0,
-                              left: 0,
-                              right: 0,
-                              height: 280,
-                              child: IgnorePointer(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                        Colors.transparent,
-                                        Colors.black.withValues(alpha: 0.5),
-                                        Colors.black.withValues(alpha: 0.88),
-                                        Colors.black,
-                                      ],
+                              Positioned(
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                height: 180,
+                                child: IgnorePointer(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [
+                                          Colors.transparent,
+                                          Colors.black.withValues(alpha: 0.25),
+                                          Colors.black.withValues(alpha: 0.65),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
+                            ],
 
                             // Caption & CTA overlay inside card (for images only; video handles it inside _FeedVideoPlayerItem)
                             if (!isVideoMedia)
@@ -1638,51 +1645,50 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                 bottomContent: _buildBottomContent(post),
               ),
 
-              // Top dark shadow gradient
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                height: 140,
-                child: IgnorePointer(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withValues(alpha: 0.75),
-                          Colors.transparent,
-                        ],
+              // For photo media only: subtle ambient gradients strictly behind caption
+              if (!isVideoMedia) ...[
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 90,
+                  child: IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.35),
+                            Colors.transparent,
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-
-              // Bottom heavy shadow gradient
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: 380,
-                child: IgnorePointer(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.5),
-                          Colors.black.withValues(alpha: 0.88),
-                          Colors.black,
-                        ],
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: 200,
+                  child: IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.25),
+                            Colors.black.withValues(alpha: 0.65),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -4367,22 +4373,64 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
         return Stack(
           fit: StackFit.expand,
           children: [
-            // 1. Base Video Surface (IgnorePointer ensures HTML5 video element on Web doesn't swallow click events)
+            // 1. Base Video Surface (Edge-to-edge full bleed covering from top to bottom)
             IgnorePointer(
-              child: Container(
-                color: Colors.black,
-                alignment: Alignment.center,
+              child: SizedBox.expand(
                 child: FittedBox(
-                  // On desktop widescreen, contain ensures landscape video expands fully with zero distortion
-                  // On mobile portrait, cover fills vertical immersive (edge-to-edge from top, no black gap)
                   fit: widget.isDesktop
                       ? (isLandscape ? BoxFit.contain : BoxFit.cover)
                       : BoxFit.cover,
                   clipBehavior: Clip.hardEdge,
+                  alignment: Alignment.center,
                   child: SizedBox(
                     width: _controller.value.size.width > 0 ? _controller.value.size.width : 720,
                     height: _controller.value.size.height > 0 ? _controller.value.size.height : 1280,
                     child: VideoPlayer(_controller),
+                  ),
+                ),
+              ),
+            ),
+
+            // 1.1 Top Subtle Shadow Gradient (Behind top status bar & tabs, keeps tabs legible without dimming the video)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: widget.isDesktop ? 80 : 90,
+              child: IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.35),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // 1.2 Bottom Subtle Shadow Gradient (Strictly BEHIND caption, text is NEVER tinted or darkened!)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: widget.isDesktop ? 180 : (widget.bottomOffset + 180),
+              child: IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.25),
+                        Colors.black.withValues(alpha: 0.65),
+                      ],
+                    ),
                   ),
                 ),
               ),

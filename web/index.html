@@ -140,6 +140,14 @@
       overflow: hidden;
       height: 100%;
     }
+    /* Pastikan video player di Web/PWA sentiasa edge-to-edge memenuhi viewport dari puncak atas tanpa jurang hitam */
+    video {
+      object-fit: cover !important;
+      width: 100% !important;
+      height: 100% !important;
+      top: 0 !important;
+      left: 0 !important;
+    }
     #ngam-splash {
       position: fixed;
       top: 0;
