@@ -22,6 +22,8 @@ class BookingTicketScreen extends StatefulWidget {
   final bool isCancelled;
   final String status;
   final String? bookingDbId;
+  final String? paymentMethod;
+  final String? paymentStatus;
 
   const BookingTicketScreen({
     super.key,
@@ -37,6 +39,8 @@ class BookingTicketScreen extends StatefulWidget {
     this.isCancelled = false,
     this.status = 'confirmed',
     this.bookingDbId,
+    this.paymentMethod,
+    this.paymentStatus,
   });
 
   @override
@@ -1085,6 +1089,15 @@ Disahkan melalui aplikasi *Ngam*.
                               _buildDetailRow(l10n.ticketBookingId, widget.bookingId, isDark),
                               const SizedBox(height: 12),
                               _buildDetailRow(l10n.ticketTotalPaid, widget.totalPrice, isDark, isBold: true),
+                              const SizedBox(height: 12),
+                              _buildDetailRow('Kaedah Bayaran', widget.paymentMethod ?? 'Bayar di Kedai (Tunai)', isDark),
+                              const SizedBox(height: 12),
+                              _buildDetailRow(
+                                'Status Bayaran',
+                                widget.paymentStatus == 'paid' ? 'DIBAYAR (PAID)' : 'BAYAR SEMASA HADIR',
+                                isDark,
+                                isBold: true,
+                              ),
                             ],
                           ),
                         ),

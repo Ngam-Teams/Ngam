@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'order_status_tracker_screen.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:ngam/widgets/glass_box.dart';
@@ -70,6 +71,7 @@ class _StoreCartViewState extends State<StoreCartView> {
   Map<String, dynamic>? _voucher;
   bool _isProcessing = false;
   bool _isPreOrder = false;
+  String _selectedPaymentMethod = 'duitnow'; // 'duitnow', 'fpx_card', 'cash'
 
   final List<String> _quickTimeSlots = [
     'Segera (~15 minit)',
@@ -381,40 +383,44 @@ class _StoreCartViewState extends State<StoreCartView> {
         'status': 'pending',
         'source': source,
         'notes': finalNotes,
+        'payment_method': _selectedPaymentMethod,
+        'payment_status': _selectedPaymentMethod == 'cash' ? 'unpaid' : 'pending',
       };
 
       Map<String, dynamic> orderRes;
       try {
         orderRes = await Supabase.instance.client
             .from('orders')
-            .insert({
-              ...baseOrderData,
-              'payment_method': 'cash',
-            })
+            .insert(baseOrderData)
             .select('id')
             .single();
       } catch (insertErr) {
-        debugPrint('[StoreCartView] Insert with payment_method failed ($insertErr), attempting fallback...');
+        debugPrint('[StoreCartView] Insert failed ($insertErr), attempting fallback...');
         try {
+          // If check constraint on source or payment fails, fallback gracefully
           orderRes = await Supabase.instance.client
               .from('orders')
-              .insert(baseOrderData)
+              .insert({
+                ...baseOrderData,
+                'source': 'online',
+              })
               .select('id')
               .single();
         } catch (sourceErr) {
-          // Fallback sekiranya DB check constraint hanya terima source 'online' atau 'pos'
-          if (sourceErr.toString().contains('source') || sourceErr.toString().contains('check constraint')) {
-            orderRes = await Supabase.instance.client
-                .from('orders')
-                .insert({
-                  ...baseOrderData,
-                  'source': 'online',
-                })
-                .select('id')
-                .single();
-          } else {
-            rethrow;
-          }
+          debugPrint('[StoreCartView] Fallback without payment_status: $sourceErr');
+          orderRes = await Supabase.instance.client
+              .from('orders')
+              .insert({
+                'business_id': widget.shop['id'],
+                'owner_user_id': user.id,
+                'customer_name': customerName,
+                'total': _total,
+                'status': 'pending',
+                'source': 'online',
+                'notes': finalNotes,
+              })
+              .select('id')
+              .single();
         }
       }
 
@@ -459,6 +465,17 @@ class _StoreCartViewState extends State<StoreCartView> {
         customerName: customerName,
         voucherCode: (_voucherApplied && _voucher != null) ? _voucher!['code']?.toString() : null,
         discountAmount: (_voucherApplied && _discountAmount > 0) ? _discountAmount : null,
+        initialMethod: _selectedPaymentMethod,
+        onPaymentSuccess: (method, ref) async {
+          try {
+            await Supabase.instance.client.from('orders').update({
+              'payment_status': 'paid',
+              'payment_method': method,
+            }).eq('id', orderId);
+          } catch (e) {
+            debugPrint('[StoreCartView] Update paid status failed: $e');
+          }
+        },
       );
 
       if (!mounted) return;
@@ -755,6 +772,11 @@ class _StoreCartViewState extends State<StoreCartView> {
 
                         // Interactive Voucher Section
                         _buildVoucherSection(isDark, textPrimary, textSecondary),
+
+                        const SizedBox(height: 18),
+
+                        // Seksyen Pilihan Kaedah Pembayaran (Payment Method Selection)
+                        _buildPaymentMethodSection(isDark, textPrimary, textSecondary),
 
                         const SizedBox(height: 20),
 
@@ -1566,10 +1588,10 @@ class _StoreCartViewState extends State<StoreCartView> {
     );
   }
 
-  Widget _buildDatePill(String title, bool isDark, Color textPrimary, Color textSecondary) {
-    final bool isSel = _selectedPickupDate == title;
+  Widget _buildDatePill(String label, bool isDark, Color textPrimary, Color textSecondary) {
+    final bool isSel = _selectedPickupDate == label;
     return GestureDetector(
-      onTap: () => setState(() => _selectedPickupDate = title),
+      onTap: () => setState(() => _selectedPickupDate = label),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
@@ -1583,12 +1605,196 @@ class _StoreCartViewState extends State<StoreCartView> {
           ),
         ),
         child: Text(
-          title,
+          label,
           style: TextStyle(
             fontSize: 12,
             fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
             color: isSel ? Colors.deepPurpleAccent : textPrimary,
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentMethodSection(bool isDark, Color textPrimary, Color textSecondary) {
+    return _liquidGlassBox(
+      isDark: isDark,
+      radius: 20,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const HugeIcon(icon: HugeIcons.strokeRoundedWallet01, color: Color(0xFF00E5FF), size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Pilihan Kaedah Pembayaran',
+                style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: textPrimary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Option 1: DuitNow QR (Disyorkan)
+          _buildPaymentChoiceTile(
+            value: 'duitnow',
+            title: 'DuitNow QR Pantas (Zero Fee)',
+            subtitle: 'Imbas guna sebarang aplikasi Bank atau e-Wallet (TNG, GrabPay, ShopeePay)',
+            icon: HugeIcons.strokeRoundedQrCode,
+            iconColor: const Color(0xFFED0058),
+            badge: 'DISYORKAN',
+            badgeColor: const Color(0xFFED0058),
+            isDark: isDark,
+            textPrimary: textPrimary,
+            textSecondary: textSecondary,
+          ),
+          const SizedBox(height: 10),
+
+          // Option 2: FPX & Kad
+          _buildPaymentChoiceTile(
+            value: 'fpx_card',
+            title: 'Perbankan FPX & Kad Debit/Kredit',
+            subtitle: 'Maybank2u, CIMB, Bank Islam, RHB, Visa & Mastercard',
+            icon: HugeIcons.strokeRoundedCreditCard,
+            iconColor: const Color(0xFF00B0FF),
+            isDark: isDark,
+            textPrimary: textPrimary,
+            textSecondary: textSecondary,
+          ),
+          const SizedBox(height: 10),
+
+          // Option 3: Tunai di Kaunter / COD
+          _buildPaymentChoiceTile(
+            value: 'cash',
+            title: _fulfillmentMode == 3 ? 'Tunai Semasa Penghantaran (COD)' : 'Bayar di Kaunter (Tunai)',
+            subtitle: _fulfillmentMode == 3
+                ? 'Bayar tunai kepada penghantar apabila pesanan tiba'
+                : 'Bayar secara tunai atau terus di kaunter premis',
+            icon: HugeIcons.strokeRoundedCash01,
+            iconColor: const Color(0xFF10B981),
+            isDark: isDark,
+            textPrimary: textPrimary,
+            textSecondary: textSecondary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentChoiceTile({
+    required String value,
+    required String title,
+    required String subtitle,
+    required dynamic icon,
+    required Color iconColor,
+    String? badge,
+    Color? badgeColor,
+    required bool isDark,
+    required Color textPrimary,
+    required Color textSecondary,
+  }) {
+    final bool isSelected = _selectedPaymentMethod == value;
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _selectedPaymentMethod = value);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF00E5FF).withValues(alpha: isDark ? 0.12 : 0.08)
+              : (isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02)),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF00E5FF) : (isDark ? Colors.white12 : Colors.black12),
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.14),
+                shape: BoxShape.circle,
+              ),
+              child: HugeIcon(icon: icon, color: iconColor, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                            color: textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (badge != null) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: (badgeColor ?? const Color(0xFFED0058)).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: (badgeColor ?? const Color(0xFFED0058)).withValues(alpha: 0.4)),
+                          ),
+                          child: Text(
+                            badge,
+                            style: TextStyle(
+                              color: badgeColor ?? const Color(0xFFED0058),
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: textSecondary,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? const Color(0xFF00E5FF) : Colors.grey.shade500,
+                  width: 2,
+                ),
+                color: isSelected ? const Color(0xFF00E5FF) : Colors.transparent,
+              ),
+              child: isSelected
+                  ? const Center(
+                      child: Icon(Icons.check, size: 13, color: Colors.black),
+                    )
+                  : null,
+            ),
+          ],
         ),
       ),
     );

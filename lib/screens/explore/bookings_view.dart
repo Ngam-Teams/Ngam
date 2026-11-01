@@ -12,6 +12,7 @@ import '../../services/booking_notification_service.dart'; //  ADD THIS LINE
 import '../../widgets/glass_toast.dart'; //  ADD THIS TO YOUR IMPORTS
 import '../../services/voucher_service.dart';
 import '../../widgets/voucher_selection_sheet.dart';
+import '../../widgets/customer_payment_modal.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:math'; //  Required for generating the short ID
 import 'dart:async';
@@ -532,10 +533,15 @@ class _BookingsViewState extends State<BookingsView> {
     }
   }
 
-  // Soft launch: no online gateway is connected, so appointments are paid at the shop.
   final List<Map<String, dynamic>> _paymentMethods = [
+    {"name": "DuitNow QR Pantas (Zero Fee)", "icon": HugeIcons.strokeRoundedQrCode, "type": "duitnow"},
+    {"name": "Perbankan Dalam Talian (FPX)", "icon": HugeIcons.strokeRoundedBank, "type": "bank"},
+    {"name": "Kad Debit / Kredit", "icon": HugeIcons.strokeRoundedCreditCard, "type": "card"},
     {"name": "Bayar di Kedai (Tunai)", "icon": HugeIcons.strokeRoundedCash01, "type": "cash"},
   ];
+
+  String _lastPaymentStatus = 'unpaid';
+  String _lastPaymentMethod = 'Bayar di Kedai (Tunai)';
 
   final List<String> _banksList = ["Maybank2u", "CIMB Clicks", "Public Bank", "RHB Now"];
 
@@ -1788,6 +1794,42 @@ class _BookingsViewState extends State<BookingsView> {
           : '$combinedNotes | [Perhatian: $_healthToggleTitle]';
     }
 
+    final String chosenPaymentType = _paymentMethods[_selectedPaymentIndex]["type"] as String;
+    final String chosenPaymentName = _paymentMethods[_selectedPaymentIndex]["name"] as String;
+
+    String paymentStatus = 'unpaid';
+    String transactionRef = '';
+
+    // If online payment (DuitNow QR, FPX, or Card), launch CustomerPaymentModal!
+    if (chosenPaymentType != "cash" && _totalPrice > 0) {
+      final bool paid = await CustomerPaymentModal.show(
+        context: context,
+        amount: _totalPrice,
+        orderTitle: 'Tempahan $combinedServiceTitle - ${widget.shopName}',
+        shopName: widget.shopName,
+        orderId: shortBookingId,
+        customerName: finalCustomerName,
+        customerPhone: finalCustomerPhone,
+        initialMethod: chosenPaymentType == 'duitnow' ? 'duitnow' : 'fpx_card',
+        voucherCode: _selectedVoucher != null ? _selectedVoucher!['code']?.toString() : null,
+        discountAmount: _voucherDiscount > 0 ? _voucherDiscount : null,
+        onPaymentSuccess: (method, ref) async {
+          paymentStatus = 'paid';
+          transactionRef = ref;
+        },
+      );
+
+      if (!paid) {
+        if (!mounted) return;
+        showGlassToast(context, 'Pembayaran tidak selesai. Sila cuba lagi.', isError: true);
+        return;
+      }
+      paymentStatus = 'paid';
+    }
+
+    _lastPaymentStatus = paymentStatus;
+    _lastPaymentMethod = chosenPaymentName;
+
     final Map<String, dynamic> metadataPayload = {
       'short_ref': shortBookingId,
       'booking_id': shortBookingId,
@@ -1799,8 +1841,9 @@ class _BookingsViewState extends State<BookingsView> {
       if (serviceId != null && serviceId.isNotEmpty) 'service_id': serviceId,
       'addons_list': selectedAddonNames,
       'estimated_duration_mins': _totalTime,
-      'payment_method': _paymentMethods[_selectedPaymentIndex]["name"],
-      'payment_status': 'unpaid',
+      'payment_method': chosenPaymentName,
+      'payment_status': paymentStatus,
+      if (transactionRef.isNotEmpty) 'transaction_ref': transactionRef,
       'total_price': "RM$_totalPriceLabel",
       if (_selectedVoucher != null) 'voucher_code': _selectedVoucher!['code'],
       if (_voucherDiscount > 0) 'discount_amount': _voucherDiscount,
@@ -2910,6 +2953,8 @@ class _BookingsViewState extends State<BookingsView> {
                           totalPrice: "RM$_totalPriceLabel",
                           bookingId: _generatedBookingId,
                           status: 'pending',
+                          paymentMethod: _lastPaymentMethod,
+                          paymentStatus: _lastPaymentStatus,
                           bookingDbId: (_holdingRecordId != null && !_holdingRecordId!.startsWith('local_'))
                               ? _holdingRecordId
                               : null,
