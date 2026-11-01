@@ -187,6 +187,34 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
         if (_paymentStatus == 'paid') 'payment_status': 'refund_pending',
       }).eq('id', widget.orderId);
 
+      // Pulihkan stok produk fizikal bagi pesanan yang dibatalkan
+      try {
+        final items = await Supabase.instance.client
+            .from('order_items')
+            .select('product_id, quantity')
+            .eq('order_id', widget.orderId);
+        for (final row in (items as List)) {
+          final prodId = row['product_id']?.toString();
+          final qty = (row['quantity'] as num?)?.toInt() ?? 0;
+          if (prodId != null && prodId.isNotEmpty && qty > 0) {
+            final prod = await Supabase.instance.client
+                .from('business_products')
+                .select('stock, track_inventory, item_type')
+                .eq('id', prodId)
+                .maybeSingle();
+            if (prod != null &&
+                prod['item_type'] != 'service' &&
+                (prod['track_inventory'] as bool? ?? true)) {
+              final curStock = (prod['stock'] as num?)?.toInt() ?? 0;
+              await Supabase.instance.client
+                  .from('business_products')
+                  .update({'stock': curStock + qty})
+                  .eq('id', prodId);
+            }
+          }
+        }
+      } catch (_) {}
+
       if (mounted) {
         setState(() {
           _status = 'cancelled';

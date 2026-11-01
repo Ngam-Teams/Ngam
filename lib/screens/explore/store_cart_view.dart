@@ -492,7 +492,7 @@ class _StoreCartViewState extends State<StoreCartView> {
         orderId: orderId,
         items: _items
             .map((i) => {
-                  'name': i.product.name,
+                  'name': i.formattedProductName,
                   'qty': i.quantity,
                   'price': i.totalPrice,
                 })
@@ -522,7 +522,43 @@ class _StoreCartViewState extends State<StoreCartView> {
         return;
       }
 
+      // Rekod penebusan baucar supaya kuota tidak boleh diguna tanpa had
+      if (_voucherApplied && _voucher != null && _discountAmount > 0) {
+        await VoucherService.recordVoucherRedemption(
+          voucher: _voucher!,
+          discountAmount: _discountAmount,
+          orderSubtotal: _subtotal,
+          businessId: widget.shop['id']?.toString(),
+          orderId: orderId,
+          customerPhone: customerPhone,
+        );
+      }
+
+      // Tolak stok inventori bagi produk fizikal yang menjejak stok
+      for (final item in _items) {
+        if (item.product.id.isNotEmpty) {
+          try {
+            final prodRow = await Supabase.instance.client
+                .from('business_products')
+                .select('stock, track_inventory, item_type')
+                .eq('id', item.product.id)
+                .maybeSingle();
+            if (prodRow != null &&
+                prodRow['item_type'] != 'service' &&
+                (prodRow['track_inventory'] as bool? ?? true)) {
+              final curStock = (prodRow['stock'] as num?)?.toInt() ?? 0;
+              final newStock = (curStock - item.quantity).clamp(0, 999999);
+              await Supabase.instance.client
+                  .from('business_products')
+                  .update({'stock': newStock})
+                  .eq('id', item.product.id);
+            }
+          } catch (_) {}
+        }
+      }
+
       widget.onClearCart?.call();
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -534,7 +570,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                 ? '$_selectedPickupDate, $_selectedPickupTime'
                 : (_fulfillmentMode == 1 ? 'Dine-In (Meja)' : _selectedPickupTime),
             fulfillmentType: fulfillmentLabel,
-            items: _items.map((i) => {'name': i.product.name, 'qty': i.quantity, 'price': i.totalPrice}).toList(),
+            items: _items.map((i) => {'name': i.formattedProductName, 'qty': i.quantity, 'price': i.totalPrice}).toList(),
           ),
         ),
       );
@@ -629,6 +665,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                       item.selectedOption = selectedOpt.isEmpty ? null : selectedOpt;
                       item.itemNote = noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim();
                       item.optionExtraPrice = selectedOpt.contains('+RM2.00') ? 2.0 : 0.0;
+                      _refreshVoucher();
                     });
                     Navigator.pop(ctx);
                   },

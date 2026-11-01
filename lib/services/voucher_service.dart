@@ -213,7 +213,20 @@ class VoucherService {
       };
     }
 
-    // 2. Semakan tarikh luput
+    // 2. Semakan tarikh luput & tarikh mula
+    final startDateStr = voucher['start_date']?.toString();
+    if (startDateStr != null && startDateStr.isNotEmpty) {
+      final start = DateTime.tryParse(startDateStr);
+      if (start != null && start.toUtc().isAfter(DateTime.now().toUtc())) {
+        return {
+          'isEligible': false,
+          'discountAmount': 0.0,
+          'shortfall': 0.0,
+          'reason': 'Baucar belum bermula lagi',
+        };
+      }
+    }
+
     final endDateStr = voucher['end_date']?.toString();
     if (endDateStr != null && endDateStr.isNotEmpty) {
       final end = DateTime.tryParse(endDateStr);
@@ -225,6 +238,27 @@ class VoucherService {
           'reason': 'Baucar telah tamat tempoh',
         };
       }
+    }
+
+    // 2b. Semakan kuota penebusan
+    final totalLimit = (voucher['total_usage_limit'] as num?)?.toInt();
+    final timesUsed = (voucher['times_used'] as num?)?.toInt() ?? 0;
+    if (totalLimit != null && totalLimit > 0 && timesUsed >= totalLimit) {
+      return {
+        'isEligible': false,
+        'discountAmount': 0.0,
+        'shortfall': 0.0,
+        'reason': 'Kuota penebusan baucar ini telah habis',
+      };
+    }
+
+    if (voucher['user_limit_reached'] == true) {
+      return {
+        'isEligible': false,
+        'discountAmount': 0.0,
+        'shortfall': 0.0,
+        'reason': 'Anda telah mencapai had penebusan untuk baucar ini',
+      };
     }
 
     // 3. Semakan belanja minimum
@@ -279,14 +313,36 @@ class VoucherService {
       }
 
       final res = await query.limit(25);
+      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+      Map<String, int> userUsageCounts = {};
+      if (currentUserId != null && currentUserId.isNotEmpty) {
+        try {
+          final usages = await Supabase.instance.client
+              .from('voucher_usages')
+              .select('voucher_id')
+              .eq('user_id', currentUserId);
+          for (final u in (usages as List)) {
+            final vid = u['voucher_id']?.toString() ?? '';
+            if (vid.isNotEmpty) {
+              userUsageCounts[vid] = (userUsageCounts[vid] ?? 0) + 1;
+            }
+          }
+        } catch (_) {}
+      }
+
       for (var r in res) {
         final m = Map<String, dynamic>.from(r);
         final code = (m['code'] ?? '').toString().trim().toUpperCase();
         if (code.isEmpty || seenCodes.contains(code)) continue;
         seenCodes.add(code);
         final biz = m['businesses'] as Map<String, dynamic>?;
+        final vid = m['id']?.toString() ?? 'v_$code';
+        final perUserLimit = (m['usage_limit_per_user'] as num?)?.toInt();
+        final usedByMe = userUsageCounts[vid] ?? 0;
+        final userLimitReached = perUserLimit != null && perUserLimit > 0 && usedByMe >= perUserLimit;
+
         combined.add({
-          'id': m['id']?.toString() ?? 'v_$code',
+          'id': vid,
           'code': code,
           'title': m['title']?.toString() ?? 'Baucar Diskaun $code',
           'shop_name': biz?['name']?.toString() ?? (m['business_id'] == null ? 'Semua Rakan Niaga Ngam' : 'Kedai Rakan Niaga'),
@@ -296,7 +352,12 @@ class VoucherService {
           'discount_value': (m['discount_value'] as num?)?.toDouble() ?? 0.0,
           'min_spend': (m['min_spend'] as num?)?.toDouble() ?? 0.0,
           'max_discount_amount': (m['max_discount_amount'] as num?)?.toDouble(),
+          'start_date': m['start_date'],
           'end_date': m['end_date'],
+          'total_usage_limit': m['total_usage_limit'],
+          'usage_limit_per_user': m['usage_limit_per_user'],
+          'times_used': m['times_used'],
+          'user_limit_reached': userLimitReached,
           'description': m['description']?.toString() ?? 'Diskaun untuk pesanan anda di Ngam.',
           'badge': m['business_id'] == null ? 'Rasmi Ngam' : 'Kedai Ini',
           'is_platform': m['business_id'] == null,
@@ -495,6 +556,57 @@ class VoucherService {
       'success': false,
       'message': 'Kod baucar "$cleanCode" tidak sah atau tidak wujud.',
     };
+  }
+
+  /// Rekod penebusan baucar dalam Supabase & buang baucar sekali guna dari simpanan
+  static Future<void> recordVoucherRedemption({
+    required Map<String, dynamic> voucher,
+    required double discountAmount,
+    required double orderSubtotal,
+    String? businessId,
+    String? orderId,
+    String? customerPhone,
+  }) async {
+    try {
+      final vId = voucher['id']?.toString() ?? '';
+      final code = (voucher['code'] ?? '').toString().toUpperCase();
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      final effBizId = businessId ?? voucher['business_id']?.toString();
+
+      // Rekod ke Supabase jika ia baucar pangkalan data (UUID)
+      if (vId.isNotEmpty && !vId.startsWith('promo_') && !vId.startsWith('v_')) {
+        await Supabase.instance.client.from('voucher_usages').insert({
+          'voucher_id': vId,
+          if (effBizId != null && effBizId.isNotEmpty) 'business_id': effBizId,
+          'discount_amount': discountAmount,
+          'order_subtotal': orderSubtotal,
+          if (orderId != null && orderId.isNotEmpty) 'order_id': orderId,
+          if (customerPhone != null && customerPhone.isNotEmpty) 'customer_phone': customerPhone,
+          if (userId != null) 'user_id': userId,
+          'used_at': DateTime.now().toUtc().toIso8601String(),
+        });
+
+        final vRow = await Supabase.instance.client
+            .from('vouchers')
+            .select('times_used')
+            .eq('id', vId)
+            .maybeSingle();
+        final currentTimes = (vRow?['times_used'] as num?)?.toInt() ?? 0;
+
+        await Supabase.instance.client.from('vouchers').update({
+          'times_used': currentTimes + 1,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        }).eq('id', vId);
+      }
+
+      // Jika baucar sekali guna (usage_limit_per_user == 1 atau promo_ngam_welcome), keluarkan dari dompet simpanan
+      final perUser = (voucher['usage_limit_per_user'] as num?)?.toInt() ?? 1;
+      if (perUser <= 1 && code.isNotEmpty) {
+        await removeSavedVoucher(code);
+      }
+    } catch (e) {
+      debugPrint('[VoucherService] Gagal rekod penebusan baucar: $e');
+    }
   }
 
   /// Padam baucar tersimpan mengikut ID atau Kod

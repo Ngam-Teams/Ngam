@@ -2203,6 +2203,18 @@ class _BookingsViewState extends State<BookingsView> {
 
     _holdingRecordId = savedId;
 
+    // Rekod penebusan baucar supaya tidak boleh diguna semula melebihi kuota
+    if (_selectedVoucher != null && _voucherDiscount > 0) {
+      await VoucherService.recordVoucherRedemption(
+        voucher: _selectedVoucher!,
+        discountAmount: _voucherDiscount,
+        orderSubtotal: _subtotal,
+        businessId: widget.shopId,
+        orderId: savedId,
+        customerPhone: finalCustomerPhone,
+      );
+    }
+
     final dateStr = "${_dates[_selectedDateIndex]['day']}, ${_dates[_selectedDateIndex]['date']} ${_dates[_selectedDateIndex]['month']}";
     final timeStr = _times[_selectedTimeIndex];
 
@@ -2675,7 +2687,10 @@ class _BookingsViewState extends State<BookingsView> {
                                 children: [
                                   GestureDetector(
                                     onTap: () {
-                                      if (_nightsCount > 1) setState(() => _nightsCount--);
+                                      if (_nightsCount > 1) {
+                                        setState(() => _nightsCount--);
+                                        _refreshBookingVoucher();
+                                      }
                                     },
                                     child: Container(
                                       width: 32,
@@ -2700,7 +2715,10 @@ class _BookingsViewState extends State<BookingsView> {
                                   ),
                                   GestureDetector(
                                     onTap: () {
-                                      if (_nightsCount < 30) setState(() => _nightsCount++);
+                                      if (_nightsCount < 30) {
+                                        setState(() => _nightsCount++);
+                                        _refreshBookingVoucher();
+                                      }
                                     },
                                     child: Container(
                                       width: 32,
@@ -2837,7 +2855,17 @@ class _BookingsViewState extends State<BookingsView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ..._selectedServices.map((i) => _buildReceiptRow(_servicesList[i]["name"]!, _servicesList[i]["price"]!, isDark)),
+                ..._selectedServices.map((i) {
+                  final int mult = _bookingType == BookingType.hospitality ? _nightsCount : 1;
+                  final double unitPrice = _parseMoney(_servicesList[i]["price"]!);
+                  final String title = mult > 1
+                      ? '${_servicesList[i]["name"]!} (x$mult Malam)'
+                      : _servicesList[i]["name"]!;
+                  final String priceStr = mult > 1
+                      ? 'RM${_fmtMoney(unitPrice * mult)}'
+                      : _servicesList[i]["price"]!;
+                  return _buildReceiptRow(title, priceStr, isDark);
+                }),
                 ..._selectedAddons.map((i) => _buildReceiptRow(_addonsList[i]["name"]!, _addonsList[i]["price"]!.replaceAll('+', ''), isDark)),
 
                 Padding(

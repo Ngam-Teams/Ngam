@@ -536,6 +536,9 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
         }
       } catch (_) {}
 
+      final bool wasPaid = (existingMeta['payment_status']?.toString().toLowerCase() == 'paid') ||
+          (widget.paymentStatus?.toLowerCase() == 'paid');
+
       final updatedMeta = {
         ...existingMeta,
         'booking_id': existingMeta['booking_id'] ?? widget.bookingId,
@@ -545,6 +548,7 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
         'cancellation_reason': reason,
         'cancelled_at': DateTime.now().toIso8601String(),
         'cancelled_by': user?.id,
+        if (wasPaid) 'payment_status': 'refund_pending',
       };
 
       final List<dynamic> updatedRows;
@@ -747,25 +751,45 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
       }
 
       if (!rpcSuccess) {
+        Map<String, dynamic> existingMeta = {};
+        try {
+          final row = (targetId != null && targetId.isNotEmpty)
+              ? await Supabase.instance.client
+                  .from('bookings')
+                  .select('booking_metadata')
+                  .eq('id', targetId)
+                  .maybeSingle()
+              : await Supabase.instance.client
+                  .from('bookings')
+                  .select('booking_metadata')
+                  .eq('booking_metadata->>booking_id', widget.bookingId)
+                  .maybeSingle();
+          if (row != null && row['booking_metadata'] is Map) {
+            existingMeta = Map<String, dynamic>.from(row['booking_metadata'] as Map);
+          }
+        } catch (_) {}
+
+        final mergedDisputeMeta = {
+          ...existingMeta,
+          'booking_id': existingMeta['booking_id'] ?? widget.bookingId,
+          'shop_name': existingMeta['shop_name'] ?? widget.shopName,
+          'provider_name': existingMeta['provider_name'] ?? widget.providerName,
+          'total_price': existingMeta['total_price'] ?? widget.totalPrice,
+          'is_disputed': true,
+          'dispute_type': disputeType,
+          'dispute_reason': reason,
+          'dispute_date': DateTime.now().toIso8601String(),
+        };
+
         if (targetId != null && targetId.isNotEmpty) {
           await Supabase.instance.client.from('bookings').update({
             'status': 'disputed',
-            'booking_metadata': {
-              'is_disputed': true,
-              'dispute_type': disputeType,
-              'dispute_reason': reason,
-              'dispute_date': DateTime.now().toIso8601String(),
-            }
+            'booking_metadata': mergedDisputeMeta,
           }).eq('id', targetId);
         } else {
           await Supabase.instance.client.from('bookings').update({
             'status': 'disputed',
-            'booking_metadata': {
-              'is_disputed': true,
-              'dispute_type': disputeType,
-              'dispute_reason': reason,
-              'dispute_date': DateTime.now().toIso8601String(),
-            }
+            'booking_metadata': mergedDisputeMeta,
           }).eq('booking_metadata->>booking_id', widget.bookingId);
         }
 
