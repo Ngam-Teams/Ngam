@@ -171,6 +171,7 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
         final res = await ChipPaymentService.instance.createPurchase(
           amount: widget.amount,
           orderTitle: widget.orderTitle,
+          reference: widget.orderId,
           clientName: widget.customerName,
           clientPhone: widget.customerPhone,
         );
@@ -215,6 +216,7 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
         final res = await ChipPaymentService.instance.createPurchase(
           amount: widget.amount,
           orderTitle: widget.orderTitle,
+          reference: widget.orderId,
           clientName: widget.customerName,
           clientPhone: widget.customerPhone,
         );

@@ -41,13 +41,15 @@ class ChipPaymentService {
   static const bool onlinePaymentEnabled =
       bool.fromEnvironment('ENABLE_ONLINE_PAYMENT', defaultValue: true);
 
-  bool get isAvailable => _apiKey.isNotEmpty && _brandId.isNotEmpty;
-
+  static const String _defaultBrandId = '844a8f74-4426-4285-9a90-3c39e1259e75';
   static const String _baseUrl = 'https://gate.chip-in.asia/api/v1';
 
-  String get _brandId => dotenv.env['CHIP_BRAND_ID'] ?? 'a3471018-b715-4fa3-9db8-b57faee960d7';
-
+  String get _brandId => dotenv.env['CHIP_BRAND_ID'] ?? _defaultBrandId;
   String get _apiKey => dotenv.env['CHIP_API_KEY'] ?? '';
+  String get _supabaseUrl => dotenv.env['SUPABASE_URL'] ?? 'https://rsueaoglsdxhzpupjljd.supabase.co';
+  String get _edgeFunctionUrl => '$_supabaseUrl/functions/v1/payment-webhook';
+
+  bool get isAvailable => _brandId.isNotEmpty || _apiKey.isNotEmpty;
 
   Map<String, String> get _headers => {
         'Authorization': 'Bearer $_apiKey',
@@ -58,15 +60,69 @@ class ChipPaymentService {
   Future<ChipPurchaseResult> createPurchase({
     required double amount,
     required String orderTitle,
+    String? reference,
     String? clientName,
     String? clientEmail,
     String? clientPhone,
+    List<String>? paymentMethodWhitelist,
   }) async {
+    if (!isAvailable) {
+      throw ChipPaymentException('Pembayaran dalam talian belum tersedia.');
+    }
+
+    // 1. Cuba melalui Supabase Edge Function (Menghindarkan ralat CORS pada Web, simpan API key selamat, pasang Webhook)
+    try {
+      final edgeRes = await http.post(
+        Uri.parse(_edgeFunctionUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'action': 'create_purchase',
+          'amount': amount,
+          'order_title': orderTitle,
+          'reference': reference ?? '',
+          'order_id': reference ?? '',
+          'client_name': (clientName != null && clientName.isNotEmpty) ? clientName : 'Pelanggan Ngam',
+          'client_email': (clientEmail != null && clientEmail.isNotEmpty) ? clientEmail : 'pelanggan@ngam.dev',
+          'client_phone': (clientPhone != null && clientPhone.isNotEmpty) ? clientPhone : '+601115892468',
+          'brand_id': _brandId,
+          if (paymentMethodWhitelist != null) 'payment_method_whitelist': paymentMethodWhitelist,
+        }),
+      );
+
+      if (edgeRes.statusCode >= 200 && edgeRes.statusCode < 300) {
+        final data = jsonDecode(edgeRes.body) as Map<String, dynamic>;
+        final id = data['id']?.toString() ?? '';
+        final checkoutUrl = data['checkout_url']?.toString() ?? '';
+        final duitNowUrl = data['payment_methods']?['duitnow']?['qr_code_url']?.toString() ??
+            (checkoutUrl.isNotEmpty ? '$checkoutUrl?preferred=duitnow_qr' : checkoutUrl);
+        final status = data['status']?.toString() ?? 'created';
+
+        return ChipPurchaseResult(
+          id: id,
+          checkoutUrl: checkoutUrl,
+          duitNowUrl: duitNowUrl,
+          amount: amount,
+          status: status,
+          raw: data,
+        );
+      } else {
+        debugPrint('[ChipPaymentService] Edge function return ${edgeRes.statusCode}: ${edgeRes.body}');
+      }
+    } catch (e) {
+      debugPrint('[ChipPaymentService] Edge function proxy error, falling back to direct CHIP API: $e');
+    }
+
+    // 2. Sandaran langsung ke pelayan CHIP jika panggilan Edge gagal (misalnya peranti luar talian atau native)
+    if (_apiKey.isEmpty) {
+      throw ChipPaymentException('Gagal menghubungi gerbang pembayaran. Sila cuba sebentar lagi.');
+    }
+
     final cents = (amount * 100).round();
     final url = Uri.parse('$_baseUrl/purchases/');
 
     final payload = {
       'brand_id': _brandId,
+      if (reference != null && reference.isNotEmpty) 'reference': reference,
       'client': {
         'email': (clientEmail != null && clientEmail.isNotEmpty)
             ? clientEmail
@@ -88,14 +144,12 @@ class ChipPaymentService {
           }
         ],
       },
+      'success_callback': _edgeFunctionUrl,
       'success_redirect': 'https://ngam.dev/receipt/success',
       'failure_redirect': 'https://ngam.dev/receipt/failed',
       'cancel_redirect': 'https://ngam.dev/receipt/cancel',
+      if (paymentMethodWhitelist != null) 'payment_method_whitelist': paymentMethodWhitelist,
     };
-
-    if (!isAvailable) {
-      throw ChipPaymentException('Pembayaran dalam talian belum tersedia.');
-    }
 
     try {
       final response = await http.post(
@@ -108,7 +162,8 @@ class ChipPaymentService {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final id = data['id']?.toString() ?? '';
         final checkoutUrl = data['checkout_url']?.toString() ?? '';
-        final duitNowUrl = data['payment_methods']?['duitnow']?['qr_code_url']?.toString() ?? checkoutUrl;
+        final duitNowUrl = data['payment_methods']?['duitnow']?['qr_code_url']?.toString() ??
+            (checkoutUrl.isNotEmpty ? '$checkoutUrl?preferred=duitnow_qr' : checkoutUrl);
         final status = data['status']?.toString() ?? 'pending';
 
         return ChipPurchaseResult(
@@ -133,7 +188,31 @@ class ChipPaymentService {
 
   /// Semak status transaksi sama ada sudah dibayar ('paid')
   Future<String> checkPurchaseStatus(String purchaseId) async {
-    if (!isAvailable) {
+    if (purchaseId.isEmpty || purchaseId.startsWith('DUITNOW-') || purchaseId.startsWith('web-')) {
+      return 'pending';
+    }
+
+    // 1. Cuba semak melalui Supabase Edge Function
+    try {
+      final edgeRes = await http.post(
+        Uri.parse(_edgeFunctionUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'action': 'check_status',
+          'purchase_id': purchaseId,
+        }),
+      );
+      if (edgeRes.statusCode == 200) {
+        final data = jsonDecode(edgeRes.body) as Map<String, dynamic>;
+        final status = data['status']?.toString().toLowerCase();
+        if (status != null && status.isNotEmpty) {
+          return status;
+        }
+      }
+    } catch (_) {}
+
+    // 2. Sandaran terus ke API CHIP
+    if (_apiKey.isEmpty) {
       return 'pending';
     }
 
