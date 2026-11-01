@@ -8,6 +8,7 @@ import 'package:shimmer/shimmer.dart';
 import '../../models/product_model.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../../widgets/glass_toast.dart';
+import 'store_cart_view.dart';
 
 // ============================================================
 // BusinessProductsView — Full product search & browse page
@@ -18,14 +19,18 @@ class BusinessProductsView extends StatefulWidget {
   final String shopId;
   final String shopName;
   final String initialSearchQuery;
+  final Map<String, dynamic>? shop;
   final void Function(ProductModel product)? onAddToCart;
+  final void Function(ProductModel product)? onBuyNow;
 
   const BusinessProductsView({
     super.key,
     required this.shopId,
     required this.shopName,
     this.initialSearchQuery = '',
+    this.shop,
     this.onAddToCart,
+    this.onBuyNow,
   });
 
   @override
@@ -309,43 +314,125 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
                               ),
                             ),
                             const SizedBox(height: 32),
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.pop(context);
-                                if (widget.onAddToCart != null) {
-                                  widget.onAddToCart!(product);
-                                } else {
-                                  showGlassToast(this.context, 'Added "${product.name}" to cart!');
-                                }
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue,
-                                  borderRadius: BorderRadius.circular(18),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.blue.withValues(
-                                        alpha: 0.35,
+                            Row(
+                              children: [
+                                // Add to Cart Button (Frosted Style)
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      if (widget.onAddToCart != null) {
+                                        widget.onAddToCart!(product);
+                                      } else {
+                                        showGlassToast(this.context, 'Ditambah "${product.name}" ke troli!');
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      decoration: BoxDecoration(
+                                        color: isDark
+                                            ? Colors.white.withValues(alpha: 0.08)
+                                            : Colors.blue.withValues(alpha: 0.08),
+                                        borderRadius: BorderRadius.circular(18),
+                                        border: Border.all(
+                                          color: Colors.blue.withValues(alpha: 0.4),
+                                          width: 1.2,
+                                        ),
                                       ),
-                                      blurRadius: 16,
-                                      offset: const Offset(0, 6),
-                                    ),
-                                  ],
-                                ),
-                                child: const Center(
-                                  child: Text(
-                                    'Add to Cart',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          HugeIcon(
+                                            icon: HugeIcons.strokeRoundedShoppingBag01,
+                                            color: isDark ? Colors.white : Colors.blue,
+                                            size: 18,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Flexible(
+                                            child: Text(
+                                              'Add to Cart',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                color: isDark ? Colors.white : Colors.blue,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
+                                const SizedBox(width: 10),
+                                // Buy Now Button (Primary Vibrant Gradient)
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      if (widget.onBuyNow != null) {
+                                        widget.onBuyNow!(product);
+                                      } else {
+                                        final cartItem = CartItem(product: product, quantity: 1);
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => StoreCartView(
+                                              shop: widget.shop ?? {
+                                                'id': widget.shopId,
+                                                'name': widget.shopName,
+                                              },
+                                              cartItems: [cartItem],
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [Color(0xFF2196F3), Color(0xFF00B0FF)],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(18),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFF2196F3).withValues(alpha: 0.4),
+                                            blurRadius: 14,
+                                            offset: const Offset(0, 5),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          HugeIcon(
+                                            icon: HugeIcons.strokeRoundedFlash,
+                                            color: Colors.white,
+                                            size: 18,
+                                          ),
+                                          SizedBox(width: 6),
+                                          Flexible(
+                                            child: Text(
+                                              'Buy Now',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w900,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 32),
                           ],

@@ -166,6 +166,55 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
     showGlassToast(context, 'Ditambah "${product.name}" ke dalam troli!');
   }
 
+  void _buyNow(ProductModel product) {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      showGlassToast(
+        context,
+        'Sila log masuk untuk membuat pesanan & membeli.',
+        isError: true,
+      );
+      Navigator.pushNamed(context, '/login');
+      return;
+    }
+
+    final index = _cart.indexWhere((c) => c.product.id == product.id);
+    if (index < 0) {
+      setState(() {
+        _cart.add(CartItem(product: product, quantity: 1));
+      });
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StoreCartView(
+          shop: {
+            ...widget.shop,
+            if (_syncedOperatingHours != null)
+              'operating_hours': _syncedOperatingHours,
+          },
+          cartItems: _cart,
+          tableNumber: widget.tableNumber,
+          promoCode: widget.promoCode,
+          isStoreOpen: _status == _StoreStatus.open || _status == _StoreStatus.closingSoon,
+          storeStatusText: _statusText,
+          isHoliday: _status == _StoreStatus.holiday,
+          onUpdateQuantity: (prod, delta) {
+            setState(() {
+              final idx = _cart.indexWhere((c) => c.product.id == prod.id);
+              if (idx >= 0) {
+                _cart[idx].quantity += delta;
+                if (_cart[idx].quantity <= 0) _cart.removeAt(idx);
+              }
+            });
+          },
+          onClearCart: () => setState(() => _cart.clear()),
+        ),
+      ),
+    );
+  }
+
   // ── Status Helpers ───────────────────────────────────────────
 
   _StoreStatus get _status {
@@ -800,7 +849,10 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                             builder: (_) => BusinessProductsView(
                               shopId: widget.shop['id']?.toString() ?? 'unknown',
                               shopName: _shopName,
+                              shop: widget.shop,
                               initialSearchQuery: val,
+                              onAddToCart: _addToCart,
+                              onBuyNow: _buyNow,
                             ),
                           ),
                         );
@@ -2238,66 +2290,129 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                     ),
                                   ),
                                   const SizedBox(height: 16),
-                                  // ── Action Buttons ──
-                                  Row(
-                                    children: [
-                                      // Like Button
-                                      GestureDetector(
-                                        onTap: () {
-                                          setSheetState(() => isProductLiked = !isProductLiked);
-                                        },
-                                        child: _glassBox(
-                                          isDark: isDark,
-                                          radius: 18, // matches cart button radius
-                                          padding: const EdgeInsets.all(16),
-                                          child: AnimatedSwitcher(
-                                            duration: const Duration(milliseconds: 300),
-                                            transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-                                            child: HugeIcon(
-                                                icon: HugeIcons.strokeRoundedFavourite,
-                                                key: ValueKey(isProductLiked),
-                                                color: isProductLiked ? Colors.red : (isDark ? Colors.white : Colors.black87),
-                                                size: 24,
-                                              ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      // Add to Cart Button
-                                      Expanded(
-                                        child: GestureDetector(
-                                          onTap: () {
-                                            Navigator.pop(context);
-                                            _addToCart(product);
-                                          },
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(vertical: 18),
-                                            decoration: BoxDecoration(
-                                              color: Colors.blue,
-                                              borderRadius: BorderRadius.circular(18),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.blue.withValues(alpha: 0.35),
-                                                  blurRadius: 16,
-                                                  offset: const Offset(0, 6),
-                                                ),
-                                              ],
-                                            ),
-                                            child: const Center(
-                                              child: Text(
-                                                'Add to Cart',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                  // ── Action Buttons (Like + Add to Cart + Buy Now) ──
+                                   Row(
+                                     children: [
+                                       // Like Button
+                                       GestureDetector(
+                                         onTap: () {
+                                           setSheetState(() => isProductLiked = !isProductLiked);
+                                         },
+                                         child: _glassBox(
+                                           isDark: isDark,
+                                           radius: 18,
+                                           padding: const EdgeInsets.all(15),
+                                           child: AnimatedSwitcher(
+                                             duration: const Duration(milliseconds: 300),
+                                             transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                                             child: HugeIcon(
+                                                 icon: HugeIcons.strokeRoundedFavourite,
+                                                 key: ValueKey(isProductLiked),
+                                                 color: isProductLiked ? Colors.red : (isDark ? Colors.white : Colors.black87),
+                                                 size: 22,
+                                               ),
+                                           ),
+                                         ),
+                                       ),
+                                       const SizedBox(width: 10),
+                                       // Add to Cart Button (Frosted Style)
+                                       Expanded(
+                                         child: GestureDetector(
+                                           onTap: () {
+                                             Navigator.pop(context);
+                                             _addToCart(product);
+                                           },
+                                           child: Container(
+                                             padding: const EdgeInsets.symmetric(vertical: 16),
+                                             decoration: BoxDecoration(
+                                               color: isDark
+                                                   ? Colors.white.withValues(alpha: 0.08)
+                                                   : Colors.blue.withValues(alpha: 0.08),
+                                               borderRadius: BorderRadius.circular(18),
+                                               border: Border.all(
+                                                 color: Colors.blue.withValues(alpha: 0.4),
+                                                 width: 1.2,
+                                               ),
+                                             ),
+                                             child: Row(
+                                               mainAxisAlignment: MainAxisAlignment.center,
+                                               children: [
+                                                 HugeIcon(
+                                                   icon: HugeIcons.strokeRoundedShoppingBag01,
+                                                   color: isDark ? Colors.white : Colors.blue,
+                                                   size: 18,
+                                                 ),
+                                                 const SizedBox(width: 6),
+                                                 Flexible(
+                                                   child: Text(
+                                                     'Add to Cart',
+                                                     maxLines: 1,
+                                                     overflow: TextOverflow.ellipsis,
+                                                     style: TextStyle(
+                                                       color: isDark ? Colors.white : Colors.blue,
+                                                       fontSize: 14,
+                                                       fontWeight: FontWeight.bold,
+                                                     ),
+                                                   ),
+                                                 ),
+                                               ],
+                                             ),
+                                           ),
+                                         ),
+                                       ),
+                                       const SizedBox(width: 10),
+                                       // Buy Now Button (Vibrant Primary Gradient)
+                                       Expanded(
+                                         child: GestureDetector(
+                                           onTap: () {
+                                             Navigator.pop(context);
+                                             _buyNow(product);
+                                           },
+                                           child: Container(
+                                             padding: const EdgeInsets.symmetric(vertical: 16),
+                                             decoration: BoxDecoration(
+                                               gradient: const LinearGradient(
+                                                 colors: [Color(0xFF2196F3), Color(0xFF00B0FF)],
+                                                 begin: Alignment.topLeft,
+                                                 end: Alignment.bottomRight,
+                                               ),
+                                               borderRadius: BorderRadius.circular(18),
+                                               boxShadow: [
+                                                 BoxShadow(
+                                                   color: const Color(0xFF2196F3).withValues(alpha: 0.4),
+                                                   blurRadius: 14,
+                                                   offset: const Offset(0, 5),
+                                                 ),
+                                               ],
+                                             ),
+                                             child: const Row(
+                                               mainAxisAlignment: MainAxisAlignment.center,
+                                               children: [
+                                                 HugeIcon(
+                                                   icon: HugeIcons.strokeRoundedFlash,
+                                                   color: Colors.white,
+                                                   size: 18,
+                                                 ),
+                                                 SizedBox(width: 6),
+                                                 Flexible(
+                                                   child: Text(
+                                                     'Buy Now',
+                                                     maxLines: 1,
+                                                     overflow: TextOverflow.ellipsis,
+                                                     style: TextStyle(
+                                                       color: Colors.white,
+                                                       fontSize: 14,
+                                                       fontWeight: FontWeight.w900,
+                                                     ),
+                                                   ),
+                                                 ),
+                                               ],
+                                             ),
+                                           ),
+                                         ),
+                                       ),
+                                     ],
+                                   ),
                                    const SizedBox(height: 12),
                                    // Book Service / Appointment Button
                                    GestureDetector(
