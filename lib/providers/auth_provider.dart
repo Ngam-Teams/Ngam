@@ -409,39 +409,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Upload runner QR Code with compression
-  Future<String?> uploadQrCode(File imageFile) async {
-    if (_user == null) return 'User not logged in';
-    try {
-      final rawBytes = await imageFile.readAsBytes();
-      final compressed = await ImageCompressionService.compress(
-        bytes: rawBytes,
-        type: ImageCompressionType.qrCode,
-      );
-      final String path = '${_user!.id}/qrcode_${DateTime.now().millisecondsSinceEpoch}.${compressed.extension}';
-      await Supabase.instance.client.storage
-          .from('avatars')
-          .uploadBinary(path, compressed.bytes, fileOptions: FileOptions(cacheControl: '3600', contentType: compressed.mimeType, upsert: true));
-
-      final String publicUrl = Supabase.instance.client.storage
-          .from('avatars')
-          .getPublicUrl(path);
-
-      final error = await SupabaseService.updateProfile(
-        userId: _user!.id,
-        qrCodeUrl: publicUrl,
-      );
-
-      if (error == null) {
-        _user = _user!.copyWith(userQrCodeUrl: publicUrl);
-        notifyListeners();
-      }
-      return error;
-    } catch (e) {
-      return e.toString().replaceAll('Exception: ', '');
-    }
-  }
-
   /// Refresh user balance
   Future<void> refreshBalance() async {
     if (_user == null) return;
