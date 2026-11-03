@@ -1,13 +1,15 @@
-import '../services/image_compression_service.dart';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
-import '../services/supabase_service.dart';
-
-import 'dart:io';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../services/push_service.dart';
 import '../services/chat_service.dart';
+import '../services/image_compression_service.dart';
+import '../services/push_service.dart';
+import '../services/r2_storage_service.dart';
+import '../services/supabase_service.dart';
 
 // ============================================================
 // Ngam App — Auth Provider
@@ -285,23 +287,50 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Upload user avatar with compression
-  Future<String?> uploadAvatar(File imageFile) async {
+  /// Upload user avatar with compression (Serasi Web, PWA, Android & iOS melalui Cloudflare R2)
+  Future<String?> uploadAvatar(dynamic imageInput) async {
     if (_user == null) return 'User not logged in';
     try {
-      final rawBytes = await imageFile.readAsBytes();
+      Uint8List rawBytes;
+      String? extensionHint;
+
+      if (imageInput is Uint8List) {
+        rawBytes = imageInput;
+      } else if (imageInput is XFile) {
+        rawBytes = await imageInput.readAsBytes();
+        extensionHint = imageInput.name.contains('.') ? imageInput.name.split('.').last : null;
+      } else if (imageInput is File) {
+        rawBytes = await imageInput.readAsBytes();
+        extensionHint = imageInput.path.contains('.') ? imageInput.path.split('.').last : null;
+      } else {
+        return 'Format fail gambar tidak disokong';
+      }
+
       final compressed = await ImageCompressionService.compress(
         bytes: rawBytes,
         type: ImageCompressionType.avatar,
       );
-      final String path = '${_user!.id}/profile_${DateTime.now().millisecondsSinceEpoch}.${compressed.extension}';
-      await Supabase.instance.client.storage
-          .from('avatars')
-          .uploadBinary(path, compressed.bytes, fileOptions: FileOptions(cacheControl: '3600', contentType: compressed.mimeType, upsert: true));
 
-      final String publicUrl = Supabase.instance.client.storage
-          .from('avatars')
-          .getPublicUrl(path);
+      final ext = compressed.extension.isNotEmpty ? compressed.extension : (extensionHint ?? 'jpg');
+      final fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.$ext';
+
+      String publicUrl;
+      if (R2StorageService().isConfigured) {
+        publicUrl = await R2StorageService().uploadMedia(
+          bytes: compressed.bytes,
+          fileName: fileName,
+          folder: 'avatars/${_user!.id}',
+          mimeType: compressed.mimeType,
+        );
+      } else {
+        final String path = '${_user!.id}/$fileName';
+        await Supabase.instance.client.storage
+            .from('avatars')
+            .uploadBinary(path, compressed.bytes, fileOptions: FileOptions(cacheControl: '3600', contentType: compressed.mimeType, upsert: true));
+        publicUrl = Supabase.instance.client.storage
+            .from('avatars')
+            .getPublicUrl(path);
+      }
 
       final error = await SupabaseService.updateProfile(
         userId: _user!.id,
@@ -314,6 +343,68 @@ class AuthProvider extends ChangeNotifier {
       }
       return error;
     } catch (e) {
+      debugPrint('[AuthProvider] uploadAvatar error: $e');
+      return e.toString().replaceAll('Exception: ', '');
+    }
+  }
+
+  /// Upload runner QR Code with compression (Serasi Web, PWA, Android & iOS melalui Cloudflare R2)
+  Future<String?> uploadQrCode(dynamic imageInput) async {
+    if (_user == null) return 'User not logged in';
+    try {
+      Uint8List rawBytes;
+      String? extensionHint;
+
+      if (imageInput is Uint8List) {
+        rawBytes = imageInput;
+      } else if (imageInput is XFile) {
+        rawBytes = await imageInput.readAsBytes();
+        extensionHint = imageInput.name.contains('.') ? imageInput.name.split('.').last : null;
+      } else if (imageInput is File) {
+        rawBytes = await imageInput.readAsBytes();
+        extensionHint = imageInput.path.contains('.') ? imageInput.path.split('.').last : null;
+      } else {
+        return 'Format fail gambar tidak disokong';
+      }
+
+      final compressed = await ImageCompressionService.compress(
+        bytes: rawBytes,
+        type: ImageCompressionType.qrCode,
+      );
+
+      final ext = compressed.extension.isNotEmpty ? compressed.extension : (extensionHint ?? 'jpg');
+      final fileName = 'qrcode_${DateTime.now().millisecondsSinceEpoch}.$ext';
+
+      String publicUrl;
+      if (R2StorageService().isConfigured) {
+        publicUrl = await R2StorageService().uploadMedia(
+          bytes: compressed.bytes,
+          fileName: fileName,
+          folder: 'qrcodes/${_user!.id}',
+          mimeType: compressed.mimeType,
+        );
+      } else {
+        final String path = '${_user!.id}/$fileName';
+        await Supabase.instance.client.storage
+            .from('avatars')
+            .uploadBinary(path, compressed.bytes, fileOptions: FileOptions(cacheControl: '3600', contentType: compressed.mimeType, upsert: true));
+        publicUrl = Supabase.instance.client.storage
+            .from('avatars')
+            .getPublicUrl(path);
+      }
+
+      final error = await SupabaseService.updateProfile(
+        userId: _user!.id,
+        qrCodeUrl: publicUrl,
+      );
+
+      if (error == null) {
+        _user = _user!.copyWith(userQrCodeUrl: publicUrl);
+        notifyListeners();
+      }
+      return error;
+    } catch (e) {
+      debugPrint('[AuthProvider] uploadQrCode error: $e');
       return e.toString().replaceAll('Exception: ', '');
     }
   }

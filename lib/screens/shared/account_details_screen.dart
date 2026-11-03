@@ -1,5 +1,4 @@
 import '../../widgets/glass_nav_button.dart';
-import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -164,52 +163,156 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
     }
   }
 
-  Future<void> _pickAndUploadImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 800,
-      maxHeight: 800,
-      imageQuality: 80,
+  Future<void> _showImagePickerSourceSheet() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => SafeArea(
+        child: Container(
+          margin: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.08),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.25),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Text(
+                  "Tukar Gambar Profil",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedCamera01,
+                  color: Color(0xFF38BDF8),
+                  size: 22,
+                ),
+                title: Text(
+                  "Ambil Gambar (Kamera)",
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black87,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAndUploadImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedImage01,
+                  color: Color(0xFF38BDF8),
+                  size: 22,
+                ),
+                title: Text(
+                  "Pilih Dari Galeri",
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black87,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAndUploadImage(ImageSource.gallery);
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
     );
+  }
 
-    if (pickedFile != null && mounted) {
-      setState(() => _isUploadingAvatar = true);
-      final error = await context
-          .read<AuthProvider>()
-          .uploadAvatar(File(pickedFile.path));
+  Future<void> _pickAndUploadImage([ImageSource source = ImageSource.gallery]) async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null && mounted) {
+        setState(() => _isUploadingAvatar = true);
+        final error = await context
+            .read<AuthProvider>()
+            .uploadAvatar(pickedFile);
+        if (mounted) {
+          setState(() => _isUploadingAvatar = false);
+          if (error != null) {
+            showGlassToast(context, error, isError: true);
+          } else {
+            showGlassToast(context, "Gambar profil berjaya dikemas kini!");
+          }
+        }
+      }
+    } catch (e) {
       if (mounted) {
         setState(() => _isUploadingAvatar = false);
-        if (error != null) {
-          showGlassToast(context, error, isError: true);
-        } else {
-          showGlassToast(context, "Gambar profil berjaya dikemas kini!");
-        }
+        showGlassToast(context, "Ralat memilih gambar: $e", isError: true);
       }
     }
   }
 
   Future<void> _pickAndUploadQrCode() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 800,
-      maxHeight: 800,
-      imageQuality: 85,
-    );
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
 
-    if (pickedFile != null && mounted) {
-      setState(() => _isUploadingQrCode = true);
-      final error = await context
-          .read<AuthProvider>()
-          .uploadQrCode(File(pickedFile.path));
+      if (pickedFile != null && mounted) {
+        setState(() => _isUploadingQrCode = true);
+        final error = await context
+            .read<AuthProvider>()
+            .uploadQrCode(pickedFile);
+        if (mounted) {
+          setState(() => _isUploadingQrCode = false);
+          if (error != null) {
+            showGlassToast(context, error, isError: true);
+          } else {
+            showGlassToast(context, "Kod QR DuitNow berjaya dikemas kini!");
+          }
+        }
+      }
+    } catch (e) {
       if (mounted) {
         setState(() => _isUploadingQrCode = false);
-        if (error != null) {
-          showGlassToast(context, error, isError: true);
-        } else {
-          showGlassToast(context, "Kod QR DuitNow berjaya dikemas kini!");
-        }
+        showGlassToast(context, "Ralat memilih kod QR: $e", isError: true);
       }
     }
   }
@@ -632,7 +735,8 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                 Positioned(
                   bottom: 0,
                   child: GestureDetector(
-                    onTap: _isUploadingAvatar ? null : _pickAndUploadImage,
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _isUploadingAvatar ? null : _showImagePickerSourceSheet,
                     child: Stack(
                       children: [
                         Container(
