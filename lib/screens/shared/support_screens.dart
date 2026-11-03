@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:ngam/widgets/glass_box.dart';
 import '../../widgets/glass_nav_button.dart';
+import '../../utils/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -11,7 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 // ============================================================
 // Ngam App — Skrin Support & Pusat Bantuan
 // Redesigned with smooth scroll-driven collapsing search bar,
-// audited relevant FAQs, and comprehensive Contact Us integration.
+// audited relevant FAQs, brand theme color, and Contact Us integration.
 // ============================================================
 
 LiquidGlassSettings _glassSettings(bool isDark) => LiquidGlassSettings(
@@ -157,7 +158,8 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
   Future<void> _launchWhatsApp() async {
     const phone = '601110008888';
     final text = Uri.encodeComponent('Hai Ngam Support, saya perlukan bantuan berkenaan aplikasi Ngam.');
-    final uri = Uri.parse('https://wa.me/$phone?text=$text');
+    final url = 'https://wa.me/$phone?text=$text';
+    final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
@@ -174,14 +176,14 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
     const endTop = 12.0;
     const startTop = 152.0;
 
-    // Phase 1: Width shrinks to 44px circle (offset 0 -> 48)
-    final shrinkT = (_scrollOffset / 48.0).clamp(0.0, 1.0);
+    // Movement: The search bar moves up first with the scroll
+    final currentTop = math.max(endTop, startTop - _scrollOffset);
+
+    // Shrink: Only shrinks into a circle as it approaches the top bar (offset 80 -> 140)
+    final shrinkT = ((_scrollOffset - 80.0) / 60.0).clamp(0.0, 1.0);
     final widthCurve = Curves.easeOutCubic.transform(shrinkT);
     final currentWidth = fullWidth - (fullWidth - searchHeight) * widthCurve;
     final isCircle = widthCurve >= 0.85;
-
-    // Phase 2: Vertical position moves up to endTop (locks at 12.0)
-    final currentTop = math.max(endTop, startTop - _scrollOffset);
 
     // Filter FAQs by Category and Search Query
     final filteredFaqs = _faqs.where((faq) {
@@ -312,69 +314,89 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                           ),
                         ],
                       ),
-                      child: Row(
+                      child: Stack(
+                        alignment: Alignment.centerRight,
                         children: [
-                          // Text input field (fades out as it collapses to the right)
-                          if (widthCurve < 0.92)
-                            Expanded(
+                          // 1. Text input area (takes full width minus 44px for the search icon)
+                          if (widthCurve < 0.95)
+                            Positioned(
+                              left: 0,
+                              top: 0,
+                              bottom: 0,
+                              right: searchHeight,
                               child: Opacity(
                                 opacity: (1.0 - widthCurve * 1.5).clamp(0.0, 1.0),
                                 child: Padding(
                                   padding: const EdgeInsets.only(left: 16),
-                                  child: TextField(
-                                    controller: _searchController,
-                                    focusNode: _searchFocusNode,
-                                    onChanged: (val) {
-                                      setState(() {
-                                        _searchQuery = val.trim().toLowerCase();
-                                        _expandedIndex = null;
-                                      });
-                                    },
-                                    style: TextStyle(
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.w600,
-                                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                    ),
-                                    decoration: InputDecoration(
-                                      isDense: true,
-                                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                                      hintText: "support.search_hint".tr(),
-                                      hintStyle: TextStyle(
-                                        fontSize: 13,
-                                        color: isDark ? Colors.white30 : Colors.black26,
-                                        fontWeight: FontWeight.normal,
+                                  child: Center(
+                                    child: TextField(
+                                      controller: _searchController,
+                                      focusNode: _searchFocusNode,
+                                      onChanged: (val) {
+                                        setState(() {
+                                          _searchQuery = val.trim().toLowerCase();
+                                          _expandedIndex = null;
+                                        });
+                                      },
+                                      style: TextStyle(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark ? Colors.white : const Color(0xFF0F172A),
                                       ),
-                                      border: InputBorder.none,
+                                      decoration: InputDecoration(
+                                        isDense: true,
+                                        filled: false,
+                                        fillColor: Colors.transparent,
+                                        contentPadding: EdgeInsets.zero,
+                                        hintText: "support.search_hint".tr(),
+                                        hintStyle: TextStyle(
+                                          fontSize: 13,
+                                          color: isDark ? Colors.white30 : Colors.black26,
+                                          fontWeight: FontWeight.normal,
+                                        ),
+                                        border: InputBorder.none,
+                                        enabledBorder: InputBorder.none,
+                                        focusedBorder: InputBorder.none,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
 
-                          // Clear query button
+                          // 2. Clear query button (positioned just to the left of the search icon)
                           if (_searchQuery.isNotEmpty && widthCurve < 0.4)
-                            GestureDetector(
-                              onTap: () {
-                                _searchController.clear();
-                                setState(() {
-                                  _searchQuery = '';
-                                  _expandedIndex = null;
-                                });
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
-                                child: Icon(
-                                  Icons.close_rounded,
-                                  size: 16,
-                                  color: isDark ? Colors.white54 : Colors.black45,
+                            Positioned(
+                              right: searchHeight - 4,
+                              top: 0,
+                              bottom: 0,
+                              child: Center(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    _searchController.clear();
+                                    setState(() {
+                                      _searchQuery = '';
+                                      _expandedIndex = null;
+                                    });
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(4),
+                                    child: Icon(
+                                      Icons.close_rounded,
+                                      size: 16,
+                                      color: isDark ? Colors.white54 : Colors.black45,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
 
-                          // Search Icon on the right (anchored at right edge)
-                          SizedBox(
+                          // 3. Search Icon (STRICTLY PINNED AT THE FAR RIGHT EDGE, 44x44)
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            bottom: 0,
                             width: searchHeight,
-                            height: searchHeight,
                             child: Center(
                               child: HugeIcon(
                                 icon: HugeIcons.strokeRoundedSearch01,
@@ -430,13 +452,13 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
                   color: isSelected
-                      ? const Color(0xFFFF8C00)
+                      ? AppTheme.primary
                       : (isDark
                           ? Colors.white.withValues(alpha: 0.05)
                           : Colors.black.withValues(alpha: 0.04)),
                   border: Border.all(
                     color: isSelected
-                        ? const Color(0xFFFF8C00)
+                        ? AppTheme.primary
                         : (isDark
                             ? Colors.white.withValues(alpha: 0.08)
                             : Colors.black.withValues(alpha: 0.06)),
@@ -479,15 +501,15 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
           decoration: BoxDecoration(
             color: isDark
                 ? (isExpanded
-                    ? const Color(0xFFFF8C00).withValues(alpha: 0.06)
+                    ? AppTheme.primary.withValues(alpha: 0.08)
                     : Colors.white.withValues(alpha: 0.035))
                 : (isExpanded
-                    ? const Color(0xFFFF8C00).withValues(alpha: 0.04)
+                    ? AppTheme.primary.withValues(alpha: 0.05)
                     : Colors.white),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isExpanded
-                  ? const Color(0xFFFF8C00).withValues(alpha: 0.45)
+                  ? AppTheme.primary.withValues(alpha: 0.5)
                   : (isDark
                       ? Colors.white.withValues(alpha: 0.06)
                       : Colors.black.withValues(alpha: 0.06)),
@@ -513,7 +535,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                     height: 32,
                     decoration: BoxDecoration(
                       color: isExpanded
-                          ? const Color(0xFFFF8C00).withValues(alpha: 0.15)
+                          ? AppTheme.primary.withValues(alpha: 0.15)
                           : (isDark
                               ? Colors.white.withValues(alpha: 0.05)
                               : Colors.black.withValues(alpha: 0.03)),
@@ -523,7 +545,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                       child: HugeIcon(
                         icon: item.icon,
                         color: isExpanded
-                            ? const Color(0xFFFF8C00)
+                            ? AppTheme.primary
                             : (isDark ? Colors.white60 : Colors.black54),
                         size: 16,
                       ),
@@ -548,7 +570,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                     child: HugeIcon(
                       icon: HugeIcons.strokeRoundedArrowDown01,
                       color: isExpanded
-                          ? const Color(0xFFFF8C00)
+                          ? AppTheme.primary
                           : (isDark ? Colors.white38 : Colors.black38),
                       size: 18,
                     ),
@@ -587,13 +609,13 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: const Color(0xFFFF8C00).withValues(alpha: 0.1),
+                color: AppTheme.primary.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: const Center(
                 child: HugeIcon(
                   icon: HugeIcons.strokeRoundedHelpCircle,
-                  color: Color(0xFFFF8C00),
+                  color: AppTheme.primary,
                   size: 28,
                 ),
               ),
@@ -657,7 +679,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                   height: 44,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFFFF9800), Color(0xFFFF5722)],
+                      colors: [AppTheme.primary, AppTheme.primaryDark],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -939,11 +961,11 @@ class ContactUsScreen extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF8C00).withValues(alpha: 0.12),
+                  color: AppTheme.primary.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Center(
-                  child: HugeIcon(icon: icon, color: const Color(0xFFFF8C00), size: 22),
+                  child: HugeIcon(icon: icon, color: AppTheme.primary, size: 22),
                 ),
               ),
               const SizedBox(width: 14),
@@ -973,7 +995,7 @@ class ContactUsScreen extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFFFF8C00),
+                        color: AppTheme.primary,
                       ),
                     ),
                   ],
