@@ -4343,14 +4343,14 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                 ),
               ),
 
-              // Pinned Bottom Action Bar (Kemas Mengikut Lengkung Bawah & Vertically Centered)
+              // Pinned Bottom Action Bar (Frosted Glass)
               Container(
                 alignment: Alignment.center,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 decoration: BoxDecoration(
                   color: isDark
-                      ? const Color(0xFF0F1521).withValues(alpha: 0.92)
-                      : Colors.white.withValues(alpha: 0.94),
+                      ? const Color(0xFF0F172A).withValues(alpha: 0.60)
+                      : Colors.white.withValues(alpha: 0.60),
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(24),
                     bottom: Radius.circular(28),
@@ -4358,12 +4358,12 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                   border: Border.all(
                     color: isDark
                         ? Colors.white.withValues(alpha: 0.14)
-                        : Colors.black.withValues(alpha: 0.08),
+                        : Colors.black.withValues(alpha: 0.06),
                     width: 1.0,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.08),
+                      color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.05),
                       blurRadius: 16,
                       offset: const Offset(0, -4),
                     ),
@@ -4610,38 +4610,74 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                 },
                 child: ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                  child: Stack(
-                    children: [
-                      // 1. Frosted Liquid Glass Background
-                      Positioned.fill(
-                        child: GlassContainer(
-                          useOwnLayer: true,
-                          quality: GlassQuality.standard,
-                          shape: const LiquidRoundedSuperellipse(borderRadius: 32.0),
-                          settings: _getGlassSettings(isDark, blur: 16),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF0F1521).withValues(alpha: 0.88)
-                                  : Colors.white.withValues(alpha: 0.90),
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                              border: Border.all(
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.15)
-                                    : Colors.black.withValues(alpha: 0.08),
-                                width: 1.0,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.10),
-                                  blurRadius: 18,
-                                  offset: const Offset(0, -4),
-                                ),
-                              ],
-                            ),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: isDark
+                              ? [
+                                  const Color(0xFF1E2838).withValues(alpha: 0.70),
+                                  const Color(0xFF0F172A).withValues(alpha: 0.58),
+                                ]
+                              : [
+                                  Colors.white.withValues(alpha: 0.82),
+                                  Colors.white.withValues(alpha: 0.65),
+                                ],
+                        ),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                        border: Border(
+                          top: BorderSide(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.24)
+                                : Colors.white.withValues(alpha: 0.85),
+                            width: 1.2,
+                          ),
+                          left: BorderSide(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.12)
+                                : Colors.white.withValues(alpha: 0.50),
+                            width: 1.0,
+                          ),
+                          right: BorderSide(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.12)
+                                : Colors.white.withValues(alpha: 0.50),
+                            width: 1.0,
                           ),
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.10),
+                            blurRadius: 28,
+                            offset: const Offset(0, -6),
+                          ),
+                        ],
                       ),
+                      child: Stack(
+                        children: [
+                          // 1. Frosted Liquid Glass Highlight / Reflection
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: 70,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    (isDark ? Colors.white : Colors.white).withValues(alpha: isDark ? 0.08 : 0.25),
+                                    Colors.transparent,
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
 
                       // 2. Scrollable Body Content (Susun Atur Baru: Tajuk & Kad Statistik di Atas, Gambar Banner di Bawah)
                       Positioned.fill(
@@ -4835,40 +4871,35 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                         ),
                       ),
 
-                      // 3. Pinned Bottom Action Bar (Kemas Mengikut Lengkung Bawah & Vertically Centered)
+                      // 3. Pinned Bottom Action Bar (Frosted Glass Seamless Divider)
                       Positioned(
                         bottom: 0,
                         left: 0,
                         right: 0,
-                        child: Container(
-                          alignment: Alignment.center,
-                          padding: EdgeInsets.only(
-                            left: 20,
-                            right: 20,
-                            top: 16,
-                            bottom: bottomSafeArea > 0 ? bottomSafeArea + 12 : 16,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFF0F1521).withValues(alpha: 0.94)
-                                : Colors.white.withValues(alpha: 0.95),
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(26),
-                            ),
-                            border: Border.all(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.14)
-                                  : Colors.black.withValues(alpha: 0.08),
-                              width: 1.0,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
-                                blurRadius: 18,
-                                offset: const Offset(0, -4),
+                        child: ClipRect(
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                            child: Container(
+                              alignment: Alignment.center,
+                              padding: EdgeInsets.only(
+                                left: 20,
+                                right: 20,
+                                top: 14,
+                                bottom: bottomSafeArea > 0 ? bottomSafeArea + 10 : 16,
                               ),
-                            ],
-                          ),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? const Color(0xFF0F172A).withValues(alpha: 0.60)
+                                    : Colors.white.withValues(alpha: 0.60),
+                                border: Border(
+                                  top: BorderSide(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.14)
+                                        : Colors.black.withValues(alpha: 0.06),
+                                    width: 1.0,
+                                  ),
+                                ),
+                              ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
@@ -4962,10 +4993,14 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                           ),
                         ),
                       ),
+                    ),
+                  ),
                     ],
                   ),
                 ),
-              );
+              ),
+            ),
+          );
             },
           );
 
@@ -4993,35 +5028,30 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     Color? overrideColor,
     Color? overrideBorder,
   }) {
-    return GlassContainer(
-      useOwnLayer: true,
-      quality: GlassQuality.standard,
-      shape: LiquidRoundedSuperellipse(borderRadius: radius),
-      settings: _getGlassSettings(isDark),
-      // Uses same glass settings as GPS button
-      child: Container(
-        padding: padding,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(radius),
-          // Sheer tint so it visibly pops out from the completely clear main sheet
-          color: overrideColor ??
-              (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white
-                  .withValues(alpha: 0.4)),
-          border: Border.all(
-            color: overrideBorder ??
-                Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
-            width: 1.0,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.1 : 0.02),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        color: overrideColor ??
+            (isDark
+                ? Colors.white.withValues(alpha: 0.07)
+                : Colors.white.withValues(alpha: 0.55)),
+        border: Border.all(
+          color: overrideBorder ??
+              (isDark
+                  ? Colors.white.withValues(alpha: 0.18)
+                  : Colors.black.withValues(alpha: 0.08)),
+          width: 1.0,
         ),
-        child: child,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.12 : 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
+      child: child,
     );
   }
 
