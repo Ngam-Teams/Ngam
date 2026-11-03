@@ -12,6 +12,20 @@ import '../../utils/glass_toast.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../explore/business_store_view.dart';
 
+class _VoucherCategoryTab {
+  final String id;
+  final String label;
+  final dynamic icon;
+  final List<String> clusterKeys;
+
+  const _VoucherCategoryTab({
+    required this.id,
+    required this.label,
+    required this.icon,
+    this.clusterKeys = const [],
+  });
+}
+
 class VoucherScreen extends StatefulWidget {
   final bool isPicker;
   final String? businessId;
@@ -32,6 +46,7 @@ class VoucherScreen extends StatefulWidget {
 
 class _VoucherScreenState extends State<VoucherScreen> {
   int _selectedTab = 0; // 0: Tersimpan, 1: Teroka Baucar (Tawaran Hebat)
+  String _selectedCategoryFilter = 'all';
   final TextEditingController _claimCodeController = TextEditingController();
   bool _isClaiming = false;
   List<Map<String, dynamic>> _exploreVouchers = [];
@@ -39,12 +54,77 @@ class _VoucherScreenState extends State<VoucherScreen> {
   // Curated demo and platform offers sourced centrally from VoucherService
   List<Map<String, dynamic>> get _curatedPromos => VoucherService.curatedPromos;
 
+  static const List<_VoucherCategoryTab> _categoryTabs = [
+    _VoucherCategoryTab(
+      id: 'all',
+      label: 'Semua',
+      icon: HugeIcons.strokeRoundedSparkles,
+    ),
+    _VoucherCategoryTab(
+      id: 'platform',
+      label: 'Rasmi Ngam',
+      icon: HugeIcons.strokeRoundedAward01,
+    ),
+    _VoucherCategoryTab(
+      id: 'cafe',
+      label: 'Kafe & F&B',
+      icon: HugeIcons.strokeRoundedRestaurant01,
+      clusterKeys: ['cafe'],
+    ),
+    _VoucherCategoryTab(
+      id: 'barber',
+      label: 'Barber & Dandanan',
+      icon: HugeIcons.strokeRoundedScissor,
+      clusterKeys: ['barber'],
+    ),
+    _VoucherCategoryTab(
+      id: 'carwash',
+      label: 'Cuci & Auto',
+      icon: HugeIcons.strokeRoundedCar01,
+      clusterKeys: ['carwash'],
+    ),
+    _VoucherCategoryTab(
+      id: 'retail',
+      label: 'Runcit & Mart',
+      icon: HugeIcons.strokeRoundedShoppingBag02,
+      clusterKeys: ['retail'],
+    ),
+    _VoucherCategoryTab(
+      id: 'services',
+      label: 'Servis Komuniti',
+      icon: HugeIcons.strokeRoundedWrench01,
+      clusterKeys: ['laundry', 'services'],
+    ),
+  ];
+
+  /// Combined pool of live database vouchers + platform curated offers (deduplicated by code)
+  List<Map<String, dynamic>> get _allExploreVouchers {
+    final Map<String, Map<String, dynamic>> byCode = {};
+    for (final v in _curatedPromos) {
+      final code = (v['code'] ?? '').toString().toUpperCase();
+      if (code.isNotEmpty) byCode[code] = v;
+    }
+    for (final v in _exploreVouchers) {
+      final code = (v['code'] ?? '').toString().toUpperCase();
+      if (code.isNotEmpty) byCode[code] = v;
+    }
+    return byCode.values.toList();
+  }
 
   @override
   void initState() {
     super.initState();
     VoucherService.init();
     _fetchLiveExploreVouchers();
+    if (widget.category != null && widget.category!.isNotEmpty) {
+      final normalized = widget.category!.toLowerCase();
+      for (final tab in _categoryTabs) {
+        if (tab.id == normalized || tab.clusterKeys.contains(normalized)) {
+          _selectedCategoryFilter = tab.id;
+          break;
+        }
+      }
+    }
   }
 
   @override
@@ -57,15 +137,16 @@ class _VoucherScreenState extends State<VoucherScreen> {
     try {
       final res = await Supabase.instance.client
           .from('vouchers')
-          .select('*, businesses(name, business_logo_url)')
+          .select('*, businesses(name, business_logo_url, business_industry)')
           .eq('is_active', true)
-          .limit(20);
+          .limit(25);
 
       if (mounted && res.isNotEmpty) {
         final List<Map<String, dynamic>> mapped = [];
         for (var item in res) {
           final m = Map<String, dynamic>.from(item);
           final biz = m['businesses'] as Map<String, dynamic>?;
+          final industry = biz?['business_industry']?.toString();
           mapped.add({
             'id': m['id']?.toString() ?? 'v_${m['code']}',
             'code': m['code']?.toString() ?? '',
@@ -80,6 +161,11 @@ class _VoucherScreenState extends State<VoucherScreen> {
             'end_date': m['end_date'],
             'description': m['description']?.toString() ?? 'Diskaun eksklusif untuk pesanan di Ngam.',
             'badge': 'Disahkan',
+            'is_platform': m['is_platform'] == true,
+            'applicable_scope': m['applicable_scope'] ?? (industry != null ? 'category' : 'all'),
+            'applicable_categories': m['applicable_categories'] is List
+                ? m['applicable_categories']
+                : (industry != null ? [industry] : <String>[]),
             'gradient': [const Color(0xFF2563EB), const Color(0xFF1D4ED8)],
           });
         }
@@ -577,7 +663,12 @@ class _VoucherScreenState extends State<VoucherScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
+
+                // Shopee-style Horizontal Scrollable Category Filter Pills
+                _buildCategoryFilterPills(isDark, textPrimary, textSecondary),
+
+                const SizedBox(height: 8),
 
                 // Tab Content
                 Expanded(
@@ -686,79 +777,85 @@ class _VoucherScreenState extends State<VoucherScreen> {
     return ValueListenableBuilder<List<Map<String, dynamic>>>(
       valueListenable: VoucherService.savedVouchersNotifier,
       builder: (context, vouchers, _) {
-        if (vouchers.isEmpty) {
-          return Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: HugeIcon(
-                        icon: HugeIcons.strokeRoundedTicket01,
-                        color: AppTheme.primary,
-                        size: 36,
+        final filtered = vouchers.where((v) => _matchesTabFilter(v, _selectedCategoryFilter)).toList();
+
+        if (filtered.isEmpty) {
+          if (vouchers.isEmpty) {
+            return Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedTicket01,
+                          color: AppTheme.primary,
+                          size: 36,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'Tiada Baucar Tersimpan',
-                    style: GoogleFonts.outfit(
-                      color: textPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                    const SizedBox(height: 18),
+                    Text(
+                      'Tiada Baucar Tersimpan',
+                      style: GoogleFonts.outfit(
+                        color: textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Masukkan kod baucar di atas atau teroka tawaran hebat untuk simpan baucar diskaun anda.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: textSecondary,
-                      fontSize: 12,
-                      height: 1.5,
+                    const SizedBox(height: 8),
+                    Text(
+                      'Masukkan kod baucar di atas atau teroka tawaran hebat untuk simpan baucar diskaun anda.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: textSecondary,
+                        fontSize: 12,
+                        height: 1.5,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 0,
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 0,
+                      ),
+                      icon: const HugeIcon(
+                        icon: HugeIcons.strokeRoundedFire,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                      label: const Text(
+                        'Teroka Tawaran Hebat',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () => setState(() => _selectedTab = 1),
                     ),
-                    icon: const HugeIcon(
-                      icon: HugeIcons.strokeRoundedFire,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                    label: const Text(
-                      'Teroka Tawaran Hebat',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                    ),
-                    onPressed: () => setState(() => _selectedTab = 1),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          );
+            );
+          } else {
+            return _buildEmptyFilterState(isDark, textPrimary, textSecondary, isSavedTab: true);
+          }
         }
 
         return ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          itemCount: vouchers.length,
+          itemCount: filtered.length,
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
-            final v = vouchers[index];
+            final v = filtered[index];
             return _buildVoucherCard(v, isDark, cardBg, textPrimary, textSecondary, isSavedTab: true);
           },
         );
@@ -772,16 +869,281 @@ class _VoucherScreenState extends State<VoucherScreen> {
     Color textPrimary,
     Color textSecondary,
   ) {
-    final list = _exploreVouchers.isNotEmpty ? _exploreVouchers : _curatedPromos;
+    final pool = _allExploreVouchers;
+    final filtered = pool.where((v) => _matchesTabFilter(v, _selectedCategoryFilter)).toList();
+
+    if (filtered.isEmpty) {
+      return _buildEmptyFilterState(isDark, textPrimary, textSecondary, isSavedTab: false);
+    }
 
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: list.length,
+      itemCount: filtered.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
-        final v = list[index];
+        final v = filtered[index];
         return _buildVoucherCard(v, isDark, cardBg, textPrimary, textSecondary, isSavedTab: false);
       },
+    );
+  }
+
+  /// Checks whether a voucher matches the selected horizontal category tab filter
+  bool _matchesTabFilter(Map<String, dynamic> v, String tabId) {
+    if (tabId == 'all') return true;
+
+    final isPlatform = v['is_platform'] == true ||
+        (v['shop_name']?.toString().toLowerCase().contains('ngam') ?? false);
+    final scope = (v['applicable_scope'] ?? 'all').toString().toLowerCase();
+
+    if (tabId == 'platform') {
+      return isPlatform || scope == 'all';
+    }
+
+    final tab = _categoryTabs.firstWhere(
+      (t) => t.id == tabId,
+      orElse: () => _categoryTabs.first,
+    );
+
+    final appCats = v['applicable_categories'];
+    final List<String> catsList = [];
+    if (appCats is List) {
+      for (final item in appCats) {
+        catsList.add(item.toString().toLowerCase().trim());
+      }
+    }
+
+    final catLabel = (v['category_label'] ?? '').toString().toLowerCase();
+    final title = (v['title'] ?? '').toString().toLowerCase();
+    final desc = (v['description'] ?? '').toString().toLowerCase();
+    final shopName = (v['shop_name'] ?? '').toString().toLowerCase();
+
+    for (final cluster in tab.clusterKeys) {
+      final Set<String> clusterWords = VoucherService.categoryClusters[cluster] ?? {cluster};
+
+      // 1. Direct match in applicable_categories list
+      for (final cat in catsList) {
+        if (clusterWords.contains(cat) || clusterWords.any((w) => cat.contains(w))) {
+          return true;
+        }
+      }
+
+      // 2. Direct match in category_label
+      if (clusterWords.any((w) => catLabel.contains(w))) {
+        return true;
+      }
+
+      // 3. Match in title, description, or shop name
+      if (clusterWords.any((w) => title.contains(w) || desc.contains(w) || shopName.contains(w))) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  int _countForTab(String tabId, List<Map<String, dynamic>> pool) {
+    if (tabId == 'all') return pool.length;
+    return pool.where((v) => _matchesTabFilter(v, tabId)).length;
+  }
+
+  Widget _buildCategoryFilterPills(
+    bool isDark,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    return ValueListenableBuilder<List<Map<String, dynamic>>>(
+      valueListenable: VoucherService.savedVouchersNotifier,
+      builder: (context, savedVouchers, _) {
+        final List<Map<String, dynamic>> currentPool =
+            _selectedTab == 0 ? savedVouchers : _allExploreVouchers;
+
+        return SizedBox(
+          height: 38,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: _categoryTabs.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              final tab = _categoryTabs[index];
+              final isSelected = _selectedCategoryFilter == tab.id;
+              final count = _countForTab(tab.id, currentPool);
+
+              return GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  setState(() => _selectedCategoryFilter = tab.id);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+                  decoration: BoxDecoration(
+                    gradient: isSelected
+                        ? const LinearGradient(
+                            colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    color: isSelected
+                        ? null
+                        : (isDark ? const Color(0xFF141424) : Colors.white),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color(0xFF60A5FA).withValues(alpha: 0.6)
+                          : (isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : Colors.black.withValues(alpha: 0.06)),
+                      width: isSelected ? 1.2 : 1.0,
+                    ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: const Color(0xFF2563EB).withValues(alpha: 0.35),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      HugeIcon(
+                        icon: tab.icon,
+                        color: isSelected
+                            ? Colors.white
+                            : (isDark ? Colors.white70 : Colors.black87),
+                        size: 14,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        tab.label,
+                        style: TextStyle(
+                          color: isSelected
+                              ? Colors.white
+                              : (isDark ? Colors.white : Colors.black87),
+                          fontSize: 12,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        ),
+                      ),
+                      if (count > 0) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5.5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? Colors.white.withValues(alpha: 0.25)
+                                : (isDark
+                                    ? Colors.white.withValues(alpha: 0.1)
+                                    : Colors.black.withValues(alpha: 0.06)),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '$count',
+                            style: TextStyle(
+                              color: isSelected
+                                  ? Colors.white
+                                  : (isDark ? Colors.white70 : textSecondary),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyFilterState(
+    bool isDark,
+    Color textPrimary,
+    Color textSecondary, {
+    bool isSavedTab = false,
+  }) {
+    final tab = _categoryTabs.firstWhere(
+      (t) => t.id == _selectedCategoryFilter,
+      orElse: () => _categoryTabs.first,
+    );
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
+                ),
+              ),
+              child: HugeIcon(
+                icon: tab.icon,
+                color: isDark ? Colors.white60 : Colors.black54,
+                size: 36,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Tiada Baucar ${tab.label}',
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isSavedTab
+                  ? 'Anda belum menyimpan sebarang baucar untuk kategori ${tab.label}. Sila teroka tawaran hebat untuk dapatkan baucar.'
+                  : 'Belum ada tawaran aktif untuk kategori ${tab.label} buat masa ini. Sila semak semula nanti atau lihat semua baucar tersedia.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: textSecondary,
+                fontSize: 12.5,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                foregroundColor: textPrimary,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                elevation: 0,
+              ),
+              icon: const HugeIcon(
+                icon: HugeIcons.strokeRoundedSparkles,
+                color: Color(0xFF2563EB),
+                size: 15,
+              ),
+              label: const Text(
+                'Tunjuk Semua Baucar',
+                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+              ),
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                setState(() => _selectedCategoryFilter = 'all');
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
