@@ -89,6 +89,7 @@ class _VoucherSelectionSheetState extends State<VoucherSelectionSheet> {
       code: code,
       businessId: widget.businessId,
       subtotal: widget.subtotal,
+      category: widget.category,
     );
     if (!mounted) return;
     setState(() => _isCheckingCode = false);

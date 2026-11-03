@@ -11,6 +11,34 @@ class VoucherService {
       ValueNotifier<List<Map<String, dynamic>>>([]);
 
   static bool _initialized = false;
+  static final Map<String, String> _businessCategoryCache = {};
+
+  /// Kumpulan kata kunci kategori untuk semakan keserasian (Category Clustering)
+  static final Map<String, Set<String>> categoryClusters = {
+    'cafe': {
+      'cafe', 'coffee', 'kopi', 'f&b', 'food', 'makanan', 'minuman',
+      'beverage', 'beverages', 'drinks', 'drink', 'restaurant', 'restoran',
+      'bakery', 'pastry', 'pastries', 'snack', 'snacks', 'dessert', 'bistro',
+      'warung', 'kedai kopi', 'kopitiam', 'teahouse', 'tea'
+    },
+    'barber': {
+      'barber', 'barbershop', 'salon', 'haircut', 'hair', 'grooming',
+      'gunting', 'rambut', 'beauty', 'spa', 'massage', 'dandanan',
+      'gentleman', 'facial'
+    },
+    'carwash': {
+      'carwash', 'auto', 'detailing', 'cuci', 'kereta', 'automotive',
+      'motor', 'vehicle', 'workshop', 'bengkel', 'wax', 'snowwash',
+      'towing', 'tayaran', 'tyre'
+    },
+    'laundry': {
+      'laundry', 'dobi', 'cucian', 'dryclean', 'ironing'
+    },
+    'retail': {
+      'retail', 'shopping', 'store', 'shop', 'mart', 'groceries', 'pasar',
+      'kedai', 'supermarket', 'convenience', 'pasar mini'
+    },
+  };
 
   /// Default curated community & platform promo vouchers
   static final List<Map<String, dynamic>> curatedPromos = [
@@ -27,6 +55,9 @@ class VoucherService {
       'description': 'Diskaun RM5 untuk sebarang tempahan atau pesanan di aplikasi Ngam.',
       'badge': 'Paling Hangat',
       'is_platform': true,
+      'applicable_scope': 'all',
+      'applicable_categories': <String>[],
+      'category_label': 'Semua Kategori',
     },
     {
       'id': 'promo_barber_cut',
@@ -42,6 +73,11 @@ class VoucherService {
       'description': 'Potongan 10% untuk pakej servis dandanan dan gunting rambut.',
       'badge': 'Servis Barber',
       'is_platform': true,
+      'applicable_scope': 'category',
+      'applicable_categories': [
+        'barber', 'salon', 'haircut', 'grooming', 'gunting', 'rambut', 'beauty', 'spa', 'dandanan'
+      ],
+      'category_label': 'Barber & Dandanan',
     },
     {
       'id': 'promo_coffee_fever',
@@ -56,6 +92,11 @@ class VoucherService {
       'description': 'Nikmati jimat RM3 bila pesan minuman artisan atau makanan.',
       'badge': 'Kafe & Minuman',
       'is_platform': true,
+      'applicable_scope': 'category',
+      'applicable_categories': [
+        'cafe', 'coffee', 'kopi', 'f&b', 'food', 'beverage', 'drinks', 'makanan', 'minuman', 'restaurant', 'restoran', 'bakery', 'pastry'
+      ],
+      'category_label': 'Kafe & F&B',
     },
     {
       'id': 'promo_carwash_shine',
@@ -70,8 +111,96 @@ class VoucherService {
       'description': 'Rebat segera RM5 untuk carwash pakej Snow Wash & Wax.',
       'badge': 'Cuci Kenderaan',
       'is_platform': true,
+      'applicable_scope': 'category',
+      'applicable_categories': [
+        'carwash', 'auto', 'detailing', 'cuci', 'kereta', 'automotive', 'motor', 'vehicle', 'workshop', 'bengkel'
+      ],
+      'category_label': 'Carwash & Auto Detailing',
     },
   ];
+
+  /// Dapatkan atau selesaikan kategori perniagaan (dengan sokongan cache & query Supabase)
+  static Future<String?> resolveBusinessCategory(String? businessId, [String? explicitCategory]) async {
+    if (explicitCategory != null && explicitCategory.trim().isNotEmpty) {
+      final clean = explicitCategory.trim().toLowerCase();
+      if (businessId != null && businessId.isNotEmpty) {
+        _businessCategoryCache[businessId] = clean;
+      }
+      return clean;
+    }
+    if (businessId == null || businessId.trim().isEmpty) return null;
+
+    final cached = _businessCategoryCache[businessId];
+    if (cached != null) return cached;
+
+    try {
+      final res = await Supabase.instance.client
+          .from('businesses')
+          .select('business_industry, category')
+          .eq('id', businessId)
+          .maybeSingle();
+      if (res != null) {
+        final cat = (res['business_industry'] ?? res['category'])?.toString().trim().toLowerCase();
+        if (cat != null && cat.isNotEmpty) {
+          _businessCategoryCache[businessId] = cat;
+          return cat;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Semak sama ada kategori sasaran serasi dengan kategori yang dibenarkan oleh baucar
+  static bool isCategoryCompatible({
+    required List<String> allowedCategories,
+    required String? targetCategory,
+  }) {
+    // 1. Jika baucar sah untuk semua (atau tiada syarat kategori khas), lulus
+    if (allowedCategories.isEmpty ||
+        allowedCategories.contains('all') ||
+        allowedCategories.contains('semua') ||
+        allowedCategories.contains('platform')) {
+      return true;
+    }
+
+    if (targetCategory == null || targetCategory.trim().isEmpty) {
+      // Jika kategori sasaran tidak dapat ditentukan, tolak demi keselamatan kewangan
+      return false;
+    }
+
+    final cleanTarget = targetCategory.trim().toLowerCase();
+
+    // 2. Padanan terus (direct exact or substring match)
+    for (final allowed in allowedCategories) {
+      final cleanAllowed = allowed.trim().toLowerCase();
+      if (cleanAllowed.isEmpty) continue;
+      if (cleanTarget == cleanAllowed ||
+          cleanTarget.contains(cleanAllowed) ||
+          cleanAllowed.contains(cleanTarget)) {
+        return true;
+      }
+    }
+
+    // 3. Semak melalui category cluster (sinonim)
+    for (final clusterEntry in categoryClusters.entries) {
+      final cluster = clusterEntry.value;
+      final bool targetInCluster = cluster.any((synonym) =>
+          cleanTarget == synonym || cleanTarget.contains(synonym) || synonym.contains(cleanTarget));
+
+      if (targetInCluster) {
+        final bool allowedInCluster = allowedCategories.any((cat) {
+          final c = cat.trim().toLowerCase();
+          return cluster.contains(c) || cluster.any((synonym) => c.contains(synonym) || synonym.contains(c));
+        });
+
+        if (allowedInCluster) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
 
   /// Inisialisasi senarai baucar tersimpan dari peranti tempatan (SharedPreferences)
   static Future<void> init() async {
@@ -91,6 +220,22 @@ class VoucherService {
           final id = v['id']?.toString() ?? '';
           return id.startsWith('local_');
         });
+
+        // Kemas kini syarat kategori terkini untuk sebarang baucar curated yang telah tersimpan
+        for (var v in loaded) {
+          final cCode = (v['code'] ?? '').toString().trim().toUpperCase();
+          final curMatch = curatedPromos.firstWhere(
+            (p) => (p['code'] ?? '').toString().toUpperCase() == cCode,
+            orElse: () => {},
+          );
+          if (curMatch.isNotEmpty) {
+            v['applicable_scope'] = curMatch['applicable_scope'];
+            v['applicable_categories'] = curMatch['applicable_categories'];
+            v['category_label'] = curMatch['category_label'];
+            v['badge'] = curMatch['badge'];
+          }
+        }
+
         savedVouchersNotifier.value = loaded;
         if (loaded.length != beforeCount) {
           await _persist();
@@ -193,7 +338,7 @@ class VoucherService {
     return double.parse(d.toStringAsFixed(2));
   }
 
-  /// Semak kelayakan baucar untuk subtotal dan kedai semasa
+  /// Semak kelayakan baucar untuk subtotal, kedai dan kategori semasa
   static Map<String, dynamic> checkVoucherEligibility(
     Map<String, dynamic> voucher, {
     String? businessId,
@@ -203,7 +348,7 @@ class VoucherService {
     final vBizId = voucher['business_id']?.toString();
     final bool isPlatform = voucher['is_platform'] == true || vBizId == null || vBizId.isEmpty;
 
-    // 1. Semakan kedai
+    // 1. Semakan kedai khusus
     if (!isPlatform && businessId != null && businessId.isNotEmpty && vBizId != businessId) {
       return {
         'isEligible': false,
@@ -213,7 +358,42 @@ class VoucherService {
       };
     }
 
-    // 2. Semakan tarikh luput & tarikh mula
+    // 2. Semakan keserasian kategori perniagaan (CRITICAL FIX)
+    final effectiveCategory = (category != null && category.trim().isNotEmpty)
+        ? category.trim().toLowerCase()
+        : (businessId != null ? _businessCategoryCache[businessId] : null);
+
+    final scope = (voucher['applicable_scope'] ?? 'all').toString().toLowerCase();
+    List<String> allowedCats = [];
+    if (voucher['applicable_categories'] is List) {
+      allowedCats = (voucher['applicable_categories'] as List).map((e) => e.toString().toLowerCase()).toList();
+    } else if (scope == 'category' && voucher['applicable_ids'] is List) {
+      allowedCats = (voucher['applicable_ids'] as List).map((e) => e.toString().toLowerCase()).toList();
+    } else if (voucher['category'] != null && voucher['category'].toString().isNotEmpty) {
+      allowedCats = [voucher['category'].toString().toLowerCase()];
+    }
+
+    if (allowedCats.isNotEmpty || scope == 'category') {
+      final bool matchesCategory = isCategoryCompatible(
+        allowedCategories: allowedCats,
+        targetCategory: effectiveCategory,
+      );
+
+      if (!matchesCategory) {
+        final label = voucher['category_label'] ?? voucher['badge'] ?? 'kategori terpilih';
+        final String currentCatDisplay = (effectiveCategory != null && effectiveCategory.isNotEmpty)
+            ? ' (bukan untuk ${effectiveCategory.toUpperCase()})'
+            : '';
+        return {
+          'isEligible': false,
+          'discountAmount': 0.0,
+          'shortfall': 0.0,
+          'reason': 'Hanya sah untuk $label$currentCatDisplay',
+        };
+      }
+    }
+
+    // 3. Semakan tarikh luput & tarikh mula
     final startDateStr = voucher['start_date']?.toString();
     if (startDateStr != null && startDateStr.isNotEmpty) {
       final start = DateTime.tryParse(startDateStr);
@@ -240,7 +420,7 @@ class VoucherService {
       }
     }
 
-    // 2b. Semakan kuota penebusan
+    // 4. Semakan kuota penebusan
     final totalLimit = (voucher['total_usage_limit'] as num?)?.toInt();
     final timesUsed = (voucher['times_used'] as num?)?.toInt() ?? 0;
     if (totalLimit != null && totalLimit > 0 && timesUsed >= totalLimit) {
@@ -261,7 +441,7 @@ class VoucherService {
       };
     }
 
-    // 3. Semakan belanja minimum
+    // 5. Semakan belanja minimum
     final minSpend = (voucher['min_spend'] as num?)?.toDouble() ?? 0.0;
     if (subtotal < minSpend) {
       final shortfall = minSpend - subtotal;
@@ -298,6 +478,8 @@ class VoucherService {
     String? category,
   }) async {
     await init();
+    final resolvedCategory = await resolveBusinessCategory(businessId, category);
+
     final List<Map<String, dynamic>> combined = [];
     final Set<String> seenCodes = {};
 
@@ -341,6 +523,16 @@ class VoucherService {
         final usedByMe = userUsageCounts[vid] ?? 0;
         final userLimitReached = perUserLimit != null && perUserLimit > 0 && usedByMe >= perUserLimit;
 
+        final rawScope = (m['applicable_scope'] ?? 'all').toString().toLowerCase();
+        List<String> appCats = [];
+        if (m['applicable_categories'] is List) {
+          appCats = (m['applicable_categories'] as List).map((e) => e.toString().toLowerCase()).toList();
+        } else if (rawScope == 'category' && m['applicable_ids'] is List) {
+          appCats = (m['applicable_ids'] as List).map((e) => e.toString().toLowerCase()).toList();
+        } else if (m['category'] != null && m['category'].toString().isNotEmpty) {
+          appCats = [m['category'].toString().toLowerCase()];
+        }
+
         combined.add({
           'id': vid,
           'code': code,
@@ -361,6 +553,9 @@ class VoucherService {
           'description': m['description']?.toString() ?? 'Diskaun untuk pesanan anda di Ngam.',
           'badge': m['business_id'] == null ? 'Rasmi Ngam' : 'Kedai Ini',
           'is_platform': m['business_id'] == null,
+          'applicable_scope': rawScope,
+          'applicable_categories': appCats,
+          'applicable_ids': m['applicable_ids'],
         });
       }
     } catch (e) {
@@ -383,14 +578,14 @@ class VoucherService {
       combined.add(Map<String, dynamic>.from(p));
     }
 
-    // 4. Semak status kelayakan setiap baucar untuk subtotal semasa
+    // 4. Semak status kelayakan setiap baucar untuk subtotal dan kategori semasa
     final List<Map<String, dynamic>> enriched = [];
     for (var v in combined) {
       final status = checkVoucherEligibility(
         v,
         businessId: businessId,
         subtotal: subtotal,
-        category: category,
+        category: resolvedCategory,
       );
       final entry = Map<String, dynamic>.from(v);
       entry['is_eligible'] = status['isEligible'];
@@ -436,7 +631,7 @@ class VoucherService {
             ((v['calculated_discount'] as num?)?.toDouble() ?? 0) > 0)
         .toList();
     if (eligible.isEmpty) return null;
-    return eligible.first; // Yang pertama sentiasa diskaun paling tinggi
+    return eligible.first;
   }
 
   /// Sahkan kod baucar secara langsung (jika ditaip secara manual semasa checkout)
@@ -444,15 +639,19 @@ class VoucherService {
     required String code,
     String? businessId,
     required double subtotal,
+    String? category,
   }) async {
     final cleanCode = code.trim().toUpperCase();
     if (cleanCode.isEmpty) {
       return {'success': false, 'message': 'Sila masukkan kod baucar.'};
     }
 
+    final resolvedCategory = await resolveBusinessCategory(businessId, category);
+
     final list = await getAvailableVouchersForCheckout(
       businessId: businessId,
       subtotal: subtotal,
+      category: resolvedCategory,
     );
 
     final match = list.firstWhere(
@@ -465,7 +664,12 @@ class VoucherService {
       final saveRes = await saveVoucherByCode(cleanCode);
       if (saveRes['success'] == true && saveRes['voucher'] != null) {
         final v = Map<String, dynamic>.from(saveRes['voucher'] as Map);
-        final status = checkVoucherEligibility(v, businessId: businessId, subtotal: subtotal);
+        final status = checkVoucherEligibility(
+          v,
+          businessId: businessId,
+          subtotal: subtotal,
+          category: resolvedCategory,
+        );
         if (status['isEligible'] == true) {
           v['is_eligible'] = true;
           v['calculated_discount'] = status['discountAmount'];
@@ -529,6 +733,16 @@ class VoucherService {
         final shopName = biz?['name']?.toString() ?? 'Kedai Rakan Niaga';
         final shopLogo = biz?['business_logo_url']?.toString();
 
+        final rawScope = (v['applicable_scope'] ?? 'all').toString().toLowerCase();
+        List<String> appCats = [];
+        if (v['applicable_categories'] is List) {
+          appCats = (v['applicable_categories'] as List).map((e) => e.toString().toLowerCase()).toList();
+        } else if (rawScope == 'category' && v['applicable_ids'] is List) {
+          appCats = (v['applicable_ids'] as List).map((e) => e.toString().toLowerCase()).toList();
+        } else if (v['category'] != null && v['category'].toString().isNotEmpty) {
+          appCats = [v['category'].toString().toLowerCase()];
+        }
+
         final entry = {
           'id': v['id']?.toString(),
           'code': v['code']?.toString() ?? cleanCode,
@@ -541,6 +755,10 @@ class VoucherService {
           'min_spend': (v['min_spend'] as num?)?.toDouble() ?? 0.0,
           'max_discount_amount': (v['max_discount_amount'] as num?)?.toDouble(),
           'end_date': v['end_date'],
+          'applicable_scope': rawScope,
+          'applicable_categories': appCats,
+          'applicable_ids': v['applicable_ids'],
+          'category': v['category'],
           'saved_at': DateTime.now().toIso8601String(),
         };
 
@@ -551,7 +769,6 @@ class VoucherService {
       debugPrint('[VoucherService] Semakan Supabase gagal: $e');
     }
 
-    // Jika tiada dalam senarai curated atau Supabase, kod adalah tidak sah
     return {
       'success': false,
       'message': 'Kod baucar "$cleanCode" tidak sah atau tidak wujud.',

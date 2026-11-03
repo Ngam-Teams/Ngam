@@ -151,6 +151,9 @@ class _StoreCartViewState extends State<StoreCartView> {
 
   double get _total => (_subtotal + _deliveryFee - _discountAmount).clamp(0.0, 999999.0);
 
+  String? get _shopCategory =>
+      (widget.shop['business_industry'] ?? widget.shop['category'] ?? widget.shop['type'])?.toString();
+
 
 
   /// Cari dan auto-apply baucar terbaik untuk troli semasa
@@ -160,6 +163,7 @@ class _StoreCartViewState extends State<StoreCartView> {
       final best = await VoucherService.getBestAutoVoucher(
         businessId: widget.shop['id']?.toString(),
         subtotal: _subtotal,
+        category: _shopCategory,
       );
       if (best != null && mounted && !_userDismissedVoucher && !_voucherApplied) {
         final d = (best['calculated_discount'] as num?)?.toDouble() ??
@@ -186,6 +190,7 @@ class _StoreCartViewState extends State<StoreCartView> {
       businessId: widget.shop['id']?.toString(),
       subtotal: _subtotal,
       currentVoucherCode: _voucher?['code']?.toString(),
+      category: _shopCategory,
     );
 
     if (selected == null) return;
@@ -224,6 +229,7 @@ class _StoreCartViewState extends State<StoreCartView> {
       code: code,
       businessId: widget.shop['id']?.toString(),
       subtotal: _subtotal,
+      category: _shopCategory,
     );
 
     if (!mounted) return;
@@ -262,6 +268,7 @@ class _StoreCartViewState extends State<StoreCartView> {
       _voucher!,
       businessId: widget.shop['id']?.toString(),
       subtotal: _subtotal,
+      category: _shopCategory,
     );
     if (status['isEligible'] != true) {
       _voucher = null;
