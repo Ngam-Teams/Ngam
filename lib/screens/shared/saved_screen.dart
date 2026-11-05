@@ -461,7 +461,7 @@ class _SavedScreenState extends State<SavedScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text('saved.view_store'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
@@ -1247,7 +1247,7 @@ class _SavedPostViewerModalState extends State<_SavedPostViewerModal> {
                                 ),
                                 elevation: 0,
                               ),
-                              child: const Text('saved.view_store'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              child: Text('saved.view_store'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                             ),
                         ],
                       ),

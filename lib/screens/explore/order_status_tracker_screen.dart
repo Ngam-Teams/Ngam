@@ -2,7 +2,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -22,8 +21,8 @@ class OrderStatusTrackerScreen extends StatefulWidget {
   const OrderStatusTrackerScreen({
     super.key,
     required this.orderId,
-    required this.shopName,
-    required this.totalAmount,
+    this.shopName = 'Pesanan Ngam',
+    this.totalAmount = 0.0,
     this.pickupTime,
     this.fulfillmentType,
     this.items = const [],

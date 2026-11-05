@@ -258,7 +258,7 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('booking.whatsapp_error'.tr())),
+            SnackBar(content: Text('booking.whatsapp_error'.tr())),
           );
         }
       }
@@ -334,7 +334,7 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
                     color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
-                subtitle: const Text('booking.send_to_whatsapp'.tr()),
+                subtitle: Text('booking.send_to_whatsapp'.tr()),
                 trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                 onTap: () {
                   Navigator.pop(context);
@@ -504,7 +504,7 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
                   ),
                   child: isSubmitting
                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('booking.confirm_cancel_refund'.tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      : Text('booking.confirm_cancel_refund'.tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 ),
               ),
             ],
@@ -718,7 +718,7 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
                   ),
                   child: isSubmitting
                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('booking.submit_dispute_freeze'.tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      : Text('booking.submit_dispute_freeze'.tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 ),
               ),
             ],
@@ -1278,7 +1278,7 @@ Disahkan melalui aplikasi *Ngam*.
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: const Text("booking.book_again".tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        child: Text("booking.book_again".tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                       ),
                     ),
                   ] else if (_currentStatus == 'completed') ...[
@@ -1306,7 +1306,7 @@ Disahkan melalui aplikasi *Ngam*.
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             HugeIcon(icon: HugeIcons.strokeRoundedStar, size: 20, color: Colors.amber),

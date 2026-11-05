@@ -3,7 +3,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui';
+import 'dart:ui' as ui;
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -238,7 +239,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           text: shop['name'],
           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)
       ),
-      textDirection: TextDirection.ltr,
+      textDirection: ui.TextDirection.ltr,
       maxLines: 2,
     )..layout(maxWidth: textAvailableWidth);
 
@@ -777,7 +778,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         builder: (ctx) => AlertDialog(
           backgroundColor: const Color(0xFF141424),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Colors.white12)),
-          title: const Row(
+          title: Row(
             children: [
               HugeIcon(icon: HugeIcons.strokeRoundedWifi01, color: Color(0xFF42A5F5), size: 22),
               SizedBox(width: 10),
@@ -4573,7 +4574,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
               text: shopName,
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
-            textDirection: TextDirection.ltr,
+            textDirection: ui.TextDirection.ltr,
             maxLines: 2,
           )..layout(maxWidth: textAvailableWidth > 0 ? textAvailableWidth : 250);
 

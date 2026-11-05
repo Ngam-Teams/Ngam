@@ -10,6 +10,7 @@ import '../explore/explore_view.dart';
 import '../shared/chat_screen.dart';
 import '../shared/profile_screen.dart';
 import '../../services/app_update_service.dart';
+import '../../services/customer_notification_service.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
   final int initialIndex;
@@ -47,6 +48,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           AppUpdateService.checkOnStartup(context);
         }
       });
+      // Start Real-Time Customer Notification Listener
+      CustomerNotificationService.instance.initialize();
     });
   }
 

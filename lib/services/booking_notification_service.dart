@@ -1,16 +1,17 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import '../models/notification_data.dart';
+import '../widgets/glass_notification_banner.dart';
+import 'notification_bridge.dart';
 
 // ==================================================================
-// LocalNotificationService - Stub untuk Ngam Super App
-// Notification dihantar melalui Firebase Cloud Messaging (FCM)
-// yang sudah tersedia dalam Ngam. Fail ini hanya menyediakan
-// interface yang sama untuk keserasian dengan bookings_view.
+// LocalNotificationService - Ngam Super App Notification Engine
+// Cross-platform: Dispatches Web Push / In-App Banner / Local Notification
 // ==================================================================
 class LocalNotificationService {
 
   static Future<void> initialize() async {
-    // FCM already initialized via PushService in main.dart
-    debugPrint('LocalNotificationService initialized (stub)');
+    debugPrint('[LocalNotificationService] initialized');
   }
 
   static Future<void> showBookingConfirmed({
@@ -23,9 +24,31 @@ class LocalNotificationService {
     required String totalPrice,
     required String bookingId,
   }) async {
-    // In production, this would trigger a local notification.
-    // For now we log it - FCM handles push notifications.
-    debugPrint('Booking Confirmed: $shopName | $date $time | $totalPrice | ID: $bookingId');
+    final title = 'notifications.booking_confirmed_title'.tr();
+    final body = 'notifications.booking_confirmed_body'.tr(args: [shopName, date, time]);
+
+    // Dispatch Web Browser / OS Notification
+    showWebNotification(
+      title: title,
+      body: body,
+      tag: 'booking_$bookingId',
+      url: '/bookings',
+    );
+
+    // Dispatch In-App Frosted Glass Banner
+    showCustomerNotificationBanner(
+      title: title,
+      body: body,
+      category: CustomerNotificationCategory.booking,
+    );
+
+    // Save into persistent notification center
+    await NotificationData.addNotification(
+      type: 'booking',
+      title: title,
+      message: body,
+      data: {'booking_id': bookingId, 'status': 'confirmed'},
+    );
   }
 
   static Future<void> showBookingConfirmation({
@@ -33,17 +56,41 @@ class LocalNotificationService {
     required String date,
     required String time,
   }) async {
-    debugPrint('Booking Confirmation: $shopName - $date at $time');
+    final title = 'notifications.booking_confirmed_title'.tr();
+    final body = 'notifications.booking_confirmed_body'.tr(args: [shopName, date, time]);
+
+    showWebNotification(
+      title: title,
+      body: body,
+    );
+
+    showCustomerNotificationBanner(
+      title: title,
+      body: body,
+      category: CustomerNotificationCategory.booking,
+    );
   }
 
   static Future<void> showBookingReminder({
     required String shopName,
     required String time,
   }) async {
-    debugPrint('Booking Reminder: $shopName at $time');
+    final title = 'notifications.booking_reminder_title'.tr();
+    final body = 'notifications.booking_reminder_body'.tr(args: [shopName, 'Hari Ini', time]);
+
+    showWebNotification(
+      title: title,
+      body: body,
+    );
+
+    showCustomerNotificationBanner(
+      title: title,
+      body: body,
+      category: CustomerNotificationCategory.booking,
+    );
   }
 
   static void cancelAll() {
-    debugPrint('All local notifications cancelled');
+    debugPrint('[LocalNotificationService] All local notifications cancelled');
   }
 }

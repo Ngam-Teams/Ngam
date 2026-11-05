@@ -3,7 +3,6 @@ import '../../widgets/glass_nav_button.dart';
 import '../../widgets/glass_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'booking_ticket_screen.dart';
 import 'order_status_tracker_screen.dart';
@@ -638,7 +637,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                                 actions: [
                                   TextButton(
                                     onPressed: () => Navigator.pop(ctx, false),
-                                    child: const Text("common.back".tr(), style: TextStyle(color: Colors.grey)),
+                                    child: Text("common.back".tr(), style: TextStyle(color: Colors.grey)),
                                   ),
                                   TextButton(
                                     onPressed: () => Navigator.pop(ctx, true),

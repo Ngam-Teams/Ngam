@@ -266,6 +266,61 @@
       sessionStorage.setItem('ngam_native_pwa_prompted', 'true');
       console.log('[PWA] Ngam app installed natively on device.');
     });
+
+    // Universal Web / PWA Push Notification Bridge
+    window.isNotificationSupported = function() {
+      return ('Notification' in window);
+    };
+
+    window.getNotificationPermission = function() {
+      if (!('Notification' in window)) return 'unsupported';
+      return Notification.permission;
+    };
+
+    window.requestNotificationPermissionAsync = function(callback) {
+      if (!('Notification' in window)) {
+        if (callback) callback('unsupported');
+        return;
+      }
+      Notification.requestPermission().then(function(perm) {
+        if (callback) callback(perm);
+      }).catch(function() {
+        if (callback) callback('denied');
+      });
+    };
+
+    window.showWebPushNotification = function(title, body, tag, icon, url) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      try {
+        var options = {
+          body: body || '',
+          icon: icon || 'favicon.png',
+          badge: 'favicon.png',
+          tag: tag || ('ngam_cust_' + Date.now()),
+          renotify: true,
+          requireInteraction: false
+        };
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.ready.then(function(reg) {
+            reg.showNotification(title, options);
+          }).catch(function() {
+            var n = new Notification(title, options);
+            n.onclick = function() {
+              window.focus();
+              n.close();
+            };
+          });
+        } else {
+          var n = new Notification(title, options);
+          n.onclick = function() {
+            window.focus();
+            n.close();
+          };
+        }
+      } catch (err) {
+        console.warn('[WebNotification] Display error:', err);
+      }
+    };
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>

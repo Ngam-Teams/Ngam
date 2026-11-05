@@ -474,7 +474,7 @@ class _VoucherScreenState extends State<VoucherScreen> {
                         ),
                       ),
                       onPressed: () => Navigator.pop(ctx),
-                      child: const Text('common.close'.tr(), style: TextStyle(fontWeight: FontWeight.w600)),
+                      child: Text('common.close'.tr(), style: TextStyle(fontWeight: FontWeight.w600)),
                     ),
                   ),
                   const SizedBox(width: 12),

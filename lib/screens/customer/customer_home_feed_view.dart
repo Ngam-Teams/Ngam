@@ -14,6 +14,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../models/shop_data.dart';
+import 'notifications_sheet.dart';
+import '../../models/notification_data.dart';
 import '../../widgets/glass_toast.dart';
 import '../explore/business_store_view.dart';
 import '../explore/explore_view.dart';
@@ -967,14 +969,10 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                     ),
                   ),
 
-                  // Notification Bell Button with Red Dot (44x44 tepat)
+                  // Notification Bell Button with Live Badge (44x44 tepat)
                   GestureDetector(
                     onTap: () {
-                      showGlassToast(
-                        context,
-                        'Tiada notifikasi baru hari ini',
-                        icon: HugeIcons.strokeRoundedNotification01,
-                      );
+                      CustomerNotificationCenterSheet.show(context);
                     },
                     behavior: HitTestBehavior.opaque,
                     child: SizedBox(
@@ -990,24 +988,30 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                               color: isDark ? Colors.white70 : const Color(0xFF1E293B),
                               size: 20,
                             ),
-                            Positioned(
-                              top: 11,
-                              right: 11,
-                              child: Container(
-                                width: 7.5,
-                                height: 7.5,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFFF4757),
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
+                            ValueListenableBuilder<int>(
+                              valueListenable: NotificationData.unreadCount,
+                              builder: (context, unread, _) {
+                                if (unread <= 0) return const SizedBox.shrink();
+                                return Positioned(
+                                  top: 10,
+                                  right: 10,
+                                  child: Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: const BoxDecoration(
                                       color: Color(0xFFFF4757),
-                                      blurRadius: 4,
-                                      spreadRadius: 0.5,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Color(0xFFFF4757),
+                                          blurRadius: 5,
+                                          spreadRadius: 1,
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                              ),
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),

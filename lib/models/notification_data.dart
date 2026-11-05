@@ -14,8 +14,6 @@ class NotificationData {
     if (saved != null) {
       List<dynamic> decoded = json.decode(saved);
       notifications.value = decoded.cast<Map<String, dynamic>>();
-
-      //  2. ADD: Calculate the initial unread count
       unreadCount.value = notifications.value.where((n) => n["isUnread"] == true).length;
     }
   }
@@ -27,40 +25,59 @@ class NotificationData {
   }
 
   // Add a new notification
-  static Future<void> addNotification({required String type, required String title, required String message}) async {
+  static Future<void> addNotification({
+    required String type,
+    required String title,
+    required String message,
+    Map<String, dynamic>? data,
+  }) async {
     final newNotif = {
       "id": DateTime.now().millisecondsSinceEpoch.toString(),
       "type": type,
       "title": title,
       "message": message,
-      "time": "Just now",
+      "time": DateTime.now().toIso8601String(),
       "isUnread": true,
+      if (data != null) "data": data,
     };
 
     notifications.value = [newNotif, ...notifications.value];
-
-    //  3. ADD: Increment unread count
     unreadCount.value++;
-
     await _saveToDisk();
   }
 
   static Future<void> markAllAsRead() async {
     final updatedList = notifications.value.map((n) {
-      n["isUnread"] = false;
-      return n;
+      final copy = Map<String, dynamic>.from(n);
+      copy["isUnread"] = false;
+      return copy;
     }).toList();
 
     notifications.value = updatedList;
-
-    //  4. ADD: Reset the count
     unreadCount.value = 0;
-
     await _saveToDisk();
   }
 
+  static Future<void> markAsRead(String id) async {
+    bool changed = false;
+    final updatedList = notifications.value.map((n) {
+      if (n["id"] == id && n["isUnread"] == true) {
+        changed = true;
+        final copy = Map<String, dynamic>.from(n);
+        copy["isUnread"] = false;
+        return copy;
+      }
+      return n;
+    }).toList();
+
+    if (changed) {
+      notifications.value = updatedList;
+      if (unreadCount.value > 0) unreadCount.value--;
+      await _saveToDisk();
+    }
+  }
+
   static Future<void> removeNotification(String id) async {
-    //  5. ADD: If we are removing an unread item, lower the count
     final bool wasUnread = notifications.value.any((n) => n["id"] == id && n["isUnread"] == true);
 
     final updatedList = List<Map<String, dynamic>>.from(notifications.value);
@@ -71,6 +88,12 @@ class NotificationData {
       unreadCount.value--;
     }
 
+    await _saveToDisk();
+  }
+
+  static Future<void> clearAll() async {
+    notifications.value = [];
+    unreadCount.value = 0;
     await _saveToDisk();
   }
 }

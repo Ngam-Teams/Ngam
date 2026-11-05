@@ -2336,7 +2336,7 @@ class _BookingsViewState extends State<BookingsView> {
                               Navigator.pop(context);
                             }
                           },
-                          child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 16), decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.blue.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))]), child: const Center(child: Text("booking.save_card".tr(), style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)))),
+                          child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 16), decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.blue.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))]), child: Center(child: Text("booking.save_card".tr(), style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)))),
                         ),
                         const SizedBox(height: 12),
                       ],
