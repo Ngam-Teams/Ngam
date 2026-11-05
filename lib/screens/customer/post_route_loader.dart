@@ -11,6 +11,7 @@ import '../../widgets/glass_toast.dart';
 import '../../widgets/glass_share_sheet.dart';
 import '../explore/business_store_view.dart';
 import 'customer_home_screen.dart';
+import '../../widgets/glass_nav_button.dart';
 
 /// Skrin Memuatkan Pos / Video Tunggal daripada Pautan Deep Link (e.g. https://ngam.dev/p/:id)
 class PostRouteLoader extends StatefulWidget {
@@ -276,59 +277,68 @@ class _PostRouteLoaderState extends State<PostRouteLoader> {
     if (_errorMessage != null || _post == null) {
       return Scaffold(
         backgroundColor: isDark ? const Color(0xFF0B0F17) : const Color(0xFFF8FAFC),
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () {
-              if (Navigator.canPop(context)) {
-                Navigator.pop(context);
-              } else {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const CustomerHomeScreen(initialIndex: 2)),
-                );
-              }
-            },
-          ),
-        ),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(28.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const HugeIcon(
-                  icon: HugeIcons.strokeRoundedAlert02,
-                  color: Color(0xFFEF4444),
-                  size: 48,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  _errorMessage ?? 'Ralat memuatkan hantaran',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const CustomerHomeScreen(initialIndex: 2)),
-                    );
-                  },
-                  icon: const Icon(Icons.video_library_rounded, size: 18),
-                  label: Text('feed.open_feed'.tr()),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(28.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const HugeIcon(
+                        icon: HugeIcons.strokeRoundedAlert02,
+                        color: Color(0xFFEF4444),
+                        size: 48,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _errorMessage ?? 'feed.load_error'.tr(),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (_) => const CustomerHomeScreen(initialIndex: 2)),
+                          );
+                        },
+                        icon: const Icon(Icons.video_library_rounded, size: 18),
+                        label: Text('feed.open_feed'.tr()),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+
+              // Floating Back Button in Stack (Zero parent fill)
+              Positioned(
+                top: 12,
+                left: 16,
+                child: GlassNavButton.back(
+                  context: context,
+                  isDark: isDark,
+                  onBack: () {
+                    if (Navigator.canPop(context)) {
+                      Navigator.pop(context);
+                    } else {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const CustomerHomeScreen(initialIndex: 2)),
+                      );
+                    }
+                  },
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -398,8 +408,12 @@ class _PostRouteLoaderState extends State<PostRouteLoader> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                GestureDetector(
-                  onTap: () {
+                GlassNavButton.back(
+                  context: context,
+                  isDark: true,
+                  size: 40,
+                  iconSize: 20,
+                  onBack: () {
                     if (Navigator.canPop(context)) {
                       Navigator.pop(context);
                     } else {
@@ -409,15 +423,6 @@ class _PostRouteLoaderState extends State<PostRouteLoader> {
                       );
                     }
                   },
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.55),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white24, width: 0.8),
-                    ),
-                    child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
-                  ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),

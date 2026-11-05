@@ -468,18 +468,17 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
           child: Center(
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: isDesktop ? 780 : double.infinity),
-              child: CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-              // 1. Top Glass Header
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-                  child: _buildTopHeader(isDark),
-                ),
-              ),
+              child: Stack(
+                children: [
+                  CustomScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    slivers: [
+                      // Top spacing for floating glass header
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: 68),
+                      ),
 
-              // 2. Liquid Glass Search Bar
+                      // 2. Liquid Glass Search Bar
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -610,8 +609,21 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
 
               // Bottom Spacer (Only on mobile so floating navbar doesn't obscure content)
               SliverToBoxAdapter(child: SizedBox(height: isDesktop ? 40 : 130)),
-            ],
-          ),
+                    ],
+                  ),
+
+                  // Floating Top Header (Transparent parent, liquid glass buttons float & refract content)
+                  Positioned(
+                    top: 12,
+                    left: 16,
+                    right: 16,
+                    child: Container(
+                      color: Colors.transparent,
+                      child: _buildTopHeader(isDark),
+                    ),
+                  ),
+                ],
+              ),
         ),
       ),
     ),

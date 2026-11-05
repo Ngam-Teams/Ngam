@@ -587,7 +587,9 @@
     "stores": "Stores",
     "products": "Products",
     "feeds": "Feeds",
-    "empty": "No saved items yet"
+    "empty": "No saved items yet",
+    "shop_saved": "Store saved to your collection",
+    "shop_removed": "Store removed from saved"
   },
   "cart": {
     "title": "My Cart",
@@ -625,6 +627,7 @@
     "write_comment": "Write a comment...",
     "speed_2x": "2X SPEED",
     "copy_link": "Copy Link",
-    "link_copied": "Link copied to clipboard!"
+    "link_copied": "Link copied to clipboard!",
+    "load_error": "Error loading post"
   }
 }

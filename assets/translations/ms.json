@@ -587,7 +587,9 @@
     "stores": "Kedai",
     "products": "Produk",
     "feeds": "Feed",
-    "empty": "Tiada item yang disimpan lagi"
+    "empty": "Tiada item yang disimpan lagi",
+    "shop_saved": "Kedai disimpan ke koleksi anda",
+    "shop_removed": "Kedai dikeluarkan dari simpanan"
   },
   "cart": {
     "title": "Troli Saya",
@@ -625,6 +627,7 @@
     "write_comment": "Tulis komen...",
     "speed_2x": "2X KELAJUAN",
     "copy_link": "Salin Pautan",
-    "link_copied": "Pautan berjaya disalin!"
+    "link_copied": "Pautan berjaya disalin!",
+    "load_error": "Ralat memuatkan hantaran"
   }
 }

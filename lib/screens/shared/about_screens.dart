@@ -123,24 +123,10 @@ class _RateAppScreenState extends State<RateAppScreen> {
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        extendBodyBehindAppBar: true,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: Padding(
-            padding: const EdgeInsets.only(left: 12.0),
-            child: Center(
-              child: GlassNavButton.close(
-                context: context,
-                isDark: isDark,
-                size: 40,
-                iconSize: 20,
-              ),
-            ),
-          ),
-        ),
         body: SafeArea(
-          child: Padding(
+          child: Stack(
+            children: [
+              Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -214,9 +200,23 @@ class _RateAppScreenState extends State<RateAppScreen> {
               ],
             ),
           ),
-        ),
+
+          // Floating Glass Close Button (Stack overlay, transparent parent)
+          Positioned(
+            top: 12,
+            left: 16,
+            child: GlassNavButton.close(
+              context: context,
+              isDark: isDark,
+              size: 44,
+              iconSize: 20,
+            ),
+          ),
+        ],
       ),
-    );
+    ),
+  ),
+);
   }
 }
 

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'bookings_view.dart'; //  Make sure this points to your Bookings checkout screen!
 import '../../widgets/glass_toast.dart';
+import '../../widgets/glass_nav_button.dart';
 import '../../services/saved_service.dart';
 // Make sure this matches your Auth Screen file name!
 
@@ -146,38 +147,47 @@ class ShopDetailScreen extends StatelessWidget {
             ),
                 Positioned(
                   top: 12,
-                  left: 20,
-                  right: 20,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildGlassIconButton(HugeIcons.strokeRoundedArrowLeft01, context, isDark),
-                      ValueListenableBuilder<List<Map<String, dynamic>>>(
-                        valueListenable: SavedService.savedShopsNotifier,
-                        builder: (context, _, __) {
-                          final String shopId = (shop['id'] ?? shop['shopId'] ?? '').toString();
-                          final bool isSaved = SavedService.isShopSaved(shopId);
-                          return _buildGlassIconButton(
-                            isSaved ? Icons.bookmark_rounded : HugeIcons.strokeRoundedBookmark02,
-                            context,
-                            isDark,
-                            iconColor: isSaved ? const Color(0xFFFBBF24) : null,
-                            onTap: () async {
-                              final nowSaved = await SavedService.toggleSaveShop(shop);
-                              if (context.mounted) {
-                                showGlassToast(
-                                  context,
-                                  nowSaved
-                                      ? 'Kedai disimpan ke koleksi anda'
-                                      : 'Kedai dikeluarkan dari simpanan',
-                                  icon: HugeIcons.strokeRoundedBookmark02,
-                                );
-                              }
-                            },
-                          );
-                        },
-                      ),
-                    ],
+                  left: 16,
+                  right: 16,
+                  child: Container(
+                    color: Colors.transparent, // Explicitly transparent parent container
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        GlassNavButton.back(
+                          context: context,
+                          isDark: isDark,
+                          size: 44,
+                          iconSize: 20,
+                        ),
+                        ValueListenableBuilder<List<Map<String, dynamic>>>(
+                          valueListenable: SavedService.savedShopsNotifier,
+                          builder: (context, _, __) {
+                            final String shopId = (shop['id'] ?? shop['shopId'] ?? '').toString();
+                            final bool isSaved = SavedService.isShopSaved(shopId);
+                            return GlassNavButton(
+                              icon: isSaved ? Icons.bookmark_rounded : HugeIcons.strokeRoundedBookmark02,
+                              iconColor: isSaved ? const Color(0xFFFBBF24) : null,
+                              isDark: isDark,
+                              size: 44,
+                              iconSize: 20,
+                              onTap: () async {
+                                final nowSaved = await SavedService.toggleSaveShop(shop);
+                                if (context.mounted) {
+                                  showGlassToast(
+                                    context,
+                                    nowSaved
+                                        ? 'saved.shop_saved'.tr()
+                                        : 'saved.shop_removed'.tr(),
+                                    icon: HugeIcons.strokeRoundedBookmark02,
+                                  );
+                                }
+                              },
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -239,7 +249,7 @@ class ShopDetailScreen extends StatelessWidget {
                       BoxShadow(color: Colors.blue.withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 8)),
                     ],
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Text("booking.book_now".tr(), style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
                   ),
                 ),
@@ -252,43 +262,6 @@ class ShopDetailScreen extends StatelessWidget {
   }
 
   // --- UI HELPERS ---
-
-  Widget _buildGlassIconButton(
-    dynamic icon,
-    BuildContext context,
-    bool isDark, {
-    VoidCallback? onTap,
-    Color? iconColor,
-  }) {
-    return GestureDetector(
-      onTap: onTap ?? () => Navigator.pop(context),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(100),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isDark ? Colors.black.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.5),
-              border: Border.all(color: Colors.white.withValues(alpha: isDark ? 0.1 : 0.5), width: 1.5),
-            ),
-            child: icon is IconData
-                ? Icon(
-                    icon,
-                    color: iconColor ?? (isDark ? Colors.white : Colors.black87),
-                    size: 20,
-                  )
-                : HugeIcon(
-                    icon: icon,
-                    color: iconColor ?? (isDark ? Colors.white : Colors.black87),
-                    size: 20,
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildGlassCard({required bool isDark, required Widget child, EdgeInsetsGeometry? padding, double radius = 24}) {
     return ClipRRect(

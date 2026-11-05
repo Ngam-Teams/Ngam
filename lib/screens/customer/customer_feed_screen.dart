@@ -14,6 +14,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 import '../../widgets/glass_toast.dart';
+import '../../widgets/glass_nav_button.dart';
 import '../../widgets/customer_desktop_sidebar.dart';
 import '../../services/saved_service.dart';
 import '../../widgets/glass_share_sheet.dart';
@@ -1252,36 +1253,17 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                       // Search / Discover shortcut on the far right
                       Align(
                         alignment: Alignment.centerRight,
-                        child: GestureDetector(
+                        child: GlassNavButton(
+                          icon: HugeIcons.strokeRoundedSearch01,
+                          tooltip: 'Teroka',
+                          isDark: !(isDesktopLandscape && !isDark),
+                          size: 38,
+                          iconSize: 18,
                           onTap: () {
                             if (widget.onSwitchTab != null) {
                               widget.onSwitchTab!(1); // Go to Discover Tab
                             }
                           },
-                          child: Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: (isDesktopLandscape && !isDark)
-                                  ? Colors.black.withValues(alpha: 0.05)
-                                  : Colors.black.withValues(alpha: 0.35),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: (isDesktopLandscape && !isDark)
-                                    ? Colors.black12
-                                    : Colors.white12,
-                              ),
-                            ),
-                            child: Center(
-                              child: HugeIcon(
-                                icon: HugeIcons.strokeRoundedSearch01,
-                                color: (isDesktopLandscape && !isDark)
-                                    ? const Color(0xFF0F172A)
-                                    : Colors.white,
-                                size: 17,
-                              ),
-                            ),
-                          ),
                         ),
                       ),
                     ],
