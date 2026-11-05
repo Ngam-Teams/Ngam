@@ -29,6 +29,8 @@ function pemToArrayBuffer(pem: string): ArrayBuffer {
   const b64 = pem
     .replace(/-----BEGIN PUBLIC KEY-----/g, "")
     .replace(/-----END PUBLIC KEY-----/g, "")
+    .replace(/\\n/g, "")
+    .replace(/"/g, "")
     .replace(/\s+/g, "");
   const binary = atob(b64);
   const bytes = new Uint8Array(binary.length);
