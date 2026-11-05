@@ -1,6 +1,8 @@
 -- =========================================================================================
--- NGAM FINTECH & SECURITY ARCHITECTURE HARDENING MIGRATION (2026-11-05)
--- Non-Destructive Incremental Migration:
+-- NGAM ECOSYSTEM: FINTECH & SECURITY ARCHITECTURE HARDENING MIGRATION (2026-11-05)
+-- Kategori: SECURITY PATCH / FINANCIAL INTEGRITY / RLS HARDENING / CHIP WEBHOOK GUARD
+-- Sistem Terlibat: Ngam (Pelanggan) | Ngam Business (Peniaga) | Ngam Admin | Ngam Teams
+-- Deskripsi:
 --   1. Zero Auto-Withdrawal (Manual Payout Gate via `payout_requests`)
 --   2. Integer Cents & NUMERIC(12,2) Financial Integrity + Non-Negative Constraints
 --   3. Auto-Initialization of `merchant_balances` on Business Creation + Backfill
@@ -468,6 +470,8 @@ CREATE TRIGGER trg_guard_order_financial_integrity
 --    Supports both `orders` (UUID) and `bookings` (UUID or `RZRV-...` reference).
 -- =========================================================================================
 
+DROP FUNCTION IF EXISTS public.calculate_and_lock_order_for_chip(UUID, TEXT);
+
 CREATE OR REPLACE FUNCTION public.calculate_and_lock_order_for_chip(
   p_order_id TEXT,
   p_payment_channel TEXT DEFAULT 'fpx' -- 'fpx', 'duitnow_qr', 'card'
@@ -621,7 +625,7 @@ BEGIN
   IF LOWER(p_payment_channel) = 'fpx' THEN
     v_gateway_fee_cents := GREATEST(100, ROUND(v_discounted_subtotal_cents * 0.015)::bigint);
   ELSIF LOWER(p_payment_channel) = 'card' THEN
-    v_gateway_fee_cents := ROUND(v_discounted_subtotal_cents * 0.024)::bigint);
+    v_gateway_fee_cents := ROUND(v_discounted_subtotal_cents * 0.024)::bigint;
   ELSE
     v_gateway_fee_cents := GREATEST(20, ROUND(v_discounted_subtotal_cents * 0.010)::bigint);
   END IF;
