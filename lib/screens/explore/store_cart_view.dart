@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'order_status_tracker_screen.dart';
@@ -676,7 +677,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                     });
                     Navigator.pop(ctx);
                   },
-                  child: const Text('Simpan Pilihan', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: Text('cart.save_options'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -755,7 +756,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                             ),
                             onPressed: () => Navigator.pop(context),
                             icon: const HugeIcon(icon: HugeIcons.strokeRoundedStore01, size: 18),
-                            label: const Text('Browse Products', style: TextStyle(fontWeight: FontWeight.bold)),
+                            label: Text('cart.browse_products'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ],
                       ),
@@ -1047,7 +1048,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('Total Price', style: TextStyle(color: textSecondary, fontSize: 11)),
+                          Text('cart.total_price'.tr(), style: TextStyle(color: textSecondary, fontSize: 11)),
                           Text(
                             'RM ${_total.toStringAsFixed(2)}',
                             style: const TextStyle(
@@ -1318,7 +1319,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               onPressed: _openVoucherPicker,
-              child: const Text('Tukar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              child: Text('common.change'.tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
             ),
             const SizedBox(width: 4),
             GestureDetector(

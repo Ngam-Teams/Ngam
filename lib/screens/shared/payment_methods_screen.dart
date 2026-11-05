@@ -684,7 +684,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("Credit & Debit Cards", style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 15, fontWeight: FontWeight.bold)),
+                          Text("wallet.add_credit_debit".tr(), style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 15, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 12),
 
                           if (cardMethods.isEmpty)
@@ -694,7 +694,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
 
                           const SizedBox(height: 24),
 
-                          Text("Linked Bank Accounts", style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 15, fontWeight: FontWeight.bold)),
+                          Text("wallet.link_bank_account".tr(), style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 15, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 12),
 
                           if (bankMethods.isEmpty)
@@ -753,7 +753,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
           children: [
             Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(shape: BoxShape.circle, color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)), child: HugeIcon(icon: HugeIcons.strokeRoundedCreditCard, color: isDark ? Colors.white54 : Colors.black54, size: 28)),
             const SizedBox(height: 12),
-            Text("Add a Card", style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 14, fontWeight: FontWeight.bold)),
+            Text("wallet.add_credit_debit".tr(), style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 14, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -771,7 +771,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
           children: [
             Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(shape: BoxShape.circle, color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)), child: HugeIcon(icon: HugeIcons.strokeRoundedBank, color: isDark ? Colors.white54 : Colors.black54, size: 28)),
             const SizedBox(height: 12),
-            Text("Link Bank Account", style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 14, fontWeight: FontWeight.bold)),
+            Text("wallet.link_bank_account".tr(), style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 14, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -1124,7 +1124,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       padding: const EdgeInsets.symmetric(vertical: 8),
                     ),
-                    child: const Text("Set Primary", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                    child: Text("wallet.set_primary".tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                   ),
                 ),
                 const SizedBox(width: 8),

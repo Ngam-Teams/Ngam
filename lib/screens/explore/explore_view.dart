@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:async';
@@ -780,14 +781,14 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
             children: [
               HugeIcon(icon: HugeIcons.strokeRoundedWifi01, color: Color(0xFF42A5F5), size: 22),
               SizedBox(width: 10),
-              Text('WiFi Tetamu Kedai', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              Text('store.wifi_guest'.tr(), style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
             ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Maklumat sambungan WiFi dikesan daripada imbasan:', style: TextStyle(color: Colors.white54, fontSize: 12)),
+              Text('store.wifi_detected'.tr(), style: TextStyle(color: Colors.white54, fontSize: 12)),
               const SizedBox(height: 14),
               Container(
                 padding: const EdgeInsets.all(14),
@@ -826,7 +827,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Tutup', style: TextStyle(color: Colors.white54)),
+              child: Text('common.close'.tr(), style: TextStyle(color: Colors.white54)),
             ),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
@@ -840,7 +841,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                 showGlassToast(context, 'Kata laluan WiFi disalin ke papan klip!');
               },
               icon: const HugeIcon(icon: HugeIcons.strokeRoundedCopy01, size: 16),
-              label: const Text('Salin Kata Laluan'),
+              label: Text('common.copy_password'.tr()),
             ),
           ],
         ),
@@ -2398,7 +2399,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     } else if (isTyping && _searchMatchedCategories.isEmpty && _searchMatchedShops.isEmpty) {
       content = Padding(
         padding: const EdgeInsets.all(32.0),
-        child: Center(child: Text("No matches found", style: TextStyle(color: isDark ? Colors.white54 : Colors.black54))),
+        child: Center(child: Text("store.no_matches".tr(), style: TextStyle(color: isDark ? Colors.white54 : Colors.black54))),
       );
     } else if (isTyping) {
       content = ListView(

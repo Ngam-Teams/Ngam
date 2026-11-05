@@ -464,7 +464,7 @@ class _SavedScreenState extends State<SavedScreen> {
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('Lihat Kedai', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        Text('saved.view_store'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                         SizedBox(width: 4),
                         HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, color: Colors.white, size: 13),
                       ],
@@ -1247,7 +1247,7 @@ class _SavedPostViewerModalState extends State<_SavedPostViewerModal> {
                                 ),
                                 elevation: 0,
                               ),
-                              child: const Text('Lihat Kedai', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              child: const Text('saved.view_store'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                             ),
                         ],
                       ),

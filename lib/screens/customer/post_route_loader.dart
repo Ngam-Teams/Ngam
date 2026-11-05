@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -318,7 +319,7 @@ class _PostRouteLoaderState extends State<PostRouteLoader> {
                     );
                   },
                   icon: const Icon(Icons.video_library_rounded, size: 18),
-                  label: const Text('Buka Ngam Feed'),
+                  label: Text('feed.open_feed'.tr()),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2563EB),
                     foregroundColor: Colors.white,

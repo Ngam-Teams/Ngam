@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import '../../widgets/glass_nav_button.dart';
 import 'dart:async'; //  Needed for Timer
 import 'package:flutter/material.dart';
@@ -257,7 +258,7 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Tidak dapat membuka WhatsApp')),
+            const SnackBar(content: Text('booking.whatsapp_error'.tr())),
           );
         }
       }
@@ -333,7 +334,7 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
                     color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
-                subtitle: const Text('Hantar butiran tempahan terus ke WhatsApp kedai'),
+                subtitle: const Text('booking.send_to_whatsapp'.tr()),
                 trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                 onTap: () {
                   Navigator.pop(context);
@@ -503,7 +504,7 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
                   ),
                   child: isSubmitting
                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Sahkan Pembatalan & Pulang Wang', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      : const Text('booking.confirm_cancel_refund'.tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 ),
               ),
             ],
@@ -717,7 +718,7 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
                   ),
                   child: isSubmitting
                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Hantar Aduan & Bekukan Bayaran', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      : const Text('booking.submit_dispute_freeze'.tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 ),
               ),
             ],
@@ -1277,7 +1278,7 @@ Disahkan melalui aplikasi *Ngam*.
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: const Text("Book Again", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        child: const Text("booking.book_again".tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                       ),
                     ),
                   ] else if (_currentStatus == 'completed') ...[
@@ -1310,7 +1311,7 @@ Disahkan melalui aplikasi *Ngam*.
                           children: [
                             HugeIcon(icon: HugeIcons.strokeRoundedStar, size: 20, color: Colors.amber),
                             SizedBox(width: 6),
-                            Text("Beri Ulasan", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            Text("booking.give_review".tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                           ],
                         ),
                       ),
@@ -1385,34 +1386,34 @@ Disahkan melalui aplikasi *Ngam*.
                   },
                   itemBuilder: (context) => [
                     if (_currentStatus != 'cancelled' && _currentStatus != 'completed' && _currentStatus != 'disputed')
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'cancel',
                         child: Row(
                           children: [
                             HugeIcon(icon: HugeIcons.strokeRoundedCancel01, color: Colors.redAccent, size: 18),
                             SizedBox(width: 10),
-                            Text('Batal Tempahan', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),
+                            Text('booking.cancel_booking'.tr(), style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ),
                     if (_currentStatus != 'cancelled' && _currentStatus != 'disputed')
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'dispute',
                         child: Row(
                           children: [
                             HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.orangeAccent, size: 18),
                             SizedBox(width: 10),
-                            Text('Laporkan Isu / Pertikaian', style: TextStyle(fontWeight: FontWeight.w600)),
+                            Text('booking.report_dispute'.tr(), style: TextStyle(fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'share',
                       child: Row(
                         children: [
                           HugeIcon(icon: HugeIcons.strokeRoundedShare01, color: Colors.blueAccent, size: 18),
                           SizedBox(width: 10),
-                          Text('Kongsi Slip Tempahan', style: TextStyle(fontWeight: FontWeight.w600)),
+                          Text('booking.share_slip'.tr(), style: TextStyle(fontWeight: FontWeight.w600)),
                         ],
                       ),
                     ),

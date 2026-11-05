@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../../widgets/glass_nav_button.dart';
@@ -2275,7 +2276,7 @@ class _BookingsViewState extends State<BookingsView> {
                       children: [
                         Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(10)))),
                         const SizedBox(height: 16),
-                        Text("Add Credit/Debit Card", style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text("booking.add_card".tr(), style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 18, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 16),
 
                         _buildPremiumInput(isDark: isDark, label: "Card Number", hint: "0000 0000 0000 0000", icon: HugeIcons.strokeRoundedCreditCard, controller: numberController, keyboardType: TextInputType.number, formatters: [FilteringTextInputFormatter.digitsOnly, _CardNumberFormatter(), LengthLimitingTextInputFormatter(19)], validator: (value) {
@@ -2335,7 +2336,7 @@ class _BookingsViewState extends State<BookingsView> {
                               Navigator.pop(context);
                             }
                           },
-                          child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 16), decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.blue.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))]), child: const Center(child: Text("Save Card", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)))),
+                          child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 16), decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.blue.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))]), child: const Center(child: Text("booking.save_card".tr(), style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)))),
                         ),
                         const SizedBox(height: 12),
                       ],
@@ -2802,7 +2803,7 @@ class _BookingsViewState extends State<BookingsView> {
           ],
 
           const SizedBox(height: 24),
-          Text("Keperluan & Keselamatan", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
+          Text("booking.requirements_safety".tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
           const SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2842,7 +2843,7 @@ class _BookingsViewState extends State<BookingsView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Booking Summary", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black87)),
+          Text("booking.summary".tr(), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black87)),
           const SizedBox(height: 16),
 
           Container(
@@ -2888,7 +2889,7 @@ class _BookingsViewState extends State<BookingsView> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text("Estimated Duration", style: TextStyle(fontSize: 14, color: isDark ? Colors.white70 : Colors.black54)),
+                    Text("booking.estimated_duration".tr(), style: TextStyle(fontSize: 14, color: isDark ? Colors.white70 : Colors.black54)),
                     Text("~$_totalTime mins", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
                   ],
                 ),
@@ -2898,7 +2899,7 @@ class _BookingsViewState extends State<BookingsView> {
 
           const SizedBox(height: 20),
 
-          Text("Maklumat Pelanggan & Nota", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black87)),
+          Text("booking.customer_info_notes".tr(), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black87)),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(14),
@@ -2963,7 +2964,7 @@ class _BookingsViewState extends State<BookingsView> {
 
           const SizedBox(height: 12),
 
-          Text("Payment Method", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black87)),
+          Text("booking.payment_method".tr(), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black87)),
           const SizedBox(height: 16),
 
           //  CLASSIC 3-METHOD LAYOUT (FIXED OVERFLOW)
@@ -3040,7 +3041,7 @@ class _BookingsViewState extends State<BookingsView> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(vertical: 12),
                                   decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.withValues(alpha: 0.3))),
-                                  child: const Center(child: Text("+ Add New Card", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold))),
+                                  child: Center(child: Text("booking.add_new_card".tr(), style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold))),
                                 ),
                               );
                             }
@@ -3134,7 +3135,7 @@ class _BookingsViewState extends State<BookingsView> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Subtotal Servis", style: TextStyle(fontSize: 14, color: isDark ? Colors.white60 : Colors.black54)),
+                Text("booking.service_subtotal".tr(), style: TextStyle(fontSize: 14, color: isDark ? Colors.white60 : Colors.black54)),
                 Text("RM${_fmtMoney(_subtotal)}", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white70 : Colors.black87)),
               ],
             ),
@@ -3163,7 +3164,7 @@ class _BookingsViewState extends State<BookingsView> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text("Grand Total", style: TextStyle(fontSize: 16, color: isDark ? Colors.white70 : Colors.black54)),
+              Text("booking.grand_total".tr(), style: TextStyle(fontSize: 16, color: isDark ? Colors.white70 : Colors.black54)),
               Text("RM$_totalPriceLabel", style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, height: 1.0, color: isDark ? Colors.white : Colors.black)),
             ],
           ),
@@ -3252,7 +3253,7 @@ class _BookingsViewState extends State<BookingsView> {
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               onPressed: _openBookingVoucherPicker,
-              child: const Text('Tukar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              child: Text('common.change'.tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
             ),
             const SizedBox(width: 4),
             GestureDetector(
@@ -3416,9 +3417,9 @@ class _BookingsViewState extends State<BookingsView> {
                   child: const Center(child: HugeIcon(icon: HugeIcons.strokeRoundedCheckmarkCircle02, color: Colors.greenAccent, size: 50)),
                 ),
                 const SizedBox(height: 32),
-                Text("Tempahan Dihantar!", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+                Text("booking.submitted_title".tr(), style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
                 const SizedBox(height: 8),
-                Text("Kedai akan mengesahkan tempahan anda tidak lama lagi.", style: TextStyle(fontSize: 15, color: isDark ? Colors.white60 : Colors.black54)),
+                Text("booking.submitted_desc".tr(), style: TextStyle(fontSize: 15, color: isDark ? Colors.white60 : Colors.black54)),
                 const SizedBox(height: 40),
 
                 // Button to open the ticket immediately after booking
@@ -3450,7 +3451,7 @@ class _BookingsViewState extends State<BookingsView> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 48),
                     decoration: BoxDecoration(color: isDark ? Colors.white : Colors.black87, borderRadius: BorderRadius.circular(20)),
-                    child: Text("View Order", style: TextStyle(color: isDark ? Colors.black : Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: Text("booking.view_order".tr(), style: TextStyle(color: isDark ? Colors.black : Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
 
@@ -3459,7 +3460,7 @@ class _BookingsViewState extends State<BookingsView> {
                 // Simple text button to go back
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
-                  child: Text("Back to Home", style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontWeight: FontWeight.w600)),
+                  child: Text("booking.back_to_home".tr(), style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontWeight: FontWeight.w600)),
                 )
               ],
             ),

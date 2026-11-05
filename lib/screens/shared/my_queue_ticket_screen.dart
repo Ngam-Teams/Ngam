@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import '../../widgets/glass_nav_button.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -168,7 +169,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF161624),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Batal Giliran?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text('queue.cancel_title'.tr(), style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         content: const Text(
           'Adakah anda pasti ingin membatalkan giliran ini? Anda perlu mengambil nombor baru jika ingin beratur semula.',
           style: TextStyle(color: Colors.white70),
@@ -176,12 +177,12 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Kembali', style: TextStyle(color: Colors.white54)),
+            child: Text('common.back'.tr(), style: TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Ya, Batalkan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: Text('queue.confirm_cancel'.tr(), style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -225,7 +226,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
-      if (mounted) showGlassToast(context, 'Tidak dapat membuka WhatsApp', isError: true);
+      if (mounted) showGlassToast(context, 'booking.whatsapp_error'.tr(), isError: true);
     }
   }
 
@@ -336,7 +337,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                   const SizedBox(height: 20),
 
                   // Customer Name
-                  const Text('Nama Pelanggan', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text('queue.customer_name'.tr(), style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   TextField(
                     controller: nameCtrl,
@@ -353,7 +354,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                   const SizedBox(height: 14),
 
                   // Phone Number
-                  const Text('Nombor Telefon (WhatsApp)', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text('queue.phone_number'.tr(), style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   TextField(
                     controller: phoneCtrl,
@@ -371,7 +372,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                   const SizedBox(height: 14),
 
                   // Service selection
-                  const Text('Pilih Perkhidmatan', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text('queue.select_service'.tr(), style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
@@ -463,7 +464,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                           showGlassToast(scaffoldCtx, 'Berjaya sertai giliran! Nombor anda: $ticketNum');
                         }
                       },
-                      child: const Text('Sahkan & Ambil Tiket Giliran', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      child: Text('queue.confirm_take_ticket'.tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                     ),
                   ),
                 ],
@@ -572,7 +573,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                 ),
                 onPressed: _scanQueueQr,
                 icon: const HugeIcon(icon: HugeIcons.strokeRoundedQrCode, size: 20, color: Colors.white),
-                label: const Text('Imbas Kod QR Kedai untuk Ambil Giliran', style: TextStyle(fontWeight: FontWeight.bold)),
+                label: Text('queue.scan_qr_hint'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
             const SizedBox(height: 12),
@@ -589,7 +590,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                   Navigator.pop(context);
                 },
                 icon: const HugeIcon(icon: HugeIcons.strokeRoundedNavigation01, size: 18, color: Colors.white),
-                label: const Text('Cari Barbershop / Kedai Berdekatan', style: TextStyle(fontWeight: FontWeight.w600)),
+                label: Text('queue.find_nearby'.tr(), style: TextStyle(fontWeight: FontWeight.w600)),
               ),
             ),
           ],
@@ -915,7 +916,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                   ),
                   onPressed: () => _callShop(shopPhone),
                   icon: const HugeIcon(icon: HugeIcons.strokeRoundedCall, size: 18, color: Colors.blue),
-                  label: const Text('Hubungi Kedai', style: TextStyle(fontWeight: FontWeight.bold)),
+                  label: Text('queue.contact_store'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -929,7 +930,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                   ),
                   onPressed: () => _whatsappShop(shopPhone),
                   icon: const HugeIcon(icon: HugeIcons.strokeRoundedMessage01, color: Color(0xFF25D366), size: 18),
-                  label: const Text('WhatsApp', style: TextStyle(fontWeight: FontWeight.bold)),
+                  label: Text('queue.whatsapp'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -946,7 +947,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                 ),
                 onPressed: _cancelTicket,
                 icon: const HugeIcon(icon: HugeIcons.strokeRoundedCancel01, size: 16, color: Colors.redAccent),
-                label: const Text('Batal Giliran Ini', style: TextStyle(fontWeight: FontWeight.w600)),
+                label: Text('queue.cancel_ticket'.tr(), style: TextStyle(fontWeight: FontWeight.w600)),
               ),
             ),
           ],

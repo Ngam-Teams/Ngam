@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
@@ -323,7 +324,7 @@ class _StoreRouteLoaderState extends State<StoreRouteLoader> {
                     Navigator.pushReplacementNamed(context, '/customer-home');
                   },
                   icon: const HugeIcon(icon: HugeIcons.strokeRoundedHome01, size: 20),
-                  label: const Text('Kembali ke Utama'),
+                  label: Text('booking.back_to_home'.tr()),
                 ),
               ],
             ),

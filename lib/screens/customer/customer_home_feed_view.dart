@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:ngam/l10n/generated/app_localizations.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -703,7 +704,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Tutup', style: TextStyle(color: Colors.white54)),
+              child: Text('common.close'.tr(), style: TextStyle(color: Colors.white54)),
             ),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
@@ -719,7 +720,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                 showGlassToast(context, 'Kata laluan WiFi disalin ke papan klip!');
               },
               icon: const HugeIcon(icon: HugeIcons.strokeRoundedCopy01, color: Colors.blue, size: 16),
-              label: const Text('Salin Kata Laluan'),
+              label: Text('common.copy_password'.tr()),
             ),
           ],
         ),

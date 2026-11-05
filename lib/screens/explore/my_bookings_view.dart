@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../../widgets/glass_toast.dart';
 import 'package:flutter/material.dart';
@@ -637,7 +638,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                                 actions: [
                                   TextButton(
                                     onPressed: () => Navigator.pop(ctx, false),
-                                    child: const Text("Kembali", style: TextStyle(color: Colors.grey)),
+                                    child: const Text("common.back".tr(), style: TextStyle(color: Colors.grey)),
                                   ),
                                   TextButton(
                                     onPressed: () => Navigator.pop(ctx, true),

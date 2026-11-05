@@ -684,10 +684,10 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 if (isWithdrawal)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: Text('Withdrawal will be transferred directly to your primary bank account.', style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black54)),
+                    child: Text('wallet.withdrawal_notice'.tr(), style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black54)),
                   ),
                 if (!isWithdrawal && cards != null && cards.isNotEmpty) ...[
-                  Text('Fund Source:', style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black54)),
+                  Text('wallet.fund_source'.tr(), style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black54)),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -717,7 +717,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 if (!isWithdrawal && (cards == null || cards.isEmpty))
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: Text('No credit card registered. Please add a card first.', style: TextStyle(fontSize: 12, color: Colors.redAccent)),
+                    child: Text('wallet.no_card_error'.tr(), style: TextStyle(fontSize: 12, color: Colors.redAccent)),
                   ),
                 TextField(
                   controller: controller,
@@ -736,7 +736,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, null),
-                child: Text('Cancel', style: TextStyle(color: isDark ? Colors.white54 : Colors.black54)),
+                child: Text('common.cancel'.tr(), style: TextStyle(color: isDark ? Colors.white54 : Colors.black54)),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -814,21 +814,21 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                                     children: [
                                       const HugeIcon(icon: HugeIcons.strokeRoundedCheckmarkCircle02, size: 48, color: Colors.green),
                                       const SizedBox(height: 16),
-                                      const Text('Baki Dah Cukup!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                                      Text('wallet.balance_sufficient'.tr(), style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                                       const SizedBox(height: 8),
-                                      const Text('Ingin teruskan pesanan yang tadi?', textAlign: TextAlign.center),
+                                      Text('wallet.continue_order_prompt'.tr(), textAlign: TextAlign.center),
                                       const SizedBox(height: 24),
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                         children: [
                                           TextButton(
                                             onPressed: () => Navigator.pop(dialogCtx, false),
-                                            child: const Text('Nanti Dulu', style: TextStyle(color: Colors.grey)),
+                                            child: Text('common.not_now'.tr(), style: TextStyle(color: Colors.grey)),
                                           ),
                                           ElevatedButton(
                                             onPressed: () => Navigator.pop(dialogCtx, true),
                                             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white),
-                                            child: const Text('Teruskan'),
+                                            child: Text('common.proceed'.tr()),
                                           ),
                                         ],
                                       )

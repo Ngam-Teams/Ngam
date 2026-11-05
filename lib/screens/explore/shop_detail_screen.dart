@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -114,7 +115,7 @@ class ShopDetailScreen extends StatelessWidget {
                         ),
 
                         const SizedBox(height: 24),
-                        Text("About", style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
+                        Text("booking.about".tr(), style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 12),
                         Text(
                           "Experience premium grooming and wellness services in a relaxing environment. Our professionals are dedicated to making you look and feel your absolute best.",
@@ -122,7 +123,7 @@ class ShopDetailScreen extends StatelessWidget {
                         ),
 
                         const SizedBox(height: 24),
-                        Text("Services Available", style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
+                        Text("booking.services_available".tr(), style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 12),
 
                         //  SERVICES TAGS
@@ -239,7 +240,7 @@ class ShopDetailScreen extends StatelessWidget {
                     ],
                   ),
                   child: const Center(
-                    child: Text("Book Now", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+                    child: Text("booking.book_now".tr(), style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
                   ),
                 ),
               ),

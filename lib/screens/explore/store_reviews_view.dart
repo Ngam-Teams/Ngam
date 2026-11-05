@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:ngam/widgets/glass_box.dart';
@@ -295,7 +296,7 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                         icon: const HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.blue, size: 18),
-                        label: const Text('Tambah Foto', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                        label: Text('review.add_photo'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
                         onPressed: () async {
                           try {
                             final List<XFile> picked = await picker.pickMultiImage();
@@ -321,7 +322,7 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                         icon: const HugeIcon(icon: HugeIcons.strokeRoundedVideo01, color: Colors.purpleAccent, size: 18),
-                        label: const Text('Tambah Video', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                        label: Text('review.add_video'.tr(), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
                         onPressed: () async {
                           try {
                             final XFile? vid = await picker.pickVideo(source: ImageSource.gallery);
@@ -409,7 +410,7 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
                       Navigator.pop(ctx);
                       showGlassToast(context, 'Terima kasih! Ulasan anda berjaya dihantar.');
                     },
-                    child: const Text('Hantar Ulasan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: Text('review.submit_review'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -593,7 +594,7 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
                                       color: Colors.green.withValues(alpha: 0.12),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
-                                    child: const Text('Verified', style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)),
+                                    child: Text('common.verified'.tr(), style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)),
                                   ),
                                 ],
                               ),

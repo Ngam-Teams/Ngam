@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:ngam/widgets/glass_box.dart';
@@ -276,7 +277,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                               children: [
                                 const HugeIcon(icon: HugeIcons.strokeRoundedCall02, color: Colors.blue, size: 18),
                                 const SizedBox(width: 8),
-                                Text('Call Store', style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 13)),
+                                Text('store.call'.tr(), style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 13)),
                               ],
                             ),
                           ),
@@ -298,7 +299,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                               children: [
                                 const HugeIcon(icon: HugeIcons.strokeRoundedComment01, color: Colors.green, size: 18),
                                 const SizedBox(width: 8),
-                                Text('WhatsApp', style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 13)),
+                                Text('store.whatsapp'.tr(), style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 13)),
                               ],
                             ),
                           ),
@@ -425,7 +426,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                                           color: Colors.blue,
                                           borderRadius: BorderRadius.circular(6),
                                         ),
-                                        child: const Text('Hari Ini', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                                        child: Text('common.today'.tr(), style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
                                       ),
                                     ],
                                   ],
@@ -598,7 +599,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                               _launchUrlHelper(context, 'https://www.google.com/maps/search/?api=1&query=$query');
                             },
                             icon: const HugeIcon(icon: HugeIcons.strokeRoundedDirections01, size: 18),
-                            label: const Text('Get Directions in Maps', style: TextStyle(fontWeight: FontWeight.bold)),
+                            label: Text('store.directions'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ),
                       ],

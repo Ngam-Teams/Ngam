@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -163,7 +164,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Kembali', style: TextStyle(color: Colors.grey)),
+                child: Text('common.back'.tr(), style: TextStyle(color: Colors.grey)),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -172,7 +173,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Ya, Batalkan', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: Text('queue.confirm_cancel'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -287,7 +288,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+              child: Text('common.cancel'.tr(), style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -309,7 +310,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                 } catch (_) {}
                 if (ctx.mounted) Navigator.pop(ctx, true);
               },
-              child: const Text('Hantar Ulasan', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text('review.submit_review'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),

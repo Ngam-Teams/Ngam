@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import '../../l10n/generated/app_localizations.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -1029,7 +1030,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                     _filterProducts();
                   });
                 },
-                child: const Text('View all items'),
+                child: Text('store.view_all_items'.tr()),
               ),
             ],
           ],

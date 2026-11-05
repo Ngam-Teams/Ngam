@@ -157,7 +157,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
       setState(() => _isLoading = false);
 
       if (mounted) {
-        showGlassToast(context, "Maklumat akaun berjaya dikemas kini!");
+        showGlassToast(context, "account.update_success".tr());
         Navigator.pop(context);
       }
     }
@@ -200,7 +200,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Text(
-                  "Tukar Gambar Profil",
+                  "account.change_profile_photo".tr(),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -216,7 +216,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                   size: 22,
                 ),
                 title: Text(
-                  "Ambil Gambar (Kamera)",
+                  "account.take_photo".tr(),
                   style: TextStyle(
                     color: isDark ? Colors.white : Colors.black87,
                     fontWeight: FontWeight.w600,
@@ -234,7 +234,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                   size: 22,
                 ),
                 title: Text(
-                  "Pilih Dari Galeri",
+                  "account.choose_gallery".tr(),
                   style: TextStyle(
                     color: isDark ? Colors.white : Colors.black87,
                     fontWeight: FontWeight.w600,
@@ -273,14 +273,14 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
           if (error != null) {
             showGlassToast(context, error, isError: true);
           } else {
-            showGlassToast(context, "Gambar profil berjaya dikemas kini!");
+            showGlassToast(context, "account.avatar_update_success".tr());
           }
         }
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isUploadingAvatar = false);
-        showGlassToast(context, "Ralat memilih gambar: $e", isError: true);
+        showGlassToast(context, "account.avatar_pick_error".tr(args: [e.toString()]), isError: true);
       }
     }
   }
@@ -305,14 +305,14 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
           if (error != null) {
             showGlassToast(context, error, isError: true);
           } else {
-            showGlassToast(context, "Kod QR DuitNow berjaya dikemas kini!");
+            showGlassToast(context, "account.qr_update_success".tr());
           }
         }
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isUploadingQrCode = false);
-        showGlassToast(context, "Ralat memilih kod QR: $e", isError: true);
+        showGlassToast(context, "account.qr_pick_error".tr(args: [e.toString()]), isError: true);
       }
     }
   }
@@ -320,7 +320,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
   String? _validateCurrentPassword(String? value) {
     if (_newPasswordController.text.isNotEmpty &&
         (value == null || value.isEmpty)) {
-      return "Diperlukan untuk menukar kata laluan";
+      return "account.current_password_required".tr();
     }
     return null;
   }
@@ -328,12 +328,12 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
   String? _validateNewPassword(String? value) {
     if (_currentPasswordController.text.isNotEmpty &&
         (value == null || value.isEmpty)) {
-      return "Diperlukan untuk menukar kata laluan";
+      return "account.current_password_required".tr();
     }
     if (value == null || value.isEmpty) return null;
     final regex = RegExp(r'^(?=.*[A-Z])(?=.*[a-z])(?=.*[\d\W]).{8,}$');
     if (!regex.hasMatch(value)) {
-      return "Min. 8 aksara, huruf besar, kecil & nombor/simbol";
+      return "account.password_validation_error".tr();
     }
     return null;
   }
@@ -369,33 +369,33 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                 // 1. Maklumat Peribadi
                 _buildPanel(
                   isDark: isDark,
-                  title: "Maklumat Peribadi",
-                  subtitle: "Nama penuh, paparan nama dan tarikh lahir akaun anda",
+                  title: "account.personal_info".tr(),
+                  subtitle: "account.personal_info_subtitle".tr(),
                   icon: HugeIcons.strokeRoundedUser,
                   child: Column(
                     children: [
                       _buildTextField(
                         isDark: isDark,
-                        label: "Nama Penuh (Seperti Dalam IC) *",
-                        hint: "cth. Muhammad Danial bin Razak",
+                        label: "account.full_name_label".tr(),
+                        hint: "account.full_name_hint".tr(),
                         controller: _nameController,
                         icon: HugeIcons.strokeRoundedUser,
                         validator: (val) => val == null || val.trim().isEmpty
-                            ? "Nama penuh diperlukan"
+                            ? "account.full_name_required".tr()
                             : null,
                       ),
                       const SizedBox(height: 16),
                       _buildTextField(
                         isDark: isDark,
-                        label: "Nama Panggilan / Display Name",
-                        hint: "cth. Danial, Danny",
+                        label: "account.display_name_label".tr(),
+                        hint: "account.display_name_hint".tr(),
                         controller: _displayNameController,
                         icon: HugeIcons.strokeRoundedSmile,
                       ),
                       const SizedBox(height: 16),
                       _buildTextField(
                         isDark: isDark,
-                        label: "Alamat E-mel",
+                        label: "account.email_label".tr(),
                         controller: _emailController,
                         icon: HugeIcons.strokeRoundedMail01,
                         keyboardType: TextInputType.emailAddress,
@@ -404,8 +404,8 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                       const SizedBox(height: 16),
                       _buildTextField(
                         isDark: isDark,
-                        label: "Nombor Telefon",
-                        hint: "cth. +60123456789",
+                        label: "account.phone_label".tr(),
+                        hint: "account.phone_hint".tr(),
                         controller: _phoneController,
                         icon: HugeIcons.strokeRoundedCall02,
                         keyboardType: TextInputType.phone,
@@ -413,8 +413,8 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                       const SizedBox(height: 16),
                       _buildTextField(
                         isDark: isDark,
-                        label: "Tarikh Lahir",
-                        hint: "Pilih tarikh lahir anda",
+                        label: "account.dob_label".tr(),
+                        hint: "account.dob_hint".tr(),
                         controller: _dobController,
                         icon: HugeIcons.strokeRoundedCalendar01,
                         readOnly: true,
@@ -429,15 +429,15 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                 // 2. Alamat & Lokasi
                 _buildPanel(
                   isDark: isDark,
-                  title: "Alamat Penghantaran",
-                  subtitle: "Alamat utama untuk menerima pesanan dan barangan",
+                  title: "account.delivery_address_title".tr(),
+                  subtitle: "account.delivery_address_subtitle".tr(),
                   icon: HugeIcons.strokeRoundedLocation01,
                   child: Column(
                     children: [
                       _buildTextField(
                         isDark: isDark,
-                        label: "Alamat Premis / Rumah",
-                        hint: "cth. No 12, Jalan Indah 3, Taman Maju",
+                        label: "account.address_label".tr(),
+                        hint: "account.address_hint".tr(),
                         controller: _addressController,
                         icon: HugeIcons.strokeRoundedLocation01,
                         keyboardType: TextInputType.streetAddress,
@@ -452,9 +452,9 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                   // 3. Kod QR DuitNow Runner
                   _buildPanel(
                     isDark: isDark,
-                    title: "Kod QR DuitNow Runner",
+                    title: "account.runner_qr_title".tr(),
                     subtitle:
-                        "Pelanggan boleh membuat bayaran terus ke akaun bank anda",
+                        "account.runner_qr_subtitle".tr(),
                     icon: HugeIcons.strokeRoundedQrCode,
                     child: _buildRunnerQrSection(isDark, authUser),
                   ),
@@ -465,16 +465,16 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                 // 4. Keselamatan & Kata Laluan
                 _buildPanel(
                   isDark: isDark,
-                  title: "Keselamatan & Kata Laluan",
+                  title: "account.security_title".tr(),
                   subtitle:
-                        "Tukar kata laluan akaun anda (biarkan kosong jika tidak mahu ubah)",
+                        "account.security_subtitle".tr(),
                   icon: HugeIcons.strokeRoundedShield01,
                   child: Column(
                     children: [
                       _buildTextField(
                         isDark: isDark,
-                        label: "Kata Laluan Semasa",
-                        hint: "Masukkan kata laluan semasa anda",
+                        label: "account.current_password_label".tr(),
+                        hint: "account.current_password_hint".tr(),
                         controller: _currentPasswordController,
                         icon: HugeIcons.strokeRoundedLockPassword,
                         isPassword: true,
@@ -486,8 +486,8 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                       const SizedBox(height: 16),
                       _buildTextField(
                         isDark: isDark,
-                        label: "Kata Laluan Baharu",
-                        hint: "Min. 8 aksara (huruf besar, kecil & simbol)",
+                        label: "account.new_password_label".tr(),
+                        hint: "account.new_password_hint".tr(),
                         controller: _newPasswordController,
                         icon: HugeIcons.strokeRoundedLockKey,
                         isPassword: true,
@@ -536,17 +536,17 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                               strokeWidth: 2.2,
                             ),
                           )
-                        : const Row(
+                        : Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              HugeIcon(
+                              const HugeIcon(
                                 icon: HugeIcons.strokeRoundedFloppyDisk,
                                 color: Colors.white,
                                 size: 18,
                               ),
-                              SizedBox(width: 8),
+                              const SizedBox(width: 8),
                               Text(
-                                "Simpan Semua Perubahan",
+                                "account.save_all_changes".tr(),
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 15,
@@ -606,7 +606,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                 GlassNavButton(
                   icon: HugeIcons.strokeRoundedCheckmarkBadge01,
                   iconColor: const Color(0xFF38BDF8),
-                  tooltip: _isLoading ? "Menyimpan..." : "Simpan",
+                  tooltip: _isLoading ? "account.saving".tr() : "account.save".tr(),
                   isDark: isDark,
                   size: 42,
                   iconSize: 20,
@@ -627,7 +627,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
     required bool isRunner,
   }) {
     final avatarUrl = user?.userAvatarUrl as String?;
-    final userName = user?.userName ?? 'Pengguna Ngam';
+    final userName = user?.userName ?? 'account.default_user'.tr();
     final userEmail = user?.userEmail ?? '';
 
     return ClipRRect(
@@ -714,7 +714,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                               ),
                               const SizedBox(width: 5),
                               Text(
-                                isRunner ? "Runner Sah" : "Pelanggan",
+                                isRunner ? "account.badge_verified_runner".tr() : "account.badge_customer".tr(),
                                 style: TextStyle(
                                   color: isRunner
                                       ? const Color(0xFF38BDF8)
@@ -1015,8 +1015,8 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                   color: const Color(0xFF0284C7).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Text(
-                  'Kekal / Tidak Boleh Ubah',
+                child: Text(
+                  'account.email_readonly_badge'.tr(),
                   style: TextStyle(
                     color: Color(0xFF38BDF8),
                     fontSize: 9.5,
@@ -1180,8 +1180,8 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                   const SizedBox(width: 6),
                   Text(
                     qrUrl != null && qrUrl.isNotEmpty
-                        ? "Tukar Kod QR"
-                        : "Muat Naik Kod QR",
+                        ? "account.change_qr".tr()
+                        : "account.upload_qr".tr(),
                     style: const TextStyle(
                       color: Color(0xFF38BDF8),
                       fontSize: 12,
