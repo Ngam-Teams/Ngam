@@ -20,10 +20,58 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const chipBrandId = Deno.env.get("CHIP_BRAND_ID") || "844a8f74-4426-4285-9a90-3c39e1259e75";
 const chipApiKey = Deno.env.get("CHIP_API_KEY") || "";
-const webhookSecret = Deno.env.get("PAYMENT_WEBHOOK_SECRET") || "";
+const chipPublicKeyPem = Deno.env.get("CHIP_PUBLIC_KEY") || Deno.env.get("PAYMENT_WEBHOOK_SECRET") || "";
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const CHIP_BASE_URL = "https://gate.chip-in.asia/api/v1";
+
+function pemToArrayBuffer(pem: string): ArrayBuffer {
+  const b64 = pem
+    .replace(/-----BEGIN PUBLIC KEY-----/g, "")
+    .replace(/-----END PUBLIC KEY-----/g, "")
+    .replace(/\s+/g, "");
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+async function verifyChipSignature(
+  rawBody: string,
+  signatureBase64: string,
+  publicKeyPem: string
+): Promise<boolean> {
+  if (!publicKeyPem || !signatureBase64) return false;
+  try {
+    const keyBuffer = pemToArrayBuffer(publicKeyPem);
+    const cryptoKey = await crypto.subtle.importKey(
+      "spki",
+      keyBuffer,
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false,
+      ["verify"]
+    );
+
+    const sigBinary = atob(signatureBase64.trim());
+    const sigBytes = new Uint8Array(sigBinary.length);
+    for (let i = 0; i < sigBinary.length; i++) {
+      sigBytes[i] = sigBinary.charCodeAt(i);
+    }
+
+    const dataBytes = new TextEncoder().encode(rawBody);
+    return await crypto.subtle.verify(
+      "RSASSA-PKCS1-v1_5",
+      cryptoKey,
+      sigBytes,
+      dataBytes
+    );
+  } catch (err) {
+    console.error("[payment-webhook] RSA-SHA256 signature verification error:", err);
+    return false;
+  }
+}
 
 serve(async (req: Request) => {
   // Handle CORS preflight for Flutter Web
@@ -40,10 +88,33 @@ serve(async (req: Request) => {
 
   try {
     const rawBody = await req.text();
+    const xSignature =
+      req.headers.get("x-signature") ||
+      req.headers.get("X-Signature") ||
+      req.headers.get("x-chip-signature") ||
+      "";
+
+    // Pre-parse Cryptographic Signature Verification if X-Signature header is present
+    let isWebhookSignatureVerified = false;
+    if (xSignature) {
+      isWebhookSignatureVerified = await verifyChipSignature(
+        rawBody,
+        xSignature,
+        chipPublicKeyPem
+      );
+      if (!isWebhookSignatureVerified) {
+        console.error("[payment-webhook] REJECTED before JSON.parse: Invalid X-Signature");
+        return new Response(
+          JSON.stringify({ error: "Invalid webhook cryptographic signature" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const payload = JSON.parse(rawBody || "{}");
 
     // =========================================================================
-    // MOD 1: CREATE CHIP PURCHASE (Dipanggil oleh Ngam / Ngam Business App)
+    // MOD 1: CREATE CHIP PURCHASE (STRICT SERVER-SIDE PRICE & FEE CALCULATION)
     // =========================================================================
     if (payload.action === "create_purchase") {
       if (!chipApiKey) {
@@ -53,10 +124,41 @@ serve(async (req: Request) => {
         );
       }
 
-      const amount = Number(payload.amount || 0);
-      const cents = Math.round(amount * 100);
-      const orderTitle = payload.order_title || "Pesanan Ngam";
-      const reference = payload.reference || payload.order_id || "";
+      const orderId = String(payload.order_id || payload.reference || "").trim();
+      const paymentChannel = String(payload.payment_channel || "fpx").toLowerCase();
+
+      if (!orderId) {
+        return new Response(
+          JSON.stringify({ error: "order_id diperlukan untuk pengiraan harga di pelayan (server-side)." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // 1. Kira & kunci harga sebenar, diskaun baucar, komisen platform, dan caj gerbang di PostgreSQL
+      const { data: calcData, error: calcErr } = await supabase.rpc(
+        "calculate_and_lock_order_for_chip",
+        {
+          p_order_id: orderId,
+          p_payment_channel: paymentChannel,
+        }
+      );
+
+      if (calcErr || !calcData) {
+        return new Response(
+          JSON.stringify({ error: calcErr?.message || "Gagal mengira jumlah pesanan di pelayan." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const verifiedCents = Number(calcData.total_cents);
+      if (!Number.isInteger(verifiedCents) || verifiedCents < 100) {
+        return new Response(
+          JSON.stringify({ error: "Jumlah pesanan mestilah sekurang-kurangnya RM 1.00 (100 sen)." }),
+          { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const orderTitle = payload.order_title || `Pesanan ${calcData.business_name || "Ngam"}`;
       const clientEmail = payload.client_email || "pelanggan@ngam.dev";
       const clientName = payload.client_name || "Pelanggan Ngam";
       const clientPhone = payload.client_phone || "+601115892468";
@@ -65,8 +167,8 @@ serve(async (req: Request) => {
       const webhookCallbackUrl = `${supabaseUrl}/functions/v1/payment-webhook`;
 
       const chipPayload: Record<string, unknown> = {
-        brand_id: payload.brand_id || chipBrandId,
-        reference: reference,
+        brand_id: chipBrandId,
+        reference: orderId,
         client: {
           email: clientEmail,
           full_name: clientName,
@@ -77,7 +179,7 @@ serve(async (req: Request) => {
           products: [
             {
               name: orderTitle,
-              price: cents,
+              price: verifiedCents, // Authoritative server-calculated integer cents
               quantity: 1,
             },
           ],
@@ -85,19 +187,13 @@ serve(async (req: Request) => {
         success_callback: webhookCallbackUrl,
         success_redirect:
           payload.success_redirect ||
-          (reference
-            ? `https://ngam.dev/receipt/success?order_id=${encodeURIComponent(reference)}`
-            : "https://ngam.dev/receipt/success"),
+          `https://ngam.dev/receipt/success?order_id=${encodeURIComponent(orderId)}`,
         failure_redirect:
           payload.failure_redirect ||
-          (reference
-            ? `https://ngam.dev/receipt/failed?order_id=${encodeURIComponent(reference)}`
-            : "https://ngam.dev/receipt/failed"),
+          `https://ngam.dev/receipt/failed?order_id=${encodeURIComponent(orderId)}`,
         cancel_redirect:
           payload.cancel_redirect ||
-          (reference
-            ? `https://ngam.dev/receipt/cancel?order_id=${encodeURIComponent(reference)}`
-            : "https://ngam.dev/receipt/cancel"),
+          `https://ngam.dev/receipt/cancel?order_id=${encodeURIComponent(orderId)}`,
       };
 
       if (Array.isArray(whitelist) && whitelist.length > 0) {
@@ -114,6 +210,14 @@ serve(async (req: Request) => {
       });
 
       const chipData = await chipRes.json();
+
+      if (chipRes.ok && chipData.id && calcData.target_type === "order") {
+        await supabase
+          .from("orders")
+          .update({ chip_purchase_id: String(chipData.id) })
+          .eq("id", calcData.order_id);
+      }
+
       return new Response(JSON.stringify(chipData), {
         status: chipRes.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -148,155 +252,84 @@ serve(async (req: Request) => {
     }
 
     // =========================================================================
-    // MOD 3: WEBHOOK CALLBACK DARIPADA CHIP ASIA / GERBANG PEMBAYARAN
+    // MOD 3: HARDENED WEBHOOK CALLBACK DARIPADA CHIP ASIA (RSA-SHA256 + IDEMPOTENT)
     // =========================================================================
-    console.log("[payment-webhook] Incoming webhook payload:", payload);
+    if (!isWebhookSignatureVerified) {
+      console.error("[payment-webhook] REJECTED: Missing or unverified X-Signature on webhook callback");
+      return new Response(
+        JSON.stringify({ error: "Missing or invalid X-Signature header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    // CHIP menghantar objek Purchase secara terus (mempunyai `id`, `status`, `reference`, `purchase.total`)
-    const targetId: string =
+    const chipPurchaseId: string = String(payload.id || "").trim();
+    const targetId: string = String(
       payload.reference ||
       payload.order_id ||
       payload.booking_id ||
       payload.metadata?.order_id ||
-      "";
-    const statusRaw: string = (payload.status || payload.payment_status || "").toLowerCase();
-    const chipCents = payload.purchase?.total;
-    const paidAmount: number =
-      typeof chipCents === "number"
-        ? chipCents / 100.0
-        : Number(payload.amount || payload.paid_amount || 0);
+      ""
+    ).trim();
+    const statusRaw: string = String(payload.status || payload.payment_status || "").toLowerCase();
+    const eventType: string = String(payload.event_type || `purchase.${statusRaw}`);
+    const paidCents: number =
+      typeof payload.purchase?.total === "number"
+        ? Math.round(payload.purchase.total)
+        : -1;
     const paymentMethod: string =
       payload.transaction_data?.payment_method ||
+      payload.payment?.payment_type ||
       payload.payment_method ||
-      payload.channel ||
-      "online";
-    const transactionRef: string = payload.id || payload.transaction_id || payload.ref || "";
+      "chip_online";
 
-    if (!targetId) {
+    if (!chipPurchaseId || !targetId) {
       return new Response(
-        JSON.stringify({ received: true, message: "No reference/order_id attached to webhook" }),
+        JSON.stringify({ error: "Missing CHIP purchase.id or reference" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Ignore non-paid lifecycle notifications safely (e.g. 'created', 'viewed', 'Pending')
+    if (statusRaw !== "paid") {
+      return new Response(
+        JSON.stringify({ received: true, status: statusRaw, action: "ignored" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const isPaid = ["paid", "success", "succeeded", "completed", "captured", "1"].includes(statusRaw);
-    const isRefunded = ["refunded", "reversed"].includes(statusRaw);
-
-    if (targetId.startsWith("RZRV-") || payload.target_type === "booking") {
-      // 1. Kemas kini Tempahan (Bookings)
-      const query = targetId.startsWith("RZRV-")
-        ? supabase
-            .from("bookings")
-            .select("id, total_price, booking_metadata")
-            .eq("booking_metadata->>booking_id", targetId)
-            .maybeSingle()
-        : supabase
-            .from("bookings")
-            .select("id, total_price, booking_metadata")
-            .eq("id", targetId)
-            .maybeSingle();
-
-      const { data: booking, error: fetchErr } = await query;
-      if (fetchErr || !booking) {
-        return new Response(
-          JSON.stringify({ error: "Booking not found", details: fetchErr?.message }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      const existingMeta =
-        booking.booking_metadata && typeof booking.booking_metadata === "object"
-          ? booking.booking_metadata
-          : {};
-
-      const updatedMeta = {
-        ...existingMeta,
-        payment_status: isPaid
-          ? "paid"
-          : isRefunded
-          ? "refunded"
-          : existingMeta.payment_status,
-        payment_method: paymentMethod,
-        transaction_ref: transactionRef,
-        verified_by_webhook: true,
-        paid_at: isPaid ? new Date().toISOString() : existingMeta.paid_at,
-      };
-
-      const { error: updateErr } = await supabase
-        .from("bookings")
-        .update({ booking_metadata: updatedMeta })
-        .eq("id", booking.id);
-
-      if (updateErr) throw updateErr;
-
+    if (paidCents <= 0) {
       return new Response(
-        JSON.stringify({
-          success: true,
-          type: "booking",
-          id: booking.id,
-          payment_status: updatedMeta.payment_status,
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    } else {
-      // 2. Kemas kini Pesanan Kedai (Orders)
-      const { data: order, error: fetchErr } = await supabase
-        .from("orders")
-        .select("id, total, status, payment_status")
-        .eq("id", targetId)
-        .maybeSingle();
-
-      if (fetchErr || !order) {
-        return new Response(
-          JSON.stringify({ error: "Order not found", details: fetchErr?.message }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      const expectedTotal = Number(order.total || 0);
-      if (isPaid && paidAmount > 0 && paidAmount + 0.05 < expectedTotal) {
-        console.error(
-          `[payment-webhook] Amount mismatch for order ${order.id}: expected ${expectedTotal}, got ${paidAmount}`
-        );
-        return new Response(
-          JSON.stringify({
-            error: "Paid amount is less than order total",
-            expected: expectedTotal,
-            received: paidAmount,
-          }),
-          { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      const newPaymentStatus = isPaid
-        ? "paid"
-        : isRefunded
-        ? "refunded"
-        : order.payment_status;
-
-      const { error: updateErr } = await supabase
-        .from("orders")
-        .update({
-          payment_status: newPaymentStatus,
-          payment_method: paymentMethod,
-          payment_ref: transactionRef || null,
-          paid_at: isPaid ? new Date().toISOString() : null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", order.id);
-
-      if (updateErr) throw updateErr;
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          type: "order",
-          id: order.id,
-          payment_status: newPaymentStatus,
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Invalid paid amount in cents" }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Execute Atomic Idempotent Verification & Balance Credit inside PostgreSQL
+    const { data: settlementResult, error: rpcErr } = await supabase.rpc(
+      "process_verified_chip_webhook",
+      {
+        p_chip_purchase_id: chipPurchaseId,
+        p_event_type: eventType,
+        p_reference_id: targetId,
+        p_paid_cents: paidCents,
+        p_payment_method: paymentMethod,
+        p_raw_payload: payload,
+      }
+    );
+
+    if (rpcErr) {
+      console.error("[payment-webhook] Settlement RPC error:", rpcErr.message);
+      const statusCode = rpcErr.message.includes("Amount mismatch") ? 422 : 500;
+      return new Response(
+        JSON.stringify({ error: rpcErr.message }),
+        { status: statusCode, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    return new Response(JSON.stringify(settlementResult), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (err) {
     console.error("[payment-webhook] Error:", err);
     const msg = err instanceof Error ? err.message : String(err);
