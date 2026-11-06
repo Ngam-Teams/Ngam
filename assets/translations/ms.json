@@ -105,7 +105,16 @@
     "assigned": "Ditetapkan",
     "err_chat": "Ralat membuka chat: {}",
     "rate_review": "Nilai & Ulas Runner",
-    "review_submitted": "Ulasan dihantar"
+    "review_submitted": "Ulasan dihantar",
+    "qr_pickup_title": "Kod Imbas Pengambilan",
+    "qr_pickup_sub": "Tunjukkan kod QR ini kepada staf di kaunter untuk mengambil pesanan anda",
+    "prep_title_pending": "Pesanan Diterima & Disahkan",
+    "prep_title_cooking": "Sedang Disediakan di Dapur",
+    "prep_desc_pending": "Pihak kedai telah menerima pesanan anda. Kod QR pengambilan akan diaktifkan secara automatik sebaik sahaja makanan siap.",
+    "prep_desc_cooking": "Staf dapur sedang memasak dan membungkus hidangan anda. Kod QR pengambilan akan muncul di sini sebaik sahaja pesanan sedia.",
+    "prep_badge_locked": "Kod QR Diaktifkan Apabila Sedia",
+    "completed_title": "Pesanan Selesai Diambil",
+    "completed_desc": "Terima kasih! Pesanan ini telah berjaya disahkan dan diambil di kaunter."
   },
   "runner": {
     "find_gigs": "Cari Kerja",

@@ -521,112 +521,294 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
 
                       const SizedBox(height: 18),
 
-                      // QR Verification Code Card (hide if cancelled)
+                      // Pickup Verification or Kitchen Preparation Card (hide if cancelled)
                       if (_status != 'cancelled') ...[
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF161B22) : Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(
-                              color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.08),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
-                                blurRadius: 18,
-                                offset: const Offset(0, 4),
+                        if (_status == 'ready') ...[
+                          // --- 1. READY FOR PICKUP: SHOW ACTIVE QR CODE ---
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF161B22) : Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: const Color(0xFF00E5FF).withValues(alpha: 0.5),
+                                width: 1.5,
                               ),
-                            ],
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF00E5FF).withValues(alpha: isDark ? 0.25 : 0.12),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Container(
+                                                width: 8,
+                                                height: 8,
+                                                decoration: const BoxDecoration(
+                                                  color: Color(0xFF00E676),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                'order_status.qr_pickup_title'.tr(),
+                                                style: TextStyle(
+                                                  fontSize: 14.5,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'order_status.qr_pickup_sub'.tr(),
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF00E5FF).withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        '#$displayOrderNum',
+                                        style: const TextStyle(
+                                          color: Color(0xFF00E5FF),
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 12.5,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 18),
+                                // QR Box
+                                Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(18),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.10),
+                                        blurRadius: 14,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: SizedBox(
+                                    width: 170,
+                                    height: 170,
+                                    child: QrImageView(
+                                      data: 'NGAM-ORDER:',
+                                      version: QrVersions.auto,
+                                      eyeStyle: const QrEyeStyle(
+                                        eyeShape: QrEyeShape.square,
+                                        color: Color(0xFF0F172A),
+                                      ),
+                                      dataModuleStyle: const QrDataModuleStyle(
+                                        dataModuleShape: QrDataModuleShape.square,
+                                        color: Color(0xFF0F172A),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                Text(
+                                  'ID: ',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    color: isDark ? Colors.white38 : Colors.black38,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          child: Column(
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
+                        ] else if (_status == 'completed') ...[
+                          // --- 2. ORDER COMPLETED: NO QR NEEDED ---
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF161B22) : Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: Colors.green.withValues(alpha: 0.35),
+                                width: 1.2,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withValues(alpha: 0.15),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.check_circle_rounded,
+                                    color: Colors.greenAccent,
+                                    size: 26,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'Kod Imbas Pengambilan',
+                                        'order_status.completed_title'.tr(),
                                         style: TextStyle(
-                                          fontSize: 14.5,
+                                          fontSize: 14,
                                           fontWeight: FontWeight.bold,
                                           color: isDark ? Colors.white : const Color(0xFF0F172A),
                                         ),
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        'Tunjukkan kepada staf kedai di kaunter',
+                                        'order_status.completed_desc'.tr(),
                                         style: TextStyle(
                                           fontSize: 11.5,
                                           color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                                          height: 1.3,
                                         ),
                                       ),
                                     ],
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF00E5FF).withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      '#$displayOrderNum',
-                                      style: const TextStyle(
-                                        color: Color(0xFF00E5FF),
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 12.5,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ] else ...[
+                          // --- 3. PREPARING / PENDING: KITCHEN PREPARATION CARD (QR LOCKED) ---
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF161B22) : Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.08),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
+                                  blurRadius: 18,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 46,
+                                      height: 46,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF00E5FF).withValues(alpha: 0.12),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Center(
+                                        child: HugeIcon(
+                                          icon: HugeIcons.strokeRoundedRestaurant01,
+                                          color: Color(0xFF00E5FF),
+                                          size: 22,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 18),
-                              // QR Box
-                              Container(
-                                padding: const EdgeInsets.all(14),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(18),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.10),
-                                      blurRadius: 14,
-                                      offset: const Offset(0, 4),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            _status == 'pending'
+                                                ? 'order_status.prep_title_pending'.tr()
+                                                : 'order_status.prep_title_cooking'.tr(),
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            _status == 'pending'
+                                                ? 'order_status.prep_desc_pending'.tr()
+                                                : 'order_status.prep_desc_cooking'.tr(),
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                                              height: 1.35,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
-                                child: SizedBox(
-                                  width: 170,
-                                  height: 170,
-                                  child: QrImageView(
-                                    data: 'NGAM-ORDER:${widget.orderId}',
-                                    version: QrVersions.auto,
-                                    eyeStyle: const QrEyeStyle(
-                                      eyeShape: QrEyeShape.square,
-                                      color: Color(0xFF0F172A),
-                                    ),
-                                    dataModuleStyle: const QrDataModuleStyle(
-                                      dataModuleShape: QrDataModuleShape.square,
-                                      color: Color(0xFF0F172A),
+                                const SizedBox(height: 16),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.04)
+                                        : Colors.black.withValues(alpha: 0.03),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: isDark
+                                          ? Colors.white.withValues(alpha: 0.08)
+                                          : Colors.black.withValues(alpha: 0.06),
                                     ),
                                   ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.lock_clock_rounded,
+                                        size: 16,
+                                        color: isDark ? Colors.white54 : Colors.black45,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'order_status.prep_badge_locked'.tr(),
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark ? Colors.white70 : Colors.black54,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 14),
-                              Text(
-                                'ID: ${widget.orderId}',
-                                style: TextStyle(
-                                  fontSize: 10.5,
-                                  color: isDark ? Colors.white38 : Colors.black38,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
+                        ],
                         const SizedBox(height: 18),
                       ],
 

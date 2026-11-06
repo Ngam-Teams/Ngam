@@ -105,7 +105,16 @@
     "assigned": "Assigned",
     "err_chat": "Error opening chat: {}",
     "rate_review": "Rate & Review Runner",
-    "review_submitted": "Review submitted"
+    "review_submitted": "Review submitted",
+    "qr_pickup_title": "Pickup Verification Code",
+    "qr_pickup_sub": "Show this QR code to the store staff at the counter to collect your order",
+    "prep_title_pending": "Order Confirmed & Queued",
+    "prep_title_cooking": "Preparing in the Kitchen",
+    "prep_desc_pending": "The store has received your order. The pickup QR code will be activated automatically once the food is ready.",
+    "prep_desc_cooking": "The kitchen staff is currently cooking and preparing your items. Your pickup QR code will appear here as soon as it is ready.",
+    "prep_badge_locked": "QR Code Activates When Ready",
+    "completed_title": "Order Collected & Completed",
+    "completed_desc": "Thank you! This order has been verified and picked up at the counter."
   },
   "runner": {
     "find_gigs": "Find Gigs",
