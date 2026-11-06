@@ -24,7 +24,6 @@ import '../explore/order_status_tracker_screen.dart';
 import '../explore/qr_scanner_screen.dart';
 import '../explore/store_route_loader.dart';
 import '../shared/my_queue_ticket_screen.dart';
-import '../shared/saved_screen.dart';
 import 'package:flutter/services.dart';
 
 // =============================================================================
@@ -785,75 +784,111 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Left: Clean Greeting & Location (NO CONTAINER - Clean & Spacious)
+        // Left: Greeting & Location in Liquid Glass Pill Container
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                AppLocalizations.of(context)?.homeGreeting(_userName) ?? 'Hai, $_userName',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF1E293B),
-                  fontSize: 16.5,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.3,
+          child: GlassContainer(
+            useOwnLayer: true,
+            quality: GlassQuality.standard,
+            shape: const LiquidRoundedSuperellipse(borderRadius: 50.0),
+            settings: LiquidGlassSettings(
+              thickness: 0.1,
+              blur: 2.0,
+              lightIntensity: isDark ? 0.1 : 0.2,
+              glassColor: Colors.transparent,
+            ),
+            child: Container(
+              height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(50),
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : Colors.white.withValues(alpha: 0.65),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.65),
+                  width: 1.0,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              const SizedBox(height: 3),
-              GestureDetector(
-                onTap: () {
-                  _fetchAndApplyLiveLocation(silent: false, requestPermission: true);
-                },
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const HugeIcon(
-                      icon: HugeIcons.strokeRoundedLocation01,
-                      color: Color(0xFFFF5252),
-                      size: 14,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    AppLocalizations.of(context)?.homeGreeting(_userName) ?? 'Hai, $_userName',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : const Color(0xFF1E293B),
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.2,
+                      height: 1.15,
                     ),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        _locationName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: isDark ? Colors.white60 : const Color(0xFF64748B),
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
+                  ),
+                  const SizedBox(height: 2),
+                  GestureDetector(
+                    onTap: () {
+                      _fetchAndApplyLiveLocation(silent: false, requestPermission: true);
+                    },
+                    behavior: HitTestBehavior.opaque,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const HugeIcon(
+                          icon: HugeIcons.strokeRoundedLocation01,
+                          color: Color(0xFFFF5252),
+                          size: 11,
                         ),
-                      ),
+                        const SizedBox(width: 3),
+                        Flexible(
+                          child: Text(
+                            _locationName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              height: 1.15,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        if (_isFetchingLocation)
+                          const SizedBox(
+                            width: 10,
+                            height: 10,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.4,
+                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF5252)),
+                            ),
+                          )
+                        else
+                          HugeIcon(
+                            icon: HugeIcons.strokeRoundedArrowDown01,
+                            color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                            size: 11,
+                          ),
+                      ],
                     ),
-                    const SizedBox(width: 4),
-                    if (_isFetchingLocation)
-                      const SizedBox(
-                        width: 12,
-                        height: 12,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 1.6,
-                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF5252)),
-                        ),
-                      )
-                    else
-                      HugeIcon(
-                        icon: HugeIcons.strokeRoundedArrowDown01,
-                        color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
-                        size: 13,
-                      ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
 
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
 
-        // Right: Connected Twin Glass Pill (QR Scan + Login if Guest, or Bookings + Saved + Notification if Logged In)
+        // Right: Connected Twin Glass Pill (QR Scan + Login if Guest, or Bookings + Notification if Logged In)
         GlassContainer(
           useOwnLayer: true,
           quality: GlassQuality.standard,
@@ -940,28 +975,6 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                       child: Center(
                         child: HugeIcon(
                           icon: HugeIcons.strokeRoundedCalendar03,
-                          color: isDark ? Colors.white70 : const Color(0xFF1E293B),
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Saved (Disimpan) Bookmark Button (44x44 tepat)
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const SavedScreen()),
-                      );
-                    },
-                    behavior: HitTestBehavior.opaque,
-                    child: SizedBox(
-                      width: 44,
-                      height: 44,
-                      child: Center(
-                        child: HugeIcon(
-                          icon: HugeIcons.strokeRoundedBookmark02,
                           color: isDark ? Colors.white70 : const Color(0xFF1E293B),
                           size: 20,
                         ),
