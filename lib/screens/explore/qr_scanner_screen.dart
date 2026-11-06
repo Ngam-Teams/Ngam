@@ -3,6 +3,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../widgets/glass_toast.dart';
 
 class QRScannerScreen extends StatefulWidget {
@@ -106,17 +107,17 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.white24),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  HugeIcon(icon: HugeIcons.strokeRoundedQrCode, color: Colors.blueAccent, size: 20),
-                  SizedBox(width: 10),
+                  const HugeIcon(icon: HugeIcons.strokeRoundedQrCode, color: Colors.blueAccent, size: 20),
+                  const SizedBox(width: 10),
                   Flexible(
                     child: Text(
-                      'Halakan ke Kod QR kedai atau meja',
+                      'qr_scanner.point_camera_hint'.tr(),
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],
@@ -140,9 +141,9 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                 ),
                 onPressed: _pickFromGallery,
                 icon: const HugeIcon(icon: HugeIcons.strokeRoundedImage01, size: 18, color: Color(0xFF42A5F5)),
-                label: const Text(
-                  'Pilih dari Galeri Foto',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                label: Text(
+                  'qr_scanner.pick_gallery'.tr(),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                 ),
               ),
             ),
@@ -166,13 +167,13 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                     items: [
                       GlassNavPillItem(
                         icon: HugeIcons.strokeRoundedImage01,
-                        tooltip: 'Pilih dari Galeri',
+                        tooltip: 'qr_scanner.pick_gallery'.tr(),
                         onTap: _pickFromGallery,
                       ),
                       GlassNavPillItem(
                         icon: _torchEnabled ? HugeIcons.strokeRoundedFlash : HugeIcons.strokeRoundedFlashOff,
                         iconColor: _torchEnabled ? Colors.amber : Colors.white,
-                        tooltip: 'Lampu Kilat',
+                        tooltip: 'Flash',
                         onTap: () {
                           controller.toggleTorch();
                           setState(() => _torchEnabled = !_torchEnabled);
@@ -189,15 +190,15 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
           if (_isProcessingImage)
             Container(
               color: Colors.black54,
-              child: const Center(
+              child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircularProgressIndicator(color: Color(0xFF42A5F5)),
-                    SizedBox(height: 16),
+                    const CircularProgressIndicator(color: Color(0xFF42A5F5)),
+                    const SizedBox(height: 16),
                     Text(
-                      'Menganalisis kod QR dari gambar...',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                      'qr_scanner.analyzing_qr'.tr(),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                     ),
                   ],
                 ),

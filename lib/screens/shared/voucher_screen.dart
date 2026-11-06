@@ -682,7 +682,7 @@ class _VoucherScreenState extends State<VoucherScreen> {
             // Floating Top Bar inside Stack
             FloatingTopBar(
               isDark: isDark,
-              title: widget.isPicker ? 'Pilih Baucar' : 'Baucar & Ganjaran',
+              title: widget.isPicker ? 'voucher.select_voucher'.tr() : 'profile.vouchers'.tr(),
             ),
           ],
         ),
@@ -804,7 +804,7 @@ class _VoucherScreenState extends State<VoucherScreen> {
                     ),
                     const SizedBox(height: 18),
                     Text(
-                      'Tiada Baucar Tersimpan',
+                      'voucher.no_saved_vouchers'.tr(),
                       style: GoogleFonts.outfit(
                         color: textPrimary,
                         fontSize: 18,
@@ -813,7 +813,7 @@ class _VoucherScreenState extends State<VoucherScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Masukkan kod baucar di atas atau teroka tawaran hebat untuk simpan baucar diskaun anda.',
+                      'voucher.empty_instructions'.tr(),
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: textSecondary,
@@ -1021,7 +1021,7 @@ class _VoucherScreenState extends State<VoucherScreen> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        tab.label,
+                        tab.id == 'all' ? 'voucher.tab_all'.tr() : tab.label,
                         style: TextStyle(
                           color: isSelected
                               ? Colors.white
@@ -1099,7 +1099,7 @@ class _VoucherScreenState extends State<VoucherScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Tiada Baucar ${tab.label}',
+              'voucher.no_vouchers_for_category'.tr(args: [tab.id == 'all' ? 'voucher.tab_all'.tr() : tab.label]),
               style: TextStyle(
                 color: textPrimary,
                 fontSize: 16,
@@ -1109,8 +1109,8 @@ class _VoucherScreenState extends State<VoucherScreen> {
             const SizedBox(height: 8),
             Text(
               isSavedTab
-                  ? 'Anda belum menyimpan sebarang baucar untuk kategori ${tab.label}. Sila teroka tawaran hebat untuk dapatkan baucar.'
-                  : 'Belum ada tawaran aktif untuk kategori ${tab.label} buat masa ini. Sila semak semula nanti atau lihat semua baucar tersedia.',
+                  ? 'voucher.empty_tab'.tr(args: [tab.id == 'all' ? 'voucher.tab_all'.tr() : tab.label])
+                  : 'voucher.category_empty_hint'.tr(args: [tab.id == 'all' ? 'voucher.tab_all'.tr() : tab.label]),
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: textSecondary,
@@ -1132,9 +1132,9 @@ class _VoucherScreenState extends State<VoucherScreen> {
                 color: Color(0xFF2563EB),
                 size: 15,
               ),
-              label: const Text(
-                'Tunjuk Semua Baucar',
-                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+              label: Text(
+                'voucher.show_all_vouchers'.tr(),
+                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
               ),
               onPressed: () {
                 HapticFeedback.lightImpact();

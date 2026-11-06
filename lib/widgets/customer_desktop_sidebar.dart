@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import '../l10n/generated/app_localizations.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -226,8 +227,8 @@ class CustomerDesktopSidebar extends StatelessWidget {
                                         user != null
                                             ? ((user.userName?.isNotEmpty ?? false)
                                                 ? user.userName!
-                                                : 'Pelanggan')
-                                            : 'Akaun Tetamu',
+                                                : 'account.badge_customer'.tr())
+                                            : 'profile.guest_account'.tr(),
                                         style: TextStyle(
                                           color: isDark ? Colors.white : Colors.black87,
                                           fontSize: 12.5,
@@ -361,13 +362,13 @@ class CustomerDesktopSidebar extends StatelessWidget {
                                   ),
                                 ],
                               ),
-                              content: const Text(
-                                'Adakah anda pasti mahu log keluar daripada akaun ini?',
+                              content: Text(
+                                'profile.confirm_logout'.tr(),
                               ),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(ctx, false),
-                                  child: const Text('Batal'),
+                                  child: Text('common.cancel'.tr()),
                                 ),
                                 ElevatedButton(
                                   style: ElevatedButton.styleFrom(
@@ -378,7 +379,7 @@ class CustomerDesktopSidebar extends StatelessWidget {
                                     ),
                                   ),
                                   onPressed: () => Navigator.pop(ctx, true),
-                                  child: const Text('Log Keluar'),
+                                  child: Text('common.log_out'.tr()),
                                 ),
                               ],
                             ),

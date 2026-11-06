@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../models/user_data.dart';
 import 'package:ngam/l10n/generated/app_localizations.dart';
 import 'dart:async';
@@ -1070,7 +1071,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
-                                  'Memuatkan suapan Ngam...',
+                                  'customer.feed_loading'.tr(),
                                   style: TextStyle(
                                     color: isDark ? Colors.white70 : const Color(0xFF475569),
                                     fontSize: 13,
@@ -1085,7 +1086,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                                 ),
                                 const SizedBox(height: 12),
                                 Text(
-                                  'Tiada pos suapan ditemui.',
+                                  'customer.feed_empty'.tr(),
                                   style: TextStyle(
                                     color: isDark ? Colors.white70 : const Color(0xFF1E293B),
                                     fontSize: 14,
@@ -1099,9 +1100,9 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                                       icon: HugeIcons.strokeRoundedRefresh,
                                       color: Color(0xFF00E5FF),
                                       size: 18),
-                                  label: const Text(
-                                    'Muat Semula',
-                                    style: TextStyle(color: Color(0xFF00E5FF)),
+                                  label: Text(
+                                    'customer.reload'.tr(),
+                                    style: const TextStyle(color: Color(0xFF00E5FF)),
                                   ),
                                 ),
                               ],

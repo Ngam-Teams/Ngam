@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 import '../../providers/auth_provider.dart';
 
@@ -70,13 +71,13 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
               ),
               const SizedBox(height: 18),
               Text(
-                'Tunjuk Kepada Juruwang',
+                'stamp.show_to_cashier'.tr(),
                 style: GoogleFonts.outfit(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Juruwang akan imbas QR ini atau masukkan no telefon untuk beri cop',
-                style: TextStyle(color: Colors.white54, fontSize: 12),
+              Text(
+                'stamp.cashier_scan_desc'.tr(),
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
@@ -105,7 +106,7 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
                 ),
               ),
               Text(
-                name.isNotEmpty ? name : 'Pelanggan Ngam',
+                name.isNotEmpty ? name : 'stamp.ngam_customer'.tr(),
                 style: const TextStyle(color: Colors.white70, fontSize: 14),
               ),
               const SizedBox(height: 12),
@@ -121,7 +122,7 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = Provider.of<AuthProvider>(context).user;
     final phone = user?.userPhone ?? '012-3456789';
-    final name = user?.userName ?? 'Pelanggan Setia';
+    final name = user?.userName ?? 'stamp.loyal_customer'.tr();
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8FAFC),
@@ -138,7 +139,7 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
                   const SizedBox(height: 20),
 
                   Text(
-                    'Kad Cop Aktif (${_myCards.length})',
+                    'stamp.active_cards'.tr(args: [_myCards.length.toString()]),
                     style: GoogleFonts.outfit(
                       color: isDark ? Colors.white : Colors.black87,
                       fontSize: 16,
@@ -154,12 +155,12 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
 
             FloatingTopBar(
               isDark: isDark,
-              title: 'Kad Cop Digital Saya',
+              title: 'stamp.my_stamps'.tr(),
               actions: [
                 GlassNavButton(
                   icon: HugeIcons.strokeRoundedQrCode,
                   iconColor: const Color(0xFF42A5F5),
-                  tooltip: 'Tunjuk QR Saya',
+                  tooltip: 'stamp.show_my_qr'.tr(),
                   isDark: isDark,
                   size: 42,
                   iconSize: 22,
@@ -302,14 +303,14 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: const Color(0xFF10B981)),
                   ),
-                  child: const Text(
-                    'SEDIA DITEBUS',
-                    style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.w900),
+                  child: Text(
+                    'stamp.ready_to_redeem'.tr(),
+                    style: const TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.w900),
                   ),
                 )
               else
                 Text(
-                  '$current / $total Cop',
+                  'stamp.stamps_progress'.tr(args: [current.toString(), total.toString()]),
                   style: GoogleFonts.outfit(
                     color: isDark ? Colors.white70 : Colors.black54,
                     fontSize: 14,
@@ -381,8 +382,8 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
                 Expanded(
                   child: Text(
                     isReady
-                      ? 'Tahniah! Anda boleh tebus: ${card["rewardTitle"]}'
-                      : 'Ganjaran: ${card["rewardTitle"]}',
+                        ? 'stamp.congrats_redeem'.tr(args: [card["rewardTitle"].toString()])
+                        : 'stamp.reward'.tr(args: [card["rewardTitle"].toString()]),
                     style: TextStyle(
                       color: isReady ? const Color(0xFF10B981) : (isDark ? Colors.white70 : Colors.black87),
                       fontSize: 12,

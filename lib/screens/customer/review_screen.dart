@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:provider/provider.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/review_service.dart';
 import '../../utils/app_theme.dart';
@@ -46,7 +47,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
     if (_rating == 0) {
       showGlassToast(
         context,
-        'Sila pilih penarafan bintang',
+        'review.select_stars_error'.tr(),
         isError: true,
       );
       return;
@@ -74,7 +75,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       if (mounted) {
         showGlassToast(
           context,
-          'Terima kasih atas ulasan anda!',
+          'review.thank_you_feedback'.tr(),
           customIcon: HugeIcons.strokeRoundedCheckmarkCircle02,
         );
         Navigator.pop(context, true);
@@ -84,7 +85,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       if (mounted) {
         showGlassToast(
           context,
-          'Gagal menghantar ulasan. Sila cuba lagi.',
+          'review.submit_error'.tr(),
           isError: true,
         );
       }
@@ -97,11 +98,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
     final storeName = _targetData?['name'] ??
         _targetData?['shop_name'] ??
         _targetData?['business_name'] ??
-        'Kedai & Perkhidmatan';
+        'review.default_store'.tr();
     final serviceName = _targetData?['service_name'] ??
         _targetData?['service'] ??
         _targetData?['category'] ??
-        'Tempahan Selesai';
+        'review.completed_booking'.tr();
 
     return Scaffold(
       body: SafeArea(
@@ -175,7 +176,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
             const SizedBox(height: 28),
 
             Text(
-              'Bagaimana pengalaman anda?',
+              'review.experience_question'.tr(),
               style: GoogleFonts.outfit(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -184,7 +185,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Maklum balas anda membantu perniagaan ini meningkatkan mutu perkhidmatan.',
+              'review.feedback_help_desc'.tr(),
               style: TextStyle(
                 fontSize: 13,
                 color: Colors.grey.shade500,
@@ -220,14 +221,14 @@ class _ReviewScreenState extends State<ReviewScreen> {
             const SizedBox(height: 10),
             Text(
               _rating == 0
-                  ? 'Tekan bintang untuk pilih'
+                  ? 'review.tap_star_hint'.tr()
                   : _rating <= 2
-                      ? 'Kurang Memuaskan'
+                      ? 'review.rating_poor'.tr()
                       : _rating <= 3
-                          ? 'Sederhana Baik'
+                          ? 'review.rating_fair'.tr()
                           : _rating <= 4
-                              ? 'Sangat Memuaskan!'
-                              : 'Terbaik & Cemerlang!',
+                              ? 'review.rating_good'.tr()
+                              : 'review.rating_excellent'.tr(),
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -243,9 +244,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
               controller: _commentController,
               maxLines: 4,
               decoration: InputDecoration(
-                labelText: 'Tulis maklum balas (Pilihan)',
-                hintText:
-                    'Kongsikan kualiti layanan, ketepatan masa atau suasana kedai...',
+                labelText: 'review.feedback_input_label'.tr(),
+                hintText: 'review.feedback_input_hint'.tr(),
                 alignLabelWithHint: true,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -277,9 +277,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
                           color: Colors.white,
                         ),
                       )
-                    : const Text(
-                        'Hantar Ulasan',
-                        style: TextStyle(
+                    : Text(
+                        'review.submit_btn'.tr(),
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -291,7 +291,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       ),
             FloatingTopBar(
               isDark: isDark,
-              title: 'Ulasan & Penarafan',
+              title: 'review.screen_title'.tr(),
             ),
           ],
         ),

@@ -1115,9 +1115,9 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 Text("wallet.add_payment_method".tr(), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, fontFamily: 'Inter', color: isDark ? Colors.white : Colors.black87)),
                 const SizedBox(height: 16),
 
-                _buildTypeOption(isDark: isDark, icon: HugeIcons.strokeRoundedCreditCard, title: "Credit / Debit Card", subtitle: "Visa, Mastercard, Amex", color: Colors.blue, onTap: () { Navigator.pop(dialogContext); _showAddCardSheet(context, isDark); }),
+                _buildTypeOption(isDark: isDark, icon: HugeIcons.strokeRoundedCreditCard, title: "wallet.type_credit_debit".tr(), subtitle: "wallet.type_credit_debit_desc".tr(), color: Colors.blue, onTap: () { Navigator.pop(dialogContext); _showAddCardSheet(context, isDark); }),
                 const SizedBox(height: 8),
-                _buildTypeOption(isDark: isDark, icon: HugeIcons.strokeRoundedBank, title: "Link Bank Account", subtitle: "For quick payments & refunds", color: Colors.green, onTap: () { Navigator.pop(dialogContext); _showAddBankSheet(context, isDark); }),
+                _buildTypeOption(isDark: isDark, icon: HugeIcons.strokeRoundedBank, title: "wallet.type_link_bank".tr(), subtitle: "wallet.type_link_bank_desc".tr(), color: Colors.green, onTap: () { Navigator.pop(dialogContext); _showAddBankSheet(context, isDark); }),
 
                 const SizedBox(height: 16),
                 SizedBox(

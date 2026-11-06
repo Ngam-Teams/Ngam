@@ -362,8 +362,8 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                   _buildSettingsTile(
                     isDark,
                     HugeIcons.strokeRoundedUserRemove02,
-                    "Padam Akaun",
-                    subtitle: "Padam akaun dan semua data peribadi anda",
+                    "privacy.delete_account".tr(),
+                    subtitle: "privacy.delete_account_desc".tr(),
                     trailing: const HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, color: Colors.redAccent, size: 14),
                     onTap: () => _showDeleteAccountConfirmation(context),
                   ),

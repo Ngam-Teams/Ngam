@@ -1,8 +1,8 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../explore/order_status_tracker_screen.dart';
 
 class PaymentResultScreen extends StatefulWidget {
@@ -71,14 +71,14 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
         : (isCancelled ? const Color(0xFFF59E0B) : const Color(0xFFEF4444));
 
     final String titleText = isSuccess
-        ? 'Pembayaran Berjaya!'
-        : (isCancelled ? 'Pembayaran Dibatalkan' : 'Pembayaran Gagal');
+        ? 'payment_result.success_title'.tr()
+        : (isCancelled ? 'payment_result.cancelled_title'.tr() : 'payment_result.failed_title'.tr());
 
     final String subtitleText = isSuccess
-        ? 'Terima kasih, transaksi anda telah disahkan dan diproses dengan selamat.'
+        ? 'payment_result.success_subtitle'.tr()
         : (isCancelled
-            ? 'Anda telah membatalkan sesi pembayaran ini. Sila cuba lagi bila bersedia.'
-            : 'Transaksi anda tidak dapat diselesaikan. Sila semak baki atau cuba kaedah lain.');
+            ? 'payment_result.cancelled_subtitle'.tr()
+            : 'payment_result.failed_subtitle'.tr());
 
     return Scaffold(
       backgroundColor: dark ? const Color(0xFF0A0E17) : const Color(0xFFF8FAFC),
@@ -213,13 +213,13 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
                           ),
                           const Divider(height: 28),
 
-                          _buildReceiptRow('Rujukan Pesanan', displayOrderId, dark),
+                          _buildReceiptRow('payment_result.order_id'.tr(), displayOrderId, dark),
                           const SizedBox(height: 12),
-                          _buildReceiptRow('Peniaga / Kedai', shopName, dark),
+                          _buildReceiptRow('store.store_information'.tr(), shopName, dark),
                           const SizedBox(height: 12),
-                          _buildReceiptRow('Tarikh & Masa', nowStr, dark),
+                          _buildReceiptRow('payment_result.date_time'.tr(), nowStr, dark),
                           const SizedBox(height: 12),
-                          _buildReceiptRow('Kaedah Bayaran', 'CHIP (DuitNow QR / FPX)', dark),
+                          _buildReceiptRow('payment_result.payment_method'.tr(), 'CHIP DuitNow QR / FPX', dark),
 
                           if (totalAmount != null) ...[
                             const Divider(height: 28),
@@ -227,7 +227,7 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Jumlah Dibayar',
+                                  'payment_result.total_paid'.tr(),
                                   style: TextStyle(
                                     color: dark ? Colors.white70 : const Color(0xFF475569),
                                     fontSize: 14,
@@ -282,9 +282,9 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
                         color: Colors.white,
                         size: 20,
                       ),
-                      label: const Text(
-                        'Jejak Pesanan Sekarang',
-                        style: TextStyle(
+                      label: Text(
+                        'payment_result.track_order_btn'.tr(),
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
@@ -310,9 +310,9 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    child: const Text(
-                      'Kembali ke Laman Utama',
-                      style: TextStyle(
+                    child: Text(
+                      'payment_result.back_home_btn'.tr(),
+                      style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),

@@ -1270,7 +1270,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Kategori Pilihan',
+                  'customer.featured_categories'.tr(),
                   style: TextStyle(
                     color: isDark ? Colors.white : const Color(0xFF0F172A),
                     fontSize: 15.5,
@@ -1282,9 +1282,9 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(
                     onTap: () => widget.onSwitchTab?.call(1),
-                    child: const Text(
-                      'Semua Kategori',
-                      style: TextStyle(
+                    child: Text(
+                      'customer.all_categories'.tr(),
+                      style: const TextStyle(
                         color: Color(0xFF2196F3),
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -1496,7 +1496,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                         Row(
                           children: [
                             Text(
-                              'PESANAN AKTIF #$shortId',
+                              'customer.active_order'.tr(args: [shortId]),
                               style: TextStyle(
                                 color: statusColor,
                                 fontSize: 10.5,
@@ -1532,9 +1532,9 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                       color: statusColor,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Text(
-                      'Jejak & QR',
-                      style: TextStyle(
+                    child: Text(
+                      'customer.track_qr'.tr(),
+                      style: const TextStyle(
                         color: Colors.black,
                         fontSize: 11,
                         fontWeight: FontWeight.w900,
@@ -1939,7 +1939,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Kongsi Port Ngam Anda',
+                  'customer.share_spot_title'.tr(),
                   style: TextStyle(
                     color: isDark ? Colors.white : Colors.black87,
                     fontSize: 14,
@@ -1948,7 +1948,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'Dapatkan diskaun RM5 untuk tempahan seterusnya apabila anda reviu kedai.',
+                  'customer.share_spot_desc'.tr(),
                   style: TextStyle(
                     color: isDark ? Colors.white60 : Colors.grey.shade700,
                     fontSize: 11,
@@ -2249,7 +2249,7 @@ class _NearbyRadarCardItemState extends State<_NearbyRadarCardItem>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Buka Sekarang',
+                          'customer.open_now'.tr(),
                           style: TextStyle(
                             color: isDark ? Colors.white54 : Colors.grey.shade600,
                             fontSize: 11,
@@ -2266,7 +2266,7 @@ class _NearbyRadarCardItemState extends State<_NearbyRadarCardItem>
                             ),
                           ),
                           child: Text(
-                            'Ambil Giliran',
+                            'customer.take_turn'.tr(),
                             style: TextStyle(
                               color: catAccent,
                               fontSize: 10.5,

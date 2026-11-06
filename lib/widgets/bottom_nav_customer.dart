@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
-import '../l10n/generated/app_localizations.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'custom_bottom_nav.dart';
 
 // ============================================================
 // Ngam App — Menu Bawah (Customer)
-// Home, Bookings, Inbox, Profile
+// Home, Discover, Feed, Inbox, Profile
 // ============================================================
 
 class BottomNavCustomer extends StatelessWidget {
@@ -22,30 +22,29 @@ class BottomNavCustomer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     return CustomBottomNav(
       currentIndex: currentIndex,
       onTap: onTap,
       items: [
         NavItem(
           icon: HugeIcons.strokeRoundedHome11,
-          title: l10n?.navHome ?? 'Home',
+          title: 'nav.home'.tr(),
         ),
         NavItem(
           icon: HugeIcons.strokeRoundedMaps,
-          title: l10n?.navDiscover ?? 'Discover',
+          title: 'nav.discover'.tr(),
         ),
         NavItem(
           icon: HugeIcons.strokeRoundedPlayCircle02,
-          title: l10n?.navFeed ?? 'Feed',
+          title: 'nav.feed'.tr(),
         ),
         NavItem(
           icon: HugeIcons.strokeRoundedMessage02,
-          title: l10n?.navInbox ?? 'Inbox',
+          title: 'nav.chat'.tr(),
         ),
         NavItem(
           icon: HugeIcons.strokeRoundedUser,
-          title: l10n?.navProfile ?? 'Profile',
+          title: 'nav.profile'.tr(),
         ),
       ],
     );

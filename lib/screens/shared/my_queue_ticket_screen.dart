@@ -520,7 +520,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
 
             FloatingTopBar(
               isDark: isDark,
-              title: 'Tiket Giliran Walk-In',
+              title: 'profile.live_queue'.tr(),
               actions: [
                 GlassNavPill(
                   isDark: isDark,
@@ -528,13 +528,13 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                     GlassNavPillItem(
                       icon: HugeIcons.strokeRoundedQrCode,
                       iconColor: const Color(0xFF42A5F5),
-                      tooltip: 'Imbas QR Giliran',
+                      tooltip: 'queue.scan_qr_hint'.tr(),
                       onTap: _scanQueueQr,
                     ),
                     GlassNavPillItem(
                       icon: HugeIcons.strokeRoundedRefresh,
                       iconColor: const Color(0xFF42A5F5),
-                      tooltip: 'Segarkan Status',
+                      tooltip: 'queue.refresh_status'.tr(),
                       onTap: () => _loadCustomerTicket(),
                     ),
                   ],
@@ -568,7 +568,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
             ),
             const SizedBox(height: 20),
             Text(
-              'Tiada Giliran Aktif',
+              'queue.no_active_queue'.tr(),
               style: GoogleFonts.outfit(
                 color: isDark ? Colors.white : Colors.black87,
                 fontSize: 20,
@@ -577,7 +577,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
             ),
             const SizedBox(height: 10),
             Text(
-              'Anda belum mengambil tiket giliran walk-in di mana-mana kedai hari ini. Imbas kod QR di kedai untuk sertai giliran tanpa beratur fizikal!',
+              'queue.no_active_queue_desc'.tr(),
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: isDark ? Colors.white60 : Colors.black54,
