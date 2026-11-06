@@ -2272,86 +2272,127 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   Widget _buildSearchRow(bool isDark, {bool isDesktop = false}) =>
       Padding(
         padding: EdgeInsets.symmetric(horizontal: isDesktop ? 0 : 24),
-        child: Row(children: [
-          Expanded(
-            child: GlassContainer(
-              useOwnLayer: true,
-              quality: GlassQuality.standard,
-              shape: LiquidRoundedSuperellipse(borderRadius: 24.0),
-              settings: _getGlassSettings(isDark),
-              child: Container(
-                height: 48,
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
-                    width: 1.0,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: GlassContainer(
+                useOwnLayer: true,
+                quality: GlassQuality.standard,
+                shape: LiquidRoundedSuperellipse(borderRadius: 24.0),
+                settings: _getGlassSettings(isDark),
+                child: Container(
+                  height: 48,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
+                      width: 1.0,
                     ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    SizedBox(
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(
                         width: 20,
                         height: 20,
-                        child: _isSearching
-                            ? CircularProgressIndicator(strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                                isDark ? Colors.white : _lightModeGray))
-                            : HugeIcon(icon: HugeIcons.strokeRoundedSearch01,
-                            color: isDark ? Colors.white70 : _lightModeGray
-                                .withValues(alpha: 0.6),
-                            size: 20,
-                            strokeWidth: 2.0)
-                    ),
-                    const SizedBox(width: 12),
-                    
+                        child: Center(
+                          child: _isSearching
+                              ? CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      isDark ? Colors.white : _lightModeGray),
+                                )
+                              : HugeIcon(
+                                  icon: HugeIcons.strokeRoundedSearch01,
+                                  color: isDark
+                                      ? Colors.white70
+                                      : _lightModeGray.withValues(alpha: 0.6),
+                                  size: 20,
+                                  strokeWidth: 2.0,
+                                ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: Theme(
-                          data: Theme.of(context).copyWith(
-                            colorScheme: Theme.of(context).colorScheme.copyWith(
-                              primary: Colors.blue,
+                        child: Container(
+                          alignment: Alignment.centerLeft,
+                          child: Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme: Theme.of(context).colorScheme.copyWith(
+                                primary: Colors.blue,
+                              ),
+                              primaryColor: Colors.blue,
                             ),
-                            primaryColor: Colors.blue,
-                          ),
-                          child: TextField(
-                            controller: _searchController, focusNode: _searchFocus, onChanged: _handleSearch, onSubmitted: _executeSearch,
-                            style: TextStyle(color: isDark ? Colors.white : _lightModeGray, fontWeight: FontWeight.w600, fontSize: 15),
-                            cursorColor: Colors.blue, 
-                            textAlignVertical: TextAlignVertical.center, 
-                            decoration: InputDecoration(
-                              hintText: AppLocalizations.of(context)!.searchHint, 
-                              hintStyle: TextStyle(color: isDark ? Colors.white38 : _lightModeGray.withValues(alpha: 0.4), fontSize: 14, fontWeight: FontWeight.w400), 
-                              border: InputBorder.none, 
-                              focusedBorder: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              errorBorder: InputBorder.none,
-                              disabledBorder: InputBorder.none,
-                              isDense: true,
-                              filled: false,
-                              contentPadding: EdgeInsets.zero,
+                            child: TextField(
+                              controller: _searchController,
+                              focusNode: _searchFocus,
+                              onChanged: _handleSearch,
+                              onSubmitted: _executeSearch,
+                              style: TextStyle(
+                                color: isDark ? Colors.white : _lightModeGray,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                                height: 1.2,
+                              ),
+                              cursorColor: Colors.blue,
+                              textAlignVertical: TextAlignVertical.center,
+                              decoration: InputDecoration(
+                                hintText: AppLocalizations.of(context)!.searchHint,
+                                hintStyle: TextStyle(
+                                  color: isDark
+                                      ? Colors.white38
+                                      : _lightModeGray.withValues(alpha: 0.4),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w400,
+                                  height: 1.2,
+                                ),
+                                border: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                errorBorder: InputBorder.none,
+                                disabledBorder: InputBorder.none,
+                                isDense: true,
+                                isCollapsed: true,
+                                filled: false,
+                                contentPadding: EdgeInsets.zero,
+                              ),
                             ),
                           ),
                         ),
                       ),
-
-                    if (_searchController.text.isNotEmpty)
-                      GestureDetector(onTap: _clearSearch,
-                          child: HugeIcon(icon: HugeIcons.strokeRoundedCancel01, size: 18, color: isDark ? Colors.white70 : _lightModeGray.withValues(alpha: 0.6))),
-                  ],
+                      if (_searchController.text.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8.0),
+                          child: GestureDetector(
+                            onTap: _clearSearch,
+                            child: Center(
+                              child: HugeIcon(
+                                icon: HugeIcons.strokeRoundedCancel01,
+                                size: 18,
+                                color: isDark
+                                    ? Colors.white70
+                                    : _lightModeGray.withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          _AnimatedPressable(
+            const SizedBox(width: 12),
+            _AnimatedPressable(
               onTap: _openQrScanner,
               child: GlassContainer(
                 useOwnLayer: true,
@@ -2376,15 +2417,18 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                     ],
                   ),
                   child: Center(
-                      child: HugeIcon(icon: HugeIcons.strokeRoundedQrCode01,
-                          color: isDark ? Colors.white70 : Colors.black87,
-                          size: 22,
-                          strokeWidth: 2.0)
+                    child: HugeIcon(
+                      icon: HugeIcons.strokeRoundedQrCode01,
+                      color: isDark ? Colors.white70 : Colors.black87,
+                      size: 22,
+                      strokeWidth: 2.0,
+                    ),
                   ),
                 ),
               ),
             ),
-        ]),
+          ],
+        ),
       );
 
   Widget _buildResultsGlass(bool isDark) {
