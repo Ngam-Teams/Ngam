@@ -274,8 +274,18 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                     ),
                     child: Row(
                       children: [
-                        _buildTabButton('my_bookings.tab_active'.tr(), 0, isDark),
-                        _buildTabButton('my_bookings.tab_history'.tr(), 1, isDark),
+                        _buildTabButton(
+                          'my_bookings.tab_active'.tr(),
+                          0,
+                          isDark,
+                          icon: HugeIcons.strokeRoundedFlash,
+                        ),
+                        _buildTabButton(
+                          'my_bookings.tab_history'.tr(),
+                          1,
+                          isDark,
+                          icon: HugeIcons.strokeRoundedTime02,
+                        ),
                       ],
                     ),
                   ),
@@ -576,8 +586,12 @@ class _MyBookingsViewState extends State<MyBookingsView> {
     );
   }
 
-  Widget _buildTabButton(String title, int index, bool isDark) {
+  Widget _buildTabButton(String title, int index, bool isDark, {dynamic icon}) {
     final bool isSelected = _selectedTab == index;
+    final Color textColor = isSelected
+        ? (isDark ? Colors.white : const Color(0xFF0F172A))
+        : (isDark ? Colors.white54 : Colors.grey.shade600);
+
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _selectedTab = index),
@@ -600,15 +614,25 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                 : [],
           ),
           child: Center(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                color: isSelected
-                    ? (isDark ? Colors.white : const Color(0xFF0F172A))
-                    : (isDark ? Colors.white54 : Colors.grey.shade600),
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (icon != null) ...[
+                  icon is IconData
+                      ? Icon(icon, size: 16, color: textColor)
+                      : HugeIcon(icon: icon, size: 16, color: textColor),
+                  const SizedBox(width: 7),
+                ],
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
