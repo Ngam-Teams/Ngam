@@ -4613,7 +4613,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                 child: ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                   child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+                    filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
                     child: Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -4621,40 +4621,40 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                           end: Alignment.bottomRight,
                           colors: isDark
                               ? [
-                                  const Color(0xFF1E2838).withValues(alpha: 0.70),
-                                  const Color(0xFF0F172A).withValues(alpha: 0.58),
+                                  const Color(0xFF131A29).withValues(alpha: 0.68),
+                                  const Color(0xFF0B101D).withValues(alpha: 0.75),
                                 ]
                               : [
-                                  Colors.white.withValues(alpha: 0.82),
-                                  Colors.white.withValues(alpha: 0.65),
+                                  Colors.white.withValues(alpha: 0.85),
+                                  Colors.white.withValues(alpha: 0.70),
                                 ],
                         ),
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                         border: Border(
                           top: BorderSide(
                             color: isDark
-                                ? Colors.white.withValues(alpha: 0.24)
-                                : Colors.white.withValues(alpha: 0.85),
-                            width: 1.2,
+                                ? Colors.white.withValues(alpha: 0.38)
+                                : Colors.white.withValues(alpha: 0.95),
+                            width: 1.5,
                           ),
                           left: BorderSide(
                             color: isDark
-                                ? Colors.white.withValues(alpha: 0.12)
+                                ? Colors.white.withValues(alpha: 0.16)
                                 : Colors.white.withValues(alpha: 0.50),
                             width: 1.0,
                           ),
                           right: BorderSide(
                             color: isDark
-                                ? Colors.white.withValues(alpha: 0.12)
+                                ? Colors.white.withValues(alpha: 0.16)
                                 : Colors.white.withValues(alpha: 0.50),
                             width: 1.0,
                           ),
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.10),
-                            blurRadius: 28,
-                            offset: const Offset(0, -6),
+                            color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.15),
+                            blurRadius: 32,
+                            offset: const Offset(0, -8),
                           ),
                         ],
                       ),
@@ -4665,7 +4665,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                             top: 0,
                             left: 0,
                             right: 0,
-                            height: 70,
+                            height: 90,
                             child: Container(
                               decoration: BoxDecoration(
                                 borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
@@ -4673,9 +4673,11 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                   colors: [
-                                    (isDark ? Colors.white : Colors.white).withValues(alpha: isDark ? 0.08 : 0.25),
+                                    (isDark ? Colors.white : Colors.white).withValues(alpha: isDark ? 0.18 : 0.35),
+                                    (isDark ? Colors.white : Colors.white).withValues(alpha: isDark ? 0.04 : 0.12),
                                     Colors.transparent,
                                   ],
+                                  stops: const [0.0, 0.35, 1.0],
                                 ),
                               ),
                             ),
@@ -4880,7 +4882,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                         right: 0,
                         child: ClipRect(
                           child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                             child: Container(
                               alignment: Alignment.center,
                               padding: EdgeInsets.only(
@@ -4890,15 +4892,25 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                 bottom: bottomSafeArea > 0 ? bottomSafeArea + 10 : 16,
                               ),
                               decoration: BoxDecoration(
-                                color: isDark
-                                    ? const Color(0xFF0F172A).withValues(alpha: 0.60)
-                                    : Colors.white.withValues(alpha: 0.60),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: isDark
+                                      ? [
+                                          const Color(0xFF0F172A).withValues(alpha: 0.75),
+                                          const Color(0xFF070B14).withValues(alpha: 0.90),
+                                        ]
+                                      : [
+                                          Colors.white.withValues(alpha: 0.85),
+                                          Colors.white.withValues(alpha: 0.95),
+                                        ],
+                                ),
                                 border: Border(
                                   top: BorderSide(
                                     color: isDark
-                                        ? Colors.white.withValues(alpha: 0.14)
-                                        : Colors.black.withValues(alpha: 0.06),
-                                    width: 1.0,
+                                        ? Colors.white.withValues(alpha: 0.20)
+                                        : Colors.black.withValues(alpha: 0.08),
+                                    width: 1.1,
                                   ),
                                 ),
                               ),
@@ -4968,13 +4980,29 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(vertical: 16),
                                     decoration: BoxDecoration(
-                                      color: Colors.blue,
+                                      gradient: const LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          Color(0xFF007AFF),
+                                          Color(0xFF0056D2),
+                                        ],
+                                      ),
                                       borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: const Color(0xFF60A5FA).withValues(alpha: 0.85),
+                                        width: 1.2,
+                                      ),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.blue.withValues(alpha: 0.35),
-                                          blurRadius: 16,
+                                          color: const Color(0xFF007AFF).withValues(alpha: 0.45),
+                                          blurRadius: 18,
                                           offset: const Offset(0, 6),
+                                        ),
+                                        BoxShadow(
+                                          color: const Color(0xFF38BDF8).withValues(alpha: 0.25),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
                                         ),
                                       ],
                                     ),
@@ -5029,28 +5057,48 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     EdgeInsetsGeometry? padding,
     Color? overrideColor,
     Color? overrideBorder,
+    List<Color>? gradientColors,
   }) {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
-        color: overrideColor ??
-            (isDark
-                ? Colors.white.withValues(alpha: 0.07)
-                : Colors.white.withValues(alpha: 0.55)),
+        gradient: overrideColor != null
+            ? null
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: gradientColors ??
+                    (isDark
+                        ? [
+                            Colors.white.withValues(alpha: 0.12),
+                            Colors.white.withValues(alpha: 0.05),
+                          ]
+                        : [
+                            Colors.white.withValues(alpha: 0.75),
+                            Colors.white.withValues(alpha: 0.50),
+                          ]),
+              ),
+        color: overrideColor,
         border: Border.all(
           color: overrideBorder ??
               (isDark
-                  ? Colors.white.withValues(alpha: 0.18)
-                  : Colors.black.withValues(alpha: 0.08)),
-          width: 1.0,
+                  ? Colors.white.withValues(alpha: 0.22)
+                  : Colors.white.withValues(alpha: 0.70)),
+          width: 1.1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.12 : 0.03),
-            blurRadius: 8,
+            color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.05),
+            blurRadius: 10,
             offset: const Offset(0, 3),
           ),
+          if (isDark)
+            BoxShadow(
+              color: const Color(0xFF007AFF).withValues(alpha: 0.05),
+              blurRadius: 14,
+              offset: const Offset(0, 1),
+            ),
         ],
       ),
       child: child,
@@ -5097,13 +5145,14 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         isDark: isDark,
         radius: 14.0,
         padding: const EdgeInsets.symmetric(vertical: 12),
-        // If it's primary, use the frosted blue.
-        // If not, leave it null so it inherits the exact same glass style as the Stats and Hours cards!
-        overrideColor: isPrimary
-            ? Colors.blue.withValues(alpha: isDark ? 0.3 : 0.7)
+        gradientColors: isPrimary
+            ? [
+                const Color(0xFF0284C7).withValues(alpha: isDark ? 0.75 : 0.85),
+                const Color(0xFF0369A1).withValues(alpha: isDark ? 0.60 : 0.75),
+              ]
             : null,
         overrideBorder: isPrimary
-            ? Colors.blue.withValues(alpha: isDark ? 0.5 : 0.9)
+            ? const Color(0xFF38BDF8).withValues(alpha: isDark ? 0.80 : 0.95)
             : null,
         child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
