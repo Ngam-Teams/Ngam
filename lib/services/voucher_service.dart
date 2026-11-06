@@ -487,7 +487,7 @@ class VoucherService {
     try {
       var query = Supabase.instance.client
           .from('vouchers')
-          .select('*, businesses(name, business_logo_url)')
+          .select('*, businesses(business_name, business_logo_url)')
           .eq('is_active', true);
 
       if (businessId != null && businessId.isNotEmpty) {
@@ -537,7 +537,7 @@ class VoucherService {
           'id': vid,
           'code': code,
           'title': m['title']?.toString() ?? 'Baucar Diskaun $code',
-          'shop_name': biz?['name']?.toString() ?? (m['business_id'] == null ? 'Semua Rakan Niaga Ngam' : 'Kedai Rakan Niaga'),
+          'shop_name': (biz?['business_name'] ?? biz?['name'])?.toString() ?? (m['business_id'] == null ? 'Semua Rakan Niaga Ngam' : 'Kedai Rakan Niaga'),
           'shop_logo': biz?['business_logo_url']?.toString(),
           'business_id': m['business_id']?.toString(),
           'discount_type': m['discount_type'] ?? 'fixed',
@@ -722,7 +722,7 @@ class VoucherService {
     try {
       final res = await Supabase.instance.client
           .from('vouchers')
-          .select('*, businesses(name, business_logo_url)')
+          .select('*, businesses(business_name, business_logo_url)')
           .ilike('code', cleanCode)
           .eq('is_active', true)
           .maybeSingle();
@@ -730,7 +730,7 @@ class VoucherService {
       if (res != null) {
         final Map<String, dynamic> v = Map<String, dynamic>.from(res);
         final biz = v['businesses'] as Map<String, dynamic>?;
-        final shopName = biz?['name']?.toString() ?? 'Kedai Rakan Niaga';
+        final shopName = (biz?['business_name'] ?? biz?['name'])?.toString() ?? 'Kedai Rakan Niaga';
         final shopLogo = biz?['business_logo_url']?.toString();
 
         final rawScope = (v['applicable_scope'] ?? 'all').toString().toLowerCase();

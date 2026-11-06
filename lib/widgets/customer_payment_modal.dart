@@ -82,29 +82,45 @@ class CustomerPaymentModal extends StatefulWidget {
 }
 
 class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
-  PaymentStep _currentStep = PaymentStep.selectMethod;
+  PaymentStep _currentStep = PaymentStep.duitNowQr;
   String _selectedMethod = 'duitnow'; // 'duitnow', 'fpx_card', 'cash'
   bool get _isCash => _selectedMethod == 'cash';
 
-  @override
-  void initState() {
-    super.initState();
-    if (widget.initialMethod != null && widget.initialMethod!.isNotEmpty) {
-      _selectedMethod = widget.initialMethod!;
-      if (widget.initialMethod == 'cash') {
-        _currentStep = PaymentStep.receipt;
-        final shortId = widget.orderId.length > 8 ? widget.orderId.substring(0, 8) : widget.orderId;
-        _transactionRef = 'CASH-${shortId.toUpperCase()}';
-      }
-    }
-  }
-
   ChipPurchaseResult? _purchase;
-  bool _isLoadingQr = false;
+  bool _isLoadingQr = true;
+  bool _isVerifyingManual = false;
+  String? _gatewayError;
   Timer? _statusTimer;
   Timer? _countdownTimer;
   int _secondsRemaining = 300; // 5 minit
   String _transactionRef = '';
+
+  @override
+  void initState() {
+    super.initState();
+    final initMethod = (widget.initialMethod ?? 'duitnow').trim().toLowerCase();
+    if (initMethod == 'fpx' || initMethod == 'card' || initMethod == 'fpx_card') {
+      _selectedMethod = 'fpx_card';
+    } else if (initMethod == 'cash') {
+      _selectedMethod = 'cash';
+    } else {
+      _selectedMethod = 'duitnow';
+    }
+
+    if (_selectedMethod == 'cash') {
+      _isLoadingQr = false;
+      _currentStep = PaymentStep.receipt;
+      final shortId = widget.orderId.length > 8 ? widget.orderId.substring(0, 8) : widget.orderId;
+      _transactionRef = 'CASH-${shortId.toUpperCase()}';
+    } else {
+      // Terus ke skrin Gerbang Pembayaran tanpa tanya kaedah bayaran buat kali kedua!
+      _currentStep = PaymentStep.duitNowQr;
+      _isLoadingQr = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _startGatewayFlow();
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -124,8 +140,8 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
           timer.cancel();
           _statusTimer?.cancel();
           if (_currentStep == PaymentStep.duitNowQr) {
-            setState(() => _currentStep = PaymentStep.selectMethod);
-            showGlassToast(context, 'Kod QR telah tamat tempoh. Sila cuba semula.', isError: true);
+            showGlassToast(context, 'Sesi pembayaran telah tamat tempoh. Sila cuba semula.', isError: true);
+            Navigator.pop(context, false);
           }
         }
       }
@@ -143,7 +159,8 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
       if (status == 'paid') {
         timer.cancel();
         _countdownTimer?.cancel();
-        _handleSuccessPayment('DuitNow QR (Chip Asia)', purchaseId);
+        final label = _selectedMethod == 'fpx_card' ? 'FPX / Kad (CHIP Asia)' : 'DuitNow QR (CHIP Asia)';
+        _handleSuccessPayment(label, purchaseId);
       }
     });
   }
@@ -160,225 +177,84 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
     }
   }
 
-  Future<void> _proceedToDuitNow() async {
+  Future<void> _startGatewayFlow() async {
     setState(() {
       _currentStep = PaymentStep.duitNowQr;
       _isLoadingQr = true;
+      _gatewayError = null;
     });
 
     try {
-      if (ChipPaymentService.instance.isAvailable) {
-        final res = await ChipPaymentService.instance.createPurchase(
-          amount: widget.amount,
-          orderTitle: widget.orderTitle,
-          reference: widget.orderId,
-          clientName: widget.customerName,
-          clientPhone: widget.customerPhone,
-        );
+      final res = await ChipPaymentService.instance.createPurchase(
+        amount: widget.amount,
+        orderTitle: widget.orderTitle,
+        reference: widget.orderId,
+        clientName: widget.customerName,
+        clientPhone: widget.customerPhone,
+        paymentMethodWhitelist: _selectedMethod == 'duitnow' ? const ['duitnow_qr'] : null,
+      );
 
-        if (mounted) {
-          setState(() {
-            _purchase = res;
-            _isLoadingQr = false;
-          });
-          _startCountdown();
-          _startPollingStatus(res.id);
-          return;
-        }
-      }
-    } catch (e) {
-      debugPrint('[CustomerPaymentModal] Chip API createPurchase failed, falling back to dynamic QR: $e');
-    }
-
-    // Dynamic Ngam DuitNow QR fallback
-    if (mounted) {
-      final shortId = widget.orderId.length > 8 ? widget.orderId.substring(0, 8) : widget.orderId;
-      final ref = 'DUITNOW-${shortId.toUpperCase()}';
+      if (!mounted) return;
       setState(() {
-        _purchase = ChipPurchaseResult(
-          id: ref,
-          checkoutUrl: '',
-          duitNowUrl: 'https://qr.paynet.my/duitnow?ref=$ref&amount=${widget.amount.toStringAsFixed(2)}&merchant=${Uri.encodeComponent(widget.shopName)}',
-          amount: widget.amount,
-          status: 'pending',
-          raw: const {},
-        );
+        _purchase = res;
         _isLoadingQr = false;
       });
       _startCountdown();
-    }
-  }
+      _startPollingStatus(res.id);
 
-  Future<void> _proceedToFpxCard() async {
-    setState(() => _isLoadingQr = true);
-    try {
-      if (ChipPaymentService.instance.isAvailable) {
-        final res = await ChipPaymentService.instance.createPurchase(
-          amount: widget.amount,
-          orderTitle: widget.orderTitle,
-          reference: widget.orderId,
-          clientName: widget.customerName,
-          clientPhone: widget.customerPhone,
-        );
-        if (mounted) setState(() => _isLoadingQr = false);
-        if (res.checkoutUrl.isNotEmpty) {
-          final uri = Uri.tryParse(res.checkoutUrl);
-          if (uri != null) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-            if (mounted) {
-              _startPollingStatus(res.id);
-              showGlassToast(
-                context,
-                'Membuka laman selamat Chip Asia. Kembali ke sini selepas bayaran.',
-                icon: HugeIcons.strokeRoundedLinkSquare01,
-              );
-            }
-            return;
+      // Jika pelanggan memilih Perbankan FPX / Kad (atau tiada payload QR langsung), terus buka pautan selamat CHIP Asia
+      if ((_selectedMethod == 'fpx_card' || !res.hasDirectQrPayload) && res.checkoutUrl.isNotEmpty) {
+        final uri = Uri.tryParse(res.checkoutUrl);
+        if (uri != null) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          if (mounted) {
+            showGlassToast(
+              context,
+              'Membuka gerbang selamat CHIP Asia. Selesaikan bayaran untuk pengesahan automatik.',
+              icon: HugeIcons.strokeRoundedLinkSquare01,
+            );
           }
         }
       }
     } catch (e) {
-      debugPrint('[CustomerPaymentModal] Chip FPX error ($e), opening instant FPX bank selector');
+      debugPrint('[CustomerPaymentModal] CHIP createPurchase error: $e');
+      if (!mounted) return;
+      setState(() {
+        _isLoadingQr = false;
+        _gatewayError = e.toString().replaceFirst('Exception: ', '');
+      });
     }
-
-    if (!mounted) return;
-    setState(() => _isLoadingQr = false);
-    _showInstantFpxSheet(context);
   }
 
-  void _showInstantFpxSheet(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final List<Map<String, dynamic>> banks = [
-      {'name': 'Maybank2u', 'color': const Color(0xFFFFC107)},
-      {'name': 'CIMB Clicks', 'color': const Color(0xFFE53935)},
-      {'name': 'Bank Islam', 'color': const Color(0xFFC2185B)},
-      {'name': 'Public Bank', 'color': const Color(0xFFD32F2F)},
-      {'name': 'RHB Now', 'color': const Color(0xFF1976D2)},
-      {'name': 'Hong Leong Connect', 'color': const Color(0xFF0D47A1)},
-      {'name': 'Touch \'n Go eWallet', 'color': const Color(0xFF0288D1)},
-      {'name': 'Kad Debit / Kredit (Visa/Mastercard)', 'color': const Color(0xFF455A64)},
-    ];
+  Future<void> _verifyPaymentStatusNow() async {
+    final purchaseId = _purchase?.id ?? '';
+    if (purchaseId.isEmpty || _isVerifyingManual) return;
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF131922) : Colors.white,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-              border: Border.all(
-                color: isDark ? Colors.white12 : Colors.black12,
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 44,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.white24 : Colors.black12,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    const HugeIcon(icon: HugeIcons.strokeRoundedBank, color: Color(0xFF00E5FF), size: 22),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Pilih Bank FPX / Kad',
-                            style: TextStyle(
-                              color: isDark ? Colors.white : Colors.black87,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            'Jumlah: RM ${widget.amount.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              color: Color(0xFF10B981),
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                ConstrainedBox(
-                  constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.5),
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: banks.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final b = banks[index];
-                      return ListTile(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          side: BorderSide(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.08)),
-                        ),
-                        tileColor: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.02),
-                        leading: Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color: (b['color'] as Color).withValues(alpha: 0.15),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: HugeIcon(
-                              icon: index == banks.length - 1
-                                  ? HugeIcons.strokeRoundedCreditCard
-                                  : HugeIcons.strokeRoundedBank,
-                              color: b['color'] as Color,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                        title: Text(
-                          b['name'] as String,
-                          style: TextStyle(
-                            color: isDark ? Colors.white : Colors.black87,
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        trailing: const HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, color: Colors.grey, size: 14),
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          _handleSuccessPayment(
-                            'FPX (${b['name']})',
-                            'FPX-${DateTime.now().millisecondsSinceEpoch}',
-                          );
-                          showGlassToast(context, 'Bayaran berjaya melalui ${b['name']}!');
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+    setState(() => _isVerifyingManual = true);
+    HapticFeedback.mediumImpact();
+    try {
+      final status = await ChipPaymentService.instance.checkPurchaseStatus(purchaseId);
+      if (!mounted) return;
+      setState(() => _isVerifyingManual = false);
+
+      if (status == 'paid') {
+        _statusTimer?.cancel();
+        _countdownTimer?.cancel();
+        final label = _selectedMethod == 'fpx_card' ? 'FPX / Kad (CHIP Asia)' : 'DuitNow QR (CHIP Asia)';
+        _handleSuccessPayment(label, purchaseId);
+        showGlassToast(context, 'Bayaran disahkan oleh gerbang CHIP Asia!');
+      } else {
+        showGlassToast(
+          context,
+          'Bayaran belum diterima daripada bank anda. Sila lengkapkan bayaran terlebih dahulu.',
+          isError: true,
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isVerifyingManual = false);
+      showGlassToast(context, 'Gagal menyemak status bayaran. Sila cuba lagi.', isError: true);
+    }
   }
 
   @override
@@ -541,12 +417,10 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                         onPressed: _isLoadingQr
                             ? null
                             : () {
-                                if (_selectedMethod == 'duitnow') {
-                                  _proceedToDuitNow();
-                                } else if (_selectedMethod == 'fpx_card') {
-                                  _proceedToFpxCard();
-                                } else {
+                                if (_selectedMethod == 'cash') {
                                   _handleSuccessPayment('Tunai di Kaunter', 'CASH-${DateTime.now().millisecondsSinceEpoch}');
+                                } else {
+                                  _startGatewayFlow();
                                 }
                               },
                         child: _isLoadingQr
@@ -570,44 +444,51 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                     ),
                   ],
 
-                  // STEP 2: PAPARAN DUITNOW QR DINAMIK
+                  // STEP 2: PAPARAN GERBANG CHIP ASIA / DUITNOW QR
                   if (_currentStep == PaymentStep.duitNowQr) ...[
                     Row(
                       children: [
                         IconButton(
                           icon: HugeIcon(
-                            icon: HugeIcons.strokeRoundedArrowLeft01,
+                            icon: HugeIcons.strokeRoundedCancel01,
                             color: isDark ? Colors.white : Colors.black,
                             size: 20,
                           ),
                           onPressed: () {
                             _statusTimer?.cancel();
                             _countdownTimer?.cancel();
-                            setState(() => _currentStep = PaymentStep.selectMethod);
+                            Navigator.pop(context, false);
                           },
                         ),
                         const SizedBox(width: 4),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Imbas DuitNow QR',
-                              style: TextStyle(
-                                color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _selectedMethod == 'fpx_card'
+                                    ? 'Gerbang FPX & Kad (CHIP Asia)'
+                                    : 'Imbas DuitNow QR (CHIP Asia)',
+                                style: TextStyle(
+                                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                  fontSize: 15.5,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
-                            ),
-                            Text(
-                              widget.shopName,
-                              style: TextStyle(
-                                color: isDark ? Colors.white54 : const Color(0xFF64748B),
-                                fontSize: 11,
+                              Text(
+                                widget.shopName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                        const Spacer(),
+                        const SizedBox(width: 8),
                         // Countdown badge
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -637,12 +518,72 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                     const SizedBox(height: 16),
 
                     if (_isLoadingQr)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 40),
-                        child: CircularProgressIndicator(color: Color(0xFF00E5FF)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 44),
+                        child: Column(
+                          children: [
+                            const CircularProgressIndicator(color: Color(0xFF00E5FF)),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Menyediakan sesi pembayaran selamat CHIP Asia...',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: isDark ? Colors.white70 : Colors.black54,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else if (_gatewayError != null)
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+                        ),
+                        child: Column(
+                          children: [
+                            const HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.redAccent, size: 36),
+                            const SizedBox(height: 12),
+                            Text(
+                              _gatewayError!,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black87,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: const Text('Kembali ke Troli'),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF00E5FF),
+                                      foregroundColor: Colors.black,
+                                    ),
+                                    onPressed: _startGatewayFlow,
+                                    child: const Text('Cuba Semula', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       )
                     else ...[
-                      // Kotak DuitNow QR
+                      // Kotak DuitNow QR / Pautan CHIP Asia
                       Container(
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
@@ -658,30 +599,32 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                         ),
                         child: Column(
                           children: [
-                            // DuitNow Header Branding
+                            // Header Branding
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFED0058),
+                                    color: _selectedMethod == 'fpx_card'
+                                        ? const Color(0xFF0F172A)
+                                        : const Color(0xFFED0058),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
-                                  child: const Text(
-                                    'DuitNow',
-                                    style: TextStyle(
+                                  child: Text(
+                                    _selectedMethod == 'fpx_card' ? 'CHIP ASIA FPX / KAD' : 'DuitNow',
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.w900,
-                                      fontSize: 13,
+                                      fontSize: 12,
                                       letterSpacing: 0.5,
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 6),
-                                const Text(
-                                  'QR INTEROPERABLE',
-                                  style: TextStyle(
+                                Text(
+                                  _selectedMethod == 'fpx_card' ? 'SECURE CHECKOUT' : 'QR INTEROPERABLE',
+                                  style: const TextStyle(
                                     color: Colors.black54,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 9,
@@ -695,16 +638,20 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
 
                             // Paparan QR Kod Asli
                             SizedBox(
-                              width: 200,
-                              height: 200,
+                              width: 196,
+                              height: 196,
                               child: QrImageView(
-                                data: _purchase?.duitNowUrl.isNotEmpty == true
+                                data: (_purchase?.duitNowUrl.isNotEmpty == true)
                                     ? _purchase!.duitNowUrl
-                                    : 'https://gate.chip-in.asia',
+                                    : (_purchase?.checkoutUrl.isNotEmpty == true
+                                        ? _purchase!.checkoutUrl
+                                        : 'https://gate.chip-in.asia'),
                                 version: QrVersions.auto,
-                                eyeStyle: const QrEyeStyle(
+                                eyeStyle: QrEyeStyle(
                                   eyeShape: QrEyeShape.square,
-                                  color: Color(0xFFED0058),
+                                  color: _selectedMethod == 'fpx_card'
+                                      ? const Color(0xFF0F172A)
+                                      : const Color(0xFFED0058),
                                 ),
                                 dataModuleStyle: const QrDataModuleStyle(
                                   dataModuleShape: QrDataModuleShape.square,
@@ -716,7 +663,7 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                             const SizedBox(height: 10),
 
                             Text(
-                              currencyFormat.format(widget.amount),
+                              currencyFormat.format(_purchase?.amount ?? widget.amount),
                               style: const TextStyle(
                                 color: Colors.black,
                                 fontSize: 22,
@@ -725,32 +672,50 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                               ),
                             ),
                             const Text(
-                              'Menunggu bayaran dari bank anda...',
+                              'Menunggu pengesahan bayaran masa-nyata daripada CHIP Asia...',
+                              textAlign: TextAlign.center,
                               style: TextStyle(color: Colors.black45, fontSize: 11),
                             ),
                           ],
                         ),
                       ),
 
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 14),
 
-                      // Panduan Imbasan
-                      Text(
-                        'Buka mana-mana aplikasi perbankan (Maybank, CIMB, TNG eWallet dll) & imbas kod di atas.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: isDark ? Colors.white60 : const Color(0xFF64748B),
-                          fontSize: 11.5,
-                          height: 1.35,
+                      // Butang Buka Halaman Pembayaran CHIP Asia (Utama untuk Web / Peranti Sama)
+                      if (_purchase?.checkoutUrl.isNotEmpty == true) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF00E5FF),
+                              foregroundColor: Colors.black,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                            onPressed: () {
+                              final uri = Uri.tryParse(_purchase!.checkoutUrl);
+                              if (uri != null) {
+                                launchUrl(uri, mode: LaunchMode.externalApplication);
+                              }
+                            },
+                            icon: const HugeIcon(icon: HugeIcons.strokeRoundedLinkSquare01, color: Colors.black, size: 18),
+                            label: Text(
+                              _selectedMethod == 'fpx_card'
+                                  ? 'Buka Semula Gerbang FPX / Kad CHIP'
+                                  : 'Bayar Terus di Halaman CHIP Asia',
+                              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w900),
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 10),
+                      ],
 
-                      const SizedBox(height: 16),
-
-                      // Butang Sahkan Bayaran DuitNow
+                      // Butang Semak Status Bayaran (Disahkan dari Pelayan CHIP)
                       SizedBox(
                         width: double.infinity,
-                        height: 48,
+                        height: 46,
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF10B981),
@@ -758,61 +723,48 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                             elevation: 0,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                           ),
-                          onPressed: () {
-                            HapticFeedback.mediumImpact();
-                            _handleSuccessPayment(
-                              'DuitNow QR',
-                              _purchase?.id ?? 'DUITNOW-${widget.orderId}',
-                            );
-                            showGlassToast(context, 'Bayaran DuitNow disahkan!');
-                          },
-                          icon: const HugeIcon(icon: HugeIcons.strokeRoundedCheckmarkCircle02, color: Colors.white, size: 18),
-                          label: const Text(
-                            'Sahkan Bayaran (Saya Telah Bayar)',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                          onPressed: _isVerifyingManual ? null : _verifyPaymentStatusNow,
+                          icon: _isVerifyingManual
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : const HugeIcon(icon: HugeIcons.strokeRoundedCheckmarkCircle02, color: Colors.white, size: 18),
+                          label: Text(
+                            _isVerifyingManual
+                                ? 'Menyemak Status di CHIP Asia...'
+                                : 'Saya Telah Bayar (Semak Status)',
+                            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
                       const SizedBox(height: 10),
 
-                      // Butang Salin Ref / Pautan Web
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: isDark ? Colors.white : Colors.black,
-                                side: BorderSide(color: isDark ? Colors.white24 : Colors.black12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                              ),
-                              onPressed: () {
-                                final shortId = widget.orderId.length > 8 ? widget.orderId.substring(0, 8) : widget.orderId;
-                                Clipboard.setData(ClipboardData(text: 'DUITNOW-${shortId.toUpperCase()}'));
-                                showGlassToast(context, 'Rujukan DuitNow disalin!', icon: HugeIcons.strokeRoundedCopy01);
-                              },
-                              icon: const HugeIcon(icon: HugeIcons.strokeRoundedCopy01, size: 15),
-                              label: const Text('Salin Rujukan', style: TextStyle(fontSize: 12)),
+                      // Butang Batal / Kembali ke Troli
+                      SizedBox(
+                        width: double.infinity,
+                        height: 42,
+                        child: TextButton.icon(
+                          onPressed: () {
+                            _statusTimer?.cancel();
+                            _countdownTimer?.cancel();
+                            Navigator.pop(context, false);
+                          },
+                          icon: HugeIcon(
+                            icon: HugeIcons.strokeRoundedArrowLeft01,
+                            size: 15,
+                            color: isDark ? Colors.white60 : Colors.black54,
+                          ),
+                          label: Text(
+                            'Batal & Kembali ke Troli / Tukar Kaedah Bayaran',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white60 : Colors.black54,
                             ),
                           ),
-                          if (_purchase?.checkoutUrl.isNotEmpty == true) ...[
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: isDark ? Colors.white : Colors.black,
-                                  side: BorderSide(color: isDark ? Colors.white24 : Colors.black12),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                ),
-                                onPressed: () {
-                                  final uri = Uri.tryParse(_purchase!.checkoutUrl);
-                                  if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
-                                },
-                                icon: const HugeIcon(icon: HugeIcons.strokeRoundedLinkSquare01, size: 15),
-                                label: const Text('Buka Web', style: TextStyle(fontSize: 12)),
-                              ),
-                            ),
-                          ],
-                        ],
+                        ),
                       ),
                     ],
                   ],

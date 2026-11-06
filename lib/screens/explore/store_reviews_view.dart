@@ -427,7 +427,7 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
     final Color textPrimary = isDark ? Colors.white : const Color(0xFF1C1C1E);
     final Color textSecondary = isDark ? Colors.white60 : const Color(0xFF3A3A3C).withValues(alpha: 0.7);
 
-    final String shopName = widget.shop['name'] ?? 'Store';
+    final String shopName = (widget.shop['business_name'] ?? widget.shop['trading_name'] ?? widget.shop['name'] ?? 'Store').toString();
     final double ratingVal = (widget.shop['rating'] is num)
         ? (widget.shop['rating'] as num).toDouble()
         : 4.8;

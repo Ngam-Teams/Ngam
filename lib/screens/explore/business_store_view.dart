@@ -192,6 +192,8 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
         builder: (_) => StoreCartView(
           shop: {
             ...widget.shop,
+            'name': _shopName,
+            'business_name': _shopName,
             if (_syncedOperatingHours != null)
               'operating_hours': _syncedOperatingHours,
           },
@@ -721,6 +723,8 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
       MaterialPageRoute(
         builder: (_) => StoreInfoView(shop: {
           ...widget.shop,
+          'name': _shopName,
+          'business_name': _shopName,
           'openHour': _openHour,
           'openMinute': _openMinute,
           'closeHour': _closeHour,
@@ -736,7 +740,11 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => StoreReviewsView(shop: widget.shop),
+        builder: (_) => StoreReviewsView(shop: {
+          ...widget.shop,
+          'name': _shopName,
+          'business_name': _shopName,
+        }),
       ),
     );
   }
@@ -1757,6 +1765,8 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                         builder: (_) => StoreCartView(
                           shop: {
                             ...widget.shop,
+                            'name': _shopName,
+                            'business_name': _shopName,
                             if (_syncedOperatingHours != null)
                               'operating_hours': _syncedOperatingHours,
                           },

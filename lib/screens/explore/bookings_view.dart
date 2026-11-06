@@ -64,8 +64,6 @@ class _BookingsViewState extends State<BookingsView> {
   bool _hasAllergies = false;
 
   int _selectedPaymentIndex = 0;
-  int _selectedCardIndex = 0;
-  int _selectedBankIndex = 0;
   Map<String, dynamic>? _selectedVoucher;
   double _voucherDiscount = 0.0;
   bool _userDismissedVoucher = false;
@@ -735,10 +733,25 @@ class _BookingsViewState extends State<BookingsView> {
   }
 
   final List<Map<String, dynamic>> _paymentMethods = [
-    {"name": "DuitNow QR Pantas (Zero Fee)", "icon": HugeIcons.strokeRoundedQrCode, "type": "duitnow"},
-    {"name": "Perbankan Dalam Talian (FPX)", "icon": HugeIcons.strokeRoundedBank, "type": "bank"},
-    {"name": "Kad Debit / Kredit", "icon": HugeIcons.strokeRoundedCreditCard, "type": "card"},
-    {"name": "Bayar di Kedai (Tunai)", "icon": HugeIcons.strokeRoundedCash01, "type": "cash"},
+    {
+      "name": "DuitNow QR Pantas (Zero Fee)",
+      "subtitle": "Imbas guna mana-mana aplikasi Bank atau e-Wallet (TNG, GrabPay, MAE)",
+      "icon": HugeIcons.strokeRoundedQrCode,
+      "type": "duitnow",
+      "badge": "DISYORKAN",
+    },
+    {
+      "name": "Perbankan FPX & Kad Debit / Kredit",
+      "subtitle": "Maybank2u, CIMB Clicks, Bank Islam, Visa & Mastercard (CHIP Asia)",
+      "icon": HugeIcons.strokeRoundedCreditCard,
+      "type": "fpx_card",
+    },
+    {
+      "name": "Bayar di Kaunter (Tunai)",
+      "subtitle": "Buat bayaran secara fizikal terus di premis kedai",
+      "icon": HugeIcons.strokeRoundedCash01,
+      "type": "cash",
+    },
   ];
 
   String _lastPaymentStatus = 'unpaid';
@@ -746,8 +759,6 @@ class _BookingsViewState extends State<BookingsView> {
   int _paxCount = 2;
   int _nightsCount = 1;
   final TextEditingController _industryDetailCtrl = TextEditingController();
-
-  final List<String> _banksList = ["Maybank2u", "CIMB Clicks", "Public Bank", "RHB Now"];
 
   StreamSubscription<List<Map<String, dynamic>>>? _timeStream;
   String? _holdingRecordId;
@@ -1173,6 +1184,17 @@ class _BookingsViewState extends State<BookingsView> {
   String _shopName = '';
   String _selectedTime = '';
 
+  String get _resolvedShopName {
+    final s = _shopName.trim();
+    if (s.isNotEmpty &&
+        s.toLowerCase() != 'kedai ngam' &&
+        s.toLowerCase() != 'store' &&
+        s.toLowerCase() != 'zul barber shop') {
+      return s;
+    }
+    return widget.shopName;
+  }
+
   //  Restored Auto-Save Functions
   Future<void> _saveDraftToPreventLoss(String shopName, String selectedTime) async {
     final prefs = await SharedPreferences.getInstance();
@@ -1237,12 +1259,15 @@ class _BookingsViewState extends State<BookingsView> {
         if (biz != null) {
           final realIndustry = biz['business_industry']?.toString() ?? '';
           final realName = biz['business_name']?.toString() ?? widget.shopName;
+          if (realName.trim().isNotEmpty) {
+            _shopName = realName.trim();
+          }
           final detected = _detectBookingType(realIndustry, realName);
           if (detected != _bookingType) {
             _bookingType = detected;
             _initCategoryTemplate();
-            if (mounted) setState(() {});
           }
+          if (mounted) setState(() {});
         }
       } catch (e) {
         debugPrint('Error fetching business info in booking: $e');
@@ -2063,40 +2088,10 @@ class _BookingsViewState extends State<BookingsView> {
     final String chosenPaymentType = _paymentMethods[_selectedPaymentIndex]["type"] as String;
     final String chosenPaymentName = _paymentMethods[_selectedPaymentIndex]["name"] as String;
 
-    String paymentStatus = 'unpaid';
+    String paymentStatus = chosenPaymentType == 'cash' ? 'unpaid' : 'pending';
     String transactionRef = '';
 
-    // If online payment (DuitNow QR, FPX, or Card), launch CustomerPaymentModal!
-    if (chosenPaymentType != "cash" && _totalPrice > 0) {
-      final bool paid = await CustomerPaymentModal.show(
-        context: context,
-        amount: _totalPrice,
-        orderTitle: 'Tempahan $combinedServiceTitle - ${widget.shopName}',
-        shopName: widget.shopName,
-        orderId: shortBookingId,
-        customerName: finalCustomerName,
-        customerPhone: finalCustomerPhone,
-        initialMethod: chosenPaymentType == 'duitnow' ? 'duitnow' : 'fpx_card',
-        voucherCode: _selectedVoucher != null ? _selectedVoucher!['code']?.toString() : null,
-        discountAmount: _voucherDiscount > 0 ? _voucherDiscount : null,
-        onPaymentSuccess: (method, ref) async {
-          paymentStatus = 'paid';
-          transactionRef = ref;
-        },
-      );
-
-      if (!paid) {
-        if (!mounted) return;
-        showGlassToast(context, 'Pembayaran tidak selesai. Sila cuba lagi.', isError: true);
-        return;
-      }
-      paymentStatus = 'paid';
-    }
-
-    _lastPaymentStatus = paymentStatus;
-    _lastPaymentMethod = chosenPaymentName;
-
-    final Map<String, dynamic> metadataPayload = {
+    Map<String, dynamic> buildMetadataPayload(String currentPayStatus, String currentRef) => {
       'short_ref': shortBookingId,
       'booking_id': shortBookingId,
       'customer_auth_id': currentUser.id,
@@ -2108,13 +2103,13 @@ class _BookingsViewState extends State<BookingsView> {
       'addons_list': selectedAddonNames,
       'estimated_duration_mins': _totalTime,
       'payment_method': chosenPaymentName,
-      'payment_status': paymentStatus,
-      if (transactionRef.isNotEmpty) 'transaction_ref': transactionRef,
+      'payment_status': currentPayStatus,
+      if (currentRef.isNotEmpty) 'transaction_ref': currentRef,
       'total_price': "RM$_totalPriceLabel",
       if (_selectedVoucher != null) 'voucher_code': _selectedVoucher!['code'],
       if (_voucherDiscount > 0) 'discount_amount': _voucherDiscount,
       if (_voucherDiscount > 0) 'original_subtotal': "RM${_fmtMoney(_subtotal)}",
-      'shop_name': widget.shopName,
+      'shop_name': _resolvedShopName,
       'shop_image': widget.shopImage,
       'category': widget.category,
       'booking_type': _bookingType.name,
@@ -2138,6 +2133,79 @@ class _BookingsViewState extends State<BookingsView> {
             ].join(' • ')
           : 'Tempahan melalui Aplikasi Ngam',
     };
+
+    // Jika pembayaran dalam talian (DuitNow QR atau FPX / Kad), kemas kini rekod 'holding' dahulu
+    // dengan harga sebenar & short_ref supaya pelayan CHIP boleh mengesahkan harga tanpa menghantar
+    // notifikasi awal ke Ngam Business sebelum bayaran selesai!
+    if (chosenPaymentType != "cash" && _totalPrice > 0) {
+      final pendingMeta = buildMetadataPayload('pending', '');
+      final String? holdId = _holdingRecordId;
+      if (holdId != null && !holdId.startsWith('local_')) {
+        try {
+          await _updateBooking(holdId, {
+            'customer_name': finalCustomerName,
+            'service_name': combinedServiceTitle,
+            'status': 'holding',
+            'total_price': _totalPrice,
+            if (staffId != null) 'staff_id': staffId,
+            'booking_metadata': pendingMeta,
+          });
+        } catch (e) {
+          debugPrint('[BookingsView] pre-payment hold update warning: $e');
+        }
+      } else {
+        try {
+          final insertedHold = await _insertBooking({
+            'business_id': widget.shopId,
+            'customer_id': currentUser.id,
+            'customer_name': finalCustomerName,
+            'service_name': combinedServiceTitle,
+            'booking_date': targetDate,
+            'booking_time': targetTime,
+            'status': 'holding',
+            'pax': _paxCount,
+            'total_price': _totalPrice,
+            if (staffId != null) 'staff_id': staffId,
+            'booking_metadata': pendingMeta,
+          });
+          _holdingRecordId = insertedHold['id']?.toString();
+        } catch (e) {
+          debugPrint('[BookingsView] pre-payment hold insert warning: $e');
+        }
+      }
+
+      if (!mounted) return;
+      final bool paid = await CustomerPaymentModal.show(
+        context: context,
+        amount: _totalPrice,
+        orderTitle: 'Tempahan $combinedServiceTitle - $_resolvedShopName',
+        shopName: _resolvedShopName,
+        orderId: shortBookingId,
+        customerName: finalCustomerName,
+        customerPhone: finalCustomerPhone,
+        initialMethod: chosenPaymentType,
+        voucherCode: _selectedVoucher != null ? _selectedVoucher!['code']?.toString() : null,
+        discountAmount: _voucherDiscount > 0 ? _voucherDiscount : null,
+        onPaymentSuccess: (method, ref) async {
+          paymentStatus = 'paid';
+          transactionRef = ref;
+        },
+      );
+
+      if (!paid) {
+        if (!mounted) return;
+        showGlassToast(context, 'Pembayaran dibatalkan. Tempahan belum dihantar ke kedai.', isError: true);
+        return;
+      }
+      paymentStatus = 'paid';
+    } else {
+      paymentStatus = 'unpaid';
+    }
+
+    _lastPaymentStatus = paymentStatus;
+    _lastPaymentMethod = chosenPaymentName;
+
+    final Map<String, dynamic> metadataPayload = buildMetadataPayload(paymentStatus, transactionRef);
 
     String? savedId;
     final String? oldHold = _holdingRecordId;
@@ -2244,130 +2312,47 @@ class _BookingsViewState extends State<BookingsView> {
     return _buildStepThreeCheckout(isDark, staff);
   }
 
-  void _showAddCardSheet(BuildContext context, bool isDark) {
-    final nameController = TextEditingController();
-    final numberController = TextEditingController();
-    final expiryController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-          child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E242B).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8),
-                  border: Border(top: BorderSide(color: Colors.white.withValues(alpha: isDark ? 0.1 : 0.4), width: 1.5)),
-                ),
-                child: SingleChildScrollView(
-                  child: Form(
-                    key: formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(10)))),
-                        const SizedBox(height: 16),
-                        Text("booking.add_card".tr(), style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 18, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 16),
-
-                        _buildPremiumInput(isDark: isDark, label: "Card Number", hint: "0000 0000 0000 0000", icon: HugeIcons.strokeRoundedCreditCard, controller: numberController, keyboardType: TextInputType.number, formatters: [FilteringTextInputFormatter.digitsOnly, _CardNumberFormatter(), LengthLimitingTextInputFormatter(19)], validator: (value) {
-                          if (value == null) return "Invalid";
-                          if (value.replaceAll(' ', '').length != 16 && value.replaceAll(' ', '').length != 15) return "Invalid Length";
-                          return null;
-                        }),
-                        const SizedBox(height: 12),
-
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                                flex: 3,
-                                child: _buildPremiumInput(
-                                    isDark: isDark, label: "Card Holder", hint: "NAME ON CARD", icon: HugeIcons.strokeRoundedUser, controller: nameController, keyboardType: TextInputType.name, textCapitalization: TextCapitalization.characters,
-                                    formatters: [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')), _UpperCaseTextFormatter(), LengthLimitingTextInputFormatter(26)],
-                                    validator: (value) { if (value == null || value.trim().isEmpty) return "Cannot be empty"; return null; }
-                                )
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                                flex: 2,
-                                child: _buildPremiumInput(isDark: isDark, label: "Expiry", hint: "MM/YY", icon: HugeIcons.strokeRoundedCalendar01, controller: expiryController, keyboardType: TextInputType.number, formatters: [FilteringTextInputFormatter.digitsOnly, _ExpiryDateFormatter(), LengthLimitingTextInputFormatter(5)], validator: (value) {
-                                  if (value == null || !RegExp(r'^(0[1-9]|1[0-2])\/([0-9]{2})$').hasMatch(value)) return "Invalid date";
-                                  return null;
-                                })
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-
-                        _AnimatedPressable(
-                          onTap: () {
-                            if (formKey.currentState!.validate()) {
-                              final rawDigits = numberController.text.replaceAll(' ', '');
-                              String detectedBrand = 'CARD';
-                              if (rawDigits.startsWith('4')) detectedBrand = 'VISA';
-                              if (rawDigits.startsWith('5')) detectedBrand = 'MASTERCARD';
-                              if (rawDigits.startsWith('34') || rawDigits.startsWith('37')) detectedBrand = 'AMEX';
-
-                              UserData.addPaymentMethod({
-                                "id": DateTime.now().millisecondsSinceEpoch.toString(),
-                                "type": "card",
-                                "name": detectedBrand,
-                                "number": "**** **** **** ${rawDigits.length >= 4 ? rawDigits.substring(rawDigits.length - 4) : "0000"}",
-                                "holder": nameController.text.toUpperCase(),
-                                "expiry": expiryController.text,
-                                "isPrimary": false,
-                              });
-
-                              setState(() {
-                                _selectedPaymentIndex = 0;
-                                _selectedCardIndex = 0;
-                              });
-
-                              Navigator.pop(context);
-                            }
-                          },
-                          child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 16), decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.blue.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))]), child: Center(child: Text("booking.save_card".tr(), style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)))),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-
-  Widget _buildPremiumInput({required bool isDark, required String label, required String hint, required dynamic icon, required TextEditingController controller, TextInputType? keyboardType, List<TextInputFormatter>? formatters, TextCapitalization? textCapitalization, String? Function(String?)? validator}) {
+  Widget _buildPremiumInput({
+    required bool isDark,
+    required String label,
+    required String hint,
+    required dynamic icon,
+    required TextEditingController controller,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? formatters,
+    TextCapitalization? textCapitalization,
+    String? Function(String?)? validator,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label.toUpperCase(), style: const TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+        Text(
+          label.toUpperCase(),
+          style: const TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+        ),
         const SizedBox(height: 6),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-          decoration: BoxDecoration(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03), borderRadius: BorderRadius.circular(14)),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+            borderRadius: BorderRadius.circular(14),
+          ),
           child: TextFormField(
-            controller: controller, keyboardType: keyboardType, inputFormatters: formatters, validator: validator, textCapitalization: textCapitalization ?? TextCapitalization.none,
+            controller: controller,
+            keyboardType: keyboardType,
+            inputFormatters: formatters,
+            validator: validator,
+            textCapitalization: textCapitalization ?? TextCapitalization.none,
             style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.w600, fontSize: 14),
             decoration: InputDecoration(
-              hintText: hint, hintStyle: TextStyle(color: isDark ? Colors.white30 : Colors.black26, fontWeight: FontWeight.normal, fontSize: 13),
-              prefixIcon: Padding(padding: const EdgeInsets.symmetric(horizontal: 14.0), child: HugeIcon(icon: icon, color: Colors.grey, size: 16)),
-              prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36), border: InputBorder.none,
+              hintText: hint,
+              hintStyle: TextStyle(color: isDark ? Colors.white30 : Colors.black26, fontWeight: FontWeight.normal, fontSize: 13),
+              prefixIcon: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                child: HugeIcon(icon: icon, color: Colors.grey, size: 16),
+              ),
+              prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              border: InputBorder.none,
             ),
           ),
         ),
@@ -2971,158 +2956,77 @@ class _BookingsViewState extends State<BookingsView> {
           Column(
             children: List.generate(_paymentMethods.length, (i) {
               bool isSel = _selectedPaymentIndex == i;
-              String pType = _paymentMethods[i]["type"];
+
+              final String? badge = _paymentMethods[i]["badge"] as String?;
+              final String subtitle = (_paymentMethods[i]["subtitle"] ?? '') as String;
 
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: isSel ? Colors.blue.withValues(alpha: 0.05) : (isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white.withValues(alpha: 0.5)),
+                  color: isSel ? Colors.blue.withValues(alpha: 0.08) : (isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white.withValues(alpha: 0.5)),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: isSel ? Colors.blue : Colors.white.withValues(alpha: isDark ? 0.05 : 0.6), width: 1.5),
+                  border: Border.all(color: isSel ? Colors.blue : Colors.white.withValues(alpha: isDark ? 0.08 : 0.6), width: 1.5),
                 ),
-                child: Column(
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        if (pType == "card") {
-                          final hasCards = UserData.savedPaymentMethods.value.any((m) => m["type"] == "card");
-                          if (!hasCards) {
-                            _showAddCardSheet(context, isDark);
-                            return;
-                          }
-                        }
-                        setState(() => _selectedPaymentIndex = i);
-                      },
-                      behavior: HitTestBehavior.opaque,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        child: Row(
-                          children: [
-                            HugeIcon(icon: _paymentMethods[i]["icon"], color: isSel ? Colors.blue : (isDark ? Colors.white60 : Colors.black54), size: 22),
-                            const SizedBox(width: 12),
-                            //  FIXED: Wrapped in Expanded to prevent title overflow
-                            Expanded(
-                              child: Text(
-                                _paymentMethods[i]["name"],
-                                style: TextStyle(fontSize: 15, fontWeight: isSel ? FontWeight.bold : FontWeight.w600, color: isSel ? Colors.blue : (isDark ? Colors.white70 : Colors.black87)),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            HugeIcon(
-                                icon: isSel ? HugeIcons.strokeRoundedCheckmarkCircle02 : HugeIcons.strokeRoundedCircle,
-                                color: isSel ? Colors.blue : (isDark ? Colors.white30 : Colors.black26),
-                                size: 20,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    AnimatedSize(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeInOut,
-                      child: (isSel && pType != "cash")
-                          ? Padding(
-                        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-                        child: pType == "card"
-
-                            ? ValueListenableBuilder<List<Map<String, dynamic>>>(
-                          valueListenable: UserData.savedPaymentMethods,
-                          builder: (context, allMethods, _) {
-                            final cardMethods = allMethods.where((m) => m["type"] == "card").toList();
-
-                            if (cardMethods.isEmpty) {
-                              return _AnimatedPressable(
-                                onTap: () => _showAddCardSheet(context, isDark),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.withValues(alpha: 0.3))),
-                                  child: Center(child: Text("booking.add_new_card".tr(), style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold))),
-                                ),
-                              );
-                            }
-                            return Column(
-                              children: List.generate(cardMethods.length, (subIndex) {
-                                bool isSubSel = _selectedCardIndex == subIndex;
-
-                                //  FIXED: Grab only the last 4 digits for a clean, short display!
-                                final method = cardMethods[subIndex];
-                                final rawNumber = method["number"].toString();
-                                final last4 = rawNumber.length >= 4 ? rawNumber.substring(rawNumber.length - 4) : "0000";
-                                String itemName = "${method["name"]}  **** $last4";
-
-                                return GestureDetector(
-                                  onTap: () => setState(() => _selectedCardIndex = subIndex),
-                                  behavior: HitTestBehavior.opaque,
-                                  child: Container(
-                                    margin: const EdgeInsets.only(bottom: 6),
-                                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                                    decoration: BoxDecoration(
-                                      color: isSubSel ? Colors.blue.withValues(alpha: 0.15) : (isDark ? Colors.black26 : Colors.white),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: isSubSel ? Colors.blue.withValues(alpha: 0.5) : Colors.transparent),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        //  Clean and short text (e.g., "VISA  •••• 1234")
-                                        Text(
-                                            itemName,
-                                            style: TextStyle(fontSize: 14, fontWeight: isSubSel ? FontWeight.w600 : FontWeight.normal, color: isDark ? Colors.white : Colors.black87)
-                                        ),
-                                        const Spacer(),
-                                        if (isSubSel) const HugeIcon(icon: HugeIcons.strokeRoundedTick01, color: Colors.blue, size: 16)
-                                      ],
+                child: GestureDetector(
+                  onTap: () => setState(() => _selectedPaymentIndex = i),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    child: Row(
+                      children: [
+                        HugeIcon(icon: _paymentMethods[i]["icon"], color: isSel ? Colors.blue : (isDark ? Colors.white60 : Colors.black54), size: 22),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      _paymentMethods[i]["name"],
+                                      style: TextStyle(fontSize: 14.5, fontWeight: isSel ? FontWeight.bold : FontWeight.w600, color: isSel ? Colors.blue : (isDark ? Colors.white : Colors.black87)),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                );
-                              }),
-                            );
-                          },
-                        )
-
-                            : Column(
-                          children: List.generate(_banksList.length, (subIndex) {
-                            bool isSubSel = _selectedBankIndex == subIndex;
-                            String itemName = _banksList[subIndex];
-
-                            return GestureDetector(
-                              onTap: () => setState(() => _selectedBankIndex = subIndex),
-                              behavior: HitTestBehavior.opaque,
-                              child: Container(
-                                margin: const EdgeInsets.only(bottom: 6),
-                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                                decoration: BoxDecoration(
-                                  color: isSubSel ? Colors.blue.withValues(alpha: 0.15) : (isDark ? Colors.black26 : Colors.white),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: isSubSel ? Colors.blue.withValues(alpha: 0.5) : Colors.transparent),
-                                ),
-                                child: Row(
-                                  children: [
-                                    //  FIXED: Wrapped in Expanded to stop Bank Name overflow
-                                    Expanded(
+                                  if (badge != null) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFED0058).withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
                                       child: Text(
-                                        itemName,
-                                        style: TextStyle(fontSize: 14, fontWeight: isSubSel ? FontWeight.w600 : FontWeight.normal, color: isDark ? Colors.white : Colors.black87),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                        badge,
+                                        style: const TextStyle(color: Color(0xFFED0058), fontSize: 9, fontWeight: FontWeight.w900),
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
-                                    if (isSubSel) const HugeIcon(icon: HugeIcons.strokeRoundedTick01, color: Colors.blue, size: 16) else const SizedBox(width: 16)
                                   ],
-                                ),
+                                ],
                               ),
-                            );
-                          }),
+                              if (subtitle.isNotEmpty) ...[
+                                const SizedBox(height: 3),
+                                Text(
+                                  subtitle,
+                                  style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white54 : Colors.black54),
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
-                      )
-                          : const SizedBox.shrink(),
-                    )
-                  ],
+                        const SizedBox(width: 8),
+                        HugeIcon(
+                          icon: isSel ? HugeIcons.strokeRoundedCheckmarkCircle02 : HugeIcons.strokeRoundedCircle,
+                          color: isSel ? Colors.blue : (isDark ? Colors.white30 : Colors.black26),
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               );
             }),
@@ -3545,37 +3449,5 @@ class _AnimatedPressableState extends State<_AnimatedPressable> with SingleTicke
         onTapUp: (_) { _c.reverse(); widget.onTap(); },
         onTapCancel: () => _c.reverse(),
         child: ScaleTransition(scale: _s, child: widget.child));
-  }
-}
-
-// ==========================================
-// FORMATTERS
-// ==========================================
-
-class _CardNumberFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    final text = newValue.text.replaceAll(RegExp(r'\D'), '');
-    String newString = '';
-    for (int i = 0; i < text.length; i++) { if (i > 0 && i % 4 == 0) newString += ' '; newString += text[i]; }
-    return TextEditingValue(text: newString, selection: TextSelection.collapsed(offset: newString.length));
-  }
-}
-
-class _ExpiryDateFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    final text = newValue.text.replaceAll(RegExp(r'\D'), '');
-    if (text.isEmpty) return newValue.copyWith(text: '');
-    String newString = '';
-    for (int i = 0; i < text.length; i++) { if (i == 2) newString += '/'; newString += text[i]; }
-    return TextEditingValue(text: newString, selection: TextSelection.collapsed(offset: newString.length));
-  }
-}
-
-class _UpperCaseTextFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    return TextEditingValue(text: newValue.text.toUpperCase(), selection: newValue.selection);
   }
 }

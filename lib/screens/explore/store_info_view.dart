@@ -139,8 +139,8 @@ class _StoreInfoViewState extends State<StoreInfoView> {
     final Color textSecondary = isDark ? Colors.white60 : const Color(0xFF3A3A3C).withValues(alpha: 0.7);
 
     final shop = widget.shop;
-    final String shopName = shop['name'] ?? 'Store Information';
-    final String category = (shop['category'] ?? 'Business').toString().toUpperCase();
+    final String shopName = (shop['business_name'] ?? shop['trading_name'] ?? shop['name'] ?? 'Store Information').toString();
+    final String category = (shop['business_industry'] ?? shop['category'] ?? 'Business').toString().toUpperCase();
     final String address = shop['address'] ?? 'Lot 12, Jalan Telawi 3, Bangsar, 59100 Kuala Lumpur';
     final String phone = shop['phone'] ?? '+60 12-345 6789';
     final String desc = shop['description'] ??

@@ -95,6 +95,42 @@ class _StoreCartViewState extends State<StoreCartView> {
   bool _isProcessing = false;
   bool _isPreOrder = false;
   String _selectedPaymentMethod = 'duitnow'; // 'duitnow', 'fpx_card', 'cash'
+  String? _syncedShopName;
+
+  String get _shopName {
+    if (_syncedShopName != null && _syncedShopName!.trim().isNotEmpty) {
+      return _syncedShopName!.trim();
+    }
+    for (final key in ['business_name', 'trading_name', 'shop_name', 'name', 'title']) {
+      final val = widget.shop[key]?.toString().trim() ?? '';
+      if (val.isNotEmpty &&
+          val.toLowerCase() != 'kedai ngam' &&
+          val.toLowerCase() != 'store' &&
+          val.toLowerCase() != 'kedai') {
+        return val;
+      }
+    }
+    final fallback = (widget.shop['business_name'] ?? widget.shop['name'])?.toString().trim() ?? '';
+    return fallback.isNotEmpty ? fallback : 'Kedai Pilihan';
+  }
+
+  Future<void> _ensureShopNameLoaded() async {
+    final current = _shopName;
+    if (current != 'Kedai Pilihan' && current != 'Kedai Ngam' && current != 'Store') return;
+    final shopId = widget.shop['id']?.toString() ?? '';
+    if (shopId.length < 20) return;
+    try {
+      final row = await Supabase.instance.client
+          .from('businesses')
+          .select('business_name')
+          .eq('id', shopId)
+          .maybeSingle();
+      final fetched = row?['business_name']?.toString().trim() ?? '';
+      if (fetched.isNotEmpty && mounted) {
+        setState(() => _syncedShopName = fetched);
+      }
+    } catch (_) {}
+  }
 
   final List<String> _quickTimeSlots = [
     'Segera (~15 minit)',
@@ -134,6 +170,7 @@ class _StoreCartViewState extends State<StoreCartView> {
       } else {
         _autoApplyBestVoucher();
       }
+      _ensureShopNameLoaded();
     });
   }
 
@@ -492,42 +529,36 @@ class _StoreCartViewState extends State<StoreCartView> {
       if (!mounted) return;
       setState(() => _isProcessing = false);
 
-      final bool completed = await CustomerPaymentModal.show(
-        context: context,
-        amount: _total,
-        orderTitle: 'Pesanan #${orderId.length > 6 ? orderId.substring(0, 6).toUpperCase() : orderId} - ${widget.shop['name'] ?? 'Kedai'}',
-        shopName: widget.shop['name']?.toString() ?? 'Kedai Ngam',
-        orderId: orderId,
-        items: _items
-            .map((i) => {
-                  'name': i.formattedProductName,
-                  'qty': i.quantity,
-                  'price': i.totalPrice,
-                })
-            .toList(),
-        customerName: customerName,
-        voucherCode: (_voucherApplied && _voucher != null) ? _voucher!['code']?.toString() : null,
-        discountAmount: (_voucherApplied && _discountAmount > 0) ? _discountAmount : null,
-        initialMethod: _selectedPaymentMethod,
-        onPaymentSuccess: (method, ref) async {
-          try {
-            await Supabase.instance.client.from('orders').update({
-              'payment_status': 'paid',
-              'payment_method': method,
-            }).eq('id', orderId);
-          } catch (e) {
-            debugPrint('[StoreCartView] Update paid status failed: $e');
-          }
-        },
-      );
+      // Jika Bayar di Kaunter (Tunai), terus hantar pesanan ke kedai tanpa buka modal pembayaran kedua!
+      if (_selectedPaymentMethod != 'cash' && _total > 0) {
+        final bool completed = await CustomerPaymentModal.show(
+          context: context,
+          amount: _total,
+          orderTitle: 'Pesanan #${orderId.length > 6 ? orderId.substring(0, 6).toUpperCase() : orderId} - $_shopName',
+          shopName: _shopName,
+          orderId: orderId,
+          items: _items
+              .map((i) => {
+                    'name': i.formattedProductName,
+                    'qty': i.quantity,
+                    'price': i.totalPrice,
+                  })
+              .toList(),
+          customerName: customerName,
+          customerPhone: customerPhone,
+          voucherCode: (_voucherApplied && _voucher != null) ? _voucher!['code']?.toString() : null,
+          discountAmount: (_voucherApplied && _discountAmount > 0) ? _discountAmount : null,
+          initialMethod: _selectedPaymentMethod,
+        );
 
-      if (!mounted) return;
-      if (!completed) {
-        // Customer left before the order was confirmed → withdraw it, keep cart.
-        await _cancelOrder(orderId);
         if (!mounted) return;
-        showGlassToast(context, 'Pesanan dibatalkan. Troli anda masih disimpan.', isError: true);
-        return;
+        if (!completed) {
+          // Pelanggan membatalkan bayaran sebelum selesai -> batalkan draf pesanan supaya kedai tidak menerima pesanan belum bayar
+          await _cancelOrder(orderId);
+          if (!mounted) return;
+          showGlassToast(context, 'Pembayaran dibatalkan. Troli anda masih disimpan.', isError: true);
+          return;
+        }
       }
 
       // Rekod penebusan baucar supaya kuota tidak boleh diguna tanpa had
@@ -572,7 +603,7 @@ class _StoreCartViewState extends State<StoreCartView> {
         MaterialPageRoute(
           builder: (_) => OrderStatusTrackerScreen(
             orderId: orderId,
-            shopName: widget.shop['name']?.toString() ?? 'Kedai Ngam',
+            shopName: _shopName,
             totalAmount: _total,
             pickupTime: (_fulfillmentMode == 2 || _fulfillmentMode == 3)
                 ? '$_selectedPickupDate, $_selectedPickupTime'
@@ -740,7 +771,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Add items from ${widget.shop['name'] ?? 'the store'} to get started.',
+                            'Add items from $_shopName to get started.',
                             style: TextStyle(
                               color: textSecondary,
                               fontSize: 14,
@@ -1099,7 +1130,7 @@ class _StoreCartViewState extends State<StoreCartView> {
             FloatingTopBar(
               isDark: isDark,
               title: 'Your Cart',
-              subtitle: widget.shop['name'] ?? 'Store',
+              subtitle: _shopName,
               actions: _items.isNotEmpty
                   ? [
                       GlassNavButton(

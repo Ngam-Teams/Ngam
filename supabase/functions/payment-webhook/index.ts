@@ -137,7 +137,8 @@ serve(async (req: Request) => {
       }
 
       // 1. Kira & kunci harga sebenar, diskaun baucar, komisen platform, dan caj gerbang di PostgreSQL
-      const { data: calcData, error: calcErr } = await supabase.rpc(
+      let calcData: Record<string, unknown> | null = null;
+      const { data: rpcCalcData, error: calcErr } = await supabase.rpc(
         "calculate_and_lock_order_for_chip",
         {
           p_order_id: orderId,
@@ -145,7 +146,101 @@ serve(async (req: Request) => {
         }
       );
 
-      if (calcErr || !calcData) {
+      if (!calcErr && rpcCalcData) {
+        calcData = rpcCalcData as Record<string, unknown>;
+      } else {
+        // Fallback server-side calculation (contoh: untuk pesanan mikro < RM 1.00 seperti RM 0.50 atau booking holding)
+        console.warn("[payment-webhook] RPC fallback triggered:", calcErr?.message);
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId);
+        if (isUuid) {
+          const { data: ordRow } = await supabase
+            .from("orders")
+            .select("id, business_id, total, status, payment_status")
+            .eq("id", orderId)
+            .maybeSingle();
+
+          if (ordRow) {
+            const { data: itemsRows } = await supabase
+              .from("order_items")
+              .select("quantity, unit_price, subtotal")
+              .eq("order_id", orderId);
+
+            let totalCents = Math.round(Number(ordRow.total || 0) * 100);
+            if (Array.isArray(itemsRows) && itemsRows.length > 0 && totalCents <= 0) {
+              totalCents = itemsRows.reduce((acc, it) => {
+                const sub = Number(it.subtotal ?? (Number(it.unit_price || 0) * Number(it.quantity || 1)));
+                return acc + Math.round(sub * 100);
+              }, 0);
+            }
+            const { data: bizRow } = await supabase
+              .from("businesses")
+              .select("business_name")
+              .eq("id", ordRow.business_id)
+              .maybeSingle();
+
+            await supabase
+              .from("orders")
+              .update({
+                expected_amount_cents: totalCents,
+                payment_channel: paymentChannel,
+              })
+              .eq("id", orderId);
+
+            calcData = {
+              target_type: "order",
+              order_id: ordRow.id,
+              business_id: ordRow.business_id,
+              business_name: bizRow?.business_name || "Kedai Ngam",
+              total_cents: totalCents,
+            };
+          }
+        }
+
+        if (!calcData) {
+          // Semak dalam jadual bookings (sama ada UUID atau short_ref)
+          const bookingQuery = isUuid
+            ? supabase.from("bookings").select("id, business_id, total_price, booking_metadata").eq("id", orderId).maybeSingle()
+            : supabase
+                .from("bookings")
+                .select("id, business_id, total_price, booking_metadata")
+                .or(`booking_metadata->>short_ref.eq.${orderId},booking_metadata->>booking_id.eq.${orderId}`)
+                .maybeSingle();
+
+          const { data: bkRow } = await bookingQuery;
+          if (bkRow) {
+            const totalCents = Math.round(Number(bkRow.total_price || 0) * 100);
+            const { data: bizRow } = await supabase
+              .from("businesses")
+              .select("business_name")
+              .eq("id", bkRow.business_id)
+              .maybeSingle();
+
+            const prevMeta = (bkRow.booking_metadata && typeof bkRow.booking_metadata === "object")
+              ? bkRow.booking_metadata as Record<string, unknown>
+              : {};
+            await supabase
+              .from("bookings")
+              .update({
+                booking_metadata: {
+                  ...prevMeta,
+                  expected_amount_cents: totalCents,
+                  payment_channel: paymentChannel,
+                },
+              })
+              .eq("id", bkRow.id);
+
+            calcData = {
+              target_type: "booking",
+              booking_id: bkRow.id,
+              business_id: bkRow.business_id,
+              business_name: bizRow?.business_name || "Kedai Ngam",
+              total_cents: totalCents,
+            };
+          }
+        }
+      }
+
+      if (!calcData) {
         return new Response(
           JSON.stringify({ error: calcErr?.message || "Gagal mengira jumlah pesanan di pelayan." }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -153,9 +248,9 @@ serve(async (req: Request) => {
       }
 
       const verifiedCents = Number(calcData.total_cents);
-      if (!Number.isInteger(verifiedCents) || verifiedCents < 100) {
+      if (!Number.isInteger(verifiedCents) || verifiedCents < 1) {
         return new Response(
-          JSON.stringify({ error: "Jumlah pesanan mestilah sekurang-kurangnya RM 1.00 (100 sen)." }),
+          JSON.stringify({ error: "Jumlah pesanan tidak sah untuk pembayaran dalam talian." }),
           { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -164,7 +259,6 @@ serve(async (req: Request) => {
       const clientEmail = payload.client_email || "pelanggan@ngam.dev";
       const clientName = payload.client_name || "Pelanggan Ngam";
       const clientPhone = payload.client_phone || "+601115892468";
-      const whitelist = payload.payment_method_whitelist;
 
       const webhookCallbackUrl = `${supabaseUrl}/functions/v1/payment-webhook`;
 
@@ -197,10 +291,6 @@ serve(async (req: Request) => {
           payload.cancel_redirect ||
           `https://ngam.dev/receipt/cancel?order_id=${encodeURIComponent(orderId)}`,
       };
-
-      if (Array.isArray(whitelist) && whitelist.length > 0) {
-        chipPayload.payment_method_whitelist = whitelist;
-      }
 
       const chipRes = await fetch(`${CHIP_BASE_URL}/purchases/`, {
         method: "POST",
@@ -247,6 +337,43 @@ serve(async (req: Request) => {
       });
 
       const chipData = await chipRes.json();
+
+      // Jika CHIP mengesahkan status === 'paid', terus kemas kini pesanan/tempahan secara idempoten di pelayan!
+      if (chipRes.ok && String(chipData.status || "").toLowerCase() === "paid") {
+        const refId = String(chipData.reference || payload.order_id || "").trim();
+        const paidCents =
+          typeof chipData.purchase?.total === "number"
+            ? Math.round(chipData.purchase.total)
+            : 0;
+        const payMethod =
+          chipData.transaction_data?.payment_method ||
+          chipData.payment?.payment_type ||
+          "chip_online";
+
+        if (refId && paidCents > 0) {
+          const { data: settleData, error: settleErr } = await supabase.rpc(
+            "process_verified_chip_webhook",
+            {
+              p_chip_purchase_id: String(chipData.id || purchaseId),
+              p_event_type: "purchase.paid",
+              p_reference_id: refId,
+              p_paid_cents: paidCents,
+              p_payment_method: payMethod,
+              p_raw_payload: chipData,
+            }
+          );
+          if (settleErr) {
+            console.warn("[payment-webhook] check_status settlement warning:", settleErr.message);
+          } else if (settleData?.target_type === "booking" && settleData?.booking_id) {
+            await supabase
+              .from("bookings")
+              .update({ status: "pending" })
+              .eq("id", settleData.booking_id)
+              .eq("status", "holding");
+          }
+        }
+      }
+
       return new Response(JSON.stringify(chipData), {
         status: chipRes.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -326,6 +453,14 @@ serve(async (req: Request) => {
         JSON.stringify({ error: rpcErr.message }),
         { status: statusCode, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    if (settlementResult?.target_type === "booking" && settlementResult?.booking_id) {
+      await supabase
+        .from("bookings")
+        .update({ status: "pending" })
+        .eq("id", settlementResult.booking_id)
+        .eq("status", "holding");
     }
 
     return new Response(JSON.stringify(settlementResult), {

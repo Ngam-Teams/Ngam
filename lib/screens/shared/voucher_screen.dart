@@ -137,7 +137,7 @@ class _VoucherScreenState extends State<VoucherScreen> {
     try {
       final res = await Supabase.instance.client
           .from('vouchers')
-          .select('*, businesses(name, business_logo_url, business_industry)')
+          .select('*, businesses(business_name, business_logo_url, business_industry)')
           .eq('is_active', true)
           .limit(25);
 
@@ -151,7 +151,7 @@ class _VoucherScreenState extends State<VoucherScreen> {
             'id': m['id']?.toString() ?? 'v_${m['code']}',
             'code': m['code']?.toString() ?? '',
             'title': m['title']?.toString() ?? 'Baucar Diskaun ${m['code']}',
-            'shop_name': biz?['name']?.toString() ?? 'Rakan Niaga Ngam',
+            'shop_name': (biz?['business_name'] ?? biz?['name'])?.toString() ?? 'Rakan Niaga Ngam',
             'shop_logo': biz?['business_logo_url']?.toString(),
             'business_id': m['business_id']?.toString(),
             'discount_type': m['discount_type'] ?? 'fixed',

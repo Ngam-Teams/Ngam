@@ -47,7 +47,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
     try {
       final rows = await Supabase.instance.client
           .from('businesses')
-          .select('id, business_name, business_type, logo_url, cover_url');
+          .select('id, business_name, business_industry, business_logo_url, business_cover_url');
       if (!mounted) return;
       setState(() {
         for (final r in (rows as List)) {
@@ -224,11 +224,16 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                                 'db_id': dbItem['id'],
                                 'shopId': bizId,
                                 'id': meta['booking_id'] ?? meta['short_ref'] ?? 'BK-0000',
-                                'title': meta['shop_name'] ?? biz?['business_name'] ?? 'Kedai Ngam',
-                                'category': meta['category'] ?? biz?['business_type'] ?? 'Servis',
+                                'title': (meta['shop_name'] != null &&
+                                        meta['shop_name'].toString().trim().isNotEmpty &&
+                                        meta['shop_name'].toString().toLowerCase() != 'kedai ngam' &&
+                                        meta['shop_name'].toString().toLowerCase() != 'store')
+                                    ? meta['shop_name']
+                                    : (biz?['business_name'] ?? meta['shop_name'] ?? 'Kedai Pilihan'),
+                                'category': meta['category'] ?? biz?['business_industry'] ?? 'Servis',
                                 'img': meta['shop_image'] ??
-                                    biz?['cover_url'] ??
-                                    biz?['logo_url'] ??
+                                    biz?['business_cover_url'] ??
+                                    biz?['business_logo_url'] ??
                                     'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400',
                                 'providerName': meta['provider_name'] ?? 'Staf',
                                 'date': displayDate,
@@ -242,11 +247,22 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                               };
                             }).toList();
 
-                            // 2. Format Orders
+                            // 2. Format Orders (sembunyikan draf pesanan online yang belum selesai bayar di gerbang)
                             final rawOrders = orderSnap.data ?? [];
                             final myOrders = rawOrders.where((o) {
                               if (myUid == null) return false;
-                              return o['owner_user_id'] == myUid;
+                              if (o['owner_user_id'] != myUid) return false;
+                              final src = (o['source'] ?? 'online').toString().toLowerCase();
+                              final payMethod = (o['payment_method'] ?? 'cash').toString().toLowerCase();
+                              final payStatus = (o['payment_status'] ?? '').toString().toLowerCase();
+                              final status = (o['status'] ?? '').toString().toLowerCase();
+                              if (src != 'pos' && payMethod != 'cash' && payStatus == 'pending') {
+                                return false;
+                              }
+                              if (status == 'cancelled' && payStatus == 'pending') {
+                                return false;
+                              }
+                              return true;
                             }).toList();
 
                             final formattedOrders = myOrders.map<Map<String, dynamic>>((o) {
@@ -283,10 +299,10 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                                 'db_id': oid,
                                 'shopId': bizId,
                                 'id': oid.length > 8 ? oid.substring(0, 8).toUpperCase() : oid.toUpperCase(),
-                                'title': biz?['business_name']?.toString() ?? 'Kedai Ngam',
+                                'title': biz?['business_name']?.toString() ?? 'Kedai Pilihan',
                                 'category': fulfillment,
-                                'img': biz?['cover_url'] ??
-                                    biz?['logo_url'] ??
+                                'img': biz?['business_cover_url'] ??
+                                    biz?['business_logo_url'] ??
                                     'https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=400',
                                 'date': formattedTime,
                                 'time': fulfillment,

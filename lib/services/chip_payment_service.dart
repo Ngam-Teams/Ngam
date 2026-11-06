@@ -22,6 +22,10 @@ class ChipPurchaseResult {
 
   bool get isPaid => status.toLowerCase() == 'paid';
   bool get isWebFallback => raw['is_web_fallback'] == true;
+  bool get hasDirectQrPayload {
+    final directQr = raw['payment_methods']?['duitnow']?['qr_code_url']?.toString() ?? '';
+    return directQr.isNotEmpty;
+  }
 }
 
 class ChipPaymentException implements Exception {
@@ -112,7 +116,19 @@ class ChipPaymentService {
         );
       } else {
         debugPrint('[ChipPaymentService] Edge function return ${edgeRes.statusCode}: ${edgeRes.body}');
-        throw ChipPaymentException('Gagal mengesahkan sesi pembayaran selamat di pelayan. Sila cuba sebentar lagi.');
+        String errMsg = 'Gagal mengesahkan sesi pembayaran selamat di pelayan. Sila cuba sebentar lagi.';
+        try {
+          final decoded = jsonDecode(edgeRes.body);
+          if (decoded is Map && decoded['error'] != null) {
+            errMsg = decoded['error'].toString();
+          } else if (decoded is Map && decoded['__all__'] is List && (decoded['__all__'] as List).isNotEmpty) {
+            final firstErr = (decoded['__all__'] as List).first;
+            if (firstErr is Map && firstErr['message'] != null) {
+              errMsg = 'CHIP Gateway: ${firstErr['message']}';
+            }
+          }
+        } catch (_) {}
+        throw ChipPaymentException(errMsg);
       }
     } on ChipPaymentException {
       rethrow;

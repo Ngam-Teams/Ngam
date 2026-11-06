@@ -401,6 +401,8 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                 final List<Map<String, dynamic>> loaded = [];
                 for (var row in data) {
                   final map = Map<String, dynamic>.from(row);
+                  map['name'] = map['business_name'] ?? map['trading_name'] ?? map['name'] ?? 'Kedai Pilihan';
+                  map['category'] = map['business_industry'] ?? map['category'] ?? 'Service';
                   if (_userLat != null && _userLng != null && map['latitude'] != null && map['longitude'] != null) {
                     final dLat = double.tryParse(map['latitude'].toString()) ?? 0.0;
                     final dLng = double.tryParse(map['longitude'].toString()) ?? 0.0;
