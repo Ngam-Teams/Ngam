@@ -1,7 +1,9 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
@@ -55,6 +57,38 @@ void main() async {
 
   await EasyLocalization.ensureInitialized();
   
+  // --- ZERO-PROMPT AUTO DETECT DEFAULT LANGUAGE (PWA & MOBILE) ---
+  // Pengesanan pintar bahasa peranti untuk pengguna kali pertama:
+  // - Orang Melayu / peranti diset ke Melayu/Indonesia (ms, id, my) -> Bahasa Melayu ('ms')
+  // - Orang Cina / peranti diset ke English, Cina (zh), Tamil (ta), dll -> English ('en')
+  // - Disimpan serta-merta ke storan supaya kekal konsisten tanpa perlu tanya setiap kali macam Shopee.
+  Locale initialLocale = const Locale('ms');
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final savedLocaleStr = prefs.getString('locale');
+    if (savedLocaleStr != null && savedLocaleStr.trim().isNotEmpty) {
+      final code = savedLocaleStr.split('_').first.toLowerCase();
+      initialLocale = code == 'en' ? const Locale('en') : const Locale('ms');
+    } else {
+      // First-time user: semak bahasa peranti / pelayar
+      final locales = ui.PlatformDispatcher.instance.locales;
+      final primaryLang = (locales.isNotEmpty ? locales.first.languageCode : ui.PlatformDispatcher.instance.locale.languageCode).toLowerCase();
+      
+      if (primaryLang == 'ms' || primaryLang == 'my' || primaryLang == 'id') {
+        initialLocale = const Locale('ms');
+      } else {
+        // en, zh (Cina), ta (Tamil), atau lain-lain di Malaysia lebih memilih antaramuka English
+        initialLocale = const Locale('en');
+      }
+      
+      // Simpan terus supaya sesi seterusnya tidak berubah dan kekal lancar
+      await prefs.setString('locale', initialLocale.toString());
+      debugPrint('[Localization] First-time auto-detected locale: $initialLocale (device: $primaryLang)');
+    }
+  } catch (e) {
+    debugPrint('[Localization] Auto-detect error: $e');
+  }
+  
   // Load environment variables dulu
   try {
     await dotenv.load(fileName: ".env");
@@ -95,6 +129,7 @@ void main() async {
       supportedLocales: const [Locale('en'), Locale('ms')],
       path: 'assets/translations',
       fallbackLocale: const Locale('ms'),
+      startLocale: initialLocale,
       useOnlyLangCode: true,
       child: const NgamApp(),
     ),
