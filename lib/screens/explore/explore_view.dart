@@ -2324,8 +2324,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Container(
-                          alignment: Alignment.centerLeft,
+                        child: Center(
                           child: Theme(
                             data: Theme.of(context).copyWith(
                               colorScheme: Theme.of(context).colorScheme.copyWith(
@@ -2342,7 +2341,6 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                 color: isDark ? Colors.white : _lightModeGray,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 15,
-                                height: 1.2,
                               ),
                               cursorColor: Colors.blue,
                               textAlignVertical: TextAlignVertical.center,
@@ -2354,15 +2352,13 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                       : _lightModeGray.withValues(alpha: 0.4),
                                   fontSize: 15,
                                   fontWeight: FontWeight.w400,
-                                  height: 1.2,
                                 ),
                                 border: InputBorder.none,
                                 focusedBorder: InputBorder.none,
                                 enabledBorder: InputBorder.none,
                                 errorBorder: InputBorder.none,
                                 disabledBorder: InputBorder.none,
-                                isDense: true,
-                                isCollapsed: true,
+                                isDense: false,
                                 filled: false,
                                 contentPadding: EdgeInsets.zero,
                               ),
@@ -4214,35 +4210,26 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(28),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+      child: GlassContainer(
+        useOwnLayer: true,
+        quality: GlassQuality.standard,
+        shape: const LiquidRoundedSuperellipse(borderRadius: 28.0),
+        settings: _getGlassSettings(isDark),
         child: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: isDark
-                  ? [
-                      const Color(0xFF1E2838).withValues(alpha: 0.60),
-                      const Color(0xFF101622).withValues(alpha: 0.48),
-                    ]
-                  : [
-                      Colors.white.withValues(alpha: 0.58),
-                      Colors.white.withValues(alpha: 0.38),
-                    ],
-            ),
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.20)
+                : Colors.white.withValues(alpha: 0.25),
             borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.18)
-                  : Colors.white.withValues(alpha: 0.75),
-              width: 1.2,
+              color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.40),
+              width: 1.0,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.08),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
+                color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.05),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
               ),
             ],
           ),
@@ -4656,49 +4643,36 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                 },
                 child: ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                  child: GlassContainer(
+                    useOwnLayer: true,
+                    quality: GlassQuality.standard,
+                    shape: const LiquidRoundedSuperellipse(borderRadius: 32.0),
+                    settings: _getGlassSettings(isDark),
                     child: Container(
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: isDark
-                              ? [
-                                  const Color(0xFF131A29).withValues(alpha: 0.68),
-                                  const Color(0xFF0B101D).withValues(alpha: 0.75),
-                                ]
-                              : [
-                                  Colors.white.withValues(alpha: 0.85),
-                                  Colors.white.withValues(alpha: 0.70),
-                                ],
-                        ),
+                        color: isDark
+                            ? Colors.black.withValues(alpha: 0.20)
+                            : Colors.white.withValues(alpha: 0.25),
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                         border: Border(
                           top: BorderSide(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.38)
-                                : Colors.white.withValues(alpha: 0.95),
-                            width: 1.5,
+                            color: Colors.white.withValues(alpha: isDark ? 0.20 : 0.45),
+                            width: 1.2,
                           ),
                           left: BorderSide(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.16)
-                                : Colors.white.withValues(alpha: 0.50),
+                            color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.40),
                             width: 1.0,
                           ),
                           right: BorderSide(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.16)
-                                : Colors.white.withValues(alpha: 0.50),
+                            color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.40),
                             width: 1.0,
                           ),
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.15),
-                            blurRadius: 32,
-                            offset: const Offset(0, -8),
+                            color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.05),
+                            blurRadius: 16,
+                            offset: const Offset(0, -4),
                           ),
                         ],
                       ),
@@ -4919,14 +4893,14 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                         ),
                       ),
 
-                      // 3. Pinned Bottom Action Bar (Frosted Glass Seamless Divider)
+                      // 3. Pinned Bottom Action Bar (Harmonized Glass Style)
                       Positioned(
                         bottom: 0,
                         left: 0,
                         right: 0,
                         child: ClipRect(
                           child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                             child: Container(
                               alignment: Alignment.center,
                               padding: EdgeInsets.only(
@@ -4936,25 +4910,13 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                 bottom: bottomSafeArea > 0 ? bottomSafeArea + 10 : 16,
                               ),
                               decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: isDark
-                                      ? [
-                                          const Color(0xFF0F172A).withValues(alpha: 0.75),
-                                          const Color(0xFF070B14).withValues(alpha: 0.90),
-                                        ]
-                                      : [
-                                          Colors.white.withValues(alpha: 0.85),
-                                          Colors.white.withValues(alpha: 0.95),
-                                        ],
-                                ),
+                                color: isDark
+                                    ? Colors.black.withValues(alpha: 0.35)
+                                    : Colors.white.withValues(alpha: 0.45),
                                 border: Border(
                                   top: BorderSide(
-                                    color: isDark
-                                        ? Colors.white.withValues(alpha: 0.20)
-                                        : Colors.black.withValues(alpha: 0.08),
-                                    width: 1.1,
+                                    color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.40),
+                                    width: 1.0,
                                   ),
                                 ),
                               ),
