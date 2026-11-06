@@ -29,7 +29,15 @@
     "forgot_password": "Forgot Password?",
     "or_continue_with": "Or continue with",
     "google_signin": "Google",
-    "apple_signin": "Apple"
+    "apple_signin": "Apple",
+    "error_invalid_credentials": "Invalid email or password. Please try again.",
+    "error_email_not_confirmed": "Email has not been confirmed yet. Please check your inbox.",
+    "error_user_not_found": "No account found with this email.",
+    "error_user_already_exists": "An account with this email already exists. Please sign in.",
+    "error_weak_password": "Password must be at least 6 characters.",
+    "error_rate_limit": "Too many attempts. Please wait a moment before trying again.",
+    "error_network": "Network connection error. Please check your internet connection.",
+    "error_general": "Authentication failed. Please check your details and try again."
   },
   "nav": {
     "home": "Home",

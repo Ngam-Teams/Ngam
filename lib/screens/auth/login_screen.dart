@@ -621,17 +621,46 @@ class _LoginScreenState extends State<LoginScreen>
               // Error Message
               Consumer<AuthProvider>(
                 builder: (context, auth, _) {
-                  if (auth.error != null) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        auth.error!,
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFFFF5252),
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w500,
+                  if (auth.error != null && auth.error!.isNotEmpty) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.3),
+                          width: 1,
                         ),
-                        textAlign: TextAlign.center,
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEF4444).withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.error_outline_rounded,
+                              color: Color(0xFFFF5252),
+                              size: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              auth.error!,
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFFFF6B6B),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   }
@@ -862,17 +891,46 @@ class _LoginScreenState extends State<LoginScreen>
               // Error Message
               Consumer<AuthProvider>(
                 builder: (context, auth, _) {
-                  if (auth.error != null) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        auth.error!,
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFFFF5252),
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w500,
+                  if (auth.error != null && auth.error!.isNotEmpty) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.3),
+                          width: 1,
                         ),
-                        textAlign: TextAlign.center,
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEF4444).withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.error_outline_rounded,
+                              color: Color(0xFFFF5252),
+                              size: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              auth.error!,
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFFFF6B6B),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   }

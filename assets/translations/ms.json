@@ -29,7 +29,15 @@
     "forgot_password": "Lupa Kata Laluan?",
     "or_continue_with": "Atau teruskan dengan",
     "google_signin": "Google",
-    "apple_signin": "Apple"
+    "apple_signin": "Apple",
+    "error_invalid_credentials": "E-mel atau kata laluan tidak sah. Sila semak semula.",
+    "error_email_not_confirmed": "E-mel anda belum disahkan. Sila periksa peti masuk e-mel anda.",
+    "error_user_not_found": "Tiada akaun dijumpai untuk e-mel ini.",
+    "error_user_already_exists": "E-mel ini telah didaftarkan. Sila log masuk ke akaun anda.",
+    "error_weak_password": "Kata laluan mestilah sekurang-kurangnya 6 aksara.",
+    "error_rate_limit": "Terlalu banyak percubaan. Sila tunggu sebentar sebelum cuba lagi.",
+    "error_network": "Masalah sambungan internet. Sila semak sambungan anda.",
+    "error_general": "Log masuk gagal. Sila semak maklumat anda dan cuba lagi."
   },
   "nav": {
     "home": "Laman Utama",

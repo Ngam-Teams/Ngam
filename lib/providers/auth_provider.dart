@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -17,6 +18,64 @@ import '../services/supabase_service.dart';
 // ============================================================
 
 class AuthProvider extends ChangeNotifier {
+
+  static String sanitizeAuthError(dynamic e) {
+    if (e == null) return '';
+    final msg = e.toString();
+    final lower = msg.toLowerCase();
+
+    if (lower.contains('invalid login credentials') ||
+        lower.contains('invalid_credentials') ||
+        lower.contains('invalid credentials') ||
+        lower.contains('invalid email or password')) {
+      return 'auth.error_invalid_credentials'.tr();
+    }
+    if (lower.contains('email not confirmed') || lower.contains('email_not_confirmed')) {
+      return 'auth.error_email_not_confirmed'.tr();
+    }
+    if (lower.contains('user not found') || lower.contains('user_not_found')) {
+      return 'auth.error_user_not_found'.tr();
+    }
+    if (lower.contains('already registered') ||
+        lower.contains('already exists') ||
+        lower.contains('user_already_exists')) {
+      return 'auth.error_user_already_exists'.tr();
+    }
+    if (lower.contains('password should be at least') || lower.contains('weak_password')) {
+      return 'auth.error_weak_password'.tr();
+    }
+    if (lower.contains('rate limit') ||
+        lower.contains('over_request_rate_limit') ||
+        lower.contains('too many requests')) {
+      return 'auth.error_rate_limit'.tr();
+    }
+    if (lower.contains('socketexception') ||
+        lower.contains('network') ||
+        lower.contains('failed host lookup') ||
+        lower.contains('connection refused') ||
+        lower.contains('clientexception')) {
+      return 'auth.error_network'.tr();
+    }
+
+    final match = RegExp(r'message:\s*([^,\)]+)').firstMatch(msg);
+    if (match != null) {
+      final clean = match.group(1)?.trim();
+      if (clean != null && clean.isNotEmpty) {
+        if (clean.toLowerCase().contains('invalid login credentials')) {
+          return 'auth.error_invalid_credentials'.tr();
+        }
+        return clean;
+      }
+    }
+
+    final cleanStr = msg
+        .replaceAll(RegExp(r'^(AuthApiException|AuthException|Exception):\s*'), '')
+        .replaceAll(RegExp(r',\s*statusCode:\s*\d+.*$'), '')
+        .trim();
+
+    return cleanStr.isNotEmpty ? cleanStr : 'auth.error_general'.tr();
+  }
+
   UserModel? _user;
   bool _isLoading = false;
   bool _isInitializing = true;
@@ -74,11 +133,7 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      String errorMessage = e.toString().replaceAll('Exception: ', '');
-      if (errorMessage.toLowerCase().contains('already registered') || errorMessage.toLowerCase().contains('already exists')) {
-        errorMessage = 'Emel ini telah didaftarkan. Sila log masuk ke akaun anda.';
-      }
-      _error = errorMessage;
+      _error = sanitizeAuthError(e);
       _isLoading = false;
       notifyListeners();
       return false;
@@ -107,7 +162,7 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString().replaceAll('Exception: ', '');
+      _error = sanitizeAuthError(e);
       _isLoading = false;
       notifyListeners();
       return false;
@@ -194,7 +249,7 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString().replaceAll('Exception: ', '');
+      _error = sanitizeAuthError(e);
       _isLoading = false;
       notifyListeners();
       return false;
