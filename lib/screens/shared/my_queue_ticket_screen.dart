@@ -1,3 +1,4 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../widgets/glass_nav_button.dart';
 import 'dart:async';
@@ -77,25 +78,57 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
 
     try {
       final user = Provider.of<AuthProvider>(context, listen: false).user;
-      final phone = user?.userPhone;
+      String? phone = user?.userPhone;
+
+      final prefs = await SharedPreferences.getInstance();
+      final savedTicketId = prefs.getString('active_queue_ticket_id');
+      final savedPhone = prefs.getString('active_queue_ticket_phone');
+      if ((phone == null || phone.isEmpty) && savedPhone != null && savedPhone.isNotEmpty) {
+        phone = savedPhone;
+      }
 
       final client = Supabase.instance.client;
-
-      // Try fetching active ticket by phone or user_id for today
       final now = DateTime.now();
       final startOfDay = DateTime(now.year, now.month, now.day).toIso8601String();
 
       dynamic response;
-      if (phone != null && phone.isNotEmpty) {
-        response = await client
-            .from('queue_tickets')
-            .select('*, businesses(business_name, business_phone, business_address)')
-            .eq('phone_number', phone)
-            .inFilter('status', ['waiting', 'calling', 'serving'])
-            .gte('created_at', startOfDay)
-            .order('created_at', ascending: false)
-            .limit(1)
-            .maybeSingle();
+
+      // 1. Check local saved ticket ID (Guest persistence even if Chrome closed!)
+      if (savedTicketId != null && savedTicketId.isNotEmpty && !savedTicketId.startsWith('demo-')) {
+        try {
+          response = await client
+              .from('queue_tickets')
+              .select('*, businesses(business_name, business_phone, business_address)')
+              .eq('id', savedTicketId)
+              .maybeSingle();
+
+          if (response != null) {
+            final st = response['status']?.toString().toLowerCase();
+            if (st == 'completed' || st == 'cancelled' || st == 'no_show') {
+              await prefs.remove('active_queue_ticket_id');
+              response = null; // Ticket finished, allow new ticket
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 2. Check by phone number for today
+      if (response == null && phone != null && phone.isNotEmpty) {
+        try {
+          response = await client
+              .from('queue_tickets')
+              .select('*, businesses(business_name, business_phone, business_address)')
+              .eq('phone_number', phone)
+              .inFilter('status', ['waiting', 'calling', 'serving'])
+              .gte('created_at', startOfDay)
+              .order('created_at', ascending: false)
+              .limit(1)
+              .maybeSingle();
+
+          if (response != null && response['id'] != null) {
+            await prefs.setString('active_queue_ticket_id', response['id'].toString());
+          }
+        } catch (_) {}
       }
 
       if (response != null && mounted) {
@@ -108,29 +141,12 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
         return;
       }
 
-      // Fallback demo ticket if user doesn't have an active walk-in yet
-      if (_activeTicket == null && mounted) {
-        _activeTicket = {
-          'id': 'demo-ticket-001',
-          'ticket_number': 'A002',
-          'business_id': 'biz-001',
-          'business_name': 'Empire Barber & Co. (Bangi Sentral)',
-          'business_phone': '+60 12-345 6789',
-          'business_address': 'No. 22-A, Jalan Medan Pusat 2D, Bandar Baru Bangi',
-          'customer_name': user?.userName ?? 'Pelanggan Setia',
-          'service_name': 'Classic Gentleman Haircut & Hot Towel',
-          'price': 35.00,
-          'status': 'calling', // 'waiting' | 'calling' | 'serving' | 'completed'
-          'station_or_chair': 'Kerusi 2',
-          'assigned_staff_name': 'Barber Hafiz',
-          'estimated_wait_minutes': 5,
-          'created_at': DateTime.now().subtract(const Duration(minutes: 20)).toIso8601String(),
-          'called_at': DateTime.now().subtract(const Duration(minutes: 1)).toIso8601String(),
-        };
-        _peopleAhead = 1;
+      if (mounted) {
+        setState(() {
+          _activeTicket = null;
+          _isLoading = false;
+        });
       }
-
-      if (mounted) setState(() => _isLoading = false);
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -454,6 +470,14 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                         } catch (_) {}
 
                         if (mounted) {
+                          SharedPreferences.getInstance().then((p) {
+                            if (newTicket['id'] != null) {
+                              p.setString('active_queue_ticket_id', newTicket['id'].toString());
+                            }
+                            if (phone.isNotEmpty) {
+                              p.setString('active_queue_ticket_phone', phone);
+                            }
+                          });
                           setState(() {
                             _activeTicket = newTicket;
                             _peopleAhead = 1;
