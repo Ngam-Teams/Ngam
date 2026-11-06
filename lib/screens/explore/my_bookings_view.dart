@@ -1,13 +1,12 @@
 import 'package:easy_localization/easy_localization.dart';
-import '../../widgets/glass_nav_button.dart';
-import '../../widgets/glass_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../widgets/glass_nav_button.dart';
+import '../../widgets/glass_toast.dart';
 import 'booking_ticket_screen.dart';
 import 'order_status_tracker_screen.dart';
 import '../shared/my_queue_ticket_screen.dart';
-import 'package:ngam/l10n/generated/app_localizations.dart';
 
 class MyBookingsView extends StatefulWidget {
   final int initialCategoryFilter; // 0 = Semua, 1 = Tempahan, 2 = Pesanan
@@ -24,6 +23,115 @@ class _MyBookingsViewState extends State<MyBookingsView> {
   late final Stream<List<Map<String, dynamic>>> _bookingsStream;
   late final Stream<List<Map<String, dynamic>>> _ordersStream;
   final Map<String, Map<String, dynamic>> _businessCache = {};
+  final Map<String, List<Map<String, dynamic>>> _orderItemsCache = {};
+  final Set<String> _pendingOrderItemFetches = {};
+  final Set<String> _pendingBizFetches = {};
+
+  void _loadOrderItemsForIds(List<String> orderIds) async {
+    final toFetch = orderIds
+        .where((id) => !_orderItemsCache.containsKey(id) && !_pendingOrderItemFetches.contains(id))
+        .toList();
+    if (toFetch.isEmpty) return;
+    _pendingOrderItemFetches.addAll(toFetch);
+
+    try {
+      final rows = await Supabase.instance.client
+          .from('order_items')
+          .select('order_id, product_name, quantity, unit_price, subtotal')
+          .inFilter('order_id', toFetch);
+
+      if (!mounted) return;
+      setState(() {
+        for (final id in toFetch) {
+          _orderItemsCache[id] = [];
+        }
+        for (final r in (rows as List)) {
+          final oid = r['order_id']?.toString() ?? '';
+          if (oid.isNotEmpty) {
+            _orderItemsCache.putIfAbsent(oid, () => []).add(Map<String, dynamic>.from(r as Map));
+          }
+        }
+      });
+    } catch (e) {
+      debugPrint('[MyBookingsView] Error loading order items: $e');
+    } finally {
+      _pendingOrderItemFetches.removeAll(toFetch);
+    }
+  }
+
+  void _loadBusinessIfNeeded(String bizId) async {
+    if (bizId.isEmpty || _businessCache.containsKey(bizId) || _pendingBizFetches.contains(bizId)) return;
+    _pendingBizFetches.add(bizId);
+
+    try {
+      final row = await Supabase.instance.client
+          .from('businesses')
+          .select('id, business_name, business_industry, business_logo_url, business_cover_url')
+          .eq('id', bizId)
+          .maybeSingle();
+
+      if (row != null && mounted) {
+        setState(() {
+          _businessCache[bizId] = Map<String, dynamic>.from(row);
+        });
+      }
+    } catch (_) {
+    } finally {
+      _pendingBizFetches.remove(bizId);
+    }
+  }
+
+  Widget _buildStoreLogo(String? logoUrl, String storeName, {double size = 60, BorderRadius? borderRadius}) {
+    final radius = borderRadius ?? BorderRadius.circular(16);
+    final hasUrl = logoUrl != null && logoUrl.trim().isNotEmpty && logoUrl.startsWith('http');
+    final initial = storeName.trim().isNotEmpty ? storeName.trim().substring(0, 1).toUpperCase() : 'N';
+
+    return ClipRRect(
+      borderRadius: radius,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          borderRadius: radius,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1),
+        ),
+        child: hasUrl
+            ? Image.network(
+                logoUrl,
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _buildAvatarFallback(initial, size),
+              )
+            : _buildAvatarFallback(initial, size),
+      ),
+    );
+  }
+
+  Widget _buildAvatarFallback(String initial, double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF2563EB), Color(0xFF00E5FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w900,
+          fontSize: size * 0.42,
+          letterSpacing: -0.5,
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -63,7 +171,6 @@ class _MyBookingsViewState extends State<MyBookingsView> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final loc = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8F9FA),
@@ -111,22 +218,22 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                             child: const HugeIcon(icon: HugeIcons.strokeRoundedUserGroup, color: Colors.white, size: 20),
                           ),
                           const SizedBox(width: 12),
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Giliran Walk-In Langsung (Queue)',
-                                  style: TextStyle(
+                                  'my_bookings.walkin_queue_title'.tr(),
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w800,
                                     fontSize: 13.5,
                                   ),
                                 ),
-                                SizedBox(height: 2),
+                                const SizedBox(height: 2),
                                 Text(
-                                  'Semak nombor giliran live anda di kedai',
-                                  style: TextStyle(
+                                  'my_bookings.walkin_queue_desc'.tr(),
+                                  style: const TextStyle(
                                     color: Colors.white70,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w500,
@@ -145,11 +252,11 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                   // --- CATEGORY FILTER PILLS (Semua / Tempahan / Pesanan) ---
                   Row(
                     children: [
-                      _buildCategoryChip('Semua', 0, HugeIcons.strokeRoundedLayers01, isDark),
+                      _buildCategoryChip('my_bookings.filter_all'.tr(), 0, HugeIcons.strokeRoundedLayers01, isDark),
                       const SizedBox(width: 8),
-                      _buildCategoryChip('Tempahan Slot', 1, HugeIcons.strokeRoundedCalendar03, isDark),
+                      _buildCategoryChip('my_bookings.filter_slot'.tr(), 1, HugeIcons.strokeRoundedCalendar03, isDark),
                       const SizedBox(width: 8),
-                      _buildCategoryChip('Pesanan Kedai', 2, HugeIcons.strokeRoundedShoppingBag01, isDark),
+                      _buildCategoryChip('my_bookings.filter_orders'.tr(), 2, HugeIcons.strokeRoundedShoppingBag01, isDark),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -167,8 +274,8 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                     ),
                     child: Row(
                       children: [
-                        _buildTabButton(loc?.tabUpcoming ?? "Aktif & Akan Datang", 0, isDark),
-                        _buildTabButton(loc?.tabHistory ?? "Sejarah", 1, isDark),
+                        _buildTabButton('my_bookings.tab_active'.tr(), 0, isDark),
+                        _buildTabButton('my_bookings.tab_history'.tr(), 1, isDark),
                       ],
                     ),
                   ),
@@ -203,6 +310,9 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                             final formattedBookings = myBookings.map<Map<String, dynamic>>((dbItem) {
                               final meta = dbItem['booking_metadata'] as Map<String, dynamic>? ?? {};
                               final bizId = dbItem['business_id']?.toString() ?? '';
+                              if (bizId.isNotEmpty && !_businessCache.containsKey(bizId)) {
+                                _loadBusinessIfNeeded(bizId);
+                              }
                               final biz = _businessCache[bizId];
 
                               String displayDate = dbItem['booking_date'] ?? '';
@@ -218,24 +328,38 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                               String displayPrice = meta['total_price']?.toString() ?? 'RM0';
                               if (!displayPrice.startsWith('RM')) displayPrice = 'RM$displayPrice';
 
+                              // Prioritize store logo url
+                              final bizLogo = biz?['business_logo_url']?.toString().trim();
+                              final bizCover = biz?['business_cover_url']?.toString().trim();
+                              final shopImg = (bizLogo != null && bizLogo.isNotEmpty && bizLogo.startsWith('http'))
+                                  ? bizLogo
+                                  : ((bizCover != null && bizCover.isNotEmpty && bizCover.startsWith('http'))
+                                      ? bizCover
+                                      : (meta['shop_image']?.toString() ?? ''));
+
+                              final shopName = (meta['shop_name'] != null &&
+                                      meta['shop_name'].toString().trim().isNotEmpty &&
+                                      meta['shop_name'].toString().toLowerCase() != 'kedai ngam' &&
+                                      meta['shop_name'].toString().toLowerCase() != 'store')
+                                  ? meta['shop_name']
+                                  : (biz?['business_name'] ?? meta['shop_name'] ?? 'my_bookings.default_store'.tr());
+
+                              final serviceName = meta['service_name'] ?? meta['service'] ?? meta['title'] ?? 'my_bookings.default_service'.tr();
+                              final providerName = meta['provider_name'] ?? meta['staff_name'] ?? 'my_bookings.default_staff'.tr();
+                              final specialRequest = meta['special_request'] ?? meta['notes'] ?? dbItem['notes']?.toString();
+
                               return {
                                 'record_type': 'booking',
                                 'created_at': dbItem['created_at']?.toString() ?? '',
                                 'db_id': dbItem['id'],
                                 'shopId': bizId,
                                 'id': meta['booking_id'] ?? meta['short_ref'] ?? 'BK-0000',
-                                'title': (meta['shop_name'] != null &&
-                                        meta['shop_name'].toString().trim().isNotEmpty &&
-                                        meta['shop_name'].toString().toLowerCase() != 'kedai ngam' &&
-                                        meta['shop_name'].toString().toLowerCase() != 'store')
-                                    ? meta['shop_name']
-                                    : (biz?['business_name'] ?? meta['shop_name'] ?? 'Kedai Pilihan'),
-                                'category': meta['category'] ?? biz?['business_industry'] ?? 'Servis',
-                                'img': meta['shop_image'] ??
-                                    biz?['business_cover_url'] ??
-                                    biz?['business_logo_url'] ??
-                                    'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400',
-                                'providerName': meta['provider_name'] ?? 'Staf',
+                                'title': shopName,
+                                'serviceName': serviceName,
+                                'providerName': providerName,
+                                'specialRequest': specialRequest,
+                                'category': meta['category'] ?? biz?['business_industry'] ?? 'my_bookings.default_service'.tr(),
+                                'img': shopImg,
                                 'date': displayDate,
                                 'rawDate': dbItem['booking_date']?.toString() ?? '',
                                 'time': dbItem['booking_time'] ?? '',
@@ -247,7 +371,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                               };
                             }).toList();
 
-                            // 2. Format Orders (sembunyikan draf pesanan online yang belum selesai bayar di gerbang)
+                            // 2. Format Orders
                             final rawOrders = orderSnap.data ?? [];
                             final myOrders = rawOrders.where((o) {
                               if (myUid == null) return false;
@@ -265,21 +389,39 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                               return true;
                             }).toList();
 
+                            // Collect uncached order ids for batch fetch
+                            final uncachedOids = myOrders
+                                .map((o) => o['id']?.toString() ?? '')
+                                .where((id) => id.isNotEmpty && !_orderItemsCache.containsKey(id) && !_pendingOrderItemFetches.contains(id))
+                                .toList();
+                            if (uncachedOids.isNotEmpty) {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (mounted) _loadOrderItemsForIds(uncachedOids);
+                              });
+                            }
+
                             final formattedOrders = myOrders.map<Map<String, dynamic>>((o) {
                               final bizId = o['business_id']?.toString() ?? '';
+                              if (bizId.isNotEmpty && !_businessCache.containsKey(bizId)) {
+                                _loadBusinessIfNeeded(bizId);
+                              }
                               final biz = _businessCache[bizId];
                               final String rawNotes = o['notes']?.toString() ?? '';
-                              String fulfillment = 'Bungkus / Takeaway';
+                              
+                              String fulfillment = 'my_bookings.fulfillment_takeaway'.tr();
                               final match = RegExp(r'\[([^\]]+)\]').firstMatch(rawNotes);
                               if (match != null) {
                                 fulfillment = match.group(1) ?? fulfillment;
                               } else if (o['source'] == 'table') {
-                                fulfillment = 'Dine-In (Meja)';
+                                fulfillment = 'my_bookings.fulfillment_dine_in'.tr();
                               } else if (o['source'] == 'delivery') {
-                                fulfillment = 'Delivery';
+                                fulfillment = 'my_bookings.fulfillment_delivery'.tr();
                               } else if (o['source'] == 'pre_order') {
-                                fulfillment = 'Pre-Order';
+                                fulfillment = 'my_bookings.fulfillment_preorder'.tr();
                               }
+
+                              // Extract clean customer note
+                              final cleanNote = rawNotes.replaceAll(RegExp(r'\[.*?\]'), '').trim();
 
                               String formattedTime = '';
                               final createdStr = o['created_at']?.toString() ?? '';
@@ -293,24 +435,37 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                               final double totalVal = (o['total'] as num?)?.toDouble() ?? 0.0;
                               final String oid = o['id']?.toString() ?? '';
 
+                              // Prioritize store logo url
+                              final bizLogo = biz?['business_logo_url']?.toString().trim();
+                              final bizCover = biz?['business_cover_url']?.toString().trim();
+                              final shopImg = (bizLogo != null && bizLogo.isNotEmpty && bizLogo.startsWith('http'))
+                                  ? bizLogo
+                                  : ((bizCover != null && bizCover.isNotEmpty && bizCover.startsWith('http'))
+                                      ? bizCover
+                                      : '');
+
+                              final payMethod = (o['payment_method'] ?? 'cash').toString();
+                              final payStatus = (o['payment_status'] ?? 'paid').toString().toLowerCase();
+
                               return {
                                 'record_type': 'order',
                                 'created_at': createdStr,
                                 'db_id': oid,
                                 'shopId': bizId,
                                 'id': oid.length > 8 ? oid.substring(0, 8).toUpperCase() : oid.toUpperCase(),
-                                'title': biz?['business_name']?.toString() ?? 'Kedai Pilihan',
+                                'title': biz?['business_name']?.toString() ?? 'my_bookings.default_store'.tr(),
                                 'category': fulfillment,
-                                'img': biz?['business_cover_url'] ??
-                                    biz?['business_logo_url'] ??
-                                    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=400',
+                                'img': shopImg,
                                 'date': formattedTime,
                                 'time': fulfillment,
                                 'totalAmount': totalVal,
                                 'totalPrice': 'RM ${totalVal.toStringAsFixed(2)}',
                                 'status': (o['status']?.toString() ?? 'pending').toLowerCase(),
-                                'paymentStatus': (o['payment_status']?.toString() ?? 'paid').toLowerCase(),
+                                'paymentMethod': payMethod,
+                                'paymentStatus': payStatus,
                                 'notes': rawNotes,
+                                'customerNote': cleanNote,
+                                'items': _orderItemsCache[oid] ?? [],
                               };
                             }).toList();
 
@@ -365,7 +520,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                       iconSize: 20,
                     )
                   : const SizedBox(width: 44, height: 44),
-              title: "Tempahan & Pesanan",
+              title: 'my_bookings.title'.tr(),
             ),
           ],
         ),
@@ -464,8 +619,8 @@ class _MyBookingsViewState extends State<MyBookingsView> {
   Widget _buildListView(List<Map<String, dynamic>> items, bool isDark, {required bool isHistory}) {
     if (items.isEmpty) {
       final emptyText = isHistory
-          ? "Tiada sejarah tempahan atau pesanan yang lepas."
-          : "Tiada tempahan atau pesanan aktif buat masa ini.";
+          ? 'my_bookings.empty_history'.tr()
+          : 'my_bookings.empty_active'.tr();
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -525,6 +680,16 @@ class _MyBookingsViewState extends State<MyBookingsView> {
     final String status = (item['status'] as String? ?? 'pending').toLowerCase();
     final String orderDbId = item['db_id']?.toString() ?? '';
     final bool isCancelled = status == 'cancelled';
+    final List<Map<String, dynamic>> items = List<Map<String, dynamic>>.from(item['items'] ?? []);
+    final String customerNote = item['customerNote']?.toString() ?? '';
+    final String payMethod = (item['paymentMethod']?.toString() ?? 'cash').toUpperCase();
+    final String payStatus = (item['paymentStatus']?.toString() ?? 'paid').toLowerCase();
+    final bool isPaid = payStatus == 'paid';
+
+    int totalQty = 0;
+    for (final it in items) {
+      totalQty += (it['quantity'] as num?)?.toInt() ?? 1;
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -544,22 +709,15 @@ class _MyBookingsViewState extends State<MyBookingsView> {
               ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // --- HEADER: STORE LOGO, ID, STATUS, STORE NAME, TIME ---
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 66,
-                  height: 66,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    image: DecorationImage(
-                      image: NetworkImage(item['img']),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
+                _buildStoreLogo(item['img'], item['title'] ?? 'my_bookings.default_store'.tr(), size: 60),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -574,7 +732,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              'PESANAN #${item['id']}',
+                              'my_bookings.order_badge'.tr(args: [item['id']]),
                               style: const TextStyle(
                                 color: Color(0xFF00B8D4),
                                 fontSize: 10,
@@ -592,22 +750,34 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 17,
+                          fontSize: 16.5,
                           fontWeight: FontWeight.bold,
                           color: isDark ? Colors.white : Colors.black,
                           decoration: isCancelled ? TextDecoration.lineThrough : null,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        "${item['category']} • ${item['totalPrice']}",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: isDark ? Colors.white60 : Colors.grey[600],
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      Row(
+                        children: [
+                          HugeIcon(
+                            icon: HugeIcons.strokeRoundedShoppingBag02,
+                            size: 12,
+                            color: isDark ? Colors.white54 : Colors.grey[600],
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              "${item['category']}${item['date'].toString().isNotEmpty ? ' • ${item['date']}' : ''}",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: isDark ? Colors.white60 : Colors.grey[600],
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -615,6 +785,236 @@ class _MyBookingsViewState extends State<MyBookingsView> {
               ],
             ),
           ),
+
+          // --- ORDER ITEMS BREAKDOWN CONTAINER ---
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.03) : const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const HugeIcon(
+                      icon: HugeIcons.strokeRoundedTag01,
+                      size: 13,
+                      color: Color(0xFF00B8D4),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'my_bookings.items_ordered'.tr(),
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (items.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00B8D4).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          totalQty == 1
+                              ? 'my_bookings.items_count_single'.tr()
+                              : 'my_bookings.items_count'.tr(args: [totalQty.toString()]),
+                          style: const TextStyle(
+                            color: Color(0xFF00B8D4),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (items.isEmpty && !_orderItemsCache.containsKey(orderDbId)) ...[
+                  Row(
+                    children: [
+                      const SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF00B8D4)),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'my_bookings.loading_items'.tr(),
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: isDark ? Colors.white38 : Colors.grey[500],
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else if (items.isNotEmpty) ...[
+                  ...items.take(3).map((it) {
+                    final qty = (it['quantity'] as num?)?.toInt() ?? 1;
+                    final pName = it['product_name']?.toString() ?? 'Item';
+                    final sub = (it['subtotal'] as num?)?.toDouble() ??
+                        (((it['unit_price'] as num?)?.toDouble() ?? 0.0) * qty);
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2.5),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${qty}x',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? const Color(0xFF00E5FF) : const Color(0xFF0097A7),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              pName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white.withValues(alpha: 0.85) : Colors.black87,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'RM ${sub.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.white60 : Colors.grey[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  if (items.length > 3)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        'my_bookings.more_items'.tr(args: [(items.length - 3).toString()]),
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white38 : Colors.grey[500],
+                        ),
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          ),
+
+          // --- CUSTOMER NOTE CONTAINER (IF SPECIFIED) ---
+          if (customerNote.isNotEmpty) ...[
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: isDark ? 0.08 : 0.06),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.amber.withValues(alpha: isDark ? 0.2 : 0.15),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  HugeIcon(
+                    icon: HugeIcons.strokeRoundedNote,
+                    size: 13,
+                    color: Colors.amber[700] ?? Colors.amber,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'my_bookings.note'.tr(args: [customerNote]),
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: isDark ? Colors.amber.shade200 : Colors.amber.shade900,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          // --- PAYMENT METHOD & TOTAL AMOUNT ROW ---
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: (isPaid ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: (isPaid ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      HugeIcon(
+                        icon: isPaid
+                            ? HugeIcons.strokeRoundedCheckmarkCircle02
+                            : HugeIcons.strokeRoundedWallet02,
+                        size: 12,
+                        color: isPaid ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isPaid
+                            ? 'my_bookings.paid_online'.tr(args: [payMethod])
+                            : 'my_bookings.pay_at_counter'.tr(args: [payMethod]),
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.bold,
+                          color: isPaid ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  'my_bookings.total_payment'.tr(args: [item['totalPrice']]),
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w900,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // --- STEP PROGRESS TRACKER ---
           if (!isHistory) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -622,7 +1022,10 @@ class _MyBookingsViewState extends State<MyBookingsView> {
             ),
             const SizedBox(height: 12),
           ],
+
           Divider(height: 1, color: isDark ? Colors.white10 : Colors.grey[200]),
+
+          // --- BOTTOM ACTION BUTTONS ---
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             child: Row(
@@ -637,14 +1040,14 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                                 backgroundColor: isDark ? const Color(0xFF1E242B) : Colors.white,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                                 title: Text(
-                                  "Batal Pesanan?",
+                                  'my_bookings.cancel_order_title'.tr(),
                                   style: TextStyle(
                                     color: isDark ? Colors.white : Colors.black,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                                 content: Text(
-                                  "Pesanan ini masih menunggu pengesahan kedai. Adakah anda mahu membatalkannya?",
+                                  'my_bookings.cancel_order_desc'.tr(),
                                   style: TextStyle(
                                     color: isDark ? Colors.white70 : Colors.black87,
                                     fontSize: 13,
@@ -653,13 +1056,13 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                                 actions: [
                                   TextButton(
                                     onPressed: () => Navigator.pop(ctx, false),
-                                    child: Text("common.back".tr(), style: TextStyle(color: Colors.grey)),
+                                    child: Text('common.back'.tr(), style: const TextStyle(color: Colors.grey)),
                                   ),
                                   TextButton(
                                     onPressed: () => Navigator.pop(ctx, true),
-                                    child: const Text(
-                                      "Ya, Batalkan",
-                                      style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+                                    child: Text(
+                                      'my_bookings.cancel_order_confirm'.tr(),
+                                      style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
                                     ),
                                   ),
                                 ],
@@ -672,11 +1075,11 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                               .from('orders')
                               .update({'status': 'cancelled'}).eq('id', orderDbId);
                           if (context.mounted) {
-                            showGlassToast(context, 'Pesanan berjaya dibatalkan.');
+                            showGlassToast(context, 'my_bookings.cancel_order_success'.tr());
                           }
                         } catch (e) {
                           if (context.mounted) {
-                            showGlassToast(context, 'Gagal membatalkan pesanan.', isError: true);
+                            showGlassToast(context, 'my_bookings.cancel_order_error'.tr(), isError: true);
                           }
                         }
                       },
@@ -686,10 +1089,10 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                           color: Colors.redAccent.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Text(
-                            "Batal",
-                            style: TextStyle(
+                            'my_bookings.action_cancel'.tr(),
+                            style: const TextStyle(
                               color: Colors.redAccent,
                               fontWeight: FontWeight.bold,
                               fontSize: 13.5,
@@ -709,9 +1112,10 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                         MaterialPageRoute(
                           builder: (_) => OrderStatusTrackerScreen(
                             orderId: orderDbId,
-                            shopName: item['title'] ?? 'Kedai Ngam',
+                            shopName: item['title'] ?? 'my_bookings.default_store'.tr(),
                             totalAmount: (item['totalAmount'] as num?)?.toDouble() ?? 0.0,
                             fulfillmentType: item['category'],
+                            items: items,
                             shopId: item['shopId']?.toString(),
                           ),
                         ),
@@ -732,7 +1136,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                       ),
                       child: Center(
                         child: Text(
-                          isHistory ? "Lihat Resit & Butiran" : "Jejak Pesanan & QR Ambil",
+                          isHistory ? 'my_bookings.action_view_receipt'.tr() : 'my_bookings.action_track_order'.tr(),
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -761,7 +1165,12 @@ class _MyBookingsViewState extends State<MyBookingsView> {
       activeStep = 3;
     }
 
-    final steps = ['Diterima', 'Dimasak', 'Sedia Diambil', 'Selesai'];
+    final steps = [
+      'my_bookings.step_received'.tr(),
+      'my_bookings.step_preparing'.tr(),
+      'my_bookings.step_ready'.tr(),
+      'my_bookings.step_completed'.tr(),
+    ];
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -872,7 +1281,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Ubah Tarikh & Masa Tempahan',
+                  'my_bookings.reschedule_title'.tr(),
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
@@ -881,7 +1290,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  item['title'] ?? 'Kedai',
+                  item['title'] ?? 'my_bookings.default_store'.tr(),
                   style: TextStyle(
                     fontSize: 13,
                     color: isDark ? Colors.white60 : Colors.black54,
@@ -889,7 +1298,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  'Pilih Tarikh Baru',
+                  'my_bookings.reschedule_pick_date'.tr(),
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -937,7 +1346,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Pilih Waktu Baru',
+                  'my_bookings.reschedule_pick_time'.tr(),
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -995,9 +1404,9 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                         if (ctx.mounted) Navigator.pop(ctx, false);
                       }
                     },
-                    child: const Text(
-                      'Simpan Waktu Baru',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    child: Text(
+                      'my_bookings.reschedule_save_btn'.tr(),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                     ),
                   ),
                 ),
@@ -1009,13 +1418,15 @@ class _MyBookingsViewState extends State<MyBookingsView> {
     );
 
     if (saved == true && context.mounted) {
-      showGlassToast(context, 'Tarikh & masa tempahan berjaya dikemas kini!');
+      showGlassToast(context, 'my_bookings.reschedule_success'.tr());
     }
   }
 
   Widget _buildUpcomingTicket(BuildContext context, Map<String, dynamic> item, bool isDark) {
-    final loc = AppLocalizations.of(context);
     final String status = (item['status'] as String? ?? 'pending').toLowerCase();
+    final String serviceName = item['serviceName']?.toString() ?? 'my_bookings.default_service'.tr();
+    final String providerName = item['providerName']?.toString() ?? 'my_bookings.default_staff'.tr();
+    final String? specialRequest = item['specialRequest']?.toString();
 
     return Container(
       decoration: BoxDecoration(
@@ -1025,36 +1436,73 @@ class _MyBookingsViewState extends State<MyBookingsView> {
         boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 70, height: 70,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    image: DecorationImage(image: NetworkImage(item['img']), fit: BoxFit.cover),
-                  ),
-                ),
-                const SizedBox(width: 16),
+                _buildStoreLogo(item['img'], item['title'] ?? 'my_bookings.default_store'.tr(), size: 60),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Text(item['category'].toString().toUpperCase(), style: const TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold)),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2196F3).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'my_bookings.booking_badge'.tr(args: [item['id']]),
+                              style: const TextStyle(
+                                color: Color(0xFF2196F3),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
                           const Spacer(),
                           _buildStatusBadge(status, isDark),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(item['title'], maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 5),
                       Text(
-                        "${item['date']} • ${item['time']}${item['pax'] != null && (item['pax'] as num) > 1 ? ' • ${item['pax']} Pax' : ''}",
-                        style: TextStyle(color: isDark ? Colors.white54 : Colors.grey[600], fontSize: 12),
+                        item['title'],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 16.5,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const HugeIcon(
+                            icon: HugeIcons.strokeRoundedCalendar03,
+                            size: 12,
+                            color: Color(0xFF2196F3),
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              "${item['date']} • ${item['time']}${item['pax'] != null && (item['pax'] as num) > 1 ? ' • ${'my_bookings.pax_count'.tr(args: [item['pax'].toString()])}' : ''}",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: isDark ? Colors.white60 : Colors.grey[600],
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -1062,6 +1510,102 @@ class _MyBookingsViewState extends State<MyBookingsView> {
               ],
             ),
           ),
+
+          // --- SERVICE & PROVIDER DETAILS CONTAINER ---
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.03) : const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    HugeIcon(icon: HugeIcons.strokeRoundedScissor, size: 13, color: const Color(0xFF2196F3)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'my_bookings.service_booked'.tr(args: [serviceName]),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const HugeIcon(icon: HugeIcons.strokeRoundedUser, size: 13, color: Colors.grey),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'my_bookings.provider_assigned'.tr(args: [providerName]),
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.white60 : Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                    Text(
+                      item['totalPrice'] ?? '',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? const Color(0xFF00E5FF) : const Color(0xFF0097A7),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // --- SPECIAL REQUEST (IF ANY) ---
+          if (specialRequest != null && specialRequest.trim().isNotEmpty) ...[
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: isDark ? 0.08 : 0.06),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.amber.withValues(alpha: isDark ? 0.2 : 0.15),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  HugeIcon(
+                    icon: HugeIcons.strokeRoundedNote,
+                    size: 13,
+                    color: Colors.amber[700] ?? Colors.amber,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'my_bookings.special_request'.tr(args: [specialRequest]),
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: isDark ? Colors.amber.shade200 : Colors.amber.shade900,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           // Reactive Step Progress Tracker
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -1084,7 +1628,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                       ),
                       child: Center(
                         child: Text(
-                          "Dalam Pertikaian",
+                          'my_bookings.dispute_in_progress'.tr(),
                           style: TextStyle(color: Colors.amber.shade400, fontWeight: FontWeight.bold, fontSize: 13),
                         ),
                       ),
@@ -1103,7 +1647,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                         ),
                         child: Center(
                           child: Text(
-                            "Ubah Waktu",
+                            'my_bookings.action_reschedule'.tr(),
                             style: TextStyle(
                               color: isDark ? Colors.white70 : Colors.black87,
                               fontWeight: FontWeight.bold,
@@ -1141,8 +1685,19 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                     behavior: HitTestBehavior.opaque,
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.blue.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))]),
-                      child: Center(child: Text(loc?.viewTicketBtn ?? "Lihat Tiket & QR", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13.5))),
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(color: Colors.blue.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4)),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          'my_bookings.action_view_ticket'.tr(),
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13.5),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -1162,39 +1717,39 @@ class _MyBookingsViewState extends State<MyBookingsView> {
     switch (status) {
       case 'pending':
         color = const Color(0xFFF59E0B);
-        label = 'Menunggu';
+        label = 'my_bookings.status_pending'.tr();
         icon = HugeIcons.strokeRoundedTime02;
         break;
       case 'preparing':
       case 'in_progress':
         color = const Color(0xFF8B5CF6);
-        label = 'Disediakan';
+        label = 'my_bookings.status_preparing'.tr();
         icon = HugeIcons.strokeRoundedHourglass;
         break;
       case 'ready':
         color = const Color(0xFF10B981);
-        label = 'Sedia Diambil';
+        label = 'my_bookings.status_ready'.tr();
         icon = HugeIcons.strokeRoundedShoppingBag01;
         break;
       case 'completed':
         color = const Color(0xFF10B981);
-        label = 'Selesai';
+        label = 'my_bookings.status_completed'.tr();
         icon = HugeIcons.strokeRoundedCheckmarkCircle02;
         break;
       case 'disputed':
         color = const Color(0xFFF97316);
-        label = 'Pertikaian';
+        label = 'my_bookings.status_disputed'.tr();
         icon = HugeIcons.strokeRoundedAlert02;
         break;
       case 'cancelled':
         color = const Color(0xFFEF4444);
-        label = 'Dibatalkan';
+        label = 'my_bookings.status_cancelled'.tr();
         icon = HugeIcons.strokeRoundedCancel01;
         break;
       case 'confirmed':
       default:
         color = const Color(0xFF3B82F6);
-        label = 'Disahkan';
+        label = 'my_bookings.status_confirmed'.tr();
         icon = HugeIcons.strokeRoundedCheckmarkCircle02;
         break;
     }
@@ -1233,9 +1788,11 @@ class _MyBookingsViewState extends State<MyBookingsView> {
           children: [
             HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.amber.shade400, size: 14),
             const SizedBox(width: 6),
-            Text(
-              "Aduan pertikaian sedang disiasat oleh Sokongan Ngam",
-              style: TextStyle(fontSize: 11, color: Colors.amber.shade400, fontWeight: FontWeight.bold),
+            Expanded(
+              child: Text(
+                'my_bookings.dispute_notice'.tr(),
+                style: TextStyle(fontSize: 11, color: Colors.amber.shade400, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         ),
@@ -1249,7 +1806,11 @@ class _MyBookingsViewState extends State<MyBookingsView> {
       activeStep = 2;
     }
 
-    final steps = ['Diterima', 'Disahkan', 'Sedia'];
+    final steps = [
+      'my_bookings.step_received'.tr(),
+      'my_bookings.step_confirmed'.tr(),
+      'my_bookings.step_ready'.tr(),
+    ];
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -1312,8 +1873,8 @@ class _MyBookingsViewState extends State<MyBookingsView> {
   }
 
   Widget _buildHistoryTicket(BuildContext context, Map<String, dynamic> item, bool isDark) {
-    final loc = AppLocalizations.of(context);
-    bool isCancelled = item["status"] == "cancelled";
+    final bool isCancelled = item["status"] == "cancelled";
+    final String serviceName = item['serviceName']?.toString() ?? item['category']?.toString() ?? 'my_bookings.default_service'.tr();
 
     return GestureDetector(
       onTap: () {
@@ -1321,14 +1882,14 @@ class _MyBookingsViewState extends State<MyBookingsView> {
           MaterialPageRoute(
             builder: (_) => BookingTicketScreen(
               shopId: item['shopId'] ?? '',
-              shopName: item['title'],
-              category: item['category'],
-              shopImage: item['img'],
-              providerName: item['providerName'],
-              date: item['date'],
-              time: item['time'],
-              totalPrice: item['totalPrice'],
-              bookingId: item['id'],
+              shopName: item['title'] ?? 'my_bookings.default_store'.tr(),
+              category: item['category'] ?? 'my_bookings.default_service'.tr(),
+              shopImage: item['img'] ?? '',
+              providerName: item['providerName'] ?? 'my_bookings.default_staff'.tr(),
+              date: item['date'] ?? '',
+              time: item['time'] ?? '',
+              totalPrice: item['totalPrice'] ?? '',
+              bookingId: item['id'] ?? '',
               isCancelled: isCancelled,
               status: item['status'] ?? (isCancelled ? 'cancelled' : 'completed'),
               bookingDbId: item['db_id']?.toString(),
@@ -1338,43 +1899,62 @@ class _MyBookingsViewState extends State<MyBookingsView> {
       },
       behavior: HitTestBehavior.opaque,
       child: Container(
-        height: 100,
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.grey[100],
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
         ),
         child: Row(
           children: [
-            Container(
-              width: 80,
-              decoration: BoxDecoration(
-                borderRadius: const BorderRadius.horizontal(left: Radius.circular(24)),
-                image: DecorationImage(image: NetworkImage(item['img']), fit: BoxFit.cover, colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: isCancelled ? 0.6 : 0.3), BlendMode.darken)),
-              ),
-            ),
-            const SizedBox(width: 16),
+            _buildStoreLogo(item['img'], item['title'] ?? 'my_bookings.default_store'.tr(), size: 54),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item['category'].toString().toUpperCase(), style: const TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
+                  Text(
+                    serviceName.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 2),
-                  Text(item['title'], maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white54 : Colors.black87, decoration: isCancelled ? TextDecoration.lineThrough : null)),
-                  const SizedBox(height: 4),
-                  Text("${item['date']} • ${item['time']}", style: TextStyle(color: isDark ? Colors.white30 : Colors.grey[600], fontSize: 12)),
+                  Text(
+                    item['title'] ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white70 : Colors.black87,
+                      decoration: isCancelled ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    "${item['date']}${item['time'].toString().isNotEmpty ? ' • ${item['time']}' : ''}",
+                    style: TextStyle(color: isDark ? Colors.white38 : Colors.grey[600], fontSize: 11),
+                  ),
                 ],
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.only(left: 8),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(color: isCancelled ? Colors.redAccent.withValues(alpha: 0.1) : (isDark ? Colors.white10 : Colors.grey[300]), borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(
+                  color: isCancelled ? Colors.redAccent.withValues(alpha: 0.1) : (isDark ? Colors.white10 : Colors.grey[300]),
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Text(
-                  isCancelled ? (loc?.statusCancelled ?? "Cancelled") : (loc?.statusDone ?? "Done"),
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isCancelled ? Colors.redAccent : (isDark ? Colors.white54 : Colors.black54)),
+                  isCancelled ? 'my_bookings.status_cancelled'.tr() : 'my_bookings.status_completed'.tr(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: isCancelled ? Colors.redAccent : (isDark ? Colors.white70 : Colors.black87),
+                  ),
                 ),
               ),
             ),
