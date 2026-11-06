@@ -2088,6 +2088,11 @@ class _BookingsViewState extends State<BookingsView> {
     final String chosenPaymentType = _paymentMethods[_selectedPaymentIndex]["type"] as String;
     final String chosenPaymentName = _paymentMethods[_selectedPaymentIndex]["name"] as String;
 
+    if (chosenPaymentType == "fpx_card" && _totalPrice < 10.0) {
+      showGlassToast(context, 'booking.fpx_min_spend_error'.tr(), isError: true);
+      return;
+    }
+
     String paymentStatus = chosenPaymentType == 'cash' ? 'unpaid' : 'pending';
     String transactionRef = '';
 
@@ -2952,15 +2957,28 @@ class _BookingsViewState extends State<BookingsView> {
           Text("booking.payment_method".tr(), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black87)),
           const SizedBox(height: 16),
 
-          //  CLASSIC 3-METHOD LAYOUT (FIXED OVERFLOW)
+          //  CLASSIC 3-METHOD LAYOUT (FIXED OVERFLOW & MIN RM10 FPX)
           Column(
             children: List.generate(_paymentMethods.length, (i) {
-              bool isSel = _selectedPaymentIndex == i;
+              final String pType = (_paymentMethods[i]["type"] ?? '').toString();
+              final bool isFpx = pType == "fpx_card";
+              final bool isFpxDisabled = isFpx && _totalPrice < 10.0;
+              bool isSel = _selectedPaymentIndex == i && !isFpxDisabled;
 
-              final String? badge = _paymentMethods[i]["badge"] as String?;
-              final String subtitle = (_paymentMethods[i]["subtitle"] ?? '') as String;
+              final String? badge = isFpxDisabled
+                  ? 'booking.fpx_min_spend_badge'.tr()
+                  : (_paymentMethods[i]["badge"] as String?);
+              final Color badgeColor = isFpxDisabled
+                  ? Colors.amber.shade800
+                  : const Color(0xFFED0058);
+              final String subtitle = isFpxDisabled
+                  ? 'booking.fpx_min_spend_subtitle'.tr()
+                  : ((_paymentMethods[i]["subtitle"] ?? '') as String);
 
-              return AnimatedContainer(
+              return AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: isFpxDisabled ? 0.45 : 1.0,
+                child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
                 margin: const EdgeInsets.only(bottom: 12),
@@ -2970,13 +2988,26 @@ class _BookingsViewState extends State<BookingsView> {
                   border: Border.all(color: isSel ? Colors.blue : Colors.white.withValues(alpha: isDark ? 0.08 : 0.6), width: 1.5),
                 ),
                 child: GestureDetector(
-                  onTap: () => setState(() => _selectedPaymentIndex = i),
+                  onTap: () {
+                    if (isFpxDisabled) {
+                      HapticFeedback.heavyImpact();
+                      showGlassToast(context, 'booking.fpx_min_spend_error'.tr(), isError: true);
+                      return;
+                    }
+                    setState(() => _selectedPaymentIndex = i);
+                  },
                   behavior: HitTestBehavior.opaque,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     child: Row(
                       children: [
-                        HugeIcon(icon: _paymentMethods[i]["icon"], color: isSel ? Colors.blue : (isDark ? Colors.white60 : Colors.black54), size: 22),
+                        HugeIcon(
+                          icon: _paymentMethods[i]["icon"],
+                          color: isFpxDisabled
+                              ? Colors.grey
+                              : (isSel ? Colors.blue : (isDark ? Colors.white60 : Colors.black54)),
+                          size: 22,
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
@@ -2987,7 +3018,13 @@ class _BookingsViewState extends State<BookingsView> {
                                   Flexible(
                                     child: Text(
                                       _paymentMethods[i]["name"],
-                                      style: TextStyle(fontSize: 14.5, fontWeight: isSel ? FontWeight.bold : FontWeight.w600, color: isSel ? Colors.blue : (isDark ? Colors.white : Colors.black87)),
+                                      style: TextStyle(
+                                        fontSize: 14.5,
+                                        fontWeight: isSel ? FontWeight.bold : FontWeight.w600,
+                                        color: isFpxDisabled
+                                            ? (isDark ? Colors.white38 : Colors.black38)
+                                            : (isSel ? Colors.blue : (isDark ? Colors.white : Colors.black87)),
+                                      ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -2997,12 +3034,13 @@ class _BookingsViewState extends State<BookingsView> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFED0058).withValues(alpha: 0.15),
+                                        color: badgeColor.withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
                                       ),
                                       child: Text(
                                         badge,
-                                        style: const TextStyle(color: Color(0xFFED0058), fontSize: 9, fontWeight: FontWeight.w900),
+                                        style: TextStyle(color: badgeColor, fontSize: 9, fontWeight: FontWeight.w900),
                                       ),
                                     ),
                                   ],
@@ -3021,13 +3059,16 @@ class _BookingsViewState extends State<BookingsView> {
                         const SizedBox(width: 8),
                         HugeIcon(
                           icon: isSel ? HugeIcons.strokeRoundedCheckmarkCircle02 : HugeIcons.strokeRoundedCircle,
-                          color: isSel ? Colors.blue : (isDark ? Colors.white30 : Colors.black26),
+                          color: isFpxDisabled
+                              ? Colors.transparent
+                              : (isSel ? Colors.blue : (isDark ? Colors.white30 : Colors.black26)),
                           size: 20,
                         ),
                       ],
                     ),
                   ),
                 ),
+              ),
               );
             }),
           ),

@@ -296,6 +296,9 @@ class _StoreCartViewState extends State<StoreCartView> {
 
   /// Re-evaluates the applied voucher after the cart changes.
   void _refreshVoucher() {
+    if (_total < 10.0 && _selectedPaymentMethod == 'fpx_card') {
+      _selectedPaymentMethod = 'duitnow';
+    }
     if (_voucher == null) {
       if (!_userDismissedVoucher && _items.isNotEmpty) {
         _autoApplyBestVoucher();
@@ -406,6 +409,13 @@ class _StoreCartViewState extends State<StoreCartView> {
     if (!widget.isStoreOpen && !_isPreOrder) {
       if (!mounted) return;
       showGlassToast(context, 'Kedai sedang tutup. Sila aktifkan pilihan Pesanan Awal (Pre-Order) untuk teruskan.', isError: true);
+      return;
+    }
+
+    if (_selectedPaymentMethod == 'fpx_card' && _total < 10.0) {
+      if (!mounted) return;
+      setState(() => _selectedPaymentMethod = 'duitnow');
+      showGlassToast(context, 'cart.fpx_min_spend_error'.tr(), isError: true);
       return;
     }
 
@@ -1857,6 +1867,7 @@ class _StoreCartViewState extends State<StoreCartView> {
   }
 
   Widget _buildPaymentMethodSection(bool isDark, Color textPrimary, Color textSecondary) {
+    final bool isFpxEligible = _total >= 10.0;
     return _liquidGlassBox(
       isDark: isDark,
       radius: 20,
@@ -1891,13 +1902,18 @@ class _StoreCartViewState extends State<StoreCartView> {
           ),
           const SizedBox(height: 10),
 
-          // Option 2: FPX & Kad
+          // Option 2: FPX & Kad (Had Minima RM 10.00)
           _buildPaymentChoiceTile(
             value: 'fpx_card',
             title: 'Perbankan FPX & Kad Debit/Kredit',
-            subtitle: 'Maybank2u, CIMB, Bank Islam, RHB, Visa & Mastercard',
+            subtitle: isFpxEligible
+                ? 'Maybank2u, CIMB, Bank Islam, RHB, Visa & Mastercard'
+                : 'cart.fpx_min_spend_subtitle'.tr(),
             icon: HugeIcons.strokeRoundedCreditCard,
-            iconColor: const Color(0xFF00B0FF),
+            iconColor: isFpxEligible ? const Color(0xFF00B0FF) : Colors.grey,
+            badge: isFpxEligible ? null : 'cart.fpx_min_spend_badge'.tr(),
+            badgeColor: Colors.amber.shade800,
+            isEnabled: isFpxEligible,
             isDark: isDark,
             textPrimary: textPrimary,
             textSecondary: textSecondary,
@@ -1930,6 +1946,7 @@ class _StoreCartViewState extends State<StoreCartView> {
     required Color iconColor,
     String? badge,
     Color? badgeColor,
+    bool isEnabled = true,
     required bool isDark,
     required Color textPrimary,
     required Color textSecondary,
@@ -1937,10 +1954,18 @@ class _StoreCartViewState extends State<StoreCartView> {
     final bool isSelected = _selectedPaymentMethod == value;
     return GestureDetector(
       onTap: () {
+        if (!isEnabled) {
+          HapticFeedback.heavyImpact();
+          showGlassToast(context, 'cart.fpx_min_spend_error'.tr(), isError: true);
+          return;
+        }
         HapticFeedback.selectionClick();
         setState(() => _selectedPaymentMethod = value);
       },
-      child: AnimatedContainer(
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 200),
+        opacity: isEnabled ? 1.0 : 0.45,
+        child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -2036,6 +2061,7 @@ class _StoreCartViewState extends State<StoreCartView> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

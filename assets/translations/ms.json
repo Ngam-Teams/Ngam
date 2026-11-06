@@ -517,6 +517,9 @@
     "payment_method": "Kaedah Pembayaran",
     "service_subtotal": "Subtotal Servis",
     "grand_total": "Jumlah Keseluruhan",
+    "fpx_min_spend_badge": "MIN. RM 10.00",
+    "fpx_min_spend_error": "Perbankan FPX & Kad memerlukan jumlah tempahan minima RM 10.00. Sila gunakan DuitNow QR atau Tunai.",
+    "fpx_min_spend_subtitle": "Tersedia untuk tempahan RM 10.00 ke atas (Maybank, CIMB, Kad)",
     "submitted_title": "Tempahan Dihantar!",
     "submitted_desc": "Kedai akan mengesahkan tempahan anda tidak lama lagi.",
     "view_order": "Lihat Pesanan",
@@ -603,7 +606,10 @@
     "delivery": "Penghantaran",
     "checkout": "Daftar Keluar (Checkout)",
     "empty": "Troli anda kosong",
-    "notes_hint": "Nota pesanan (cth: kurang manis, pedas lebih)..."
+    "notes_hint": "Nota pesanan (cth: kurang manis, pedas lebih)...",
+    "fpx_min_spend_badge": "MIN. RM 10.00",
+    "fpx_min_spend_error": "Perbankan FPX & Kad memerlukan jumlah pesanan minima RM 10.00. Sila gunakan DuitNow QR atau Tunai.",
+    "fpx_min_spend_subtitle": "Tersedia untuk pesanan RM 10.00 ke atas (Maybank, CIMB, Kad)"
   },
   "store": {
     "call": "Hubungi Kedai",

@@ -255,6 +255,14 @@ serve(async (req: Request) => {
         );
       }
 
+      // Perlindungan Had Minima FPX: Perbankan FPX & Kad memerlukan minima RM 10.00 (1000 sen)
+      if (paymentChannel === "fpx" && verifiedCents < 1000) {
+        return new Response(
+          JSON.stringify({ error: "Perbankan dalam talian FPX memerlukan pesanan minima RM 10.00. Sila gunakan DuitNow QR atau Tunai." }),
+          { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       const orderTitle = payload.order_title || `Pesanan ${calcData.business_name || "Ngam"}`;
       const clientEmail = payload.client_email || "pelanggan@ngam.dev";
       const clientName = payload.client_name || "Pelanggan Ngam";

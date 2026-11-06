@@ -517,6 +517,9 @@
     "payment_method": "Payment Method",
     "service_subtotal": "Service Subtotal",
     "grand_total": "Grand Total",
+    "fpx_min_spend_badge": "MIN. RM 10.00",
+    "fpx_min_spend_error": "FPX Online Banking & Card require a minimum booking of RM 10.00. Please use DuitNow QR or Cash.",
+    "fpx_min_spend_subtitle": "Available for bookings RM 10.00 and above (Maybank, CIMB, Cards)",
     "submitted_title": "Booking Submitted!",
     "submitted_desc": "The store will confirm your booking shortly.",
     "view_order": "View Order",
@@ -603,7 +606,10 @@
     "delivery": "Delivery",
     "checkout": "Checkout",
     "empty": "Your cart is empty",
-    "notes_hint": "Special instructions (e.g. less sweet, extra spicy)..."
+    "notes_hint": "Special instructions (e.g. less sweet, extra spicy)...",
+    "fpx_min_spend_badge": "MIN. RM 10.00",
+    "fpx_min_spend_error": "FPX Online Banking & Card require a minimum order of RM 10.00. Please use DuitNow QR or Cash.",
+    "fpx_min_spend_subtitle": "Available for orders RM 10.00 and above (Maybank, CIMB, Cards)"
   },
   "store": {
     "call": "Call Store",
