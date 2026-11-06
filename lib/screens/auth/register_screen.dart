@@ -249,7 +249,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                       children: [
                         // Language button
                         IconButton(
-                          tooltip: 'Language',
+                          tooltip: 'auth.tooltip_language'.tr(),
                           icon: const HugeIcon(
                             icon: HugeIcons.strokeRoundedTranslate,
                             color: textPrimary,
@@ -270,7 +270,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                         ),
                         // Theme button
                         IconButton(
-                          tooltip: 'Theme',
+                          tooltip: 'auth.tooltip_theme'.tr(),
                           icon: HugeIcon(
                             icon: isDark
                                 ? HugeIcons.strokeRoundedSun01
@@ -358,7 +358,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                         ),
                         const SizedBox(height: 20),
                         Text(
-                          'JOIN NGAM',
+                          'auth.join_ngam'.tr(),
                           style: GoogleFonts.outfit(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
@@ -368,7 +368,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Sertai komuniti pintar Ngam hari ini.\nNikmati kemudahan pesanan, tempahan, dan servis harian tanpa batasan.',
+                          'auth.join_ngam_tagline'.tr(),
                           style: GoogleFonts.inter(
                             fontSize: 13.5,
                             height: 1.6,
@@ -383,7 +383,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '© 2026 Ngam Community System\nSmart Community & Service Platform',
+                          'auth.portal_copyright'.tr(),
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             height: 1.6,
@@ -461,7 +461,7 @@ class _RegisterScreenState extends State<RegisterScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                'NGAM PORTAL',
+                'auth.portal_badge'.tr(),
                 style: GoogleFonts.outfit(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -513,7 +513,7 @@ class _RegisterScreenState extends State<RegisterScreen>
               children: [
                 // Title
                 Text(
-                  'CREATE ACCOUNT',
+                  'auth.register_title'.tr(),
                   textAlign: TextAlign.center,
                   style: GoogleFonts.outfit(
                     fontSize: 24,
@@ -526,7 +526,7 @@ class _RegisterScreenState extends State<RegisterScreen>
 
                 // Subtitle
                 Text(
-                  'Join the Ngam community and start exploring services.',
+                  'auth.register_subtitle'.tr(),
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
                     fontSize: 12.5,
@@ -538,7 +538,7 @@ class _RegisterScreenState extends State<RegisterScreen>
 
                 // ─── Field 1: Nama Penuh ───
                 Text(
-                  'FULL NAME',
+                  'auth.full_name_label'.tr(),
                   style: GoogleFonts.inter(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
@@ -552,12 +552,12 @@ class _RegisterScreenState extends State<RegisterScreen>
                   style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
                   textCapitalization: TextCapitalization.words,
                   decoration: _inputDecoration(
-                    hintText: 'Ahmad Faiz',
+                    hintText: 'auth.name_hint'.tr(),
                     icon: HugeIcons.strokeRoundedUser,
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Sila masukkan nama penuh anda';
+                      return 'auth.val_enter_name'.tr();
                     }
                     return null;
                   },
@@ -566,7 +566,7 @@ class _RegisterScreenState extends State<RegisterScreen>
 
                 // ─── Field 2: Email Address ───
                 Text(
-                  'EMAIL ADDRESS',
+                  'auth.email_label'.tr(),
                   style: GoogleFonts.inter(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
@@ -580,15 +580,15 @@ class _RegisterScreenState extends State<RegisterScreen>
                   style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
                   keyboardType: TextInputType.emailAddress,
                   decoration: _inputDecoration(
-                    hintText: 'nama@domain.com',
+                    hintText: 'auth.email_hint'.tr(),
                     icon: HugeIcons.strokeRoundedMail01,
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Sila masukkan alamat emel';
+                      return 'auth.val_enter_email'.tr();
                     }
                     if (!value.contains('@')) {
-                      return 'Alamat emel tidak sah';
+                      return 'auth.val_invalid_email'.tr();
                     }
                     return null;
                   },
@@ -597,7 +597,7 @@ class _RegisterScreenState extends State<RegisterScreen>
 
                 // ─── Field 3: Password ───
                 Text(
-                  'PASSWORD',
+                  'auth.password_label'.tr(),
                   style: GoogleFonts.inter(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
@@ -611,7 +611,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                   obscureText: _obscurePassword,
                   style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
                   decoration: _inputDecoration(
-                    hintText: '••••••••',
+                    hintText: 'auth.password_hint'.tr(),
                     icon: HugeIcons.strokeRoundedLockKey,
                     isPassword: true,
                     obscure: _obscurePassword,
@@ -623,10 +623,10 @@ class _RegisterScreenState extends State<RegisterScreen>
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Sila masukkan kata laluan';
+                      return 'auth.val_enter_password'.tr();
                     }
                     if (value.length < 6) {
-                      return 'Kata laluan sekurang-kurangnya 6 aksara';
+                      return 'auth.val_password_min'.tr();
                     }
                     return null;
                   },
@@ -680,7 +680,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                                 ),
                               )
                             : Text(
-                                'CREATE ACCOUNT',
+                                'auth.register_btn'.tr(),
                                 style: GoogleFonts.outfit(
                                   fontSize: 13.5,
                                   fontWeight: FontWeight.w800,
@@ -706,7 +706,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       child: Text(
-                        'or',
+                        'auth.or'.tr(),
                         style: GoogleFonts.inter(
                           color: textSecondary.withValues(alpha: 0.6),
                           fontSize: 11,
@@ -756,7 +756,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                         ),
                         const SizedBox(width: 10),
                         Text(
-                          'Continue with Google',
+                          'auth.continue_with_google'.tr(),
                           style: GoogleFonts.inter(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w600,
@@ -774,7 +774,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'Already have an account? ',
+                      'auth.have_account'.tr(),
                       style: GoogleFonts.inter(
                         fontSize: 12.5,
                         color: textSecondary,
@@ -783,7 +783,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
                       child: Text(
-                        'Sign In',
+                        'auth.sign_in'.tr(),
                         style: GoogleFonts.inter(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w700,

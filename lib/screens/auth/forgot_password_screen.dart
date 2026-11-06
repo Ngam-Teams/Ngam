@@ -86,7 +86,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
           });
         }
       } else {
-        final error = res['message']?.toString() ?? 'Tiada akaun dijumpai untuk nombor telefon ini.';
+        final error = res['message']?.toString() ?? 'auth.no_account_phone_error'.tr();
         showGlassToast(context, error, isError: true);
       }
     } else {
@@ -99,7 +99,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
           _emailSent = true;
         });
       } else {
-        final error = authProvider.error ?? 'Ralat menghantar emel pemulihan.';
+        final error = authProvider.error ?? 'auth.reset_email_error'.tr();
         showGlassToast(context, error, isError: true);
       }
     }
@@ -196,7 +196,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                       children: [
                         // Language button
                         IconButton(
-                          tooltip: 'Language',
+                          tooltip: 'auth.tooltip_language'.tr(),
                           icon: const HugeIcon(
                             icon: HugeIcons.strokeRoundedTranslate,
                             color: textPrimary,
@@ -217,7 +217,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                         ),
                         // Theme button
                         IconButton(
-                          tooltip: 'Theme',
+                          tooltip: 'auth.tooltip_theme'.tr(),
                           icon: HugeIcon(
                             icon: isDark
                                 ? HugeIcons.strokeRoundedSun01
@@ -315,7 +315,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
 
           // ─── Tajuk ───
           Text(
-            'PULIHKAN AKAUN',
+            'auth.recover_account'.tr(),
             style: GoogleFonts.outfit(
               fontSize: 13,
               fontWeight: FontWeight.w700,
@@ -325,7 +325,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
           ),
           const SizedBox(height: 6),
           Text(
-            'Lupa Emel atau Kata Laluan?',
+            'auth.forgot_question'.tr(),
             style: GoogleFonts.outfit(
               fontSize: 21,
               fontWeight: FontWeight.w800,
@@ -334,7 +334,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
           ),
           const SizedBox(height: 6),
           Text(
-            'Masukkan alamat emel atau nombor telefon berdaftar anda untuk menerima pautan penetapan semula kata laluan.',
+            'auth.forgot_instructions'.tr(),
             style: GoogleFonts.inter(
               fontSize: 12.5,
               color: textSecondary,
@@ -368,7 +368,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        'Guna Emel',
+                        'auth.use_email'.tr(),
                         textAlign: TextAlign.center,
                         style: GoogleFonts.inter(
                           fontSize: 11.5,
@@ -393,7 +393,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        'No. Telefon (Lupa Emel)',
+                        'auth.use_phone'.tr(),
                         textAlign: TextAlign.center,
                         style: GoogleFonts.inter(
                           fontSize: 11.5,
@@ -415,7 +415,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
             keyboardType: _recoveryMode == 'phone' ? TextInputType.phone : TextInputType.emailAddress,
             style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
             decoration: InputDecoration(
-              hintText: _recoveryMode == 'phone' ? '0123456789 atau +6012...' : 'Alamat Emel Anda',
+              hintText: _recoveryMode == 'phone' ? 'auth.phone_hint'.tr() : 'auth.email_input_hint'.tr(),
               hintStyle: GoogleFonts.inter(
                 color: textSecondary.withValues(alpha: 0.6),
                 fontSize: 13,
@@ -453,13 +453,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return _recoveryMode == 'phone' ? 'Sila masukkan nombor telefon' : 'Sila masukkan alamat emel';
+                return _recoveryMode == 'phone' ? 'auth.val_enter_phone'.tr() : 'auth.val_enter_email'.tr();
               }
               if (_recoveryMode == 'email' && !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value.trim())) {
-                return 'Format emel tidak sah';
+                return 'auth.val_invalid_email'.tr();
               }
               if (_recoveryMode == 'phone' && value.replaceAll(RegExp(r'[^0-9]'), '').length < 8) {
-                return 'Nombor telefon tidak sah';
+                return 'auth.val_invalid_phone'.tr();
               }
               return null;
             },
@@ -468,7 +468,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                'Kami akan mencari emel akaun anda dan menghantar pautan reset kata laluan secara percuma ke emel tersebut.',
+                'auth.phone_recovery_note'.tr(),
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   color: const Color(0xFF10B981),
@@ -505,7 +505,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                           ),
                         )
                       : Text(
-                          _recoveryMode == 'phone' ? 'CARI AKAUN & RESET' : 'SEND RESET LINK',
+                          _recoveryMode == 'phone' ? 'auth.find_account_reset'.tr() : 'auth.send_reset_link'.tr(),
                           style: GoogleFonts.outfit(
                             fontSize: 13,
                             fontWeight: FontWeight.w800,
@@ -528,7 +528,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                 const HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, size: 14, color: textSecondary),
                 const SizedBox(width: 6),
                 Text(
-                  'Back to Sign In',
+                  'auth.back_to_login'.tr(),
                   style: GoogleFonts.inter(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
@@ -576,7 +576,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
         ),
         const SizedBox(height: 18),
         Text(
-          _recoveryMode == 'phone' ? 'Akaun Dijumpai!' : 'Pautan Telah Dihantar!',
+          _recoveryMode == 'phone' ? 'auth.account_found'.tr() : 'auth.forgot_success_title'.tr(),
           style: GoogleFonts.outfit(
             fontSize: 20,
             fontWeight: FontWeight.w800,
@@ -595,7 +595,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
           child: Column(
             children: [
               Text(
-                'EMEL BERDAFTAR ANDA',
+                'auth.registered_email_label'.tr(),
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -617,7 +617,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
         ),
         const SizedBox(height: 12),
         Text(
-          'Pautan penetapan semula kata laluan telah dihantar ke alamat emel di atas secara percuma. Sila buka peti masuk anda sekarang.',
+          'auth.link_sent_email_note'.tr(),
           style: GoogleFonts.inter(
             fontSize: 12.5,
             color: textSecondary,
@@ -640,7 +640,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
               ),
             ),
             child: Text(
-              'BACK TO SIGN IN',
+              'auth.back_to_login_btn'.tr(),
               style: GoogleFonts.outfit(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w800,

@@ -1,4 +1,3 @@
-import '../../l10n/generated/app_localizations.dart';
 import 'dart:ui';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -209,7 +208,7 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                     child: IconButton(
-                      tooltip: 'Laman Utama (Home)',
+                      tooltip: 'auth.tooltip_home'.tr(),
                       icon: const HugeIcon(
                         icon: HugeIcons.strokeRoundedHome01,
                         color: Colors.white,
@@ -251,7 +250,7 @@ class _LoginScreenState extends State<LoginScreen>
                       children: [
                         // Language button
                         IconButton(
-                          tooltip: 'Language',
+                          tooltip: 'auth.tooltip_language'.tr(),
                           icon: HugeIcon(
                             icon: HugeIcons.strokeRoundedTranslate,
                             color: textPrimary,
@@ -272,7 +271,7 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                         // Theme button
                         IconButton(
-                          tooltip: 'Theme',
+                          tooltip: 'auth.tooltip_theme'.tr(),
                           icon: HugeIcon(
                             icon: isDark
                                 ? HugeIcons.strokeRoundedSun01
@@ -359,7 +358,7 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                         const SizedBox(height: 20),
                         Text(
-                          'NGAM PORTAL',
+                          'auth.portal_badge'.tr(),
                           style: GoogleFonts.outfit(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
@@ -369,7 +368,7 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Satu platform komuniti pintar untuk pesanan,\ntempahan, servis tempatan dan perkhidmatan tanpa had.',
+                          'auth.portal_tagline'.tr(),
                           style: GoogleFonts.inter(
                             fontSize: 13.5,
                             height: 1.6,
@@ -384,7 +383,7 @@ class _LoginScreenState extends State<LoginScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '© 2026 Ngam Community System\nSmart Community & Service Platform',
+                          'auth.portal_copyright'.tr(),
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             height: 1.6,
@@ -469,7 +468,7 @@ class _LoginScreenState extends State<LoginScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                'NGAM PORTAL',
+                'auth.portal_badge'.tr(),
                 style: GoogleFonts.outfit(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -513,7 +512,6 @@ class _LoginScreenState extends State<LoginScreen>
   // 1. THE LOGIN CARD
   // ───────────────────────────────────────────────────────────────────────────
   Widget _buildLoginCard(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     return KeyedSubtree(
       key: const ValueKey('login_card'),
       child: _buildCardShell(
@@ -524,7 +522,7 @@ class _LoginScreenState extends State<LoginScreen>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                (l10n?.authLogin ?? 'USER LOGIN').toUpperCase(),
+                'auth.login_title'.tr(),
                 textAlign: TextAlign.center,
                 style: GoogleFonts.outfit(
                   fontSize: 26,
@@ -535,7 +533,7 @@ class _LoginScreenState extends State<LoginScreen>
               ),
               const SizedBox(height: 4),
               Text(
-                'Access your account and manage orders seamlessly.',
+                'auth.login_subtitle'.tr(),
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
                   fontSize: 12.5,
@@ -547,7 +545,7 @@ class _LoginScreenState extends State<LoginScreen>
 
               // Email Address
               Text(
-                (l10n?.authEmail ?? 'EMAIL ADDRESS').toUpperCase(),
+                'auth.email_label'.tr(),
                 style: GoogleFonts.inter(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
@@ -561,12 +559,12 @@ class _LoginScreenState extends State<LoginScreen>
                 style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
                 keyboardType: TextInputType.emailAddress,
                 decoration: _inputDecoration(
-                  hintText: 'alex.rivera@company.com',
+                  hintText: 'auth.email_hint'.tr(),
                   prefixIcon: HugeIcons.strokeRoundedMail01,
                 ),
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) return 'Sila masukkan emel';
-                  if (!value.contains('@')) return 'Emel tidak sah';
+                  if (value == null || value.trim().isEmpty) return 'auth.val_enter_email'.tr();
+                  if (!value.contains('@')) return 'auth.val_invalid_email'.tr();
                   return null;
                 },
               ),
@@ -577,7 +575,7 @@ class _LoginScreenState extends State<LoginScreen>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    (l10n?.authPassword ?? 'PASSWORD').toUpperCase(),
+                    'auth.password_label'.tr(),
                     style: GoogleFonts.inter(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,
@@ -592,7 +590,7 @@ class _LoginScreenState extends State<LoginScreen>
                       });
                     },
                     child: Text(
-                      l10n?.authForgotPassword ?? 'Forgot?',
+                      'auth.forgot_short'.tr(),
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -614,7 +612,7 @@ class _LoginScreenState extends State<LoginScreen>
                   obscure: _obscurePassword,
                   onToggle: () => setState(() => _obscurePassword = !_obscurePassword),
                 ),
-                validator: (value) => (value == null || value.isEmpty) ? 'Sila masukkan kata laluan' : null,
+                validator: (value) => (value == null || value.isEmpty) ? 'auth.val_enter_password'.tr() : null,
               ),
               const SizedBox(height: 24),
 
@@ -691,7 +689,7 @@ class _LoginScreenState extends State<LoginScreen>
                               child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
                             )
                           : Text(
-                              (l10n?.authLogin ?? 'SIGN IN').toUpperCase(),
+                              'auth.sign_in_btn'.tr(),
                               style: GoogleFonts.outfit(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w800,
@@ -718,7 +716,7 @@ class _LoginScreenState extends State<LoginScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    (l10n?.authNoAccount != null ? '${l10n!.authNoAccount} ' : "Don't have an account? "),
+                    'auth.no_account'.tr(),
                     style: GoogleFonts.inter(fontSize: 12.5, color: textSecondary),
                   ),
                   GestureDetector(
@@ -728,7 +726,7 @@ class _LoginScreenState extends State<LoginScreen>
                       });
                     },
                     child: Text(
-                      l10n?.authRegister ?? 'Sign Up',
+                      'auth.sign_up'.tr(),
                       style: GoogleFonts.inter(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w700,
@@ -756,7 +754,7 @@ class _LoginScreenState extends State<LoginScreen>
                   backgroundColor: Colors.white.withValues(alpha: 0.04),
                 ),
                 child: Text(
-                  'Terokai Sebagai Tetamu (Guest)',
+                  'auth.explore_as_guest'.tr(),
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -776,7 +774,6 @@ class _LoginScreenState extends State<LoginScreen>
   // 2. THE REGISTER CARD (3 Clean Fields: Name, Email, Password)
   // ───────────────────────────────────────────────────────────────────────────
   Widget _buildRegisterCard(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     return KeyedSubtree(
       key: const ValueKey('register_card'),
       child: _buildCardShell(
@@ -787,7 +784,7 @@ class _LoginScreenState extends State<LoginScreen>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                (l10n?.authCreateAccount ?? 'CREATE ACCOUNT').toUpperCase(),
+                'auth.register_title'.tr(),
                 textAlign: TextAlign.center,
                 style: GoogleFonts.outfit(
                   fontSize: 24,
@@ -798,7 +795,7 @@ class _LoginScreenState extends State<LoginScreen>
               ),
               const SizedBox(height: 4),
               Text(
-                'Join the Ngam community and start exploring services.',
+                'auth.register_subtitle'.tr(),
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
                   fontSize: 12.5,
@@ -810,7 +807,7 @@ class _LoginScreenState extends State<LoginScreen>
 
               // Field 1: Full Name
               Text(
-                (l10n?.authFullName ?? 'FULL NAME').toUpperCase(),
+                'auth.full_name_label'.tr(),
                 style: GoogleFonts.inter(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
@@ -824,16 +821,16 @@ class _LoginScreenState extends State<LoginScreen>
                 style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
                 textCapitalization: TextCapitalization.words,
                 decoration: _inputDecoration(
-                  hintText: 'Ahmad Faiz',
+                  hintText: 'auth.name_hint'.tr(),
                   prefixIcon: HugeIcons.strokeRoundedUser,
                 ),
-                validator: (val) => (val == null || val.trim().isEmpty) ? 'Sila masukkan nama anda' : null,
+                validator: (val) => (val == null || val.trim().isEmpty) ? 'auth.val_enter_name'.tr() : null,
               ),
               const SizedBox(height: 14),
 
               // Field 2: Email Address
               Text(
-                (l10n?.authEmail ?? 'EMAIL ADDRESS').toUpperCase(),
+                'auth.email_label'.tr(),
                 style: GoogleFonts.inter(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
@@ -847,12 +844,12 @@ class _LoginScreenState extends State<LoginScreen>
                 style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
                 keyboardType: TextInputType.emailAddress,
                 decoration: _inputDecoration(
-                  hintText: 'nama@domain.com',
+                  hintText: 'auth.email_hint'.tr(),
                   prefixIcon: HugeIcons.strokeRoundedMail01,
                 ),
                 validator: (val) {
-                  if (val == null || val.trim().isEmpty) return 'Sila masukkan emel';
-                  if (!val.contains('@')) return 'Emel tidak sah';
+                  if (val == null || val.trim().isEmpty) return 'auth.val_enter_email'.tr();
+                  if (!val.contains('@')) return 'auth.val_invalid_email'.tr();
                   return null;
                 },
               ),
@@ -860,7 +857,7 @@ class _LoginScreenState extends State<LoginScreen>
 
               // Field 3: Password
               Text(
-                (l10n?.authPassword ?? 'PASSWORD').toUpperCase(),
+                'auth.password_label'.tr(),
                 style: GoogleFonts.inter(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
@@ -881,8 +878,8 @@ class _LoginScreenState extends State<LoginScreen>
                   onToggle: () => setState(() => _regObscurePassword = !_regObscurePassword),
                 ),
                 validator: (val) {
-                  if (val == null || val.isEmpty) return 'Sila masukkan kata laluan';
-                  if (val.length < 6) return 'Kata laluan sekurang-kurangnya 6 aksara';
+                  if (val == null || val.isEmpty) return 'auth.val_enter_password'.tr();
+                  if (val.length < 6) return 'auth.val_password_min'.tr();
                   return null;
                 },
               ),
@@ -961,7 +958,7 @@ class _LoginScreenState extends State<LoginScreen>
                               child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
                             )
                           : Text(
-                              (l10n?.authCreateAccount ?? 'CREATE ACCOUNT').toUpperCase(),
+                              'auth.register_title'.tr(),
                               style: GoogleFonts.outfit(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w800,
@@ -985,7 +982,7 @@ class _LoginScreenState extends State<LoginScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    (l10n?.authHaveAccount != null ? '${l10n!.authHaveAccount} ' : 'Already have an account? '),
+                    'auth.have_account'.tr(),
                     style: GoogleFonts.inter(fontSize: 12.5, color: textSecondary),
                   ),
                   GestureDetector(
@@ -995,7 +992,7 @@ class _LoginScreenState extends State<LoginScreen>
                       });
                     },
                     child: Text(
-                      'Sign In',
+                      'auth.sign_in'.tr(),
                       style: GoogleFonts.inter(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w700,
@@ -1025,7 +1022,6 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildForgotFormView() {
-    final l10n = AppLocalizations.of(context);
     return Form(
       key: _forgotFormKey,
       child: Column(
@@ -1052,7 +1048,7 @@ class _LoginScreenState extends State<LoginScreen>
           ),
           const SizedBox(height: 12),
           Text(
-            'RESET PASSWORD',
+            'auth.forgot_title'.tr(),
             textAlign: TextAlign.center,
             style: GoogleFonts.outfit(
               fontSize: 22,
@@ -1063,7 +1059,7 @@ class _LoginScreenState extends State<LoginScreen>
           ),
           const SizedBox(height: 4),
           Text(
-            'Masukkan alamat emel untuk menerima pautan penetapan semula kata laluan.',
+            'auth.forgot_subtitle'.tr(),
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 12.5,
@@ -1075,7 +1071,7 @@ class _LoginScreenState extends State<LoginScreen>
 
           // Email Input
           Text(
-            (l10n?.authEmail ?? 'EMAIL ADDRESS').toUpperCase(),
+            'auth.email_label'.tr(),
             style: GoogleFonts.inter(
               fontSize: 10.5,
               fontWeight: FontWeight.w700,
@@ -1088,10 +1084,10 @@ class _LoginScreenState extends State<LoginScreen>
             controller: _forgotEmailController,
             style: GoogleFonts.inter(color: textPrimary, fontSize: 13.5),
             keyboardType: TextInputType.emailAddress,
-            decoration: _inputDecoration(hintText: 'nama@domain.com', prefixIcon: HugeIcons.strokeRoundedMail01),
+            decoration: _inputDecoration(hintText: 'auth.email_hint'.tr(), prefixIcon: HugeIcons.strokeRoundedMail01),
             validator: (val) {
-              if (val == null || val.trim().isEmpty) return 'Sila masukkan emel';
-              if (!val.contains('@')) return 'Emel tidak sah';
+              if (val == null || val.trim().isEmpty) return 'auth.val_enter_email'.tr();
+              if (!val.contains('@')) return 'auth.val_invalid_email'.tr();
               return null;
             },
           ),
@@ -1118,7 +1114,7 @@ class _LoginScreenState extends State<LoginScreen>
                           child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
                         )
                       : Text(
-                          'SEND RESET LINK',
+                          'auth.send_reset_link'.tr(),
                           style: GoogleFonts.outfit(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w800,
@@ -1146,7 +1142,7 @@ class _LoginScreenState extends State<LoginScreen>
                   const HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, size: 14, color: textSecondary),
                   const SizedBox(width: 6),
                   Text(
-                    'Back to Sign In',
+                    'auth.back_to_login'.tr(),
                     style: GoogleFonts.inter(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
@@ -1187,7 +1183,7 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         const SizedBox(height: 14),
         Text(
-          'Pautan Telah Dihantar!',
+          'auth.forgot_success_title'.tr(),
           textAlign: TextAlign.center,
           style: GoogleFonts.outfit(
             fontSize: 20,
@@ -1197,7 +1193,7 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         const SizedBox(height: 6),
         Text(
-          'Sila semak peti masuk emel ${_forgotEmailController.text.trim()} untuk arahan penetapan semula kata laluan anda.',
+          'auth.forgot_success_subtitle'.tr(args: [_forgotEmailController.text.trim()]),
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             fontSize: 12.5,
@@ -1221,7 +1217,7 @@ class _LoginScreenState extends State<LoginScreen>
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
             ),
             child: Text(
-              'BACK TO SIGN IN',
+              'auth.back_to_login_btn'.tr(),
               style: GoogleFonts.outfit(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w800,
@@ -1324,7 +1320,7 @@ class _LoginScreenState extends State<LoginScreen>
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Text(
-            'or',
+            'auth.or'.tr(),
             style: GoogleFonts.inter(
               color: textSecondary.withValues(alpha: 0.6),
               fontSize: 11,
@@ -1371,7 +1367,7 @@ class _LoginScreenState extends State<LoginScreen>
             ),
             const SizedBox(width: 10),
             Text(
-              'Continue with Google',
+              'auth.continue_with_google'.tr(),
               style: GoogleFonts.inter(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w600,
