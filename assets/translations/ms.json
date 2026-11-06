@@ -694,7 +694,22 @@
     "view_all_items": "Lihat semua item",
     "wifi_guest": "WiFi Tetamu Kedai",
     "wifi_detected": "Maklumat sambungan WiFi dikesan daripada imbasan:",
-    "no_matches": "Tiada padanan dijumpai"
+    "no_matches": "Tiada padanan dijumpai",
+    "weekly_operating_hours": "Waktu Operasi Mingguan",
+    "closed": "Tutup",
+    "closed_holiday": "Tutup ({})",
+    "holiday_closure": "Cuti Peristiwa",
+    "store_information": "Maklumat Kedai",
+    "location_address": "Lokasi & Alamat",
+    "facilities_features": "Kemudahan & Ciri Kedai",
+    "busy_temporary": "Kedai Sibuk Sementara Waktu",
+    "busy_temporary_subtitle": "Pesanan & tempahan baru ditangguhkan seketika oleh peniaga.",
+    "amenity_surau": "Surau Disediakan",
+    "amenity_wifi": "Wi-Fi Berkelajuan Tinggi",
+    "amenity_parking": "Tempat Letak Kereta",
+    "amenity_ac": "Hawa Dingin",
+    "amenity_halal": "Pensijilan Halal",
+    "amenity_cashless": "Tanpa Tunai & DuitNow"
   },
   "feed": {
     "title": "Ngam Feed",
@@ -816,5 +831,14 @@
     "special_request": "Permintaan Khas: {}",
     "general_order": "Pesanan ({})",
     "default_item": "Pesanan Am"
+  },
+  "days": {
+    "monday": "Isnin",
+    "tuesday": "Selasa",
+    "wednesday": "Rabu",
+    "thursday": "Khamis",
+    "friday": "Jumaat",
+    "saturday": "Sabtu",
+    "sunday": "Ahad"
   }
 }

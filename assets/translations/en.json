@@ -694,7 +694,22 @@
     "view_all_items": "View all items",
     "wifi_guest": "Store Guest WiFi",
     "wifi_detected": "WiFi network detected from scan:",
-    "no_matches": "No matches found"
+    "no_matches": "No matches found",
+    "weekly_operating_hours": "Weekly Operating Hours",
+    "closed": "Closed",
+    "closed_holiday": "Closed ({})",
+    "holiday_closure": "Holiday Closure",
+    "store_information": "Store Information",
+    "location_address": "Location & Address",
+    "facilities_features": "Store Facilities & Features",
+    "busy_temporary": "Store Temporarily Busy",
+    "busy_temporary_subtitle": "New orders & bookings are paused temporarily by the merchant.",
+    "amenity_surau": "Surau Available",
+    "amenity_wifi": "High-Speed Wi-Fi",
+    "amenity_parking": "Dedicated Parking",
+    "amenity_ac": "Air Conditioned",
+    "amenity_halal": "Halal Certified",
+    "amenity_cashless": "Cashless & DuitNow"
   },
   "feed": {
     "title": "Ngam Feed",
@@ -816,5 +831,14 @@
     "special_request": "Special Request: {}",
     "general_order": "Order ({})",
     "default_item": "General Order"
+  },
+  "days": {
+    "monday": "Monday",
+    "tuesday": "Tuesday",
+    "wednesday": "Wednesday",
+    "thursday": "Thursday",
+    "friday": "Friday",
+    "saturday": "Saturday",
+    "sunday": "Sunday"
   }
 }

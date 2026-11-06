@@ -8,7 +8,7 @@ import '../../widgets/glass_toast.dart';
 import '../../widgets/glass_nav_button.dart';
 
 // ============================================================
-// StoreInfoView — Store Information, Realtime 7-Day Hours & Holiday Closures
+// StoreInfoView — Store Information & Dynamic Operating Schedule
 // ============================================================
 class StoreInfoView extends StatefulWidget {
   final Map<String, dynamic> shop;
@@ -139,7 +139,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
     final Color textSecondary = isDark ? Colors.white60 : const Color(0xFF3A3A3C).withValues(alpha: 0.7);
 
     final shop = widget.shop;
-    final String shopName = (shop['business_name'] ?? shop['trading_name'] ?? shop['name'] ?? 'Store Information').toString();
+    final String shopName = (shop['business_name'] ?? shop['trading_name'] ?? shop['name'] ?? 'store.store_information'.tr()).toString();
     final String category = (shop['business_industry'] ?? shop['category'] ?? 'Business').toString().toUpperCase();
     final String address = shop['address'] ?? 'Lot 12, Jalan Telawi 3, Bangsar, 59100 Kuala Lumpur';
     final String phone = shop['phone'] ?? '+60 12-345 6789';
@@ -164,23 +164,91 @@ class _StoreInfoViewState extends State<StoreInfoView> {
       effectiveCloseM = p.length > 1 ? int.tryParse(p[1]) ?? effectiveCloseM : effectiveCloseM;
     }
 
-    final String fallbackDailyHours = '${_formatTime(effectiveOpenH, effectiveOpenM)} - ${_formatTime(effectiveCloseH, effectiveCloseM)}';
+    final String fallbackDailyHours = '${_formatTime(effectiveOpenH, effectiveOpenM)} – ${_formatTime(effectiveCloseH, effectiveCloseM)}';
 
-    final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    final currentDayIndex = DateTime.now().weekday - 1; // 0 for Monday
+    const daysEn = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final now = DateTime.now();
 
     // Parse live schedule and rush mode
     final bool isRushMode = _operatingHours?['is_rush_mode'] == true;
     final List? weeklySchedule = _operatingHours?['weekly_schedule'] as List?;
     final List? specialHolidays = _operatingHours?['special_holidays'] as List?;
 
+    // Build 7-day schedule with TODAY dynamically at the top (Google Maps style)
+    final orderedDays = List.generate(7, (offset) {
+      final date = now.add(Duration(days: offset));
+      final int weekdayIndex = date.weekday - 1; // 0 for Monday .. 6 for Sunday
+      final String dayEn = daysEn[weekdayIndex];
+      final String dayKey = 'days.${dayEn.toLowerCase()}';
+      final String dateStr =
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      final bool isToday = offset == 0;
+
+      // 1. Check if this date has a special holiday or festive closure
+      Map<String, dynamic>? matchingHoliday;
+      if (specialHolidays != null) {
+        for (final h in specialHolidays) {
+          if (h is Map && h['date']?.toString().trim() == dateStr) {
+            matchingHoliday = Map<String, dynamic>.from(h);
+            break;
+          }
+        }
+      }
+
+      bool isOpen = true;
+      bool isHoliday = false;
+      String? holidayName;
+      String dayHours = fallbackDailyHours;
+
+      if (matchingHoliday != null) {
+        final bool isClosed =
+            matchingHoliday['isClosed'] != false && matchingHoliday['is_closed'] != false;
+        holidayName = matchingHoliday['name']?.toString() ?? 'store.holiday_closure'.tr();
+        if (isClosed) {
+          isOpen = false;
+          isHoliday = true;
+          dayHours = 'store.closed_holiday'.tr(args: [holidayName]);
+        }
+      }
+
+      if (!isHoliday) {
+        if (weeklySchedule != null && weeklySchedule.isNotEmpty) {
+          final match = weeklySchedule.firstWhere(
+            (item) => item is Map && item['day']?.toString().toLowerCase() == dayEn.toLowerCase(),
+            orElse: () => null,
+          );
+
+          if (match != null && match is Map) {
+            isOpen = match['isOpen'] != false && match['is_open'] != false;
+            if (isOpen) {
+              final o = match['open']?.toString();
+              final c = match['close']?.toString();
+              dayHours = '${_formatTimeString(o)} – ${_formatTimeString(c)}';
+            } else {
+              dayHours = 'store.closed'.tr();
+            }
+          }
+        }
+      }
+
+      return {
+        'dayKey': dayKey,
+        'date': date,
+        'isToday': isToday,
+        'isOpen': isOpen,
+        'isHoliday': isHoliday,
+        'holidayName': holidayName,
+        'dayHours': dayHours,
+      };
+    });
+
     final amenities = [
-      {'icon': HugeIcons.strokeRoundedMosque01, 'label': 'Surau Available'},
-      {'icon': HugeIcons.strokeRoundedWifi01, 'label': 'High-Speed Wi-Fi'},
-      {'icon': HugeIcons.strokeRoundedCarParking01, 'label': 'Dedicated Parking'},
-      {'icon': HugeIcons.strokeRoundedSnow, 'label': 'Air Conditioned'},
-      {'icon': HugeIcons.strokeRoundedHalal, 'label': 'Halal Certified'},
-      {'icon': HugeIcons.strokeRoundedQrCode, 'label': 'Cashless & DuitNow'},
+      {'icon': HugeIcons.strokeRoundedMosque01, 'labelKey': 'store.amenity_surau'},
+      {'icon': HugeIcons.strokeRoundedWifi01, 'labelKey': 'store.amenity_wifi'},
+      {'icon': HugeIcons.strokeRoundedCarParking01, 'labelKey': 'store.amenity_parking'},
+      {'icon': HugeIcons.strokeRoundedSnow, 'labelKey': 'store.amenity_ac'},
+      {'icon': HugeIcons.strokeRoundedHalal, 'labelKey': 'store.amenity_halal'},
+      {'icon': HugeIcons.strokeRoundedQrCode, 'labelKey': 'store.amenity_cashless'},
     ];
 
     return Scaffold(
@@ -196,7 +264,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                   parent: BouncingScrollPhysics(),
                 ),
                 padding: const EdgeInsets.fromLTRB(20, 68, 20, 12),
-                  children: [
+                children: [
                   // Store Hero Card
                   _liquidGlassBox(
                     isDark: isDark,
@@ -320,22 +388,22 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          HugeIcon(icon: HugeIcons.strokeRoundedPauseCircle, color: Colors.redAccent, size: 22),
-                          SizedBox(width: 12),
+                          const HugeIcon(icon: HugeIcons.strokeRoundedPauseCircle, color: Colors.redAccent, size: 22),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Kedai Sibuk Sementara Waktu',
-                                  style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13),
+                                  'store.busy_temporary'.tr(),
+                                  style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13),
                                 ),
-                                SizedBox(height: 2),
+                                const SizedBox(height: 2),
                                 Text(
-                                  'Pesanan & tempahan baru ditangguhkan seketika oleh peniaga.',
-                                  style: TextStyle(color: Colors.white70, fontSize: 11),
+                                  'store.busy_temporary_subtitle'.tr(),
+                                  style: const TextStyle(color: Colors.white70, fontSize: 11),
                                 ),
                               ],
                             ),
@@ -345,7 +413,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                     ),
                   ],
 
-                  // Operating Hours (Full 7 Days)
+                  // Operating Hours (Full 7 Days — Unified with Today on Top & Direct Holiday Closures)
                   _liquidGlassBox(
                     isDark: isDark,
                     radius: 24,
@@ -358,7 +426,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                             const HugeIcon(icon: HugeIcons.strokeRoundedTime02, color: Colors.blue, size: 20),
                             const SizedBox(width: 10),
                             Text(
-                              'Waktu Operasi Mingguan',
+                              'store.weekly_operating_hours'.tr(),
                               style: TextStyle(
                                 color: textPrimary,
                                 fontSize: 16,
@@ -368,32 +436,12 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        ...days.asMap().entries.map((entry) {
-                          final int idx = entry.key;
-                          final String day = entry.value;
-                          final bool isToday = idx == currentDayIndex;
-
-                          // Extract day specific hours from weekly schedule
-                          bool isOpen = true;
-                          String dayHours = fallbackDailyHours;
-
-                          if (weeklySchedule != null && weeklySchedule.isNotEmpty) {
-                            final match = weeklySchedule.firstWhere(
-                              (item) => item is Map && item['day']?.toString().toLowerCase() == day.toLowerCase(),
-                              orElse: () => null,
-                            );
-
-                            if (match != null && match is Map) {
-                              isOpen = match['isOpen'] != false;
-                              if (isOpen) {
-                                final o = match['open']?.toString();
-                                final c = match['close']?.toString();
-                                dayHours = '${_formatTimeString(o)} – ${_formatTimeString(c)}';
-                              } else {
-                                dayHours = 'TUTUP / CLOSED';
-                              }
-                            }
-                          }
+                        ...orderedDays.map((dayData) {
+                          final bool isToday = dayData['isToday'] as bool;
+                          final bool isOpen = dayData['isOpen'] as bool;
+                          final bool isHoliday = dayData['isHoliday'] as bool;
+                          final String dayKey = dayData['dayKey'] as String;
+                          final String dayHours = dayData['dayHours'] as String;
 
                           return Container(
                             margin: const EdgeInsets.only(bottom: 8),
@@ -401,17 +449,31 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                             decoration: BoxDecoration(
                               color: isToday
                                   ? (isDark ? Colors.blue.withValues(alpha: 0.15) : Colors.blue.withValues(alpha: 0.08))
-                                  : Colors.transparent,
+                                  : (isHoliday
+                                      ? (isDark ? Colors.amber.withValues(alpha: 0.08) : Colors.amber.withValues(alpha: 0.05))
+                                      : Colors.transparent),
                               borderRadius: BorderRadius.circular(10),
-                              border: isToday ? Border.all(color: Colors.blue.withValues(alpha: 0.3)) : null,
+                              border: isToday
+                                  ? Border.all(color: Colors.blue.withValues(alpha: 0.3))
+                                  : (isHoliday
+                                      ? Border.all(color: Colors.amber.withValues(alpha: 0.25))
+                                      : null),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Row(
                                   children: [
+                                    if (isHoliday) ...[
+                                      const HugeIcon(
+                                        icon: HugeIcons.strokeRoundedCalendar03,
+                                        color: Colors.amber,
+                                        size: 15,
+                                      ),
+                                      const SizedBox(width: 6),
+                                    ],
                                     Text(
-                                      day,
+                                      dayKey.tr(),
                                       style: TextStyle(
                                         color: isToday ? Colors.blue : textPrimary,
                                         fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
@@ -426,127 +488,39 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                                           color: Colors.blue,
                                           borderRadius: BorderRadius.circular(6),
                                         ),
-                                        child: Text('common.today'.tr(), style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                                        child: Text(
+                                          'common.today'.tr(),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ],
                                 ),
-                                Text(
-                                  dayHours,
-                                  style: TextStyle(
-                                    color: !isOpen
-                                        ? Colors.redAccent
-                                        : (isToday ? Colors.blue : textSecondary),
-                                    fontWeight: (!isOpen || isToday) ? FontWeight.bold : FontWeight.normal,
-                                    fontSize: 12,
+                                Flexible(
+                                  child: Text(
+                                    dayHours,
+                                    textAlign: TextAlign.end,
+                                    style: TextStyle(
+                                      color: isHoliday
+                                          ? Colors.amber
+                                          : (!isOpen
+                                              ? Colors.redAccent
+                                              : (isToday ? Colors.blue : textSecondary)),
+                                      fontWeight: (!isOpen || isToday || isHoliday)
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                      fontSize: 12,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                           );
                         }),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Cuti Peristiwa & Perayaan (Festive & Holiday Closures)
-                  _liquidGlassBox(
-                    isDark: isDark,
-                    radius: 24,
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const HugeIcon(icon: HugeIcons.strokeRoundedCalendar03, color: Colors.amber, size: 20),
-                            const SizedBox(width: 10),
-                            Text(
-                              'Cuti Peristiwa & Perayaan',
-                              style: TextStyle(
-                                color: textPrimary,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Makluman penutupan khas sempena perayaan atau cuti peristiwa am.',
-                          style: TextStyle(color: textSecondary, fontSize: 12),
-                        ),
-                        const SizedBox(height: 14),
-
-                        if (specialHolidays == null || specialHolidays.isEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Row(
-                              children: [
-                                const HugeIcon(icon: HugeIcons.strokeRoundedCheckmarkCircle02, color: Colors.green, size: 18),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    'Tiada cuti peristiwa khas dijadualkan. Kedai dibuka mengikut jadual mingguan biasa.',
-                                    style: TextStyle(color: textSecondary, fontSize: 12),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        else
-                          ...specialHolidays.map((holiday) {
-                            if (holiday is! Map) return const SizedBox.shrink();
-                            final name = holiday['name']?.toString() ?? 'Cuti Khas';
-                            final date = holiday['date']?.toString() ?? '';
-                            final isClosed = holiday['isClosed'] != false;
-                            final note = holiday['note']?.toString();
-
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.withValues(alpha: isDark ? 0.08 : 0.05),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.amber.withValues(alpha: 0.15),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const HugeIcon(icon: HugeIcons.strokeRoundedParty, color: Colors.amber, size: 18),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          name,
-                                          style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 13),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          '$date • ${isClosed ? 'Tutup Sepanjang Hari' : 'Waktu Terhad'}${note != null && note.isNotEmpty ? ' ($note)' : ''}',
-                                          style: TextStyle(color: textSecondary, fontSize: 11),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }),
                       ],
                     ),
                   ),
@@ -566,7 +540,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                             const HugeIcon(icon: HugeIcons.strokeRoundedLocation01, color: Colors.blue, size: 20),
                             const SizedBox(width: 10),
                             Text(
-                              'Location & Address',
+                              'store.location_address'.tr(),
                               style: TextStyle(
                                 color: textPrimary,
                                 fontSize: 16,
@@ -599,7 +573,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                               _launchUrlHelper(context, 'https://www.google.com/maps/search/?api=1&query=$query');
                             },
                             icon: const HugeIcon(icon: HugeIcons.strokeRoundedDirections01, size: 18),
-                            label: Text('store.directions'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
+                            label: Text('store.directions'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ),
                       ],
@@ -621,7 +595,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                             const HugeIcon(icon: HugeIcons.strokeRoundedCheckmarkBadge01, color: Colors.blue, size: 20),
                             const SizedBox(width: 10),
                             Text(
-                              'Store Facilities & Features',
+                              'store.facilities_features'.tr(),
                               style: TextStyle(
                                 color: textPrimary,
                                 fontSize: 16,
@@ -648,7 +622,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
                                   HugeIcon(icon: item['icon'] as List<List<dynamic>>, color: Colors.blue, size: 16),
                                   const SizedBox(width: 8),
                                   Text(
-                                    item['label'] as String,
+                                    (item['labelKey'] as String).tr(),
                                     style: TextStyle(
                                       color: textPrimary,
                                       fontSize: 12,
@@ -670,7 +644,7 @@ class _StoreInfoViewState extends State<StoreInfoView> {
             ),
             FloatingTopBar(
               isDark: isDark,
-              title: 'Store Information',
+              title: 'store.store_information'.tr(),
               subtitle: shopName,
             ),
           ],
