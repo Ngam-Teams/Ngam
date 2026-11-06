@@ -1135,13 +1135,29 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                         ],
                       ),
                       child: Center(
-                        child: Text(
-                          isHistory ? 'my_bookings.action_view_receipt'.tr() : 'my_bookings.action_track_order'.tr(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13.5,
-                          ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            HugeIcon(
+                              icon: isHistory ? HugeIcons.strokeRoundedInvoice01 : HugeIcons.strokeRoundedDeliveryView01,
+                              color: Colors.white,
+                              size: 15,
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                isHistory ? 'my_bookings.action_view_receipt'.tr() : 'my_bookings.action_track_order'.tr(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
