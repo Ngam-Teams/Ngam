@@ -122,7 +122,11 @@
     "prep_desc_cooking": "Staf dapur sedang memasak dan membungkus hidangan anda. Kod QR pengambilan akan muncul di sini sebaik sahaja pesanan sedia.",
     "prep_badge_locked": "Kod QR Diaktifkan Apabila Sedia",
     "completed_title": "Pesanan Selesai Diambil",
-    "completed_desc": "Terima kasih! Pesanan ini telah berjaya disahkan dan diambil di kaunter."
+    "completed_desc": "Terima kasih! Pesanan ini telah berjaya disahkan dan diambil di kaunter.",
+    "items_list_title": "Senarai Item ({})",
+    "item_fallback": "Pesanan ({})",
+    "general_order": "Pesanan Kedai",
+    "items_count_label": "1 item"
   },
   "runner": {
     "find_gigs": "Cari Kerja",
@@ -754,6 +758,8 @@
     "service_booked": "Servis: {}",
     "provider_assigned": "Disediakan oleh: {}",
     "pax_count": "{} Pax",
-    "special_request": "Permintaan Khas: {}"
+    "special_request": "Permintaan Khas: {}",
+    "general_order": "Pesanan ({})",
+    "default_item": "Pesanan Am"
   }
 }

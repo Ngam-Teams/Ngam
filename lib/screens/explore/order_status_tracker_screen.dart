@@ -890,10 +890,10 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                               isDark,
                               isSuccess: _paymentStatus == 'paid',
                             ),
+                            _divider(isDark),
                             if (_loadedItems.isNotEmpty) ...[
-                              _divider(isDark),
                               Text(
-                                'Senarai Item (${_loadedItems.length})',
+                                'order_status.items_list_title'.tr(args: [_loadedItems.length.toString()]),
                                 style: TextStyle(
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w700,
@@ -948,6 +948,66 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                                   ),
                                 );
                               }),
+                            ] else ...[
+                              Text(
+                                'order_status.items_list_title'.tr(args: ['1']),
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? Colors.white70 : const Color(0xFF475569),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF00E5FF).withValues(alpha: 0.14),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Text(
+                                        '1x',
+                                        style: TextStyle(
+                                          color: Color(0xFF00E5FF),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _notes?.isNotEmpty == true
+                                            ? (_notes!.replaceAll(RegExp(r'\[.*?\]'), '').trim().isNotEmpty
+                                                ? _notes!.replaceAll(RegExp(r'\[.*?\]'), '').trim()
+                                                : ((_fulfillmentLabel != null && _fulfillmentLabel!.isNotEmpty)
+                                                    ? 'order_status.item_fallback'.tr(args: [_fulfillmentLabel!])
+                                                    : 'order_status.general_order'.tr()))
+                                            : ((_fulfillmentLabel != null && _fulfillmentLabel!.isNotEmpty)
+                                                ? 'order_status.item_fallback'.tr(args: [_fulfillmentLabel!])
+                                                : 'order_status.general_order'.tr()),
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      currency.format(_totalAmount),
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark ? Colors.white70 : const Color(0xFF334155),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ],
                             _divider(isDark),
                             _detailRow('Jumlah Keseluruhan', currency.format(_totalAmount), isDark,

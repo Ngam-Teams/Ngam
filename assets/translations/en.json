@@ -122,7 +122,11 @@
     "prep_desc_cooking": "The kitchen staff is currently cooking and preparing your items. Your pickup QR code will appear here as soon as it is ready.",
     "prep_badge_locked": "QR Code Activates When Ready",
     "completed_title": "Order Collected & Completed",
-    "completed_desc": "Thank you! This order has been verified and picked up at the counter."
+    "completed_desc": "Thank you! This order has been verified and picked up at the counter.",
+    "items_list_title": "Item List ({})",
+    "item_fallback": "Order ({})",
+    "general_order": "Store Order",
+    "items_count_label": "1 item"
   },
   "runner": {
     "find_gigs": "Find Gigs",
@@ -754,6 +758,8 @@
     "service_booked": "Service: {}",
     "provider_assigned": "Provider: {}",
     "pax_count": "{} Pax",
-    "special_request": "Special Request: {}"
+    "special_request": "Special Request: {}",
+    "general_order": "Order ({})",
+    "default_item": "General Order"
   }
 }

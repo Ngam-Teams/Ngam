@@ -29,7 +29,9 @@ class _MyBookingsViewState extends State<MyBookingsView> {
 
   void _loadOrderItemsForIds(List<String> orderIds) async {
     final toFetch = orderIds
-        .where((id) => !_orderItemsCache.containsKey(id) && !_pendingOrderItemFetches.contains(id))
+        .map((id) => id.trim().toLowerCase())
+        .where((id) => id.isNotEmpty && !_orderItemsCache.containsKey(id) && !_pendingOrderItemFetches.contains(id))
+        .toSet()
         .toList();
     if (toFetch.isEmpty) return;
     _pendingOrderItemFetches.addAll(toFetch);
@@ -46,7 +48,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
           _orderItemsCache[id] = [];
         }
         for (final r in (rows as List)) {
-          final oid = r['order_id']?.toString() ?? '';
+          final oid = (r['order_id']?.toString() ?? '').trim().toLowerCase();
           if (oid.isNotEmpty) {
             _orderItemsCache.putIfAbsent(oid, () => []).add(Map<String, dynamic>.from(r as Map));
           }
@@ -401,8 +403,9 @@ class _MyBookingsViewState extends State<MyBookingsView> {
 
                             // Collect uncached order ids for batch fetch
                             final uncachedOids = myOrders
-                                .map((o) => o['id']?.toString() ?? '')
+                                .map((o) => (o['id']?.toString() ?? '').toLowerCase().trim())
                                 .where((id) => id.isNotEmpty && !_orderItemsCache.containsKey(id) && !_pendingOrderItemFetches.contains(id))
+                                .toSet()
                                 .toList();
                             if (uncachedOids.isNotEmpty) {
                               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -443,7 +446,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                               }
 
                               final double totalVal = (o['total'] as num?)?.toDouble() ?? 0.0;
-                              final String oid = o['id']?.toString() ?? '';
+                              final String oid = (o['id']?.toString() ?? '').toLowerCase().trim();
 
                               // Prioritize store logo url
                               final bizLogo = biz?['business_logo_url']?.toString().trim();
@@ -842,24 +845,25 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                       ),
                     ),
                     const Spacer(),
-                    if (items.isNotEmpty)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF00B8D4).withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          totalQty == 1
-                              ? 'my_bookings.items_count_single'.tr()
-                              : 'my_bookings.items_count'.tr(args: [totalQty.toString()]),
-                          style: const TextStyle(
-                            color: Color(0xFF00B8D4),
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00B8D4).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        totalQty > 0
+                            ? (totalQty == 1
+                                ? 'my_bookings.items_count_single'.tr()
+                                : 'my_bookings.items_count'.tr(args: [totalQty.toString()]))
+                            : 'my_bookings.items_count_single'.tr(),
+                        style: const TextStyle(
+                          color: Color(0xFF00B8D4),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -945,6 +949,56 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                         ),
                       ),
                     ),
+                ] else ...[
+                  // Fallback when order items list is empty in database (e.g. legacy/counter order)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2.5),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '1x',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: isDark ? const Color(0xFF00E5FF) : const Color(0xFF0097A7),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            customerNote.isNotEmpty
+                                ? customerNote
+                                : ((item['category'] != null && item['category'].toString().isNotEmpty)
+                                    ? 'my_bookings.general_order'.tr(args: [item['category'].toString()])
+                                    : 'my_bookings.default_item'.tr()),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white.withValues(alpha: 0.85) : Colors.black87,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          item['totalPrice'] ?? 'RM 0.00',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.white60 : Colors.grey[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ],
             ),

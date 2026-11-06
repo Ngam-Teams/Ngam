@@ -519,14 +519,19 @@ class _StoreCartViewState extends State<StoreCartView> {
       // Items MUST be saved with the order. If they fail, withdraw the order so
       // the merchant never receives an empty/unpreparable order.
       try {
+        final uuidRegex = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
         final itemsData = _items
-            .map((item) => {
-                  'order_id': orderId,
-                  'product_id': item.product.id,
-                  'product_name': item.formattedProductName,
-                  'quantity': item.quantity,
-                  'unit_price': item.unitPriceWithOption,
-                  'subtotal': item.totalPrice,
+            .map((item) {
+                  final rawPid = item.product.id.trim();
+                  final isValidUuid = uuidRegex.hasMatch(rawPid);
+                  return {
+                    'order_id': orderId,
+                    if (isValidUuid) 'product_id': rawPid,
+                    'product_name': item.formattedProductName,
+                    'quantity': item.quantity,
+                    'unit_price': item.unitPriceWithOption,
+                    'subtotal': item.totalPrice,
+                  };
                 })
             .toList();
         await Supabase.instance.client.from('order_items').insert(itemsData);
