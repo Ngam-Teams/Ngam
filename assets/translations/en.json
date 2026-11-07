@@ -673,7 +673,18 @@
     "status_cancelled": "Cancelled",
     "no_active_queue": "No Active Queue",
     "no_active_queue_desc": "You have not taken any walk-in queue tickets today. Scan the store QR code to join the line virtually!",
-    "refresh_status": "Refresh Status"
+    "refresh_status": "Refresh Status",
+    "join_walkin_title": "Join Walk-In Queue",
+    "live_waiting_badge": "{} waiting in line • ~{} min",
+    "no_waiting_now": "No line right now! Immediate service",
+    "enter_name_hint": "Enter your name",
+    "enter_name_error": "Please enter your name",
+    "joined_success": "Successfully joined queue! Your ticket: {}",
+    "take_ticket_for_shop": "Take Queue Ticket at {}",
+    "now_serving_label": "NOW SERVING",
+    "people_ahead_zero": "It's your turn now!",
+    "people_ahead_count": "{} people ahead of you",
+    "guest_saved_note": "Your ticket is saved automatically on this device even if you close the browser."
   },
   "stamp": {
     "title": "My Digital Stamp Cards",
@@ -767,7 +778,14 @@
     "amenity_parking": "Dedicated Parking",
     "amenity_ac": "Air Conditioned",
     "amenity_halal": "Halal Certified",
-    "amenity_cashless": "Cashless & DuitNow"
+    "amenity_cashless": "Cashless & DuitNow",
+    "walkin_queue_btn": "Walk-In",
+    "walkin_take_queue": "Take Walk-In Queue",
+    "walkin_hero_title": "Smart Walk-In Queue Active",
+    "walkin_hero_desc": "Take your queue ticket online or at the store without waiting in a physical line. We'll notify you when your turn is called!",
+    "mode_badge_walkin": "Walk-In Queue",
+    "mode_badge_booking": "Slot Booking",
+    "mode_badge_order": "Direct Order"
   },
   "feed": {
     "title": "Ngam Feed",

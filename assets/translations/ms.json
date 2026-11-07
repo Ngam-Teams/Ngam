@@ -673,7 +673,18 @@
     "status_cancelled": "Dibatalkan",
     "no_active_queue": "Tiada Giliran Aktif",
     "no_active_queue_desc": "Anda belum mengambil tiket giliran walk-in di mana-mana kedai hari ini. Imbas kod QR di kedai untuk sertai giliran tanpa beratur fizikal!",
-    "refresh_status": "Segarkan Status"
+    "refresh_status": "Segarkan Status",
+    "join_walkin_title": "Sertai Giliran Walk-In",
+    "live_waiting_badge": "{} sedang menunggu • ~{} minit",
+    "no_waiting_now": "Tiada barisan sekarang! Terus dilayan",
+    "enter_name_hint": "Masukkan nama anda",
+    "enter_name_error": "Sila masukkan nama anda",
+    "joined_success": "Berjaya sertai giliran! Nombor anda: {}",
+    "take_ticket_for_shop": "Ambil Nombor Giliran di {}",
+    "now_serving_label": "SEDANG DIPANGGIL",
+    "people_ahead_zero": "Giliran anda sekarang!",
+    "people_ahead_count": "Lagi {} orang di hadapan anda",
+    "guest_saved_note": "Tiket anda disimpan secara automatik dalam peranti ini walaupun anda menutup pelayar."
   },
   "stamp": {
     "title": "Kad Cop Digital Saya",
@@ -767,7 +778,14 @@
     "amenity_parking": "Tempat Letak Kereta",
     "amenity_ac": "Hawa Dingin",
     "amenity_halal": "Pensijilan Halal",
-    "amenity_cashless": "Tanpa Tunai & DuitNow"
+    "amenity_cashless": "Tanpa Tunai & DuitNow",
+    "walkin_queue_btn": "Walk-In",
+    "walkin_take_queue": "Ambil Giliran Walk-In",
+    "walkin_hero_title": "Giliran Pintar Walk-In Aktif",
+    "walkin_hero_desc": "Ambil nombor giliran terus dari telefon anda tanpa perlu beratur panjang. Status giliran dikemas kini secara langsung!",
+    "mode_badge_walkin": "Giliran Walk-In",
+    "mode_badge_booking": "Tempahan Slot",
+    "mode_badge_order": "Pesanan Menu"
   },
   "feed": {
     "title": "Ngam Feed",

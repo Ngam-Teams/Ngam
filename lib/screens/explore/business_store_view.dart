@@ -15,6 +15,7 @@ import 'bookings_view.dart';
 import 'store_cart_view.dart';
 import 'store_info_view.dart';
 import 'store_reviews_view.dart';
+import '../shared/my_queue_ticket_screen.dart';
 
 // ============================================================
 // BusinessStoreView — Main store landing page
@@ -690,7 +691,63 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
 
 
 
-  // ── Action Handlers ──────────────────────────────────────────
+  // ── Service Modes & Action Handlers ──────────────────────────
+
+  Map<String, dynamic>? get _effectiveOperatingHours {
+    if (_syncedOperatingHours != null) return _syncedOperatingHours;
+    final raw = widget.shop['operating_hours'];
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    return null;
+  }
+
+  bool get _enableWalkIn {
+    final oh = _effectiveOperatingHours;
+    if (oh == null) return true;
+    if (oh['enable_walkin'] is bool) return oh['enable_walkin'] as bool;
+    if (oh['service_modes'] is List) {
+      return (oh['service_modes'] as List).map((e) => e.toString()).contains('walkin');
+    }
+    return true;
+  }
+
+  bool get _enableBooking {
+    final oh = _effectiveOperatingHours;
+    if (oh == null) return true;
+    if (oh['enable_booking'] is bool) return oh['enable_booking'] as bool;
+    if (oh['service_modes'] is List) {
+      return (oh['service_modes'] as List).map((e) => e.toString()).contains('booking');
+    }
+    return true;
+  }
+
+  bool get _enableOrder {
+    final oh = _effectiveOperatingHours;
+    if (oh == null) return true;
+    if (oh['enable_order'] is bool) return oh['enable_order'] as bool;
+    if (oh['service_modes'] is List) {
+      return (oh['service_modes'] as List).map((e) => e.toString()).contains('order');
+    }
+    return true;
+  }
+
+  void _openWalkInQueue() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MyQueueTicketScreen(
+          initialBusinessId: widget.shop['id']?.toString(),
+          initialShop: {
+            ...widget.shop,
+            'name': _shopName,
+            'business_name': _shopName,
+            if (_syncedOperatingHours != null)
+              'operating_hours': _syncedOperatingHours,
+          },
+        ),
+      ),
+    );
+  }
 
   void _openBookings() {
     final user = Supabase.instance.client.auth.currentUser;
@@ -750,6 +807,89 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
   }
 
   // ── Shared UI Helpers ────────────────────────────────────────
+
+  Widget _buildWalkInEmptyStateCard(bool isDark, Color textPrimary, Color textSecondary) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 440),
+      child: _glassBox(
+        isDark: isDark,
+        radius: 28,
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF10B981).withValues(alpha: 0.14),
+                border: Border.all(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                  width: 1.5,
+                ),
+              ),
+              child: const Center(
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedTicket01,
+                  color: Color(0xFF10B981),
+                  size: 30,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'store.walkin_hero_title'.tr(),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'store.walkin_hero_desc'.tr(),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: textSecondary,
+                fontSize: 13.5,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: _openWalkInQueue,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                icon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedTicket01,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                label: Text(
+                  'store.walkin_take_queue'.tr(),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildQuickActionButton({
     required dynamic icon,
@@ -1011,6 +1151,14 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
     }
 
     if (_filteredProducts.isEmpty) {
+      if (_enableWalkIn && _selectedCategory == 'All items') {
+        return Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: _buildWalkInEmptyStateCard(isDark, textPrimary, textSecondary),
+          ),
+        );
+      }
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1206,20 +1354,35 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                   Divider(color: isDark ? Colors.white12 : Colors.black12, height: 1),
                   const SizedBox(height: 16),
 
-                  // 3 Quick Action Buttons
+                  // Quick Action Buttons (Adaptive to Walk-In & Booking Service Modes)
                   Row(
                     children: [
-                      Expanded(
-                        child: _buildQuickActionButton(
-                          icon: HugeIcons.strokeRoundedCalendar03,
-                          label: AppLocalizations.of(context)?.bookNow ?? 'Book Slot',
-                          color: Colors.blue,
-                          onTap: _openBookings,
-                          isDark: isDark,
-                          textPrimary: textPrimary,
+                      if (_enableWalkIn) ...[
+                        Expanded(
+                          child: _buildQuickActionButton(
+                            icon: HugeIcons.strokeRoundedTicket01,
+                            label: 'store.walkin_queue_btn'.tr(),
+                            color: const Color(0xFF10B981),
+                            onTap: _openWalkInQueue,
+                            isDark: isDark,
+                            textPrimary: textPrimary,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
+                        const SizedBox(width: 8),
+                      ],
+                      if (_enableBooking) ...[
+                        Expanded(
+                          child: _buildQuickActionButton(
+                            icon: HugeIcons.strokeRoundedCalendar03,
+                            label: AppLocalizations.of(context)?.bookNow ?? 'Book Slot',
+                            color: Colors.blue,
+                            onTap: _openBookings,
+                            isDark: isDark,
+                            textPrimary: textPrimary,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
                       Expanded(
                         child: _buildQuickActionButton(
                           icon: HugeIcons.strokeRoundedInformationCircle,
@@ -1530,20 +1693,35 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
               children: [
                 _buildMobileHeroHeader(isDark, textPrimary, textSecondary),
                 const SizedBox(height: 16),
-                // 3 Quick action buttons
+                // Quick action buttons (Adaptive to Walk-In & Booking Service Modes)
                 Row(
                   children: [
-                    Expanded(
-                      child: _buildQuickActionButton(
-                        icon: HugeIcons.strokeRoundedCalendar03,
-                        label: AppLocalizations.of(context)?.bookNow ?? 'Book Slot',
-                        color: Colors.blue,
-                        onTap: _openBookings,
-                        isDark: isDark,
-                        textPrimary: textPrimary,
+                    if (_enableWalkIn) ...[
+                      Expanded(
+                        child: _buildQuickActionButton(
+                          icon: HugeIcons.strokeRoundedTicket01,
+                          label: 'store.walkin_queue_btn'.tr(),
+                          color: const Color(0xFF10B981),
+                          onTap: _openWalkInQueue,
+                          isDark: isDark,
+                          textPrimary: textPrimary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
+                      const SizedBox(width: 8),
+                    ],
+                    if (_enableBooking) ...[
+                      Expanded(
+                        child: _buildQuickActionButton(
+                          icon: HugeIcons.strokeRoundedCalendar03,
+                          label: AppLocalizations.of(context)?.bookNow ?? 'Book Slot',
+                          color: Colors.blue,
+                          onTap: _openBookings,
+                          isDark: isDark,
+                          textPrimary: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                     Expanded(
                       child: _buildQuickActionButton(
                         icon: HugeIcons.strokeRoundedInformationCircle,
@@ -1568,12 +1746,14 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                   ],
                 ),
                 const SizedBox(height: 20),
-                // Search Bar
-                _buildSearchBar(isDark, textPrimary),
-                const SizedBox(height: 20),
-                // Category Chips
-                _buildCategoryChips(isDark),
-                const SizedBox(height: 20),
+                if (_allProducts.isNotEmpty || _enableOrder) ...[
+                  // Search Bar
+                  _buildSearchBar(isDark, textPrimary),
+                  const SizedBox(height: 20),
+                  // Category Chips
+                  _buildCategoryChips(isDark),
+                  const SizedBox(height: 20),
+                ],
               ],
             ),
           ),
@@ -1610,25 +1790,31 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
           )
         else if (_filteredProducts.isEmpty)
           SliverFillRemaining(
+            hasScrollBody: false,
             child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  HugeIcon(
-                    icon: HugeIcons.strokeRoundedShoppingBag01,
-                    color: isDark ? Colors.white24 : Colors.black26,
-                    size: 48,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No products available',
-                    style: TextStyle(
-                      color: isDark ? Colors.white54 : Colors.black54,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+                child: (_enableWalkIn && _selectedCategory == 'All items')
+                    ? _buildWalkInEmptyStateCard(isDark, textPrimary, textSecondary)
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          HugeIcon(
+                            icon: HugeIcons.strokeRoundedShoppingBag01,
+                            color: isDark ? Colors.white24 : Colors.black26,
+                            size: 48,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No products available',
+                            style: TextStyle(
+                              color: isDark ? Colors.white54 : Colors.black54,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
               ),
             ),
           )

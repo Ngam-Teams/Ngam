@@ -760,6 +760,28 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     _handleScannedStoreQr(scannedData);
   }
 
+  bool _isWalkInEnabled(Map<String, dynamic> shop) {
+    final oh = shop['operating_hours'];
+    if (oh is Map) {
+      if (oh['enable_walkin'] is bool) return oh['enable_walkin'] as bool;
+      if (oh['service_modes'] is List) {
+        return (oh['service_modes'] as List).map((e) => e.toString()).contains('walkin');
+      }
+    }
+    return true;
+  }
+
+  bool _isBookingEnabled(Map<String, dynamic> shop) {
+    final oh = shop['operating_hours'];
+    if (oh is Map) {
+      if (oh['enable_booking'] is bool) return oh['enable_booking'] as bool;
+      if (oh['service_modes'] is List) {
+        return (oh['service_modes'] as List).map((e) => e.toString()).contains('booking');
+      }
+    }
+    return true;
+  }
+
   void _handleScannedStoreQr(String rawData) async {
     String storeQuery = rawData.trim();
 
@@ -851,10 +873,23 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
     }
 
     // 2. Check for Smart Queue QR format
-    if (storeQuery.startsWith('NGAM_QUEUE:') || storeQuery.contains('/queue/')) {
+    if (storeQuery.startsWith('NGAM_QUEUE:') || storeQuery.contains('/queue/') || storeQuery.contains('/q/')) {
+      String? bizId;
+      if (storeQuery.startsWith('NGAM_QUEUE:')) {
+        bizId = storeQuery.substring('NGAM_QUEUE:'.length).trim();
+      } else {
+        final qUri = Uri.tryParse(storeQuery);
+        if (qUri != null && qUri.pathSegments.length >= 2) {
+          bizId = qUri.pathSegments[1].replaceFirst('@', '');
+        }
+      }
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const MyQueueTicketScreen()),
+        MaterialPageRoute(
+          builder: (_) => MyQueueTicketScreen(
+            initialBusinessId: (bizId != null && bizId.isNotEmpty) ? bizId : null,
+          ),
+        ),
       );
       showGlassToast(context, 'Membuka Giliran Pintar Kedai...');
       return;
@@ -4435,57 +4470,98 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                     ),
                     const SizedBox(width: 10),
 
-                    // Button 2: Book / Queue (With Auth Guard)
-                    Expanded(
-                      child: _AnimatedPressable(
-                        onTap: () {
-                          if (Supabase.instance.client.auth.currentUser != null) {
+                    // Button 2: Walk-In Queue or Book Now (Adaptive to Store Service Modes)
+                    if (_isWalkInEnabled(shop) && !_isBookingEnabled(shop))
+                      Expanded(
+                        child: _AnimatedPressable(
+                          onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => BookingsView(
-                                  shopId: shop["id"].toString(),
-                                  shopName: shop["name"] ?? "Unknown Shop",
-                                  category: (shop["business_industry"] ?? shop["category"] ?? "SERVICE").toString(),
-                                  shopImage: (shop["cover"] ?? shop["business_cover_url"] ?? shop["image"] ?? "").toString(),
+                                builder: (context) => MyQueueTicketScreen(
+                                  initialBusinessId: shop["id"].toString(),
+                                  initialShop: shop,
                                 ),
                               ),
                             );
-                          } else {
-                            showGlassToast(
-                              context,
-                              "Please sign in or register to make a booking.",
-                              isError: true,
-                            );
-                            Navigator.pushNamed(context, '/login');
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color: Colors.blue,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.blue.withValues(alpha: 0.35),
-                                blurRadius: 14,
-                                offset: const Offset(0, 5),
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Text(
+                                'store.walkin_queue_btn'.tr(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ],
+                            ),
                           ),
-                          child: Center(
-                            child: Text(
-                              AppLocalizations.of(context)!.bookNow,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    else if (_isBookingEnabled(shop))
+                      Expanded(
+                        child: _AnimatedPressable(
+                          onTap: () {
+                            if (Supabase.instance.client.auth.currentUser != null) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => BookingsView(
+                                    shopId: shop["id"].toString(),
+                                    shopName: shop["name"] ?? "Unknown Shop",
+                                    category: (shop["business_industry"] ?? shop["category"] ?? "SERVICE").toString(),
+                                    shopImage: (shop["cover"] ?? shop["business_cover_url"] ?? shop["image"] ?? "").toString(),
+                                  ),
+                                ),
+                              );
+                            } else {
+                              showGlassToast(
+                                context,
+                                "Please sign in or register to make a booking.",
+                                isError: true,
+                              );
+                              Navigator.pushNamed(context, '/login');
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.blue.withValues(alpha: 0.35),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Text(
+                                AppLocalizations.of(context)!.bookNow,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -4955,76 +5031,130 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                               ),
                               const SizedBox(width: 12),
 
-                              // Button 2: Book Now (WITH AUTH GUARD)
-                              Expanded(
-                                child: _AnimatedPressable(
-                                  onTap: () {
-                                    _searchFocus.unfocus();
-                                    Navigator.pop(sheetContext);
-
-                                    if (Supabase.instance.client.auth.currentUser != null) {
+                              // Button 2: Walk-In Queue or Book Now (Adaptive to Store Service Modes)
+                              if (_isWalkInEnabled(shop) && !_isBookingEnabled(shop))
+                                Expanded(
+                                  child: _AnimatedPressable(
+                                    onTap: () {
+                                      _searchFocus.unfocus();
+                                      Navigator.pop(sheetContext);
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (context) => BookingsView(
-                                            shopId: shop["id"].toString(),
-                                            shopName: shop["name"] ?? "Unknown Shop",
-                                            category: (shop["business_industry"] ?? shop["category"] ?? "SERVICE").toString(),
-                                            shopImage: (shop["cover"] ?? shop["business_cover_url"] ?? shop["image"] ?? "").toString(),
+                                          builder: (context) => MyQueueTicketScreen(
+                                            initialBusinessId: shop["id"].toString(),
+                                            initialShop: shop,
                                           ),
                                         ),
                                       );
-                                    } else {
-                                      showGlassToast(
-                                        context,
-                                        "Please sign in or register to make a booking.",
-                                        isError: true,
-                                      );
-                                      Navigator.pushNamed(context, '/login');
-                                    }
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                        colors: [
-                                          Color(0xFF007AFF),
-                                          Color(0xFF0056D2),
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            Color(0xFF10B981),
+                                            Color(0xFF059669),
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: const Color(0xFF34D399).withValues(alpha: 0.85),
+                                          width: 1.2,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFF10B981).withValues(alpha: 0.42),
+                                            blurRadius: 18,
+                                            offset: const Offset(0, 6),
+                                          ),
                                         ],
                                       ),
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: const Color(0xFF60A5FA).withValues(alpha: 0.85),
-                                        width: 1.2,
+                                      child: Center(
+                                        child: Text(
+                                          'store.walkin_queue_btn'.tr(),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
                                       ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: const Color(0xFF007AFF).withValues(alpha: 0.45),
-                                          blurRadius: 18,
-                                          offset: const Offset(0, 6),
-                                        ),
-                                        BoxShadow(
-                                          color: const Color(0xFF38BDF8).withValues(alpha: 0.25),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
                                     ),
-                                    child: Center(
-                                      child: Text(
-                                        AppLocalizations.of(context)!.bookNow,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.bold,
+                                  ),
+                                )
+                              else if (_isBookingEnabled(shop))
+                                Expanded(
+                                  child: _AnimatedPressable(
+                                    onTap: () {
+                                      _searchFocus.unfocus();
+                                      Navigator.pop(sheetContext);
+
+                                      if (Supabase.instance.client.auth.currentUser != null) {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => BookingsView(
+                                              shopId: shop["id"].toString(),
+                                              shopName: shop["name"] ?? "Unknown Shop",
+                                              category: (shop["business_industry"] ?? shop["category"] ?? "SERVICE").toString(),
+                                              shopImage: (shop["cover"] ?? shop["business_cover_url"] ?? shop["image"] ?? "").toString(),
+                                            ),
+                                          ),
+                                        );
+                                      } else {
+                                        showGlassToast(
+                                          context,
+                                          "Please sign in or register to make a booking.",
+                                          isError: true,
+                                        );
+                                        Navigator.pushNamed(context, '/login');
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            Color(0xFF007AFF),
+                                            Color(0xFF0056D2),
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: const Color(0xFF60A5FA).withValues(alpha: 0.85),
+                                          width: 1.2,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFF007AFF).withValues(alpha: 0.45),
+                                            blurRadius: 18,
+                                            offset: const Offset(0, 6),
+                                          ),
+                                          BoxShadow(
+                                            color: const Color(0xFF38BDF8).withValues(alpha: 0.25),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          AppLocalizations.of(context)!.bookNow,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
                             ],
                           ),
                         ),

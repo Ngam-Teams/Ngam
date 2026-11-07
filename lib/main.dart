@@ -306,10 +306,8 @@ Route<dynamic>? _generateRoute(RouteSettings settings) {
                 if (businessId.isNotEmpty) {
                   return MaterialPageRoute(
                     settings: settings,
-                    builder: (_) => StoreRouteLoader(
-                      businessId: businessId.replaceFirst('@', ''),
-                      tableNumber: tableNumber,
-                      promoCode: promoCode,
+                    builder: (_) => MyQueueTicketScreen(
+                      initialBusinessId: businessId.replaceFirst('@', ''),
                     ),
                   );
                 }
