@@ -713,7 +713,7 @@ abstract class AppLocalizations {
   /// No description provided for @bkOnlineBanking.
   ///
   /// In en, this message translates to:
-  /// **'Online Banking (FPX)'**
+  /// **'Online Banking FPX'**
   String get bkOnlineBanking;
 
   /// No description provided for @bkCash.
@@ -1385,7 +1385,7 @@ abstract class AppLocalizations {
   /// No description provided for @customerBounty.
   ///
   /// In en, this message translates to:
-  /// **'Bounty Amount (RM)'**
+  /// **'Bounty Amount RM'**
   String get customerBounty;
 
   /// No description provided for @customerLocation.
@@ -1523,7 +1523,7 @@ abstract class AppLocalizations {
   /// No description provided for @postTaskPriceRunner.
   ///
   /// In en, this message translates to:
-  /// **'Price (RM)'**
+  /// **'Price RM'**
   String get postTaskPriceRunner;
 
   /// No description provided for @postTaskMinRm.
@@ -1811,7 +1811,7 @@ abstract class AppLocalizations {
   /// No description provided for @runnerUploadProof.
   ///
   /// In en, this message translates to:
-  /// **'Upload Proof (optional)'**
+  /// **'Upload Proof Optional'**
   String get runnerUploadProof;
 
   /// No description provided for @runnerPhotoUploadSoon.
@@ -2069,7 +2069,7 @@ abstract class AppLocalizations {
   /// No description provided for @profileNgamRank.
   ///
   /// In en, this message translates to:
-  /// **'Ngam Rank (Runner)'**
+  /// **'Ngam Runner Rank'**
   String get profileNgamRank;
 
   /// No description provided for @profileNewRating.
@@ -2483,7 +2483,7 @@ abstract class AppLocalizations {
   /// No description provided for @chatEnterAmount.
   ///
   /// In en, this message translates to:
-  /// **'Enter amount (RM)'**
+  /// **'Enter amount RM'**
   String get chatEnterAmount;
 
   /// No description provided for @chatSendQuoteBtn.
@@ -3107,7 +3107,7 @@ abstract class AppLocalizations {
   /// No description provided for @accountEmailReadonly.
   ///
   /// In en, this message translates to:
-  /// **'Email Address (Read Only)'**
+  /// **'Email Address Permanent'**
   String get accountEmailReadonly;
 
   /// No description provided for @accountPhone.
@@ -3161,7 +3161,7 @@ abstract class AppLocalizations {
   /// No description provided for @reviewLeaveComment.
   ///
   /// In en, this message translates to:
-  /// **'Leave a comment (optional)'**
+  /// **'Leave a comment if any'**
   String get reviewLeaveComment;
 
   /// No description provided for @reviewCommentHint.
@@ -3791,7 +3791,7 @@ abstract class AppLocalizations {
   /// No description provided for @profileLiveQueue.
   ///
   /// In en, this message translates to:
-  /// **'Walk-In Queue Ticket (Live Queue)'**
+  /// **'Walk-In Queue Ticket'**
   String get profileLiveQueue;
 
   /// No description provided for @profileCheckUpdates.

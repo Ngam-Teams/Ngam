@@ -327,7 +327,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bkCreditCard => 'Credit / Debit Card';
 
   @override
-  String get bkOnlineBanking => 'Online Banking (FPX)';
+  String get bkOnlineBanking => 'Online Banking FPX';
 
   @override
   String get bkCash => 'Cash at Counter';
@@ -674,7 +674,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get customerTaskDesc => 'Describe what you need done...';
 
   @override
-  String get customerBounty => 'Bounty Amount (RM)';
+  String get customerBounty => 'Bounty Amount RM';
 
   @override
   String get customerLocation => 'Location';
@@ -745,7 +745,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get postTaskPinLocation => 'Pin Exact Location';
 
   @override
-  String get postTaskPriceRunner => 'Price (RM)';
+  String get postTaskPriceRunner => 'Price RM';
 
   @override
   String postTaskMinRm(Object arg0) {
@@ -911,7 +911,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runnerInProgress => 'IN-PROGRESS';
 
   @override
-  String get runnerUploadProof => 'Upload Proof (optional)';
+  String get runnerUploadProof => 'Upload Proof Optional';
 
   @override
   String get runnerPhotoUploadSoon => 'Photo upload coming soon!';
@@ -1044,7 +1044,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get profileNgamRank => 'Ngam Rank (Runner)';
+  String get profileNgamRank => 'Ngam Runner Rank';
 
   @override
   String get profileNewRating => 'New';
@@ -1252,7 +1252,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatQuoteAmount => 'Quote Amount';
 
   @override
-  String get chatEnterAmount => 'Enter amount (RM)';
+  String get chatEnterAmount => 'Enter amount RM';
 
   @override
   String get chatSendQuoteBtn => 'Send Quote';
@@ -1587,7 +1587,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accountFullName => 'Full Name';
 
   @override
-  String get accountEmailReadonly => 'Email Address (Read Only)';
+  String get accountEmailReadonly => 'Email Address Permanent';
 
   @override
   String get accountPhone => 'Phone Number';
@@ -1614,7 +1614,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reviewTapToRate => 'Tap a star to rate';
 
   @override
-  String get reviewLeaveComment => 'Leave a comment (optional)';
+  String get reviewLeaveComment => 'Leave a comment if any';
 
   @override
   String get reviewCommentHint => 'Tell us about your experience...';
@@ -1943,7 +1943,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileStampCards => 'Reward Stamp Cards';
 
   @override
-  String get profileLiveQueue => 'Walk-In Queue Ticket (Live Queue)';
+  String get profileLiveQueue => 'Walk-In Queue Ticket';
 
   @override
   String get profileCheckUpdates => 'Check for App Updates';

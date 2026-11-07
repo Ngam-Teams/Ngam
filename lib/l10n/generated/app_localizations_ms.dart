@@ -327,7 +327,7 @@ class AppLocalizationsMs extends AppLocalizations {
   String get bkCreditCard => 'Kad Kredit / Debit';
 
   @override
-  String get bkOnlineBanking => 'Perbankan Dalam Talian (FPX)';
+  String get bkOnlineBanking => 'Perbankan Dalam Talian FPX';
 
   @override
   String get bkCash => 'Tunai di Kaunter';
@@ -585,7 +585,7 @@ class AppLocalizationsMs extends AppLocalizations {
   String get authRoleCustomer => 'Upah Orang';
 
   @override
-  String get authRoleRunner => 'Cari Duit (Runner)';
+  String get authRoleRunner => 'Rakan Runner Ngam';
 
   @override
   String get authRegister => 'Daftar Akaun';
@@ -675,7 +675,7 @@ class AppLocalizationsMs extends AppLocalizations {
   String get customerTaskDesc => 'Terangkan apa yang anda perlukan...';
 
   @override
-  String get customerBounty => 'Upah (RM)';
+  String get customerBounty => 'Upah Tugasan RM';
 
   @override
   String get customerLocation => 'Lokasi';
@@ -747,7 +747,7 @@ class AppLocalizationsMs extends AppLocalizations {
   String get postTaskPinLocation => 'Pin Lokasi Tepat';
 
   @override
-  String get postTaskPriceRunner => 'Harga (RM)';
+  String get postTaskPriceRunner => 'Kadar Harga RM';
 
   @override
   String postTaskMinRm(Object arg0) {
@@ -913,7 +913,7 @@ class AppLocalizationsMs extends AppLocalizations {
   String get runnerInProgress => 'SEDANG BERJALAN';
 
   @override
-  String get runnerUploadProof => 'Muat Naik Bukti (pilihan)';
+  String get runnerUploadProof => 'Muat Naik Bukti Pilihan';
 
   @override
   String get runnerPhotoUploadSoon => 'Fungsi muat naik gambar akan datang!';
@@ -1046,7 +1046,7 @@ class AppLocalizationsMs extends AppLocalizations {
   }
 
   @override
-  String get profileNgamRank => 'Pangkat Ngam (Runner)';
+  String get profileNgamRank => 'Pangkat Runner Ngam';
 
   @override
   String get profileNewRating => 'Baru';
@@ -1256,7 +1256,7 @@ class AppLocalizationsMs extends AppLocalizations {
   String get chatQuoteAmount => 'Jumlah Sebutan';
 
   @override
-  String get chatEnterAmount => 'Masukkan jumlah (RM)';
+  String get chatEnterAmount => 'Masukkan jumlah RM';
 
   @override
   String get chatSendQuoteBtn => 'Hantar Sebut Harga';
@@ -1593,7 +1593,7 @@ class AppLocalizationsMs extends AppLocalizations {
   String get accountFullName => 'Nama Penuh';
 
   @override
-  String get accountEmailReadonly => 'Alamat E-mel (Baca Sahaja)';
+  String get accountEmailReadonly => 'Alamat E-mel Kekal';
 
   @override
   String get accountPhone => 'Nombor Telefon';
@@ -1620,7 +1620,7 @@ class AppLocalizationsMs extends AppLocalizations {
   String get reviewTapToRate => 'Ketik bintang untuk menilai';
 
   @override
-  String get reviewLeaveComment => 'Tinggalkan komen (pilihan)';
+  String get reviewLeaveComment => 'Tinggalkan komen jika perlu';
 
   @override
   String get reviewCommentHint => 'Ceritakan pengalaman anda...';
@@ -1645,7 +1645,7 @@ class AppLocalizationsMs extends AppLocalizations {
       'Lengkapkan pengesahan untuk mula menjana pendapatan';
 
   @override
-  String get verificationFullName => 'Nama Penuh (Seperti IC)';
+  String get verificationFullName => 'Nama Penuh Mengikut MyKad';
 
   @override
   String get verificationIcNumber => 'Nombor IC';
@@ -1947,16 +1947,16 @@ class AppLocalizationsMs extends AppLocalizations {
       'Baki bayaran akan dikreditkan kembali ke Ngam Wallet anda.';
 
   @override
-  String get profileStampCards => 'Kad Cop Ganjaran (Stamps)';
+  String get profileStampCards => 'Kad Cop Ganjaran';
 
   @override
-  String get profileLiveQueue => 'Tiket Giliran Walk-In (Live Queue)';
+  String get profileLiveQueue => 'Tiket Giliran Langsung';
 
   @override
   String get profileCheckUpdates => 'Semak Kemas Kini Aplikasi';
 
   @override
-  String get profileGuestUser => 'Tetamu (Guest)';
+  String get profileGuestUser => 'Pengguna Tetamu';
 
   @override
   String get profileGuestSubtitle =>
