@@ -290,6 +290,27 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
     //  5. Fetch the data (using the correct method name)
     _fetchShopsFromDatabase();
+
+    //  6. Start punctual minute ticker for real-time store open/closed transitions
+    _startMinuteTicker();
+  }
+
+  void _startMinuteTicker() {
+    _minuteTicker?.cancel();
+    final now = DateTime.now();
+    final delayToNextMinute = Duration(
+      seconds: 60 - now.second,
+      milliseconds: 1000 - now.millisecond,
+    );
+
+    _minuteTicker = Timer(delayToNextMinute, () {
+      if (!mounted) return;
+      setState(() {});
+      _minuteTicker = Timer.periodic(const Duration(minutes: 1), (_) {
+        if (!mounted) return;
+        setState(() {});
+      });
+    });
   }
 
   //  1. ADD THIS VARIABLE right above the fetch function

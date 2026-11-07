@@ -44,6 +44,7 @@ class BusinessStoreView extends StatefulWidget {
 class _BusinessStoreViewState extends State<BusinessStoreView>
     with TickerProviderStateMixin {
   StreamSubscription? _productSub;
+  Timer? _statusTicker;
 
   List<ProductModel> _allProducts = [];
   List<ProductModel> _filteredProducts = [];
@@ -446,13 +447,33 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
         vsync: this, duration: const Duration(milliseconds: 600));
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _initStream();
+    _startStatusTicker();
   }
 
   @override
   void dispose() {
+    _statusTicker?.cancel();
     _productSub?.cancel();
     _fadeCtrl.dispose();
     super.dispose();
+  }
+
+  void _startStatusTicker() {
+    _statusTicker?.cancel();
+    final now = DateTime.now();
+    final delayToNextMinute = Duration(
+      seconds: 60 - now.second,
+      milliseconds: 1000 - now.millisecond,
+    );
+
+    _statusTicker = Timer(delayToNextMinute, () {
+      if (!mounted) return;
+      setState(() {});
+      _statusTicker = Timer.periodic(const Duration(minutes: 1), (_) {
+        if (!mounted) return;
+        setState(() {});
+      });
+    });
   }
 
   void _initStream() {
