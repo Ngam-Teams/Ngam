@@ -2379,9 +2379,8 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                 fontSize: 15,
                               ),
                               cursorColor: Colors.blue,
-                              textAlignVertical: TextAlignVertical.center,
                               decoration: InputDecoration(
-                                hintText: AppLocalizations.of(context)!.searchHint,
+                                hintText: 'explore.search_hint'.tr(),
                                 hintStyle: TextStyle(
                                   color: isDark
                                       ? Colors.white38
@@ -2394,7 +2393,8 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                 enabledBorder: InputBorder.none,
                                 errorBorder: InputBorder.none,
                                 disabledBorder: InputBorder.none,
-                                isDense: false,
+                                isDense: true,
+                                isCollapsed: true,
                                 filled: false,
                                 contentPadding: EdgeInsets.zero,
                               ),

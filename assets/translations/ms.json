@@ -942,5 +942,8 @@
     "date_time": "Tarikh & Masa",
     "payment_method": "Kaedah Bayaran",
     "total_paid": "Jumlah Bayaran"
+  },
+  "explore": {
+    "search_hint": "Cari"
   }
 }

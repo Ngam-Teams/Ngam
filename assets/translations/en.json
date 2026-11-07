@@ -942,5 +942,8 @@
     "date_time": "Date & Time",
     "payment_method": "Payment Method",
     "total_paid": "Total Paid"
+  },
+  "explore": {
+    "search_hint": "Search"
   }
 }
