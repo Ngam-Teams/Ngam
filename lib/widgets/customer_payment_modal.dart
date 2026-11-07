@@ -1,3 +1,4 @@
+import '../utils/file_saver/file_saver.dart';
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -1039,11 +1040,28 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                               color: Colors.transparent,
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(16),
-                                onTap: () {
-                                  Clipboard.setData(ClipboardData(
-                                    text: 'Resit Ngam\nKedai: ${widget.shopName}\nOrder: #${widget.orderId}\nJumlah: ${currencyFormat.format(widget.amount)}\nRef: $_transactionRef\nStatus: ${_isCash ? "BELUM BAYAR (Tunai di Kaunter)" : "LULUS BAYAR"}',
-                                  ));
-                                  showGlassToast(context, 'Butiran resit disalin ke papan klip!', icon: HugeIcons.strokeRoundedCopy01);
+                                onTap: () async {
+                                  final receiptStr = '''
+========================================
+         RESIT PEMBAYARAN NGAM          
+========================================
+Kedai   : ${widget.shopName}
+Pesanan : #${widget.orderId}
+Jumlah  : ${currencyFormat.format(widget.amount)}
+Rujukan : $_transactionRef
+Status  : ${_isCash ? "BELUM BAYAR (Tunai di Kaunter)" : "LULUS BAYAR"}
+Tarikh  : ${DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now())}
+========================================
+Terima kasih atas pesanan anda!
+''';
+                                  Clipboard.setData(ClipboardData(text: receiptStr));
+                                  await saveAndDownloadText(
+                                    textContent: receiptStr,
+                                    fileName: 'Resit_Ngam_${widget.orderId}.txt',
+                                  );
+                                  if (context.mounted) {
+                                    showGlassToast(context, 'Resit digital berjaya disalin & dimuat turun!', icon: HugeIcons.strokeRoundedDownload01);
+                                  }
                                 },
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1057,7 +1075,7 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
-                                        'Salin Resit',
+                                        'Muat Turun & Salin',
                                         style: TextStyle(
                                           fontSize: 13.5,
                                           fontWeight: FontWeight.bold,
