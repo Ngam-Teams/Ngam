@@ -308,6 +308,7 @@ Route<dynamic>? _generateRoute(RouteSettings settings) {
                     settings: settings,
                     builder: (_) => MyQueueTicketScreen(
                       initialBusinessId: businessId.replaceFirst('@', ''),
+                      allowDirectJoin: true,
                     ),
                   );
                 }

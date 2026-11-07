@@ -888,6 +888,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         MaterialPageRoute(
           builder: (_) => MyQueueTicketScreen(
             initialBusinessId: (bizId != null && bizId.isNotEmpty) ? bizId : null,
+            allowDirectJoin: true,
           ),
         ),
       );

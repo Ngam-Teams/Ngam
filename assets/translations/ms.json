@@ -684,7 +684,12 @@
     "now_serving_label": "SEDANG DIPANGGIL",
     "people_ahead_zero": "Giliran anda sekarang!",
     "people_ahead_count": "Lagi {} orang di hadapan anda",
-    "guest_saved_note": "Tiket anda disimpan secara automatik dalam peranti ini walaupun anda menutup pelayar."
+    "guest_saved_note": "Tiket anda disimpan secara automatik dalam peranti ini walaupun anda menutup pelayar.",
+    "live_board_title": "Status Giliran Semasa",
+    "waiting_count_label": "Sedang Menunggu",
+    "waiting_people_val": "{} orang (~{} minit)",
+    "scan_at_counter_notice": "Bagi mengelakkan potong giliran, sila imbas kod QR Walk-In di kaunter kedai apabila anda tiba untuk mengambil nombor giliran.",
+    "arrived_scan_qr_btn": "Sudah Sampai? Imbas QR di Kaunter"
   },
   "stamp": {
     "title": "Kad Cop Digital Saya",
@@ -780,9 +785,9 @@
     "amenity_halal": "Pensijilan Halal",
     "amenity_cashless": "Tanpa Tunai & DuitNow",
     "walkin_queue_btn": "Walk-In",
-    "walkin_take_queue": "Ambil Giliran Walk-In",
+    "walkin_take_queue": "Lihat Giliran & Imbas QR",
     "walkin_hero_title": "Giliran Pintar Walk-In Aktif",
-    "walkin_hero_desc": "Ambil nombor giliran terus dari telefon anda tanpa perlu beratur panjang. Status giliran dikemas kini secara langsung!",
+    "walkin_hero_desc": "Semak status giliran semasa secara langsung, atau imbas kod QR di kaunter kedai apabila anda tiba untuk mengambil nombor giliran Walk-In.",
     "mode_badge_walkin": "Giliran Walk-In",
     "mode_badge_booking": "Tempahan Slot",
     "mode_badge_order": "Pesanan Menu"

@@ -684,7 +684,12 @@
     "now_serving_label": "NOW SERVING",
     "people_ahead_zero": "It's your turn now!",
     "people_ahead_count": "{} people ahead of you",
-    "guest_saved_note": "Your ticket is saved automatically on this device even if you close the browser."
+    "guest_saved_note": "Your ticket is saved automatically on this device even if you close the browser.",
+    "live_board_title": "Live Queue Status",
+    "waiting_count_label": "Waiting in Queue",
+    "waiting_people_val": "{} people (~{} mins)",
+    "scan_at_counter_notice": "To prevent ghost queues, please scan the Walk-In QR code at the shop counter when you arrive to get your ticket.",
+    "arrived_scan_qr_btn": "Arrived at Shop? Scan Counter QR"
   },
   "stamp": {
     "title": "My Digital Stamp Cards",
@@ -780,9 +785,9 @@
     "amenity_halal": "Halal Certified",
     "amenity_cashless": "Cashless & DuitNow",
     "walkin_queue_btn": "Walk-In",
-    "walkin_take_queue": "Take Walk-In Queue",
+    "walkin_take_queue": "View Live Queue & Scan QR",
     "walkin_hero_title": "Smart Walk-In Queue Active",
-    "walkin_hero_desc": "Take your queue ticket online or at the store without waiting in a physical line. We'll notify you when your turn is called!",
+    "walkin_hero_desc": "Check the live queue status in real time, or scan the QR code at the shop counter when you arrive to get your Walk-In ticket.",
     "mode_badge_walkin": "Walk-In Queue",
     "mode_badge_booking": "Slot Booking",
     "mode_badge_order": "Direct Order"

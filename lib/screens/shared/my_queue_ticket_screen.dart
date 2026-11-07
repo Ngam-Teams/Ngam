@@ -22,12 +22,14 @@ class MyQueueTicketScreen extends StatefulWidget {
   final Map<String, dynamic>? initialTicket;
   final String? initialBusinessId;
   final Map<String, dynamic>? initialShop;
+  final bool allowDirectJoin;
 
   const MyQueueTicketScreen({
     super.key,
     this.initialTicket,
     this.initialBusinessId,
     this.initialShop,
+    this.allowDirectJoin = false,
   });
 
   @override
@@ -41,6 +43,10 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
   Map<String, dynamic>? _targetShop;
   int _peopleAhead = 0;
   String? _currentServingNumber;
+  int _shopLiveWaitingCount = 0;
+  String? _shopLiveServingNumber;
+  int _shopLiveEstWait = 0;
+  bool _canDirectJoin = false;
   bool _didAutoPromptJoin = false;
   Timer? _refreshTimer;
   StreamSubscription<List<Map<String, dynamic>>>? _realtimeSub;
@@ -51,6 +57,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
   @override
   void initState() {
     super.initState();
+    _canDirectJoin = widget.allowDirectJoin;
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -261,12 +268,18 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
           _isLoading = false;
         });
 
-        // Auto-open join queue sheet if navigated from a specific shop or QR scan
-        if (!_didAutoPromptJoin &&
+        final targetId =
+            _targetShop?['id']?.toString() ?? widget.initialBusinessId ?? '';
+        if (targetId.isNotEmpty) {
+          await _syncTargetShopQueue(targetId);
+          _setupRealtimeSubscription(targetId);
+        }
+
+        // Only auto-open join queue sheet if customer scanned the counter QR code
+        if (_canDirectJoin &&
+            !_didAutoPromptJoin &&
             (widget.initialBusinessId != null || _targetShop != null)) {
           _didAutoPromptJoin = true;
-          final targetId =
-              _targetShop?['id']?.toString() ?? widget.initialBusinessId ?? '';
           if (targetId.isNotEmpty) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
@@ -348,6 +361,45 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
     } catch (_) {}
   }
 
+  Future<void> _syncTargetShopQueue(String bizId) async {
+    final isUuid = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+    ).hasMatch(bizId);
+    if (!isUuid) return;
+
+    try {
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day).toIso8601String();
+      final rows = await Supabase.instance.client
+          .from('queue_tickets')
+          .select('id, ticket_number, status, created_at')
+          .eq('business_id', bizId)
+          .gte('created_at', startOfDay)
+          .order('created_at', ascending: true);
+
+      final list = (rows as List).cast<Map<String, dynamic>>();
+      int waiting = 0;
+      String? serving;
+      for (final r in list) {
+        final st = r['status']?.toString().toLowerCase() ?? '';
+        if (st == 'calling' || st == 'serving') {
+          serving = r['ticket_number']?.toString();
+        }
+        if (st == 'waiting' || st == 'calling') {
+          waiting++;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _shopLiveWaitingCount = waiting;
+          _shopLiveServingNumber = serving;
+          _shopLiveEstWait = waiting * 15;
+        });
+      }
+    } catch (_) {}
+  }
+
   void _setupRealtimeSubscription(String businessId) {
     _realtimeSub?.cancel();
     try {
@@ -356,7 +408,11 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
           .stream(primaryKey: ['id'])
           .eq('business_id', businessId)
           .listen((data) {
-            if (!mounted || _activeTicket == null) return;
+            if (!mounted) return;
+            if (_activeTicket == null) {
+              _syncTargetShopQueue(businessId);
+              return;
+            }
             final myId = _activeTicket!['id']?.toString();
             final myRow = data.where((r) => r['id']?.toString() == myId).toList();
             if (myRow.isNotEmpty) {
@@ -486,6 +542,9 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
       }
     }
 
+    if (mounted) {
+      setState(() => _canDirectJoin = true);
+    }
     _showJoinQueueSheet(bizId);
   }
 
@@ -1085,44 +1144,219 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                 height: 1.5,
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
             if (targetShopName != null &&
                 targetShopName.isNotEmpty &&
                 targetShopId != null &&
                 targetShopId.isNotEmpty) ...[
-              SizedBox(
+              // Papan Status Giliran Semasa (Live Queue Status Board)
+              Container(
                 width: double.infinity,
-                height: 50,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  onPressed: () => _showJoinQueueSheet(
-                    targetShopId,
-                    preloadedShop: _targetShop,
-                  ),
-                  icon: const HugeIcon(
-                    icon: HugeIcons.strokeRoundedTicket01,
-                    size: 20,
-                    color: Colors.white,
-                  ),
-                  label: Text(
-                    'queue.take_ticket_for_shop'.tr(args: [targetShopName]),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.04)
+                      : Colors.black.withValues(alpha: 0.03),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                    width: 1.2,
                   ),
                 ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF10B981),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            '${'queue.live_board_title'.tr()} • $targetShopName',
+                            style: const TextStyle(
+                              color: Color(0xFF10B981),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.04)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  'queue.now_serving_label'.tr(),
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white54
+                                        : Colors.black54,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  _shopLiveServingNumber ?? '-',
+                                  style: GoogleFonts.outfit(
+                                    color: isDark
+                                        ? Colors.white
+                                        : Colors.black87,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.04)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  'queue.waiting_count_label'.tr(),
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white54
+                                        : Colors.black54,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  _shopLiveWaitingCount == 0
+                                      ? '0'
+                                      : 'queue.waiting_people_val'.tr(
+                                          args: [
+                                            _shopLiveWaitingCount.toString(),
+                                            _shopLiveEstWait.toString(),
+                                          ],
+                                        ),
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.outfit(
+                                    color: const Color(0xFF10B981),
+                                    fontSize: _shopLiveWaitingCount == 0
+                                        ? 22
+                                        : 14,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (!_canDirectJoin) ...[
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const HugeIcon(
+                              icon: HugeIcons.strokeRoundedQrCode,
+                              color: Color(0xFFF59E0B),
+                              size: 18,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'queue.scan_at_counter_notice'.tr(),
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white70
+                                      : Colors.black87,
+                                  fontSize: 11.5,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 18),
+              if (_canDirectJoin) ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    onPressed: () => _showJoinQueueSheet(
+                      targetShopId,
+                      preloadedShop: _targetShop,
+                    ),
+                    icon: const HugeIcon(
+                      icon: HugeIcons.strokeRoundedTicket01,
+                      size: 20,
+                      color: Colors.white,
+                    ),
+                    label: Text(
+                      'queue.take_ticket_for_shop'.tr(args: [targetShopName]),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
             ],
             SizedBox(
               width: double.infinity,
-              height: 48,
+              height: 50,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF42A5F5),
@@ -1138,7 +1372,9 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                   color: Colors.white,
                 ),
                 label: Text(
-                  'queue.scan_qr_hint'.tr(),
+                  (targetShopName != null && !_canDirectJoin)
+                      ? 'queue.arrived_scan_qr_btn'.tr()
+                      : 'queue.scan_qr_hint'.tr(),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
