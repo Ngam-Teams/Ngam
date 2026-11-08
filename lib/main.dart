@@ -366,12 +366,31 @@ Route<dynamic>? _generateRoute(RouteSettings settings) {
                 builder: (_) => Consumer<AuthProvider>(
                   builder: (context, auth, _) {
                     if (auth.isInitializing) {
-                      return const Scaffold(
-                        backgroundColor: Color(0xFF0A0A0A),
+                      return Scaffold(
+                        backgroundColor: const Color(0xFF0A0A0A),
                         body: Center(
-                          child: CircularProgressIndicator(
-                            color: Color(0xFF2196F3),
-                            strokeWidth: 2.5,
+                          child: Container(
+                            width: 76,
+                            height: 76,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF2196F3).withValues(alpha: 0.35),
+                                  blurRadius: 24,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(18),
+                              child: Image.asset(
+                                'assets/splash.png',
+                                width: 76,
+                                height: 76,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
                           ),
                         ),
                       );
