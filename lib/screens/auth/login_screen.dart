@@ -590,7 +590,7 @@ class _LoginScreenState extends State<LoginScreen>
                       });
                     },
                     child: Text(
-                      'auth.forgot_short'.tr(),
+                      'auth.forgot_password'.tr(),
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
