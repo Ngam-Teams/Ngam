@@ -1,13 +1,17 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:easy_localization/easy_localization.dart';
 
+import 'glass_box.dart';
 import '../utils/app_theme.dart';
 
 // =============================================================================
 // GlassConfirmDialog
-// Frosted glass modal dialog with specular reflection, liquid edge lighting,
-// and vibrant luminous action buttons matching Ngam's signature design system.
+// Replicates the exact Liquid Glass styling from Discover Page Carousel Card:
+// - GlassContainer with LiquidGlassSettings & LiquidRoundedSuperellipse
+// - Crystal-clear frosted transparency (no heavy opaque dark tint)
+// - Frosted text glow and delicate specular borders
+// - Smooth pill action buttons with subtle luminous gradients
 // =============================================================================
 
 class GlassConfirmDialog extends StatelessWidget {
@@ -34,7 +38,16 @@ class GlassConfirmDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final effectiveAccent = customAccentColor ??
-        (isDestructive ? AppTheme.error : AppTheme.primary);
+        (isDestructive ? const Color(0xFFEF4444) : AppTheme.primary);
+
+    final frostedGlow = [
+      Shadow(color: Colors.white.withValues(alpha: 0.5), blurRadius: 8),
+      Shadow(
+        color: Colors.black.withValues(alpha: 0.2),
+        offset: const Offset(0.5, 0.5),
+        blurRadius: 0,
+      ),
+    ];
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -42,249 +55,191 @@ class GlassConfirmDialog extends StatelessWidget {
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: isDark
-                        ? [
-                            const Color(0xFF151924).withValues(alpha: 0.80),
-                            const Color(0xFF0C0F17).withValues(alpha: 0.90),
-                          ]
-                        : [
-                            Colors.white.withValues(alpha: 0.90),
-                            Colors.white.withValues(alpha: 0.76),
-                          ],
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.18)
-                        : Colors.white.withValues(alpha: 0.75),
-                    width: 1.2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.15),
-                      blurRadius: 36,
-                      offset: const Offset(0, 16),
-                    ),
-                    BoxShadow(
-                      color: effectiveAccent.withValues(alpha: isDark ? 0.12 : 0.06),
-                      blurRadius: 24,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: GlassContainer(
+            useOwnLayer: true,
+            quality: GlassQuality.standard,
+            shape: const LiquidRoundedSuperellipse(borderRadius: 24.0),
+            settings: LiquidGlassSettings(
+              thickness: 0.1,
+              blur: 16.0,
+              glassColor: Colors.transparent,
+              lightAngle: 45.0,
+              lightIntensity: 0.1,
+              ambientStrength: 1.0,
+              saturation: 1.0,
+              chromaticAberration: 0.0,
+            ),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.black.withValues(alpha: 0.22)
+                    : Colors.white.withValues(alpha: 0.30),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: isDark ? 0.16 : 0.45),
+                  width: 1.0,
                 ),
-                child: Stack(
-                  children: [
-                    // Top Specular Reflection Highlight
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: 70,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.white.withValues(alpha: isDark ? 0.14 : 0.35),
-                              Colors.white.withValues(alpha: 0.0),
-                            ],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header: Unboxed clean icon + title with frosted glow
+                  Row(
+                    children: [
+                      if (icon != null) ...[
+                        icon is IconData
+                            ? Icon(
+                                icon as IconData,
+                                color: effectiveAccent,
+                                size: 22,
+                              )
+                            : HugeIcon(
+                                icon: icon,
+                                color: effectiveAccent,
+                                size: 22,
+                                strokeWidth: 2.2,
+                              ),
+                        const SizedBox(width: 10),
+                      ],
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 16.5,
+                            fontWeight: FontWeight.w900,
+                            color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                            shadows: isDark ? frostedGlow : [],
+                            letterSpacing: -0.2,
                           ),
                         ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Message Body
+                  Text(
+                    message,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.78)
+                          : const Color(0xFF3A3A3C).withValues(alpha: 0.85),
+                      height: 1.45,
+                      fontWeight: FontWeight.w500,
                     ),
+                  ),
+                  const SizedBox(height: 20),
 
-                    // Dialog Content
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Header: Frosted Icon Box + Title
-                          Row(
-                            children: [
-                              if (icon != null) ...[
-                                Container(
-                                  padding: const EdgeInsets.all(9),
-                                  decoration: BoxDecoration(
-                                    color: effectiveAccent.withValues(
-                                      alpha: isDark ? 0.16 : 0.12,
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: effectiveAccent.withValues(
-                                        alpha: isDark ? 0.40 : 0.30,
-                                      ),
-                                      width: 1.0,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: effectiveAccent.withValues(
-                                          alpha: isDark ? 0.25 : 0.15,
-                                        ),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: icon is IconData
-                                      ? Icon(
-                                          icon as IconData,
-                                          color: effectiveAccent,
-                                          size: 20,
-                                        )
-                                      : HugeIcon(
-                                          icon: icon,
-                                          color: effectiveAccent,
-                                          size: 20,
-                                          strokeWidth: 2.2,
-                                        ),
-                                ),
-                                const SizedBox(width: 12),
-                              ],
-                              Expanded(
-                                child: Text(
-                                  title,
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w800,
-                                    color: isDark ? Colors.white : Colors.black87,
-                                    letterSpacing: -0.3,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-
-                          // Message Body
-                          Text(
-                            message,
-                            style: TextStyle(
-                              fontSize: 14.5,
+                  // Action Buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      // Cancel Button (Frosted Glass Pill)
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => Navigator.pop(context, false),
+                          borderRadius: BorderRadius.circular(100),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 9,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(100),
                               color: isDark
-                                  ? Colors.white.withValues(alpha: 0.80)
-                                  : Colors.black87.withValues(alpha: 0.75),
-                              height: 1.45,
-                              letterSpacing: -0.1,
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : Colors.black.withValues(alpha: 0.05),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.35),
+                                width: 1.0,
+                              ),
+                            ),
+                            child: Text(
+                              cancelText ?? 'common.cancel'.tr(),
+                              style: TextStyle(
+                                color: isDark ? Colors.white70 : const Color(0xFF3A3A3C),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 22),
-
-                          // Action Buttons
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              // Cancel Button (Frosted Glass)
-                              Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: () => Navigator.pop(context, false),
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 18,
-                                      vertical: 10,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: isDark
-                                          ? Colors.white.withValues(alpha: 0.08)
-                                          : Colors.black.withValues(alpha: 0.05),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: isDark
-                                            ? Colors.white.withValues(alpha: 0.14)
-                                            : Colors.black.withValues(alpha: 0.08),
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      cancelText ?? 'Cancel',
-                                      style: TextStyle(
-                                        color: isDark ? Colors.white70 : Colors.black87,
-                                        fontSize: 13.5,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-
-                              // Confirm Action Button (Luminous Glass Pill)
-                              Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: () => Navigator.pop(context, true),
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                      vertical: 10,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                        colors: isDestructive
-                                            ? const [
-                                                Color(0xFFEF4444),
-                                                Color(0xFFDC2626),
-                                              ]
-                                            : [
-                                                effectiveAccent,
-                                                effectiveAccent.withValues(alpha: 0.85),
-                                              ],
-                                      ),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: isDestructive
-                                            ? const Color(0xFFF87171).withValues(alpha: 0.65)
-                                            : Colors.white.withValues(alpha: 0.40),
-                                        width: 1.1,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: (isDestructive
-                                                  ? const Color(0xFFEF4444)
-                                                  : effectiveAccent)
-                                              .withValues(alpha: 0.40),
-                                          blurRadius: 14,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Text(
-                                      confirmText ?? 'OK',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 13.5,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 0.1,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 10),
+
+                      // Confirm Action Button (Vibrant Pill matching Discover actions)
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => Navigator.pop(context, true),
+                          borderRadius: BorderRadius.circular(100),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 9,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(100),
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: isDestructive
+                                    ? [
+                                        const Color(0xFFEF4444).withValues(alpha: isDark ? 0.85 : 0.95),
+                                        const Color(0xFFDC2626).withValues(alpha: isDark ? 0.70 : 0.85),
+                                      ]
+                                    : [
+                                        const Color(0xFF0284C7).withValues(alpha: isDark ? 0.85 : 0.95),
+                                        const Color(0xFF0369A1).withValues(alpha: isDark ? 0.70 : 0.85),
+                                      ],
+                              ),
+                              border: Border.all(
+                                color: isDestructive
+                                    ? const Color(0xFFFCA5A5).withValues(alpha: 0.60)
+                                    : const Color(0xFF38BDF8).withValues(alpha: 0.60),
+                                width: 1.0,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: (isDestructive
+                                          ? const Color(0xFFEF4444)
+                                          : const Color(0xFF0284C7))
+                                      .withValues(alpha: 0.30),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              confirmText ??
+                                  (isDestructive
+                                      ? 'common.log_out'.tr()
+                                      : 'common.confirm'.tr()),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.1,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
@@ -307,7 +262,7 @@ Future<bool?> showGlassConfirmDialog({
 }) {
   return showDialog<bool>(
     context: context,
-    barrierColor: Colors.black.withValues(alpha: 0.55),
+    barrierColor: Colors.black.withValues(alpha: 0.35),
     builder: (ctx) => GlassConfirmDialog(
       title: title,
       message: message,
