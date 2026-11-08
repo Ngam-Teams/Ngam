@@ -92,7 +92,16 @@
     "registered_email_label": "YOUR REGISTERED EMAIL",
     "link_sent_email_note": "A password reset link has been sent to the above email address. Please check your inbox now.",
     "no_account_phone_error": "No account found for this phone number.",
-    "reset_email_error": "Error sending recovery email."
+    "reset_email_error": "Error sending recovery email.",
+    "reset_card_title": "SET NEW PASSWORD",
+    "reset_card_subtitle": "Please enter a new password to protect your Ngam account.",
+    "reset_password_success": "Your password has been successfully updated!",
+    "new_password_label": "NEW PASSWORD",
+    "new_password_hint": "Minimum 6 characters",
+    "confirm_password_hint": "Re-enter new password",
+    "val_enter_new_password": "Please enter a new password",
+    "val_confirm_password": "Please confirm your new password",
+    "btn_update_password": "UPDATE PASSWORD"
   },
   "nav": {
     "home": "Home",

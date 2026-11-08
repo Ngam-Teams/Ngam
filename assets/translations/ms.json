@@ -92,7 +92,16 @@
     "registered_email_label": "EMEL BERDAFTAR ANDA",
     "link_sent_email_note": "Pautan penetapan semula kata laluan telah dihantar ke alamat emel di atas secara percuma. Sila buka peti masuk anda sekarang.",
     "no_account_phone_error": "Tiada akaun dijumpai untuk nombor telefon ini.",
-    "reset_email_error": "Ralat menghantar emel pemulihan."
+    "reset_email_error": "Ralat menghantar emel pemulihan.",
+    "reset_card_title": "TETAPKAN KATA LALUAN BAHARU",
+    "reset_card_subtitle": "Sila masukkan kata laluan baharu untuk melindungi akaun Ngam anda.",
+    "reset_password_success": "Kata laluan anda telah berjaya dikemas kini!",
+    "new_password_label": "KATA LALUAN BAHARU",
+    "new_password_hint": "Minimal 6 aksara",
+    "confirm_password_hint": "Ulang kata laluan baharu",
+    "val_enter_new_password": "Sila masukkan kata laluan baharu",
+    "val_confirm_password": "Sila sahkan kata laluan baharu anda",
+    "btn_update_password": "KEMAS KINI KATA LALUAN"
   },
   "nav": {
     "home": "Laman Utama",
