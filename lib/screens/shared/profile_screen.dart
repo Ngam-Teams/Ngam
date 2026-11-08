@@ -11,6 +11,7 @@ import '../../services/review_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/glass_toast.dart';
+import '../../widgets/glass_dialog.dart';
 import 'account_details_screen.dart';
 import 'support_screens.dart';
 import 'about_screens.dart';
@@ -537,17 +538,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             'profile.logout'.tr(),
                             AppTheme.error,
                             () async {
-                              await authProvider.signOut();
-                              if (context.mounted) {
-                                showGlassToast(
-                                  context,
-                                  'profile.logout_success'.tr(),
-                                );
-                                Navigator.pushNamedAndRemoveUntil(
-                                  context,
-                                  '/customer-home',
-                                  (route) => false,
-                                );
+                              final confirm = await showGlassConfirmDialog(
+                                context: context,
+                                title: 'common.log_out'.tr(),
+                                message: 'profile.confirm_logout'.tr(),
+                                confirmText: 'common.log_out'.tr(),
+                                cancelText: 'common.cancel'.tr(),
+                                icon: HugeIcons.strokeRoundedLogout02,
+                                isDestructive: true,
+                              );
+                              if (confirm == true) {
+                                await authProvider.signOut();
+                                if (context.mounted) {
+                                  showGlassToast(
+                                    context,
+                                    'profile.logout_success'.tr(),
+                                  );
+                                  Navigator.pushNamedAndRemoveUntil(
+                                    context,
+                                    '/customer-home',
+                                    (route) => false,
+                                  );
+                                }
                               }
                             },
                           ),

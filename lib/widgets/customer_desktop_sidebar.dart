@@ -8,8 +8,8 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../models/user_model.dart';
-import '../utils/app_theme.dart';
 import '../utils/glass_toast.dart';
+import 'glass_dialog.dart';
 
 // =============================================================================
 // CustomerDesktopSidebar — Master Responsive Sidebar untuk Ngam Customer
@@ -333,62 +333,20 @@ class CustomerDesktopSidebar extends StatelessWidget {
                         selected: false,
                         isExpanded: isExpanded,
                         onTap: () async {
-                          final confirm = await showDialog<bool>(
+                          final confirm = await showGlassConfirmDialog(
                             context: context,
-                            builder: (ctx) => AlertDialog(
-                              backgroundColor: isDark ? const Color(0xFF141420) : Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                                side: BorderSide(
-                                  color: isDark
-                                      ? Colors.white.withValues(alpha: 0.1)
-                                      : Colors.black12,
-                                ),
-                              ),
-                              title: const Row(
-                                children: [
-                                  HugeIcon(
-                                    icon: HugeIcons.strokeRoundedLogout02,
-                                    color: Colors.redAccent,
-                                    size: 22,
-                                  ),
-                                  SizedBox(width: 10),
-                                  Text(
-                                    'Log Keluar',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              content: Text(
-                                'profile.confirm_logout'.tr(),
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(ctx, false),
-                                  child: Text('common.cancel'.tr()),
-                                ),
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppTheme.error,
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  onPressed: () => Navigator.pop(ctx, true),
-                                  child: Text('common.log_out'.tr()),
-                                ),
-                              ],
-                            ),
+                            title: 'common.log_out'.tr(),
+                            message: 'profile.confirm_logout'.tr(),
+                            confirmText: 'common.log_out'.tr(),
+                            cancelText: 'common.cancel'.tr(),
+                            icon: HugeIcons.strokeRoundedLogout02,
+                            isDestructive: true,
                           );
 
                           if (confirm == true) {
                             await authProvider.signOut();
                             if (context.mounted) {
-                              showGlassToast(context, 'Berjaya log keluar');
+                              showGlassToast(context, 'profile.logout_success'.tr());
                               Navigator.pushNamedAndRemoveUntil(
                                 context,
                                 '/customer-home',
