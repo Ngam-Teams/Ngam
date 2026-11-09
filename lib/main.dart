@@ -20,6 +20,7 @@ import 'screens/customer/customer_home_screen.dart';
 import 'screens/customer/review_screen.dart';
 import 'screens/shared/profile_screen.dart';
 import 'screens/shared/privacy_security_screen.dart';
+import 'screens/shared/support_screens.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -241,6 +242,11 @@ Route<dynamic>? _generateRoute(RouteSettings settings) {
                   return MaterialPageRoute(settings: settings, builder: (_) => const ReviewScreen());
                 case '/profile':
                   return MaterialPageRoute(settings: settings, builder: (_) => const ProfileScreen());
+                case '/support':
+                case '/help':
+                  return MaterialPageRoute(settings: settings, builder: (_) => const HelpCenterScreen());
+                case '/contact':
+                  return MaterialPageRoute(settings: settings, builder: (_) => const ContactUsScreen());
               }
 
               // 0.1 Payment Receipt / Gateway Redirect: /receipt/:status (e.g. /receipt/success, /receipt/failed, /receipt/cancel)

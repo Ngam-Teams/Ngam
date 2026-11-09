@@ -156,7 +156,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
   }
 
   Future<void> _launchWhatsApp() async {
-    const phone = '601110008888';
+    const phone = '601115892468';
     final text = Uri.encodeComponent('Hai Ngam Support, saya perlukan bantuan berkenaan aplikasi Ngam.');
     final url = 'https://wa.me/$phone?text=$text';
     final uri = Uri.parse(url);
@@ -869,7 +869,7 @@ class ContactUsScreen extends StatelessWidget {
                     subtitle: "support.chat_subtitle".tr(),
                     action: "support.start_chat".tr(),
                     onTap: () {
-                      _launchUrl('https://wa.me/601110008888?text=Hai%20Ngam%20Support');
+                      _launchUrl('https://wa.me/601115892468?text=Hai%20Ngam%20Support');
                     },
                   ),
                   const SizedBox(height: 14),
@@ -889,9 +889,9 @@ class ContactUsScreen extends StatelessWidget {
                     icon: HugeIcons.strokeRoundedCall02,
                     title: "support.call_us".tr(),
                     subtitle: "support.call_subtitle".tr(),
-                    action: '+60 11-1000 8888',
+                    action: '+60 11-1589 2468',
                     onTap: () {
-                      _launchUrl('tel:+601110008888');
+                      _launchUrl('tel:+601115892468');
                     },
                   ),
                   const SizedBox(height: 32),
