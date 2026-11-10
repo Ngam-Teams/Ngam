@@ -181,8 +181,8 @@ serve(async (req: Request) => {
             await supabase
               .from("orders")
               .update({
-                expected_amount_cents: totalCents,
-                payment_channel: paymentChannel,
+                total_cents: totalCents,
+                payment_method: paymentChannel,
               })
               .eq("id", orderId);
 

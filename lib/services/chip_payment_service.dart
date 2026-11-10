@@ -128,6 +128,9 @@ class ChipPaymentService {
             }
           }
         } catch (_) {}
+        if (errMsg.contains('v_booking') || errMsg.contains('not assigned yet') || errMsg.contains('plpgsql')) {
+          errMsg = 'Sesi pembayaran sedang dikemas kini oleh pelayan. Sila cuba semula.';
+        }
         throw ChipPaymentException(errMsg);
       }
     } on ChipPaymentException {

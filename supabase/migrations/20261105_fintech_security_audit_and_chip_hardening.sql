@@ -482,10 +482,12 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_order RECORD;
-  v_booking RECORD;
+  v_order public.orders%ROWTYPE;
+  v_booking public.bookings%ROWTYPE;
   v_business RECORD;
   v_is_uuid BOOLEAN := false;
+  v_is_order BOOLEAN := false;
+  v_is_booking BOOLEAN := false;
   v_order_uuid UUID;
   v_calc_subtotal_cents BIGINT := 0;
   v_discount_cents BIGINT := 0;
@@ -514,24 +516,31 @@ BEGIN
     FROM public.bookings
     WHERE booking_metadata->>'booking_id' = p_order_id
     FOR UPDATE;
+    IF FOUND THEN
+      v_is_booking := true;
+    END IF;
   ELSIF v_is_uuid THEN
     -- Try locking in `orders` first
     SELECT * INTO v_order
     FROM public.orders
     WHERE id = v_order_uuid
     FOR UPDATE;
-
-    -- If not found in `orders`, check `bookings` by UUID
-    IF NOT FOUND THEN
+    IF FOUND THEN
+      v_is_order := true;
+    ELSE
+      -- If not found in `orders`, check `bookings` by UUID
       SELECT * INTO v_booking
       FROM public.bookings
       WHERE id = v_order_uuid
       FOR UPDATE;
+      IF FOUND THEN
+        v_is_booking := true;
+      END IF;
     END IF;
   END IF;
 
   -- Handle Booking calculation if target is a booking
-  IF v_booking.id IS NOT NULL THEN
+  IF v_is_booking THEN
     IF COALESCE(v_booking.booking_metadata->>'payment_status', '') = 'paid' THEN
       RAISE EXCEPTION 'Tempahan ini telah pun dibayar.';
     END IF;
@@ -576,16 +585,11 @@ BEGIN
       'total_cents', v_customer_total_cents,
       'total_rm', ROUND((v_customer_total_cents / 100.0)::numeric, 2)
     );
-  END IF;
-
-  -- CASE B: Standard Order in `public.orders`
-  IF v_order.id IS NULL THEN
-    RAISE EXCEPTION 'Pesanan tidak ditemui untuk rujukan: %', p_order_id;
-  END IF;
-
-  IF v_order.payment_status = 'paid' THEN
-    RAISE EXCEPTION 'Pesanan ini telah pun dibayar.';
-  END IF;
+  ELSIF v_is_order THEN
+    -- CASE B: Standard Order in `public.orders`
+    IF v_order.payment_status = 'paid' THEN
+      RAISE EXCEPTION 'Pesanan ini telah pun dibayar.';
+    END IF;
 
   -- Fetch merchant commission configuration from `businesses`
   SELECT id, business_name, COALESCE(platform_fee_percent, 5.0) AS fee_pct
@@ -658,6 +662,9 @@ BEGIN
     'total_cents', v_customer_total_cents,
     'total_rm', ROUND((v_customer_total_cents / 100.0)::numeric, 2)
   );
+  ELSE
+    RAISE EXCEPTION 'Pesanan atau tempahan tidak ditemui untuk rujukan: %', p_order_id;
+  END IF;
 END;
 $$;
 
@@ -689,9 +696,11 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_order RECORD;
-  v_booking RECORD;
+  v_order public.orders%ROWTYPE;
+  v_booking public.bookings%ROWTYPE;
   v_is_uuid BOOLEAN := false;
+  v_is_order BOOLEAN := false;
+  v_is_booking BOOLEAN := false;
   v_ref_uuid UUID;
   v_expected_cents BIGINT;
   v_net_cents BIGINT;
@@ -730,24 +739,31 @@ BEGIN
     FROM public.bookings
     WHERE booking_metadata->>'booking_id' = p_reference_id
     FOR UPDATE;
+    IF FOUND THEN
+      v_is_booking := true;
+    END IF;
   ELSIF v_is_uuid THEN
     SELECT * INTO v_order
     FROM public.orders
     WHERE id = v_ref_uuid
     FOR UPDATE;
-
-    IF NOT FOUND THEN
+    IF FOUND THEN
+      v_is_order := true;
+    ELSE
       SELECT * INTO v_booking
       FROM public.bookings
       WHERE id = v_ref_uuid
       FOR UPDATE;
+      IF FOUND THEN
+        v_is_booking := true;
+      END IF;
     END IF;
   END IF;
 
   -- =====================================================================================
   -- BRANCH A: BOOKING SETTLEMENT
   -- =====================================================================================
-  IF v_booking.id IS NOT NULL THEN
+  IF v_is_booking THEN
     v_existing_meta := CASE
       WHEN v_booking.booking_metadata IS NOT NULL AND jsonb_typeof(v_booking.booking_metadata) = 'object'
       THEN v_booking.booking_metadata
@@ -840,16 +856,11 @@ BEGIN
       'merchant_net_cents', v_net_cents,
       'new_available_balance_cents', v_new_balance_cents
     );
-  END IF;
-
-  -- =====================================================================================
-  -- BRANCH B: ORDER SETTLEMENT
-  -- =====================================================================================
-  IF v_order.id IS NULL THEN
-    RAISE EXCEPTION 'Order or Booking not found for reference: %', p_reference_id;
-  END IF;
-
-  IF v_order.payment_status = 'paid' THEN
+  ELSIF v_is_order THEN
+    -- =====================================================================================
+    -- BRANCH B: ORDER SETTLEMENT
+    -- =====================================================================================
+    IF v_order.payment_status = 'paid' THEN
     RETURN jsonb_build_object(
       'success', true,
       'idempotent_skip', true,
@@ -982,6 +993,9 @@ BEGIN
     'merchant_net_cents', v_net_cents,
     'new_available_balance_cents', v_new_balance_cents
   );
+  ELSE
+    RAISE EXCEPTION 'Order or Booking not found for reference: %', p_reference_id;
+  END IF;
 END;
 $$;
 
