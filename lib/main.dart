@@ -369,40 +369,6 @@ Route<dynamic>? _generateRoute(RouteSettings settings) {
               // 4. Default / Home Fallback (Allows public & guest access to satisfy Google OAuth Branding Verification)
               return MaterialPageRoute(
                 settings: settings,
-                builder: (_) => Consumer<AuthProvider>(
-                  builder: (context, auth, _) {
-                    if (auth.isInitializing) {
-                      return Scaffold(
-                        backgroundColor: const Color(0xFF0A0A0A),
-                        body: Center(
-                          child: Container(
-                            width: 76,
-                            height: 76,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(18),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF2196F3).withValues(alpha: 0.35),
-                                  blurRadius: 24,
-                                  spreadRadius: 2,
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(18),
-                              child: Image.asset(
-                                'assets/splash.png',
-                                width: 76,
-                                height: 76,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-                    return const CustomerHomeScreen();
-                  },
-                ),
+                builder: (_) => const CustomerHomeScreen(),
               );
 }
