@@ -251,9 +251,15 @@ class _StoreInfoViewState extends State<StoreInfoView> {
       {'icon': HugeIcons.strokeRoundedQrCode, 'labelKey': 'store.amenity_cashless'},
     ];
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        safeNavBack(context, fallbackRoute: '/customer-home');
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: SafeArea(
         child: Stack(
           children: [
             // Main Content
@@ -644,12 +650,14 @@ class _StoreInfoViewState extends State<StoreInfoView> {
             ),
             FloatingTopBar(
               isDark: isDark,
+              fallbackRoute: '/customer-home',
               title: 'store.store_information'.tr(),
               subtitle: shopName,
             ),
           ],
         ),
       ),
+    ),
     );
   }
 

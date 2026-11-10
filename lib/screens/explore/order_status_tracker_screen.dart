@@ -590,9 +590,15 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
         ? widget.orderId.substring(0, 8).toUpperCase()
         : widget.orderId.toUpperCase();
 
-    return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF07090E) : const Color(0xFFF4F6F9),
-      body: SafeArea(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        safeNavBack(context, fallbackRoute: '/customer-home');
+      },
+      child: Scaffold(
+        backgroundColor: isDark ? const Color(0xFF07090E) : const Color(0xFFF4F6F9),
+        body: SafeArea(
         child: StreamBuilder<List<Map<String, dynamic>>>(
           stream: Supabase.instance.client
               .from('orders')
@@ -1653,9 +1659,11 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                 // Floating Glass Top Navigation Bar
                 FloatingTopBar(
                   isDark: isDark,
+                  fallbackRoute: '/customer-home',
                   leading: GlassNavButton.back(
                     context: context,
                     isDark: isDark,
+                    fallbackRoute: '/customer-home',
                     size: 44,
                     iconSize: 20,
                   ),
@@ -1667,6 +1675,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
           },
         ),
       ),
+    ),
     );
   }
 

@@ -167,11 +167,17 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      floatingActionButton: _buildAddButton(context, isDark),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      body: Stack(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        GlassNavButton.safeNavBack(context, fallbackRoute: '/tab/profile');
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        floatingActionButton: _buildAddButton(context, isDark),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        body: Stack(
         children: [
           // Orbs Bercahaya kat Background
           Positioned(top: 50, left: -100, child: Container(width: 300, height: 300, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [AppTheme.primary.withValues(alpha: 0.3), Colors.transparent])))),
@@ -256,6 +262,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                     FloatingTopBar(
                       isDark: isDark,
                       title: "wallet.title".tr(),
+                      fallbackRoute: '/tab/profile',
                     ),
                   ],
                 );
@@ -264,8 +271,9 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ==========================================
   // TUKANG RENDER TIMBUNAN KAD

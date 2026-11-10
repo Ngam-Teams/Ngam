@@ -24,9 +24,15 @@ class ShopDetailScreen extends StatelessWidget {
     final String imgUrl = shop["image"] ?? "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400";
     final List<dynamic>? serviceList = shop["services"];
 
-    return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF13171B) : const Color(0xFFE5ECF1),
-      body: Stack(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        safeNavBack(context, fallbackRoute: '/customer-home');
+      },
+      child: Scaffold(
+        backgroundColor: isDark ? const Color(0xFF13171B) : const Color(0xFFE5ECF1),
+        body: Stack(
         children: [
           // --- 1. HERO BACKGROUND IMAGE ---
           Positioned(
@@ -157,6 +163,7 @@ class ShopDetailScreen extends StatelessWidget {
                         GlassNavButton.back(
                           context: context,
                           isDark: isDark,
+                          fallbackRoute: '/customer-home',
                           size: 44,
                           iconSize: 20,
                         ),
@@ -258,6 +265,7 @@ class ShopDetailScreen extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 

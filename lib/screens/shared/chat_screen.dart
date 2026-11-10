@@ -13,6 +13,7 @@ import '../../utils/app_theme.dart';
 import '../../services/chat_service.dart';
 import '../../widgets/chat/user_group_conversation_card.dart';
 import '../../widgets/glass_toast.dart';
+import '../../widgets/glass_nav_button.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../models/chat_model.dart';
 import '../../providers/auth_provider.dart';
@@ -1558,10 +1559,16 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      resizeToAvoidBottomInset: true,
-      body: Stack(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        safeNavBack(context, fallbackRoute: '/tab/inbox');
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        resizeToAvoidBottomInset: true,
+        body: Stack(
         children: [
           // ─── Content Utama ──────────────────────────────────────────
           // ─── Ruangan Mesej ───────────────────────────────────
@@ -1964,7 +1971,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                           children: [
                             GestureDetector(
                               behavior: HitTestBehavior.opaque,
-                              onTap: () => Navigator.pop(context),
+                              onTap: () => safeNavBack(context, fallbackRoute: '/tab/inbox'),
                               child: Padding(
                                 padding: const EdgeInsets.only(right: 12.0),
                                 child: HugeIcon(
@@ -2256,6 +2263,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     ),
   ),
 ],
+),
 ),
 );
   }

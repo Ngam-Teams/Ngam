@@ -194,11 +194,17 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
           faq.answer.toLowerCase().contains(_searchQuery);
     }).toList();
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Stack(
-          children: [
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        GlassNavButton.safeNavBack(context, fallbackRoute: '/tab/profile');
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: SafeArea(
+          child: Stack(
+            children: [
             // Layer 1: Scrollable Body
             SingleChildScrollView(
               controller: _scrollController,
@@ -419,6 +425,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
             FloatingTopBar(
               isDark: isDark,
               title: "support.help_center".tr(),
+              fallbackRoute: '/tab/profile',
               actions: const [
                 SizedBox(width: 44, height: 44),
               ],
@@ -426,8 +433,9 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ─── Category Filter Chips ──────────────────────────────────
   Widget _buildCategoryChips(bool isDark) {
@@ -833,11 +841,17 @@ class ContactUsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Stack(
-          children: [
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        GlassNavButton.safeNavBack(context, fallbackRoute: '/tab/profile');
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: SafeArea(
+          child: Stack(
+            children: [
             SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 72, 20, 28),
               physics: const BouncingScrollPhysics(),
@@ -921,12 +935,14 @@ class ContactUsScreen extends StatelessWidget {
             FloatingTopBar(
               isDark: isDark,
               title: "support.contact_us".tr(),
+              fallbackRoute: '/tab/profile',
             ),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _contactCard({
     required bool isDark,

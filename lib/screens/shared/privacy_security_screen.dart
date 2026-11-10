@@ -269,11 +269,17 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardColor = isDark ? const Color(0xFF262626) : Colors.white;
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Stack(
-          children: [
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        GlassNavButton.safeNavBack(context, fallbackRoute: '/tab/profile');
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: SafeArea(
+          child: Stack(
+            children: [
             SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(24, 68, 24, 24),
@@ -404,12 +410,14 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
             FloatingTopBar(
               isDark: isDark,
               title: "privacy.title".tr(),
+              fallbackRoute: '/tab/profile',
             ),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildSettingsTile(bool isDark, dynamic icon, String title, {String? subtitle, Widget? trailing, VoidCallback? onTap}) {
     return InkWell(

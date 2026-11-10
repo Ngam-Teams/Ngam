@@ -72,9 +72,15 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        safeNavBack(context, fallbackRoute: '/customer-home');
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
         children: [
           // The Camera Feed
           MobileScanner(
@@ -159,6 +165,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                   GlassNavButton.close(
                     context: context,
                     isDark: true,
+                    fallbackRoute: '/customer-home',
                     size: 42,
                     iconSize: 22,
                   ),
@@ -206,6 +213,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
             ),
         ],
       ),
+    ),
     );
   }
 

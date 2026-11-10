@@ -262,20 +262,19 @@ class _PostRouteLoaderState extends State<PostRouteLoader> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final Widget content;
     if (_isLoading) {
-      return Scaffold(
-        backgroundColor: const Color(0xFF0B0F17),
-        body: const Center(
+      content = const Scaffold(
+        backgroundColor: Color(0xFF0B0F17),
+        body: Center(
           child: CircularProgressIndicator(
             color: Color(0xFF00E5FF),
             strokeWidth: 2.5,
           ),
         ),
       );
-    }
-
-    if (_errorMessage != null || _post == null) {
-      return Scaffold(
+    } else if (_errorMessage != null || _post == null) {
+      content = Scaffold(
         backgroundColor: isDark ? const Color(0xFF0B0F17) : const Color(0xFFF8FAFC),
         body: SafeArea(
           child: Stack(
@@ -299,12 +298,7 @@ class _PostRouteLoaderState extends State<PostRouteLoader> {
                       ),
                       const SizedBox(height: 20),
                       ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (_) => const CustomerHomeScreen(initialIndex: 2)),
-                          );
-                        },
+                        onPressed: () => safeNavBack(context, fallbackRoute: '/tab/feed'),
                         icon: const Icon(Icons.video_library_rounded, size: 18),
                         label: Text('feed.open_feed'.tr()),
                         style: ElevatedButton.styleFrom(
@@ -326,30 +320,20 @@ class _PostRouteLoaderState extends State<PostRouteLoader> {
                 child: GlassNavButton.back(
                   context: context,
                   isDark: isDark,
-                  onBack: () {
-                    if (Navigator.canPop(context)) {
-                      Navigator.pop(context);
-                    } else {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const CustomerHomeScreen(initialIndex: 2)),
-                      );
-                    }
-                  },
+                  fallbackRoute: '/tab/feed',
                 ),
               ),
             ],
           ),
         ),
       );
-    }
+    } else {
+      final post = _post!;
+      final String mediaUrl = (post['image'] ?? '').toString();
+      final bool isVideo = post['mediaType'] == 'video' || mediaUrl.contains('.mp4');
+      final String postId = post['id']?.toString() ?? '';
 
-    final post = _post!;
-    final String mediaUrl = (post['image'] ?? '').toString();
-    final bool isVideo = post['mediaType'] == 'video' || mediaUrl.contains('.mp4');
-    final String postId = post['id']?.toString() ?? '';
-
-    return Scaffold(
+      content = Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         fit: StackFit.expand,
@@ -413,16 +397,7 @@ class _PostRouteLoaderState extends State<PostRouteLoader> {
                   isDark: true,
                   size: 40,
                   iconSize: 20,
-                  onBack: () {
-                    if (Navigator.canPop(context)) {
-                      Navigator.pop(context);
-                    } else {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const CustomerHomeScreen(initialIndex: 2)),
-                      );
-                    }
-                  },
+                  fallbackRoute: '/tab/feed',
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -667,6 +642,16 @@ class _PostRouteLoaderState extends State<PostRouteLoader> {
           ),
         ],
       ),
+    );
+    }
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        safeNavBack(context, fallbackRoute: '/tab/feed');
+      },
+      child: content,
     );
   }
 }

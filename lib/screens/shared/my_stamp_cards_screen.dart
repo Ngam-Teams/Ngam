@@ -124,10 +124,16 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
     final phone = user?.userPhone ?? '012-3456789';
     final name = user?.userName ?? 'stamp.loyal_customer'.tr();
 
-    return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8FAFC),
-      body: SafeArea(
-        child: Stack(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        GlassNavButton.safeNavBack(context, fallbackRoute: '/tab/profile');
+      },
+      child: Scaffold(
+        backgroundColor: isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8FAFC),
+        body: SafeArea(
+          child: Stack(
           children: [
             SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 68, 16, 24),
@@ -156,6 +162,7 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
             FloatingTopBar(
               isDark: isDark,
               title: 'stamp.my_stamps'.tr(),
+              fallbackRoute: '/tab/profile',
               actions: [
                 GlassNavButton(
                   icon: HugeIcons.strokeRoundedQrCode,
@@ -171,8 +178,9 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildPassIdBanner(String phone, String name) {
     return Container(

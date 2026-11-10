@@ -346,10 +346,16 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
 
     final bgColor = isDark ? const Color(0xFF0C0E17) : const Color(0xFFF8FAFC);
 
-    return Scaffold(
-      backgroundColor: bgColor,
-      body: SafeArea(
-        child: Stack(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        GlassNavButton.safeNavBack(context, fallbackRoute: '/tab/profile');
+      },
+      child: Scaffold(
+        backgroundColor: bgColor,
+        body: SafeArea(
+          child: Stack(
           children: [
             LayoutBuilder(
         builder: (context, constraints) {
@@ -602,6 +608,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
             FloatingTopBar(
               isDark: isDark,
               title: "account.title".tr().isNotEmpty ? "account.title".tr() : "Butiran Akaun",
+              fallbackRoute: '/tab/profile',
               actions: [
                 GlassNavButton(
                   icon: HugeIcons.strokeRoundedCheckmarkBadge01,
@@ -617,8 +624,9 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ─── Hero Profile Card (Twitter/Ngam Business Overlapping Style) ───
   Widget _buildProfileHeroCard({

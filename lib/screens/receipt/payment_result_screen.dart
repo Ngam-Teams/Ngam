@@ -80,8 +80,14 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
             ? 'payment_result.cancelled_subtitle'.tr()
             : 'payment_result.failed_subtitle'.tr());
 
-    return Scaffold(
-      backgroundColor: dark ? const Color(0xFF0A0E17) : const Color(0xFFF8FAFC),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+      },
+      child: Scaffold(
+        backgroundColor: dark ? const Color(0xFF0A0E17) : const Color(0xFFF8FAFC),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -324,8 +330,9 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildReceiptRow(String label, String value, bool dark) {
     return Row(

@@ -1056,11 +1056,17 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor:
-          isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8FAFC),
-      body: SafeArea(
-        child: Stack(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        GlassNavButton.safeNavBack(context, fallbackRoute: '/customer-home');
+      },
+      child: Scaffold(
+        backgroundColor:
+            isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8FAFC),
+        body: SafeArea(
+          child: Stack(
           children: [
             Padding(
               padding: const EdgeInsets.only(top: 56),
@@ -1075,6 +1081,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
             FloatingTopBar(
               isDark: isDark,
               title: 'profile.live_queue'.tr(),
+              fallbackRoute: '/customer-home',
               actions: [
                 GlassNavPill(
                   isDark: isDark,
@@ -1098,8 +1105,9 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildEmptyState(bool isDark) {
     final targetShopName =

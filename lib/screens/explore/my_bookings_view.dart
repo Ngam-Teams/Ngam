@@ -174,9 +174,15 @@ class _MyBookingsViewState extends State<MyBookingsView> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8F9FA),
-      body: SafeArea(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        safeNavBack(context, fallbackRoute: '/customer-home');
+      },
+      child: Scaffold(
+        backgroundColor: isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8F9FA),
+        body: SafeArea(
         child: Stack(
           children: [
             Padding(
@@ -525,19 +531,13 @@ class _MyBookingsViewState extends State<MyBookingsView> {
             ),
             FloatingTopBar(
               isDark: isDark,
-              leading: Navigator.canPop(context)
-                  ? GlassNavButton.back(
-                      context: context,
-                      isDark: isDark,
-                      size: 44,
-                      iconSize: 20,
-                    )
-                  : const SizedBox(width: 44, height: 44),
+              fallbackRoute: '/customer-home',
               title: 'my_bookings.title'.tr(),
             ),
           ],
         ),
       ),
+    ),
     );
   }
 

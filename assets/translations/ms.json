@@ -742,7 +742,8 @@
     "continue_text": "Teruskan",
     "copy_password": "Salin Kata Laluan",
     "verified": "Disahkan",
-    "today": "Hari Ini"
+    "today": "Hari Ini",
+    "press_back_again_to_exit": "Tekan sekali lagi untuk keluar"
   },
   "task_detail": {
     "navigate": "Navigasi ke Lokasi",

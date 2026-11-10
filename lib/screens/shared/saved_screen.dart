@@ -99,11 +99,17 @@ class _SavedScreenState extends State<SavedScreen> {
             colors: [Color(0xFFF8FAFC), Color(0xFFEFF6FF)],
           );
 
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(gradient: bgGradient),
-        child: SafeArea(
-          child: Stack(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        GlassNavButton.safeNavBack(context, fallbackRoute: '/customer-home');
+      },
+      child: Scaffold(
+        body: Container(
+          decoration: BoxDecoration(gradient: bgGradient),
+          child: SafeArea(
+            child: Stack(
             children: [
               Column(
                 children: [
@@ -174,13 +180,15 @@ class _SavedScreenState extends State<SavedScreen> {
               FloatingTopBar(
                 isDark: isDark,
                 title: 'profile.saved'.tr(),
+                fallbackRoute: '/customer-home',
               ),
             ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // â”€â”€â”€ WIDGET: PILL TAB ITEM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildPillTab({

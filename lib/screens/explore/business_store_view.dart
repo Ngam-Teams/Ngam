@@ -9,6 +9,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/product_model.dart';
 import '../../widgets/glass_toast.dart';
+import '../../widgets/glass_nav_button.dart';
 import '../../services/saved_service.dart';
 import 'business_products_view.dart';
 import 'bookings_view.dart';
@@ -1874,7 +1875,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
-            onTap: () => Navigator.pop(context),
+            onTap: () => safeNavBack(context, fallbackRoute: '/customer-home'),
             child: _liquidGlassBox(
               isDark: isDark,
               radius: 100,
@@ -2053,26 +2054,33 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
         ? Colors.white60
         : const Color(0xFF3A3A3C).withValues(alpha: 0.7);
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SizedBox.expand(
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth >= 768;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        safeNavBack(context, fallbackRoute: '/customer-home');
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: SizedBox.expand(
+          child: SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth >= 768;
 
-              return Stack(
-                children: [
-                  if (isWide)
-                    _buildWideLayout(context, isDark, textPrimary, textSecondary, constraints)
-                  else
-                    _buildMobileLayout(context, isDark, textPrimary, textSecondary),
+                return Stack(
+                  children: [
+                    if (isWide)
+                      _buildWideLayout(context, isDark, textPrimary, textSecondary, constraints)
+                    else
+                      _buildMobileLayout(context, isDark, textPrimary, textSecondary),
 
-                  // Floating top bar
-                  _buildFloatingTopBar(isDark),
-                ],
-              );
-            },
+                    // Floating top bar
+                    _buildFloatingTopBar(isDark),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),

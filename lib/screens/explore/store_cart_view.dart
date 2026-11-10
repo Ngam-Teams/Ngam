@@ -751,9 +751,15 @@ class _StoreCartViewState extends State<StoreCartView> {
     final Color textPrimary = isDark ? Colors.white : const Color(0xFF1C1C1E);
     final Color textSecondary = isDark ? Colors.white60 : const Color(0xFF3A3A3C).withValues(alpha: 0.7);
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        safeNavBack(context, fallbackRoute: '/customer-home');
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: SafeArea(
         child: Stack(
           children: [
             Column(
@@ -1144,7 +1150,8 @@ class _StoreCartViewState extends State<StoreCartView> {
         ),
             FloatingTopBar(
               isDark: isDark,
-              title: 'Your Cart',
+              fallbackRoute: '/customer-home',
+              title: 'cart.title'.tr(),
               subtitle: _shopName,
               actions: _items.isNotEmpty
                   ? [
@@ -1165,6 +1172,7 @@ class _StoreCartViewState extends State<StoreCartView> {
           ],
         ),
       ),
+    ),
     );
   }
 

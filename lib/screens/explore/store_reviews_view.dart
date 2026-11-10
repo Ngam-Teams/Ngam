@@ -435,9 +435,15 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
         ? (widget.shop['reviews'] as num).toInt()
         : 128;
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        safeNavBack(context, fallbackRoute: '/customer-home');
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: SafeArea(
         child: Stack(
           children: [
             // Scrollable list
@@ -782,7 +788,8 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
               ),
             FloatingTopBar(
               isDark: isDark,
-              title: 'Reviews & Ratings',
+              fallbackRoute: '/customer-home',
+              title: 'review.screen_title'.tr(),
               subtitle: shopName,
               actions: [
                 GlassNavButton(
@@ -798,6 +805,7 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
           ],
         ),
       ),
+    ),
     );
   }
 

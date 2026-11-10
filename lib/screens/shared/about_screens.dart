@@ -61,30 +61,38 @@ class LegalTextScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 68, 24, 24),
-              child: GlassContainer(
-                useOwnLayer: true, quality: GlassQuality.standard, shape: LiquidRoundedSuperellipse(borderRadius: 24.0), settings: _glassSettings(isDark),
-                child: Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.white.withValues(alpha: isDark ? 0.05 : 0.6))),
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Text(content, style: TextStyle(fontSize: 14, height: 1.6, color: isDark ? Colors.white70 : Colors.black87)),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        GlassNavButton.safeNavBack(context, fallbackRoute: '/tab/profile');
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 68, 24, 24),
+                child: GlassContainer(
+                  useOwnLayer: true, quality: GlassQuality.standard, shape: LiquidRoundedSuperellipse(borderRadius: 24.0), settings: _glassSettings(isDark),
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.white.withValues(alpha: isDark ? 0.05 : 0.6))),
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Text(content, style: TextStyle(fontSize: 14, height: 1.6, color: isDark ? Colors.white70 : Colors.black87)),
+                    ),
                   ),
                 ),
               ),
-            ),
-            FloatingTopBar(
-              isDark: isDark,
-              title: title,
-            ),
-          ],
+              FloatingTopBar(
+                isDark: isDark,
+                title: title,
+                fallbackRoute: '/tab/profile',
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -112,19 +120,25 @@ class _RateAppScreenState extends State<RateAppScreen> {
   void _submitFeedback() {
     FocusScope.of(context).unfocus();
     showGlassToast(context, "about.thank_you".tr());
-    Navigator.pop(context);
+    GlassNavButton.safeNavBack(context, fallbackRoute: '/tab/profile');
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return GestureDetector(
-      onTap: () => FocusScope.of(context).unfocus(),
-      child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: SafeArea(
-          child: Stack(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        GlassNavButton.safeNavBack(context, fallbackRoute: '/tab/profile');
+      },
+      child: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Scaffold(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          body: SafeArea(
+            child: Stack(
             children: [
               Padding(
             padding: const EdgeInsets.all(24),
@@ -210,12 +224,14 @@ class _RateAppScreenState extends State<RateAppScreen> {
               isDark: isDark,
               size: 44,
               iconSize: 20,
+              fallbackRoute: '/tab/profile',
             ),
           ),
         ],
       ),
     ),
   ),
+),
 );
   }
 }

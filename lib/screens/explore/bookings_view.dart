@@ -1483,6 +1483,17 @@ class _BookingsViewState extends State<BookingsView> {
     super.dispose();
   }
 
+  void _handleBack() async {
+    if (_currentStep > 0) {
+      if (_currentStep == 1 && _holdingRecordId != null) {
+        await _releaseHold();
+      }
+      if (mounted) setState(() => _currentStep--);
+      return;
+    }
+    safeNavBack(context, fallbackRoute: '/customer-home');
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1495,7 +1506,13 @@ class _BookingsViewState extends State<BookingsView> {
       return relB.compareTo(relA);
     });
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _handleBack();
+      },
+      child: Scaffold(
         backgroundColor: isDark ? const Color(0xFF13171B) : const Color(0xFFE5ECF1),
         body: SizedBox.expand(
           child: Stack(
@@ -1633,12 +1650,8 @@ class _BookingsViewState extends State<BookingsView> {
                 ),
                     FloatingTopBar(
                       isDark: isDark,
-                      leading: GlassNavButton.back(
-                        context: context,
-                        isDark: isDark,
-                        size: 44,
-                        iconSize: 20,
-                      ),
+                      fallbackRoute: '/customer-home',
+                      onBack: _handleBack,
                       title: widget.shopName,
                       subtitle: widget.category,
                       actions: [
@@ -1665,7 +1678,8 @@ class _BookingsViewState extends State<BookingsView> {
               ),
             ],
           ),
-        )
+        ),
+      ),
     );
   }
 

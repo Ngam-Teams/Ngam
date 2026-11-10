@@ -531,10 +531,16 @@ class _VoucherScreenState extends State<VoucherScreen> {
     final textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
     final textSecondary = isDark ? Colors.white60 : const Color(0xFF64748B);
 
-    return Scaffold(
-      backgroundColor: bgColor,
-      body: SafeArea(
-        child: Stack(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        GlassNavButton.safeNavBack(context, fallbackRoute: '/tab/profile');
+      },
+      child: Scaffold(
+        backgroundColor: bgColor,
+        body: SafeArea(
+          child: Stack(
           children: [
             Column(
               children: [
@@ -683,12 +689,14 @@ class _VoucherScreenState extends State<VoucherScreen> {
             FloatingTopBar(
               isDark: isDark,
               title: widget.isPicker ? 'voucher.select_voucher'.tr() : 'profile.vouchers'.tr(),
+              fallbackRoute: '/tab/profile',
             ),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildTabItem({
     required int index,

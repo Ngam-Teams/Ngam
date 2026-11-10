@@ -454,10 +454,16 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color textPrimary = isDark ? Colors.white : const Color(0xFF1C1C1E);
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      resizeToAvoidBottomInset: false,
-      body: SizedBox.expand(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        safeNavBack(context, fallbackRoute: '/customer-home');
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        resizeToAvoidBottomInset: false,
+        body: SizedBox.expand(
         child: SafeArea(
           child: Stack(
             children: [
@@ -866,6 +872,7 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
               ),
               FloatingTopBar(
                 isDark: isDark,
+                fallbackRoute: '/customer-home',
                 title: widget.shopName,
                 actions: [
                   GlassNavButton(
@@ -881,6 +888,7 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
           ),
         ),
       ),
+    ),
     );
   }
 

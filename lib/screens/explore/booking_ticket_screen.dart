@@ -902,9 +902,15 @@ Disahkan melalui aplikasi *Ngam*.
 
     final String qrData = "ID:${widget.bookingId}|SHOP:${widget.shopName}|PROV:${widget.providerName}|DATE:${widget.date}|TIME:${widget.time}";
 
-    return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF13171B) : const Color(0xFFE5ECF1),
-      body: SafeArea(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        safeNavBack(context, fallbackRoute: '/customer-home');
+      },
+      child: Scaffold(
+        backgroundColor: isDark ? const Color(0xFF13171B) : const Color(0xFFE5ECF1),
+        body: SafeArea(
         bottom: false,
         child: Stack(
           children: [
@@ -1350,9 +1356,11 @@ Disahkan melalui aplikasi *Ngam*.
       ),
             FloatingTopBar(
               isDark: isDark,
+              fallbackRoute: '/customer-home',
               leading: GlassNavButton.close(
                 context: context,
                 isDark: isDark,
+                fallbackRoute: '/customer-home',
                 size: 44,
                 iconSize: 20,
               ),
@@ -1360,7 +1368,7 @@ Disahkan melalui aplikasi *Ngam*.
               actions: [
                 GlassNavButton(
                   icon: HugeIcons.strokeRoundedShare01,
-                  tooltip: 'Kongsi Resit',
+                  tooltip: 'booking.share_slip'.tr(),
                   isDark: isDark,
                   size: 44,
                   iconSize: 20,
@@ -1424,6 +1432,7 @@ Disahkan melalui aplikasi *Ngam*.
           ],
         ),
       ),
+    ),
     );
   }
 

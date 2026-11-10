@@ -656,10 +656,16 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
 
     // Kita balut pakai ValueListenableBuilder sebab cardMethods tak wujud kat atas ni.
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Stack(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        GlassNavButton.safeNavBack(context, fallbackRoute: '/tab/profile');
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: SafeArea(
+          child: Stack(
           children: [
             ValueListenableBuilder<List<Map<String, dynamic>>>(
               valueListenable: PaymentData.savedPaymentMethods,
@@ -731,12 +737,14 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
           FloatingTopBar(
             isDark: isDark,
             title: "wallet.title".tr(),
+            fallbackRoute: '/tab/profile',
           ),
         ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ==========================================
   // HELPER WIDGETS

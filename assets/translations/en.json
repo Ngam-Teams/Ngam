@@ -742,7 +742,8 @@
     "continue_text": "Continue",
     "copy_password": "Copy Password",
     "verified": "Verified",
-    "today": "Today"
+    "today": "Today",
+    "press_back_again_to_exit": "Press back again to exit"
   },
   "task_detail": {
     "navigate": "Navigate to Location",

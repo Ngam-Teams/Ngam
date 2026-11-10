@@ -104,10 +104,16 @@ class _ReviewScreenState extends State<ReviewScreen> {
         _targetData?['category'] ??
         'review.completed_booking'.tr();
 
-    return Scaffold(
-      body: SafeArea(
-        child: Stack(
-          children: [
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        GlassNavButton.safeNavBack(context, fallbackRoute: '/customer-home');
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: Stack(
+            children: [
             SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(24, 68, 24, 24),
         child: Column(
@@ -292,10 +298,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
             FloatingTopBar(
               isDark: isDark,
               title: 'review.screen_title'.tr(),
+              fallbackRoute: '/customer-home',
             ),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

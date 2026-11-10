@@ -1,7 +1,9 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 
+import '../../utils/glass_toast.dart';
 import '../../widgets/bottom_nav_customer.dart';
 import '../../widgets/customer_desktop_sidebar.dart';
 import 'customer_home_feed_view.dart';
@@ -53,12 +55,41 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     });
   }
 
-  void _onTabTapped(int index) {
+  static const List<String> _tabPaths = [
+    '/customer-home',
+    '/tab/discover',
+    '/tab/feed',
+    '/tab/inbox',
+    '/tab/profile',
+  ];
+
+  DateTime? _lastBackPressTime;
+  final List<int> _tabHistory = [];
+
+  void _onTabTapped(int index, {bool recordHistory = true}) {
+    if (index < 0 || index >= _tabPaths.length) return;
     BottomNavCustomer.isVisible.value = true;
+    if (recordHistory && _currentIndex != index) {
+      _tabHistory.add(_currentIndex);
+      if (_tabHistory.length > 25) {
+        _tabHistory.removeAt(0);
+      }
+    }
     setState(() {
       _currentIndex = index;
       _initializedPages[index] = true;
     });
+
+    // Update browser URL on web so browser history and deep links reflect active tab
+    final path = _tabPaths[index];
+    try {
+      SystemNavigator.routeInformationUpdated(uri: Uri.parse(path));
+    } catch (_) {
+      try {
+        // ignore: deprecated_member_use
+        SystemNavigator.routeInformationUpdated(location: path);
+      } catch (_) {}
+    }
   }
 
   /// Memastikan laman selain peta mempunyai anjakan (offset) mengikut kelebaran sidebar desktop
@@ -91,7 +122,37 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     final navBg = isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8F9FA);
     final iconBrightness = isDark ? Brightness.light : Brightness.dark;
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+
+        // 1. If we have tab history, pop back through previously visited tabs
+        if (_tabHistory.isNotEmpty) {
+          final prevIndex = _tabHistory.removeLast();
+          _onTabTapped(prevIndex, recordHistory: false);
+          return;
+        }
+
+        // 2. If on a non-zero tab without history, return smoothly to Home overview
+        if (_currentIndex != 0) {
+          _onTabTapped(0, recordHistory: false);
+          return;
+        }
+
+        // 3. If on Home tab (0), require double back tap within 2 seconds
+        final now = DateTime.now();
+        if (_lastBackPressTime == null ||
+            now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+          _lastBackPressTime = now;
+          showGlassToast(context, 'common.press_back_again_to_exit'.tr());
+          return;
+        }
+
+        // Double back confirmed -> close app
+        SystemNavigator.pop();
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: iconBrightness,
@@ -233,6 +294,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         );
       },
     ),
-  );
+  ),
+);
 }
 }
