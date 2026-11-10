@@ -1,16 +1,17 @@
 import '../utils/file_saver/file_saver.dart';
 import 'dart:async';
 import 'dart:ui';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:easy_localization/easy_localization.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../services/chip_payment_service.dart';
+import '../services/receipt_pdf_service.dart';
 import 'glass_toast.dart';
 
 enum PaymentStep { selectMethod, duitNowQr, receipt }
@@ -1245,12 +1246,39 @@ $receiptDate  : ${DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now())}
 $thanksStr
 ''';
                                     Clipboard.setData(ClipboardData(text: receiptStr));
-                                    await saveAndDownloadText(
-                                      textContent: receiptStr,
-                                      fileName: 'Resit_Ngam_${widget.orderId}.txt',
-                                    );
-                                    if (context.mounted) {
-                                      showGlassToast(context, 'payment_modal.receipt_copied'.tr(), icon: HugeIcons.strokeRoundedDownload01);
+                                    try {
+                                      await ReceiptPdfService.downloadReceiptPdf(
+                                        orderId: widget.orderId,
+                                        shopName: widget.shopName,
+                                        customerName: widget.customerName,
+                                        customerPhone: widget.customerPhone,
+                                        orderCreatedAt: DateTime.now(),
+                                        paymentTime: DateTime.now(),
+                                        paymentMethod: _isCash ? 'Tunai di Kaunter' : (_selectedMethod ?? 'DuitNow QR'),
+                                        paymentStatus: _isCash ? 'unpaid' : 'paid',
+                                        items: widget.items,
+                                        totalAmount: widget.amount,
+                                        discount: widget.discountAmount ?? 0.0,
+                                      );
+                                      if (context.mounted) {
+                                        showGlassToast(
+                                          context,
+                                          'order_status.receipt_download_success'.tr(),
+                                          icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+                                        );
+                                      }
+                                    } catch (_) {
+                                      await saveAndDownloadText(
+                                        textContent: receiptStr,
+                                        fileName: 'Resit_Ngam_${widget.orderId}.txt',
+                                      );
+                                      if (context.mounted) {
+                                        showGlassToast(
+                                          context,
+                                          'payment_modal.receipt_copied'.tr(),
+                                          icon: HugeIcons.strokeRoundedDownload01,
+                                        );
+                                      }
                                     }
                                   },
                                   child: Padding(
@@ -1259,13 +1287,13 @@ $thanksStr
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
                                         HugeIcon(
-                                          icon: HugeIcons.strokeRoundedCopy01,
+                                          icon: HugeIcons.strokeRoundedInvoice01,
                                           size: 16,
                                           color: isDark ? Colors.white : Colors.black87,
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
-                                          'payment_modal.download_and_copy'.tr(),
+                                          'order_status.action_download_pdf_receipt'.tr(),
                                           style: TextStyle(
                                             fontSize: 13.5,
                                             fontWeight: FontWeight.bold,

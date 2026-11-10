@@ -50,6 +50,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
   double? _userLng;
 
   StreamSubscription? _shopsSubscription;
+  StreamSubscription<AuthState>? _authSubscription;
 
   final List<Map<String, dynamic>> _stories = [
     {
@@ -139,11 +140,19 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
     super.initState();
     _loadUserInfoAndLocation();
     _fetchShops();
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((_) {
+      if (mounted) {
+        setState(() {
+          _loadUserInfoAndLocation();
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
     _shopsSubscription?.cancel();
+    _authSubscription?.cancel();
     super.dispose();
   }
 
@@ -508,15 +517,16 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
 
               const SliverToBoxAdapter(child: SizedBox(height: 22)),
 
-              // 5. Live Active Queue & Digital Stamp Card
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _buildDigitalStampAndQueueCard(isDark),
+              // 5. Live Active Queue & Digital Stamp Card (Hanya dipaparkan kepada pengguna berdaftar / log masuk)
+              if (Supabase.instance.client.auth.currentUser != null) ...[
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _buildDigitalStampAndQueueCard(isDark),
+                  ),
                 ),
-              ),
-
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              ],
 
               // 6. Live Radar & Port Berdekatan Header
               SliverToBoxAdapter(
@@ -1551,6 +1561,11 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
   }
 
   Widget _buildDigitalStampAndQueueCard(bool isDark) {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1635,7 +1650,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                           const SizedBox(width: 5),
                           Flexible(
                             child: Text(
-                              'Kad Setem • 4/5 Bintang',
+                              'queue.stamp_card_status'.tr(),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -1661,18 +1676,18 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                       color: const Color(0xFF2196F3).withValues(alpha: 0.35),
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '1 Lagi Setem',
-                        style: TextStyle(
+                        'queue.stamps_remaining'.tr(args: ['1']),
+                        style: const TextStyle(
                           color: Color(0xFF2196F3),
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      SizedBox(width: 3),
+                      const SizedBox(width: 3),
                       HugeIcon(
                         icon: HugeIcons.strokeRoundedGift,
                         size: 12,
@@ -1779,22 +1794,22 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                           ),
                         ],
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            HugeIcon(
+                            const HugeIcon(
                               icon: HugeIcons.strokeRoundedTicket01,
                               color: Colors.white,
                               size: 16,
                             ),
-                            SizedBox(width: 6),
+                            const SizedBox(width: 6),
                             Flexible(
                               child: Text(
-                                'Semak Tiket Giliran',
+                                'queue.check_queue_ticket'.tr(),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w800,
@@ -1827,7 +1842,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                       ),
                     ),
                     child: Text(
-                      'Tempahan & Pesanan',
+                      'queue.bookings_and_orders'.tr(),
                       style: TextStyle(
                         color: isDark ? Colors.white70 : const Color(0xFF475569),
                         fontSize: 12,
