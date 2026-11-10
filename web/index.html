@@ -43,21 +43,72 @@
   <meta property="twitter:description" content="Platform pintar untuk pesanan, tempahan servis tempatan dan ganjaran digital. Segalanya lebih mudah dan ngam dalam satu aplikasi.">
   <meta property="twitter:image" content="https://ngam.dev/icons/Icon-512.png">
 
+  <script>
+    // Search engine crawler preservation:
+    // Ensures Googlebot and other crawlers index the full title link with pipe and descriptive subtitle
+    (function() {
+      var isBot = /bot|googlebot|crawler|spider|robot|crawling/i.test(navigator.userAgent);
+      if (isBot) {
+        try {
+          var fullTitle = 'Ngam | Pesanan, Servis Komuniti & Ganjaran Digital';
+          document.title = fullTitle;
+          Object.defineProperty(document, 'title', {
+            get: function() { return fullTitle; },
+            set: function() {},
+            configurable: true
+          });
+        } catch (e) {}
+      }
+    })();
+  </script>
+
   <!-- Structured Data (JSON-LD) for Google Search Rich Snippet & Brand Knowledge -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "Ngam",
-    "alternateName": ["ngam.dev", "Ngam Malaysia", "Ngam App", "Aplikasi Ngam"],
-    "url": "https://ngam.dev/",
-    "description": "Platform pintar untuk pesanan, tempahan servis tempatan dan ganjaran digital. Segalanya lebih mudah dan ngam dalam satu aplikasi.",
-    "publisher": {
-      "@type": "Organization",
-      "name": "Ngam Digital Platform",
-      "url": "https://ngam.dev",
-      "logo": "https://ngam.dev/icons/Icon-512.png"
-    }
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://ngam.dev/#website",
+        "name": "Ngam",
+        "alternateName": ["ngam.dev", "Ngam Malaysia", "Ngam App", "Aplikasi Ngam"],
+        "url": "https://ngam.dev/",
+        "headline": "Ngam | Pesanan, Servis Komuniti & Ganjaran Digital",
+        "description": "Platform pintar untuk pesanan, tempahan servis tempatan dan ganjaran digital. Segalanya lebih mudah dan ngam dalam satu aplikasi.",
+        "publisher": {
+          "@type": "Organization",
+          "name": "Ngam Digital Platform",
+          "url": "https://ngam.dev",
+          "logo": "https://ngam.dev/icons/Icon-512.png"
+        }
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://ngam.dev/#webpage",
+        "url": "https://ngam.dev/",
+        "name": "Ngam | Pesanan, Servis Komuniti & Ganjaran Digital",
+        "headline": "Ngam | Pesanan, Servis Komuniti & Ganjaran Digital",
+        "isPartOf": {
+          "@id": "https://ngam.dev/#website"
+        },
+        "description": "Platform pintar untuk pesanan, tempahan servis tempatan dan ganjaran digital. Segalanya lebih mudah dan ngam dalam satu aplikasi."
+      },
+      {
+        "@type": "WebApplication",
+        "@id": "https://ngam.dev/#webapp",
+        "name": "Ngam | Pesanan, Servis Komuniti & Ganjaran Digital",
+        "alternateName": ["Ngam", "Ngam App", "ngam.dev"],
+        "url": "https://ngam.dev/",
+        "applicationCategory": "LifestyleApplication, ShoppingApplication",
+        "description": "Platform pintar untuk pesanan, tempahan servis tempatan dan ganjaran digital. Segalanya lebih mudah dan ngam dalam satu aplikasi.",
+        "publisher": {
+          "@type": "Organization",
+          "name": "Ngam Digital Platform",
+          "url": "https://ngam.dev",
+          "logo": "https://ngam.dev/icons/Icon-512.png"
+        }
+      }
+    ]
   }
   </script>
 
@@ -197,6 +248,12 @@
   </script>
 </head>
 <body style="background-color: #000000;">
+  <!-- Semantic Header for Search Engine Indexing (Googlebot & Web Crawlers) -->
+  <header style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;" aria-hidden="false">
+    <h1>Ngam | Pesanan, Servis Komuniti &amp; Ganjaran Digital</h1>
+    <p>Platform pintar untuk pesanan, tempahan servis tempatan dan ganjaran digital. Segalanya lebih mudah dan ngam dalam satu aplikasi.</p>
+  </header>
+
   <div id="ngam-splash">
     <img src="icons/splash-logo.png" alt="Ngam" class="splash-logo">
   </div>
