@@ -141,6 +141,20 @@ class GlassNavPill extends StatelessWidget {
   }
 }
 
+/// Top-level helper function allowing direct invocation:
+/// `safeNavBack(context, fallbackRoute: '/customer-home');`
+void safeNavBack(
+  BuildContext context, {
+  VoidCallback? onBack,
+  String? fallbackRoute,
+}) {
+  GlassNavButton.safeNavBack(
+    context,
+    onBack: onBack,
+    fallbackRoute: fallbackRoute,
+  );
+}
+
 /// A premium, reusable glass-morphism circular navigation button.
 /// Matches the design aesthetic of the Home screen top bar buttons:
 /// circular shape with backdrop blur, subtle frosted surface, gentle border and shadow.
