@@ -950,7 +950,9 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     final double safeBottom = MediaQuery.paddingOf(context).bottom;
     final double safeTop = MediaQuery.paddingOf(context).top;
     final double screenWidth = MediaQuery.sizeOf(context).width;
-    final bool isDesktopLandscape = screenWidth > 700;
+    final double screenHeight = MediaQuery.sizeOf(context).height;
+    final bool isLandscape = screenWidth > screenHeight;
+    final bool isDesktopLandscape = screenWidth >= 768 || (isLandscape && screenWidth >= 500);
     final themeProvider = context.watch<ThemeProvider?>();
     final bool isDark = themeProvider?.isDarkMode ?? (Theme.of(context).brightness == Brightness.dark);
     final Color scaffoldBg = isDark ? const Color(0xFF0B0F17) : const Color(0xFFF8FAFC);
@@ -1007,7 +1009,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         valueListenable: CustomerDesktopSidebar.isExpandedNotifier,
         builder: (context, isSidebarExpanded, _) {
           final double sidebarOccupiedWidth = isDesktopLandscape
-              ? (16.0 + (isSidebarExpanded ? 260.0 : 72.0))
+              ? CustomerDesktopSidebar.getSidebarTotalWidth(context, isSidebarExpanded)
               : 0.0;
           final double leftContentOffset = sidebarOccupiedWidth;
           final double commentsPanelWidth = (screenWidth * 0.32).clamp(380.0, 460.0);
@@ -1383,7 +1385,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   }) {
     final double screenWidth = MediaQuery.sizeOf(context).width;
     final double screenHeight = MediaQuery.sizeOf(context).height;
-    final bool isDesktopLandscape = screenWidth > 700;
+    final bool isLandscape = screenWidth > screenHeight;
+    final bool isDesktopLandscape = screenWidth >= 768 || (isLandscape && screenWidth >= 500);
     final bool isShortPhone = screenHeight < 720;
     final themeProvider = context.watch<ThemeProvider?>();
     final bool isDark = themeProvider?.isDarkMode ?? (Theme.of(context).brightness == Brightness.dark);
@@ -2287,7 +2290,9 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   // --- COMMENTS MANAGEMENT (TIKTOK & INSTAGRAM REELS DOCKED RIGHT PANEL ON DESKTOP / BOTTOM SHEET ON MOBILE) ---
   void _toggleComments(Map<String, dynamic> post) {
     final double screenWidth = MediaQuery.sizeOf(context).width;
-    final bool isDesktop = screenWidth > 700;
+    final double screenHeight = MediaQuery.sizeOf(context).height;
+    final bool isLandscape = screenWidth > screenHeight;
+    final bool isDesktop = screenWidth >= 768 || (isLandscape && screenWidth >= 500);
     if (isDesktop) {
       setState(() {
         if (_desktopCommentsPost != null && _desktopCommentsPost!['id'] == post['id']) {

@@ -97,7 +97,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     return ValueListenableBuilder<bool>(
       valueListenable: CustomerDesktopSidebar.isExpandedNotifier,
       builder: (context, isExpanded, _) {
-        final double sidebarWidth = isExpanded ? 276.0 : 88.0;
+        final double sidebarWidth = CustomerDesktopSidebar.getSidebarTotalWidth(context, isExpanded);
         return AnimatedPadding(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeInOutCubic,
@@ -163,9 +163,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-        final isDesktop = constraints.maxWidth >= 800;
+        final isLandscape = constraints.maxWidth > constraints.maxHeight;
+        final isDesktop = constraints.maxWidth >= 768 || (isLandscape && constraints.maxWidth >= 500);
 
-        // Desktop / Landscape Layout (≥800px): Collapsible Modern Glass Sidebar
+        // Desktop / Landscape Layout: Collapsible Modern Glass Sidebar
         if (isDesktop) {
           final isDark = Theme.of(context).brightness == Brightness.dark;
           return Scaffold(

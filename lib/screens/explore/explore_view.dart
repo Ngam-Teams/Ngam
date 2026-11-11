@@ -185,15 +185,16 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   LatLng _getDynamicCenterOffset(Map<String, dynamic> shop, double targetZoom, {bool? panelOpen}) {
     final double screenHeight = MediaQuery.of(context).size.height;
     final double screenWidth = MediaQuery.of(context).size.width;
-    final bool isDesktop = screenWidth >= 800;
+    final bool isLandscape = screenWidth > screenHeight;
+    final bool isDesktop = screenWidth >= 768 || (isLandscape && screenWidth >= 500);
 
     double degreesPerPixelAtZoom14 = 0.0055 / 64.0;
     double scale = pow(2, 14.0 - targetZoom).toDouble();
 
     if (isDesktop) {
-      // 1. Dapatkan kelebaran sebenar sidebar mengikut status kembang (276px) atau kecil (88px)
+      // 1. Dapatkan kelebaran sebenar sidebar mengikut status kembang atau kecil
       final bool isSidebarExpanded = CustomerDesktopSidebar.isExpandedNotifier.value;
-      final double sidebarWidth = isSidebarExpanded ? 276.0 : 88.0;
+      final double sidebarWidth = CustomerDesktopSidebar.getSidebarTotalWidth(context, isSidebarExpanded);
       final double gap = 18.0;
 
       // 2. Ruang di sebelah kiri yang dihalang oleh Sidebar (+ Panel Maklumat Kedai jika aktif)
@@ -443,7 +444,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
   void _onSidebarExpandedChanged() {
     if (!mounted) return;
-    final bool isDesktop = MediaQuery.of(context).size.width >= 800;
+    final media = MediaQuery.of(context);
+    final bool isLandscape = media.size.width > media.size.height;
+    final bool isDesktop = media.size.width >= 768 || (isLandscape && media.size.width >= 500);
     if (!isDesktop) return;
 
     setState(() {}); // Kemas kini anjakan komponen desktop mengikut kelebaran sidebar
@@ -1009,14 +1012,16 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       zoom = _mapController.camera.zoom;
     } catch (_) {}
 
-    final bool isDesktop = MediaQuery.of(context).size.width >= 800;
+    final media = MediaQuery.of(context);
+    final double screenWidth = media.size.width;
+    final double screenHeight = media.size.height;
+    final bool isLandscape = screenWidth > screenHeight;
+    final bool isDesktop = screenWidth >= 768 || (isLandscape && screenWidth >= 500);
     LatLng offsetLocation;
 
     if (isDesktop) {
-      final double screenWidth = MediaQuery.of(context).size.width;
-      final double screenHeight = MediaQuery.of(context).size.height;
       final bool isSidebarExpanded = CustomerDesktopSidebar.isExpandedNotifier.value;
-      final double sidebarWidth = isSidebarExpanded ? 276.0 : 88.0;
+      final double sidebarWidth = CustomerDesktopSidebar.getSidebarTotalWidth(context, isSidebarExpanded);
       final double gap = 18.0;
       final double panelWidth = (screenWidth * 0.30).clamp(350.0, 440.0);
       final double leftObstruction = (_isProfileOpen && _selectedShop != null)
@@ -1459,13 +1464,15 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       final bounds = LatLngBounds(LatLng(minLat, minLng), LatLng(maxLat, maxLng));
 
       final double screenWidth = MediaQuery.of(context).size.width;
-      final bool isDesktop = screenWidth >= 800;
+      final double screenHeight = MediaQuery.of(context).size.height;
+      final bool isLandscape = screenWidth > screenHeight;
+      final bool isDesktop = screenWidth >= 768 || (isLandscape && screenWidth >= 500);
       final double leftPad;
       final double rightPad;
 
       if (isDesktop) {
         final bool isSidebarExpanded = CustomerDesktopSidebar.isExpandedNotifier.value;
-        final double sidebarWidth = isSidebarExpanded ? 276.0 : 88.0;
+        final double sidebarWidth = CustomerDesktopSidebar.getSidebarTotalWidth(context, isSidebarExpanded);
         final bool isPanelActive = _isProfileOpen && _selectedShop != null;
         final double panelWidth = isPanelActive ? ((screenWidth * 0.30).clamp(350.0, 440.0) + 18.0) : 0.0;
         final double leftObstruction = sidebarWidth + panelWidth;
@@ -1958,8 +1965,11 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   Widget build(BuildContext context) {
     super.build(context);
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final bool isDesktop = MediaQuery.of(context).size.width >= 800;
-    final double screenWidth = MediaQuery.of(context).size.width;
+    final media = MediaQuery.of(context);
+    final double screenWidth = media.size.width;
+    final double screenHeight = media.size.height;
+    final bool isLandscape = screenWidth > screenHeight;
+    final bool isDesktop = screenWidth >= 768 || (isLandscape && screenWidth >= 500);
     final double searchWidth = (screenWidth * 0.40).clamp(340.0, 540.0);
     final double panelWidth = (screenWidth * 0.30).clamp(350.0, 440.0);
     final bool isSearchActive = _isSearchPanelOpen;
@@ -2771,7 +2781,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   }
 
   Widget _buildBottomGlassPanel(bool isDark) {
-    final bool isDesktop = MediaQuery.of(context).size.width >= 800;
+    final media = MediaQuery.of(context);
+    final bool isLandscape = media.size.width > media.size.height;
+    final bool isDesktop = media.size.width >= 768 || (isLandscape && media.size.width >= 500);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -4646,7 +4658,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       _isProfileOpen = true;
     });
 
-    final bool isDesktop = MediaQuery.of(context).size.width >= 800;
+    final media = MediaQuery.of(context);
+    final bool isLandscape = media.size.width > media.size.height;
+    final bool isDesktop = media.size.width >= 768 || (isLandscape && media.size.width >= 500);
     if (isDesktop) {
       // Pada desktop, panel sisi diaktifkan melalui state _isProfileOpen di dalam Stack!
       return;

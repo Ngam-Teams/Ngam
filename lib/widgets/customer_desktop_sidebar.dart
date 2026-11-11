@@ -32,6 +32,17 @@ class CustomerDesktopSidebar extends StatelessWidget {
   /// Status kembang/kecil sidebar kekal semasa navigasi
   static final ValueNotifier<bool> isExpandedNotifier = ValueNotifier<bool>(true);
 
+  /// Kiraan lebar keseluruhan sidebar untuk digunakan oleh laman-laman bersebelahan (Peta, Laman Utama, dll)
+  static double getSidebarTotalWidth(BuildContext context, bool isExpanded) {
+    final double screenHeight = MediaQuery.of(context).size.height;
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isCompactHeight = screenHeight < 500;
+    final double expandedWidth = (screenWidth * 0.35).clamp(180.0, 260.0);
+    final double collapsedWidth = isCompactHeight ? 64.0 : 72.0;
+    final double paddingLeft = isCompactHeight ? 10.0 : 16.0;
+    return (isExpanded ? expandedWidth : collapsedWidth) + paddingLeft;
+  }
+
   static const List<({dynamic icon, String label})> navItems = [
     (icon: HugeIcons.strokeRoundedHome11, label: 'Laman Utama'),
     (icon: HugeIcons.strokeRoundedMaps, label: 'Terokai Peta'),
@@ -55,19 +66,30 @@ class CustomerDesktopSidebar extends StatelessWidget {
       (icon: HugeIcons.strokeRoundedUser, label: l10n?.navProfile ?? 'Profil Saya'),
     ];
 
+    final double screenHeight = MediaQuery.of(context).size.height;
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isCompactHeight = screenHeight < 500;
+    final double expandedWidth = (screenWidth * 0.35).clamp(180.0, 260.0);
+    final double collapsedWidth = isCompactHeight ? 64.0 : 72.0;
+
     return ValueListenableBuilder<bool>(
       valueListenable: isExpandedNotifier,
       builder: (context, isExpanded, _) {
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 0, 16),
+          padding: EdgeInsets.fromLTRB(
+            isCompactHeight ? 10 : 16,
+            isCompactHeight ? 8 : 16,
+            0,
+            isCompactHeight ? 8 : 16,
+          ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(isCompactHeight ? 22 : 28),
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
                 curve: Curves.easeInOutCubic,
-                width: isExpanded ? 260 : 72,
+                width: isExpanded ? expandedWidth : collapsedWidth,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -82,7 +104,7 @@ class CustomerDesktopSidebar extends StatelessWidget {
                             Colors.white.withValues(alpha: 0.38),
                           ],
                   ),
-                  borderRadius: BorderRadius.circular(28),
+                  borderRadius: BorderRadius.circular(isCompactHeight ? 22 : 28),
                   border: Border.all(
                     color: isDark
                         ? Colors.white.withValues(alpha: 0.18)
@@ -99,7 +121,7 @@ class CustomerDesktopSidebar extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    const SizedBox(height: 16),
+                    SizedBox(height: isCompactHeight ? 8 : 16),
 
                     // ─── 1. Header Atas (Logo & Butang Kembang / Kecil) ───
                     if (isExpanded)
@@ -156,9 +178,9 @@ class CustomerDesktopSidebar extends StatelessWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  const Text(
-                                    'Komuniti',
-                                    style: TextStyle(
+                                   Text(
+                                    'common.community'.tr(),
+                                    style: const TextStyle(
                                       color: Color(0xFF42A5F5),
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
@@ -182,7 +204,7 @@ class CustomerDesktopSidebar extends StatelessWidget {
                         onTap: () => isExpandedNotifier.value = true,
                       ),
 
-                    const SizedBox(height: 14),
+                    SizedBox(height: isCompactHeight ? 8 : 14),
 
                     // ─── 2. Profil Pengguna / Kad Tetamu ─────────────────
                     if (isExpanded)
@@ -199,9 +221,9 @@ class CustomerDesktopSidebar extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                           hoverColor: Colors.white.withValues(alpha: 0.08),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
+                            padding: EdgeInsets.symmetric(
                               horizontal: 10,
-                              vertical: 8,
+                              vertical: isCompactHeight ? 5 : 8,
                             ),
                             decoration: BoxDecoration(
                               color: isDark
@@ -216,7 +238,7 @@ class CustomerDesktopSidebar extends StatelessWidget {
                             ),
                             child: Row(
                               children: [
-                                _buildSidebarAvatar(user, 17, isDark),
+                                _buildSidebarAvatar(user, isCompactHeight ? 14 : 17, isDark),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Column(
@@ -239,7 +261,7 @@ class CustomerDesktopSidebar extends StatelessWidget {
                                       ),
                                       const SizedBox(height: 1.5),
                                       Text(
-                                        user != null ? 'Ahli Ngam' : 'Log Masuk Segera',
+                                        user != null ? 'profile.member_badge'.tr() : 'profile.login_now'.tr(),
                                         style: TextStyle(
                                           color: isDark ? Colors.white.withValues(alpha: 0.45) : Colors.black45,
                                           fontSize: 10.5,
@@ -264,8 +286,8 @@ class CustomerDesktopSidebar extends StatelessWidget {
                     else
                       Tooltip(
                         message: user != null
-                            ? (user.userName ?? 'Profil')
-                            : 'Log Masuk Tetamu',
+                            ? (user.userName ?? 'profile.account'.tr())
+                            : 'profile.guest_login_tooltip'.tr(),
                         child: InkWell(
                           onTap: () {
                             if (user != null) {
@@ -275,11 +297,11 @@ class CustomerDesktopSidebar extends StatelessWidget {
                             }
                           },
                           borderRadius: BorderRadius.circular(14),
-                          child: _buildSidebarAvatar(user, 19, isDark),
+                          child: _buildSidebarAvatar(user, isCompactHeight ? 16 : 19, isDark),
                         ),
                       ),
 
-                    const SizedBox(height: 12),
+                    SizedBox(height: isCompactHeight ? 6 : 12),
 
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -291,7 +313,7 @@ class CustomerDesktopSidebar extends StatelessWidget {
                       ),
                     ),
 
-                    const SizedBox(height: 8),
+                    SizedBox(height: isCompactHeight ? 4 : 8),
 
                     // ─── 3. Senarai Navigasi Menu (5 Tabs) ────────────────
                     Expanded(
@@ -299,7 +321,7 @@ class CustomerDesktopSidebar extends StatelessWidget {
                         padding: EdgeInsets.zero,
                         physics: const ClampingScrollPhysics(),
                         itemCount: localizedNavItems.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 4),
+                        separatorBuilder: (_, __) => SizedBox(height: isCompactHeight ? 2 : 4),
                         itemBuilder: (context, index) {
                           final item = localizedNavItems[index];
                           final selected = index == selectedIndex;
@@ -308,6 +330,7 @@ class CustomerDesktopSidebar extends StatelessWidget {
                             label: item.label,
                             selected: selected,
                             isExpanded: isExpanded,
+                            isCompactHeight: isCompactHeight,
                             onTap: () => onNavTap(index),
                           );
                         },
@@ -323,15 +346,16 @@ class CustomerDesktopSidebar extends StatelessWidget {
                         height: 1,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: isCompactHeight ? 4 : 6),
 
                     // ─── 4. Butang Bawah (Log Keluar / Log Masuk) ──
                     if (user != null)
                       _SidebarNavItem(
                         icon: HugeIcons.strokeRoundedLogout02,
-                        label: l10n?.logOut ?? 'Log Keluar',
+                        label: l10n?.logOut ?? 'common.log_out'.tr(),
                         selected: false,
                         isExpanded: isExpanded,
+                        isCompactHeight: isCompactHeight,
                         onTap: () async {
                           final confirm = await showGlassConfirmDialog(
                             context: context,
@@ -359,13 +383,14 @@ class CustomerDesktopSidebar extends StatelessWidget {
                     else
                       _SidebarNavItem(
                         icon: HugeIcons.strokeRoundedLogin02,
-                        label: 'Log Masuk / Daftar',
+                        label: 'profile.login_register'.tr(),
                         selected: false,
                         isExpanded: isExpanded,
+                        isCompactHeight: isCompactHeight,
                         onTap: () => Navigator.pushNamed(context, '/login'),
                       ),
 
-                    const SizedBox(height: 12),
+                    SizedBox(height: isCompactHeight ? 6 : 12),
                   ],
                 ),
               ),
@@ -461,7 +486,7 @@ class _LogoExpandButtonState extends State<_LogoExpandButton> {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: _isHovered ? 'Kembangkan Sidebar' : 'Ngam Komuniti',
+      message: _isHovered ? 'common.expand_sidebar'.tr() : 'Ngam',
       waitDuration: const Duration(milliseconds: 300),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
@@ -561,7 +586,7 @@ class _CollapseSidebarButtonState extends State<_CollapseSidebarButton> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Tooltip(
-      message: 'Kecilkan Sidebar',
+      message: 'common.collapse_sidebar'.tr(),
       waitDuration: const Duration(milliseconds: 300),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
@@ -609,6 +634,7 @@ class _SidebarNavItem extends StatelessWidget {
   final String label;
   final bool selected;
   final bool isExpanded;
+  final bool isCompactHeight;
   final VoidCallback onTap;
 
   const _SidebarNavItem({
@@ -616,6 +642,7 @@ class _SidebarNavItem extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.isExpanded,
+    this.isCompactHeight = false,
     required this.onTap,
   });
 
@@ -631,13 +658,13 @@ class _SidebarNavItem extends StatelessWidget {
         child: Center(
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(isCompactHeight ? 12 : 16),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              width: 48,
-              height: 48,
+              width: isCompactHeight ? 42 : 48,
+              height: isCompactHeight ? 42 : 48,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(isCompactHeight ? 12 : 16),
                 color: selected
                     ? const Color(0xFF42A5F5).withValues(alpha: 0.18)
                     : Colors.transparent,
@@ -654,7 +681,7 @@ class _SidebarNavItem extends StatelessWidget {
                   color: selected
                       ? const Color(0xFF42A5F5)
                       : (isDark ? Colors.white38 : Colors.black45),
-                  size: 22,
+                  size: isCompactHeight ? 20 : 22,
                   strokeWidth: selected ? 2.3 : 1.9,
                 ),
               ),
@@ -669,8 +696,8 @@ class _SidebarNavItem extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        margin: EdgeInsets.symmetric(horizontal: 12, vertical: isCompactHeight ? 1.5 : 3),
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: isCompactHeight ? 7 : 11),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           color: selected
@@ -690,7 +717,7 @@ class _SidebarNavItem extends StatelessWidget {
               color: selected
                   ? const Color(0xFF42A5F5)
                   : (isDark ? Colors.white38 : Colors.black45),
-              size: 20,
+              size: isCompactHeight ? 18 : 20,
               strokeWidth: selected ? 2.3 : 1.9,
             ),
             const SizedBox(width: 12),
@@ -702,7 +729,7 @@ class _SidebarNavItem extends StatelessWidget {
                       ? (isDark ? Colors.white : const Color(0xFF1976D2))
                       : (isDark ? Colors.white54 : Colors.black87),
                   fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                  fontSize: 14,
+                  fontSize: isCompactHeight ? 13 : 14,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -713,5 +740,4 @@ class _SidebarNavItem extends StatelessWidget {
       ),
     );
   }
-
 }

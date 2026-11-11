@@ -354,7 +354,10 @@
     "no_saved_posts_desc": "Tandakan hantaran atau tawaran promosi menarik dari Ngam Feed untuk tonton semula pada bila-bila masa.",
     "delete_account_subtitle": "Padam akaun dan semua data peribadi anda",
     "guest_account": "Akaun Tetamu",
-    "confirm_logout": "Adakah anda pasti mahu log keluar daripada akaun ini?"
+    "confirm_logout": "Adakah anda pasti mahu log keluar daripada akaun ini?",
+    "member_badge": "Ahli Ngam",
+    "login_now": "Log Masuk Segera",
+    "guest_login_tooltip": "Log Masuk Tetamu"
   },
   "wallet": {
     "title": "Dompet & Pembayaran",
@@ -743,7 +746,10 @@
     "copy_password": "Salin Kata Laluan",
     "verified": "Disahkan",
     "today": "Hari Ini",
-    "press_back_again_to_exit": "Tekan sekali lagi untuk keluar"
+    "press_back_again_to_exit": "Tekan sekali lagi untuk keluar",
+    "collapse_sidebar": "Kecilkan bar sisi",
+    "expand_sidebar": "Kembangkan bar sisi",
+    "community": "Komuniti"
   },
   "task_detail": {
     "navigate": "Navigasi ke Lokasi",

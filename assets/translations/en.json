@@ -354,7 +354,10 @@
     "no_saved_posts_desc": "Bookmark interesting posts or promos from Ngam Feed to view them anytime.",
     "delete_account_subtitle": "Delete account and all your personal data",
     "guest_account": "Guest Account",
-    "confirm_logout": "Are you sure you want to log out of this account?"
+    "confirm_logout": "Are you sure you want to log out of this account?",
+    "member_badge": "Ngam Member",
+    "login_now": "Sign In Now",
+    "guest_login_tooltip": "Guest Sign In"
   },
   "wallet": {
     "title": "Wallet & Payments",
@@ -743,7 +746,10 @@
     "copy_password": "Copy Password",
     "verified": "Verified",
     "today": "Today",
-    "press_back_again_to_exit": "Press back again to exit"
+    "press_back_again_to_exit": "Press back again to exit",
+    "collapse_sidebar": "Collapse sidebar",
+    "expand_sidebar": "Expand sidebar",
+    "community": "Community"
   },
   "task_detail": {
     "navigate": "Navigate to Location",
