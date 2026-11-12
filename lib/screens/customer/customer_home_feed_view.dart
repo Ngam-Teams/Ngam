@@ -553,6 +553,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isLandscape = media.size.width > media.size.height;
     final bool isDesktop = media.size.width >= 768 || (isLandscape && media.size.width >= 500);
     final Color bgGradStart = isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8F9FA);
