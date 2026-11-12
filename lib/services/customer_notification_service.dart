@@ -102,7 +102,8 @@ class CustomerNotificationService {
             callback: (payload) {
               final newRecord = payload.newRecord;
               if (newRecord.isNotEmpty) {
-                final orderUserId = newRecord['user_id']?.toString() ??
+                final orderUserId = newRecord['owner_user_id']?.toString() ??
+                    newRecord['user_id']?.toString() ??
                     newRecord['customer_id']?.toString();
                 if (orderUserId == userId) {
                   _onOrderStatusChanged(newRecord);
@@ -204,7 +205,12 @@ class CustomerNotificationService {
             callback: (payload) {
               final newRecord = payload.newRecord;
               if (newRecord.isNotEmpty) {
-                final bUserId = newRecord['user_id']?.toString();
+                final meta = newRecord['booking_metadata'] is Map
+                    ? newRecord['booking_metadata'] as Map
+                    : const {};
+                final bUserId = newRecord['customer_id']?.toString() ??
+                    meta['customer_auth_id']?.toString() ??
+                    newRecord['user_id']?.toString();
                 if (bUserId == userId) {
                   _onBookingStatusChanged(newRecord);
                 }
@@ -220,11 +226,16 @@ class CustomerNotificationService {
   void _onBookingStatusChanged(Map<String, dynamic> booking) {
     final bookingId = booking['id']?.toString() ?? '';
     final status = booking['status']?.toString().toLowerCase() ?? '';
-    final shopName = booking['shop_name']?.toString() ??
-        booking['business_name']?.toString() ??
-        'Ngam';
-    final date = booking['date']?.toString() ?? '';
-    final time = booking['time']?.toString() ?? '';
+    final meta = booking['booking_metadata'] is Map
+        ? booking['booking_metadata'] as Map
+        : const {};
+    final shopName = (meta['shop_name'] ??
+            booking['shop_name'] ??
+            booking['business_name'] ??
+            'Kedai')
+        .toString();
+    final date = (booking['booking_date'] ?? booking['date'] ?? '').toString();
+    final time = (booking['booking_time'] ?? booking['time'] ?? '').toString();
 
     if (bookingId.isEmpty || status.isEmpty) return;
 

@@ -383,6 +383,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                                 'time': dbItem['booking_time'] ?? '',
                                 'totalPrice': displayPrice,
                                 'status': (dbItem['status']?.toString() ?? 'pending').toLowerCase(),
+                                'paymentMethod': meta['payment_method']?.toString(),
                                 'paymentStatus': (meta['payment_status']?.toString() ?? 'unpaid').toLowerCase(),
                                 'pax': dbItem['pax'] ?? meta['pax'],
                                 'checkOutDate': meta['check_out_date'],
@@ -504,15 +505,20 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                               return cb.compareTo(ca);
                             });
 
+                            const terminalStatuses = {
+                              'cancelled',
+                              'completed',
+                              'rejected',
+                              'declined',
+                              'no_show',
+                            };
                             final upcomingList = combined
                                 .where((item) =>
-                                    item['status'] != 'cancelled' &&
-                                    item['status'] != 'completed' &&
+                                    !terminalStatuses.contains(item['status']) &&
                                     item['status'] != 'holding')
                                 .toList();
                             final historyList = combined
-                                .where((item) =>
-                                    item['status'] == 'cancelled' || item['status'] == 'completed')
+                                .where((item) => terminalStatuses.contains(item['status']))
                                 .toList();
 
                             return AnimatedSwitcher(
@@ -1151,7 +1157,39 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                         try {
                           await Supabase.instance.client
                               .from('orders')
-                              .update({'status': 'cancelled'}).eq('id', orderDbId);
+                              .update({
+                                'status': 'cancelled',
+                                if (isPaid) 'payment_status': 'refund_pending',
+                              })
+                              .eq('id', orderDbId);
+
+                          try {
+                            final orderItems = await Supabase.instance.client
+                                .from('order_items')
+                                .select('product_id, quantity')
+                                .eq('order_id', orderDbId);
+                            for (final row in (orderItems as List)) {
+                              final prodId = row['product_id']?.toString();
+                              final qty = (row['quantity'] as num?)?.toInt() ?? 0;
+                              if (prodId != null && prodId.isNotEmpty && qty > 0) {
+                                final prod = await Supabase.instance.client
+                                    .from('business_products')
+                                    .select('stock, track_inventory, item_type')
+                                    .eq('id', prodId)
+                                    .maybeSingle();
+                                if (prod != null &&
+                                    prod['item_type'] != 'service' &&
+                                    (prod['track_inventory'] as bool? ?? true)) {
+                                  final curStock = (prod['stock'] as num?)?.toInt() ?? 0;
+                                  await Supabase.instance.client
+                                      .from('business_products')
+                                      .update({'stock': curStock + qty})
+                                      .eq('id', prodId);
+                                }
+                              }
+                            }
+                          } catch (_) {}
+
                           if (context.mounted) {
                             showGlassToast(context, 'my_bookings.cancel_order_success'.tr());
                           }
@@ -1772,6 +1810,8 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                             bookingId: item['id'],
                             status: status,
                             bookingDbId: item['db_id']?.toString(),
+                            paymentMethod: item['paymentMethod']?.toString(),
+                            paymentStatus: item['paymentStatus']?.toString(),
                           ),
                         ),
                       );
@@ -1835,6 +1875,13 @@ class _MyBookingsViewState extends State<MyBookingsView> {
         label = 'my_bookings.status_disputed'.tr();
         icon = HugeIcons.strokeRoundedAlert02;
         break;
+      case 'no_show':
+        color = const Color(0xFFF97316);
+        label = 'my_bookings.status_cancelled'.tr();
+        icon = HugeIcons.strokeRoundedCancel01;
+        break;
+      case 'rejected':
+      case 'declined':
       case 'cancelled':
         color = const Color(0xFFEF4444);
         label = 'my_bookings.status_cancelled'.tr();
@@ -1967,7 +2014,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
   }
 
   Widget _buildHistoryTicket(BuildContext context, Map<String, dynamic> item, bool isDark) {
-    final bool isCancelled = item["status"] == "cancelled";
+    final bool isCancelled = const ['cancelled', 'rejected', 'declined', 'no_show'].contains(item["status"]);
     final String serviceName = item['serviceName']?.toString() ?? item['category']?.toString() ?? 'my_bookings.default_service'.tr();
 
     return GestureDetector(
@@ -1987,6 +2034,8 @@ class _MyBookingsViewState extends State<MyBookingsView> {
               isCancelled: isCancelled,
               status: item['status'] ?? (isCancelled ? 'cancelled' : 'completed'),
               bookingDbId: item['db_id']?.toString(),
+              paymentMethod: item['paymentMethod']?.toString(),
+              paymentStatus: item['paymentStatus']?.toString(),
             ),
           ),
         );

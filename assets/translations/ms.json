@@ -865,7 +865,8 @@
     "check_queue_ticket": "Semak Tiket Giliran",
     "bookings_and_orders": "Tempahan & Pesanan",
     "stamp_card_status": "Kad Setem • 4/5 Bintang",
-    "stamps_remaining": "{} Lagi Setem"
+    "stamps_remaining": "{} Lagi Setem",
+    "join_error": "Gagal menyertai barisan. Sila cuba lagi."
   },
   "stamp": {
     "title": "Kad Cop Digital Saya",
@@ -936,7 +937,8 @@
     "fpx_min_spend_badge": "MIN. RM 10.00",
     "fpx_min_spend_error": "Perbankan FPX & Kad memerlukan jumlah pesanan minima RM 10.00. Sila gunakan DuitNow QR atau Tunai.",
     "fpx_min_spend_subtitle": "Tersedia untuk pesanan RM 10.00 ke atas melalui Perbankan Dalam Talian dan Kad",
-    "back_to_cart": "Kembali ke Troli"
+    "back_to_cart": "Kembali ke Troli",
+    "delivery_address_required": "Sila masukkan alamat penghantaran anda sebelum membuat pesanan."
   },
   "store": {
     "call": "Hubungi Kedai",

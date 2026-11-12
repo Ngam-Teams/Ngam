@@ -23,6 +23,7 @@ class LocalNotificationService {
     required String time,
     required String totalPrice,
     required String bookingId,
+    String status = 'pending',
   }) async {
     final title = 'notifications.booking_confirmed_title'.tr();
     final body = 'notifications.booking_confirmed_body'.tr(args: [shopName, date, time]);
@@ -47,7 +48,7 @@ class LocalNotificationService {
       type: 'booking',
       title: title,
       message: body,
-      data: {'booking_id': bookingId, 'status': 'confirmed'},
+      data: {'booking_id': bookingId, 'status': status},
     );
   }
 

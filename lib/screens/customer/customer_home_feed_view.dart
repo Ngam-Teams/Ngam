@@ -846,10 +846,33 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
     }
 
     // 2. Smart Queue format
-    if (query.startsWith('NGAM_QUEUE:') || query.contains('/queue/')) {
+    if (query.startsWith('NGAM_QUEUE:') ||
+        query.contains('/queue/') ||
+        query.contains('/q/')) {
+      String? bizId;
+      if (query.startsWith('NGAM_QUEUE:')) {
+        final raw = query.substring('NGAM_QUEUE:'.length).trim();
+        bizId = raw.split('|').first.trim();
+      } else {
+        final qUri = Uri.tryParse(query);
+        if (qUri != null && qUri.pathSegments.isNotEmpty) {
+          final idx = qUri.pathSegments
+              .indexWhere((s) => s == 'queue' || s == 'q');
+          if (idx != -1 && idx + 1 < qUri.pathSegments.length) {
+            bizId = qUri.pathSegments[idx + 1].trim();
+          } else {
+            bizId = qUri.pathSegments.last.trim();
+          }
+        }
+      }
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const MyQueueTicketScreen()),
+        MaterialPageRoute(
+          builder: (_) => MyQueueTicketScreen(
+            initialBusinessId: (bizId != null && bizId.isNotEmpty) ? bizId : null,
+            allowDirectJoin: true,
+          ),
+        ),
       );
       showGlassToast(context, 'Membuka Giliran Pintar Kedai...');
       return;

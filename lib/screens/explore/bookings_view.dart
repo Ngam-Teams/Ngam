@@ -949,7 +949,26 @@ class _BookingsViewState extends State<BookingsView> {
     if (_isStaleHold(b)) return false;
     final String bDate = b['booking_date']?.toString() ?? '';
     final String bTime = b['booking_time']?.toString() ?? '';
-    if (bDate != targetDate) return false;
+    final metaMap = (b['booking_metadata'] is Map)
+        ? Map<String, dynamic>.from(b['booking_metadata'] as Map)
+        : <String, dynamic>{};
+
+    if (_bookingType == BookingType.hospitality && bDate.isNotEmpty) {
+      final startDt = DateTime.tryParse(targetDate);
+      final bStartDt = DateTime.tryParse(bDate);
+      if (startDt != null && bStartDt != null) {
+        final myEndDt = startDt.add(Duration(days: _nightsCount > 0 ? _nightsCount : 1));
+        final int bNights = (metaMap['nights_count'] as num?)?.toInt() ?? 1;
+        final String bCheckOutStr = (metaMap['check_out_date'] ?? '').toString();
+        final bEndDt = DateTime.tryParse(bCheckOutStr) ??
+            bStartDt.add(Duration(days: bNights > 0 ? bNights : 1));
+        if (!(startDt.isBefore(bEndDt) && myEndDt.isAfter(bStartDt))) return false;
+      } else if (bDate != targetDate) {
+        return false;
+      }
+    } else if (bDate != targetDate) {
+      return false;
+    }
 
     int? parseMins(String t) {
       final p = t.split(':');
@@ -962,30 +981,38 @@ class _BookingsViewState extends State<BookingsView> {
 
     final int? slotMins = parseMins(timeStr);
     final int? bookedStartMins = parseMins(bTime);
-    if (slotMins == null || bookedStartMins == null) {
-      if (bTime != timeStr) return false;
-    } else {
-      final metaMap = (b['booking_metadata'] is Map)
-          ? Map<String, dynamic>.from(b['booking_metadata'] as Map)
-          : <String, dynamic>{};
-      final int bookedDur = (metaMap['estimated_duration_mins'] as num?)?.toInt() ?? 60;
-      final int effectiveBookedDur = bookedDur > 60 ? bookedDur : 60;
-      final int myDur = _totalTime > 60 ? _totalTime : 60;
-      final int bookedEndMins = bookedStartMins + effectiveBookedDur;
-      final int slotEndMins = slotMins + myDur;
-      final bool overlaps = slotMins < bookedEndMins && slotEndMins > bookedStartMins;
-      if (!overlaps) return false;
+    if (_bookingType != BookingType.hospitality) {
+      if (slotMins == null || bookedStartMins == null) {
+        if (bTime != timeStr) return false;
+      } else {
+        final int bookedDur = (metaMap['estimated_duration_mins'] as num?)?.toInt() ?? 60;
+        final int effectiveBookedDur = bookedDur > 60 ? bookedDur : 60;
+        final int myDur = _totalTime > 60 ? _totalTime : 60;
+        final int bookedEndMins = bookedStartMins + effectiveBookedDur;
+        final int slotEndMins = slotMins + myDur;
+        final bool overlaps = slotMins < bookedEndMins && slotEndMins > bookedStartMins;
+        if (!overlaps) return false;
+      }
     }
 
     if (isSpecificStaff) {
-      final meta = (b['booking_metadata'] is Map)
-          ? Map<String, dynamic>.from(b['booking_metadata'] as Map)
-          : <String, dynamic>{};
-      final String bStaffId = (b['staff_id'] ?? meta['staff_id'] ?? '').toString();
-      final String bProviderName = (meta['provider_name'] ?? '').toString();
+      final String bStaffId = (b['staff_id'] ?? metaMap['staff_id'] ?? '').toString();
+      final String bProviderName = (metaMap['provider_name'] ?? '').toString();
+      final String lowerProvider = bProviderName.toLowerCase();
+      if (bStaffId.isEmpty &&
+          (lowerProvider.isEmpty ||
+              lowerProvider.contains('mana-mana') ||
+              lowerProvider.contains('any'))) {
+        final specificStaffCount = _staffs
+            .where((s) =>
+                s['id'] != 'any' &&
+                !(s['name'] ?? '').toLowerCase().contains('mana-mana'))
+            .length;
+        return specificStaffCount <= 1;
+      }
       if (bStaffId.isNotEmpty && bStaffId != selectedStaffId) return false;
       if (bProviderName.isNotEmpty &&
-          !bProviderName.toLowerCase().contains('mana-mana') &&
+          !lowerProvider.contains('mana-mana') &&
           bProviderName != selectedStaffName) {
         return false;
       }
@@ -1040,12 +1067,28 @@ class _BookingsViewState extends State<BookingsView> {
         !selectedStaffName.toLowerCase().contains('mana-mana');
 
     // Semak jika slot masa pada tarikh (dan staf) tersebut telah ditempah orang lain
-    final bool isSlotTaken = _slotRows.any((b) {
-      if (_holdingRecordId != null && b['id']?.toString() == _holdingRecordId) {
-        return false; // Jangan kunci slot yang sedang dipegang oleh pengguna ini sendiri
-      }
-      return _rowTakesSlot(b, targetDate, timeStr, isSpecificStaff, selectedStaffId, selectedStaffName);
-    });
+    final bool isSlotTaken;
+    if (isSpecificStaff) {
+      isSlotTaken = _slotRows.any((b) {
+        if (_holdingRecordId != null && b['id']?.toString() == _holdingRecordId) {
+          return false; // Jangan kunci slot yang sedang dipegang oleh pengguna ini sendiri
+        }
+        return _rowTakesSlot(b, targetDate, timeStr, true, selectedStaffId, selectedStaffName);
+      });
+    } else {
+      final int specificStaffCount = _staffs
+          .where((s) =>
+              s['id'] != 'any' &&
+              !(s['name'] ?? '').toLowerCase().contains('mana-mana'))
+          .length;
+      final int overlappingCount = _slotRows.where((b) {
+        if (_holdingRecordId != null && b['id']?.toString() == _holdingRecordId) {
+          return false;
+        }
+        return _rowTakesSlot(b, targetDate, timeStr, false, selectedStaffId, selectedStaffName);
+      }).length;
+      isSlotTaken = overlappingCount >= (specificStaffCount > 0 ? specificStaffCount : 1);
+    }
 
     if (isSlotTaken) return false;
 
@@ -1195,19 +1238,32 @@ class _BookingsViewState extends State<BookingsView> {
     return widget.shopName;
   }
 
-  //  Restored Auto-Save Functions
+  //  Restored Auto-Save Functions (Scoped by shopId to prevent cross-shop draft contamination)
   Future<void> _saveDraftToPreventLoss(String shopName, String selectedTime) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('draft_shop_name', shopName);
-    await prefs.setString('draft_selected_time', selectedTime);
+    await prefs.setString('draft_shop_name_${widget.shopId}', shopName);
+    await prefs.setString('draft_selected_time_${widget.shopId}', selectedTime);
   }
 
   Future<void> _recoverLostDraft() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
-      _shopName = prefs.getString('draft_shop_name') ?? widget.shopName;
-      _selectedTime = prefs.getString('draft_selected_time') ?? '';
+      if (widget.shopName.trim().isEmpty) {
+        _shopName = prefs.getString('draft_shop_name_${widget.shopId}') ?? widget.shopName;
+      } else {
+        _shopName = widget.shopName;
+      }
+      _selectedTime = prefs.getString('draft_selected_time_${widget.shopId}') ?? '';
     });
+  }
+
+  Future<void> _clearDraftProgress() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('draft_shop_name_${widget.shopId}');
+    await prefs.remove('draft_selected_time_${widget.shopId}');
+    await prefs.remove('draft_shop_name');
+    await prefs.remove('draft_selected_time');
   }
 
   //  Generates 60 days (~2 months) of valid upcoming dates
@@ -2018,13 +2074,30 @@ class _BookingsViewState extends State<BookingsView> {
       await _refreshBookedSlots();
       final myCreated = DateTime.tryParse('${hold['created_at']}');
       final bool isSpecific = staffUuid != null;
-      final bool lostRace = _slotRows.any((b) {
-        if (b['id']?.toString() == _holdingRecordId) return false;
-        if (!_rowTakesSlot(b, targetDate, targetTime, isSpecific, staffUuid ?? '', staff["name"] ?? '')) return false;
-        final theirs = DateTime.tryParse('${b['created_at']}');
-        if (theirs == null || myCreated == null) return false;
-        return theirs.isBefore(myCreated);
-      });
+      final bool lostRace;
+      if (isSpecific) {
+        lostRace = _slotRows.any((b) {
+          if (b['id']?.toString() == _holdingRecordId) return false;
+          if (!_rowTakesSlot(b, targetDate, targetTime, true, staffUuid, staff["name"] ?? '')) return false;
+          final theirs = DateTime.tryParse('${b['created_at']}');
+          if (theirs == null || myCreated == null) return false;
+          return theirs.isBefore(myCreated);
+        });
+      } else {
+        final int specificStaffCount = _staffs
+            .where((s) =>
+                s['id'] != 'any' &&
+                !(s['name'] ?? '').toLowerCase().contains('mana-mana'))
+            .length;
+        final int earlierCount = _slotRows.where((b) {
+          if (b['id']?.toString() == _holdingRecordId) return false;
+          if (!_rowTakesSlot(b, targetDate, targetTime, false, '', staff["name"] ?? '')) return false;
+          final theirs = DateTime.tryParse('${b['created_at']}');
+          if (theirs == null || myCreated == null) return false;
+          return theirs.isBefore(myCreated);
+        }).length;
+        lostRace = earlierCount >= (specificStaffCount > 0 ? specificStaffCount : 1);
+      }
       if (lostRace) {
         await _releaseHold();
         if (!mounted) return;
@@ -2110,6 +2183,10 @@ class _BookingsViewState extends State<BookingsView> {
     String paymentStatus = chosenPaymentType == 'cash' ? 'unpaid' : 'pending';
     String transactionRef = '';
 
+    final DateTime? checkOutDate = _bookingType == BookingType.hospitality
+        ? DateTime.parse(_dates[_selectedDateIndex]['fullDate']!).add(Duration(days: _nightsCount))
+        : null;
+
     Map<String, dynamic> buildMetadataPayload(String currentPayStatus, String currentRef) => {
       'short_ref': shortBookingId,
       'booking_id': shortBookingId,
@@ -2134,6 +2211,9 @@ class _BookingsViewState extends State<BookingsView> {
       'booking_type': _bookingType.name,
       'pax': _paxCount,
       if (_bookingType == BookingType.hospitality) 'nights_count': _nightsCount,
+      if (checkOutDate != null)
+        'check_out_date':
+            "${checkOutDate.year}-${checkOutDate.month.toString().padLeft(2, '0')}-${checkOutDate.day.toString().padLeft(2, '0')}",
       if (_industryDetailCtrl.text.trim().isNotEmpty) 'industry_detail': _industryDetailCtrl.text.trim(),
       'has_allergies_or_notes': _hasAllergies,
       'notes': [
@@ -2212,6 +2292,7 @@ class _BookingsViewState extends State<BookingsView> {
       );
 
       if (!paid) {
+        await _releaseHold();
         if (!mounted) return;
         showGlassToast(context, 'Pembayaran dibatalkan. Tempahan belum dihantar ke kedai.', isError: true);
         return;
@@ -2306,6 +2387,8 @@ class _BookingsViewState extends State<BookingsView> {
     final dateStr = "${_dates[_selectedDateIndex]['day']}, ${_dates[_selectedDateIndex]['date']} ${_dates[_selectedDateIndex]['month']}";
     final timeStr = _times[_selectedTimeIndex];
 
+    await _clearDraftProgress();
+
     LocalNotificationService.showBookingConfirmed(
       shopName: widget.shopName,
       category: combinedServiceTitle,
@@ -2315,6 +2398,7 @@ class _BookingsViewState extends State<BookingsView> {
       time: timeStr,
       totalPrice: "RM$_totalPriceLabel",
       bookingId: shortBookingId,
+      status: 'pending',
     );
 
     if (mounted) {

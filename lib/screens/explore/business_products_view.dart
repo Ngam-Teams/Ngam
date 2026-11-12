@@ -237,20 +237,20 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
                       ),
                     ),
                   ),
-                  ListView(
-                    controller: scrollController,
-                    padding: EdgeInsets.zero,
-                    shrinkWrap: true,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Container(
-                        margin: const EdgeInsets.only(top: 14, bottom: 12),
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white24
-                              : Colors.black.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
+                      Center(
+                        child: Container(
+                          margin: const EdgeInsets.only(top: 14, bottom: 12),
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white24
+                                : Colors.black.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
                       Expanded(

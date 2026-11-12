@@ -18,6 +18,14 @@ import '../services/supabase_service.dart';
 // ============================================================
 
 class AuthProvider extends ChangeNotifier {
+  static String? get userName {
+    final u = Supabase.instance.client.auth.currentUser;
+    if (u == null) return null;
+    final name = (u.userMetadata?['full_name'] as String?) ??
+        (u.userMetadata?['name'] as String?) ??
+        u.email?.split('@').first;
+    return (name != null && name.trim().isNotEmpty) ? name.trim() : null;
+  }
 
   static String sanitizeAuthError(dynamic e) {
     if (e == null) return '';

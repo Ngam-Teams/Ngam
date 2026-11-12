@@ -667,7 +667,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
             '',
           );
           final parsed = int.tryParse(tNum);
-          if (parsed != null && parsed < 100 && parsed > maxNum) {
+          if (parsed != null && parsed > maxNum) {
             maxNum = parsed;
           }
         }
@@ -775,8 +775,8 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: activeWaitingCount == 0
-                              ? const Color(0xFF10B981).withValues(alpha: 0.35)
-                              : const Color(0xFF42A5F5).withValues(alpha: 0.35),
+                                ? const Color(0xFF10B981).withValues(alpha: 0.35)
+                                : const Color(0xFF42A5F5).withValues(alpha: 0.35),
                         ),
                       ),
                       child: Row(
@@ -980,7 +980,17 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                                       newTicket['business_phone'] = shopPhone;
                                       newTicket['business_address'] = shopAddress;
                                     }
-                                  } catch (_) {}
+                                  } catch (e) {
+                                    if (modalCtx.mounted) {
+                                      setModalState(() => isSubmitting = false);
+                                      showGlassToast(
+                                        modalCtx,
+                                        'queue.join_error'.tr(),
+                                        isError: true,
+                                      );
+                                    }
+                                    return;
+                                  }
                                 }
 
                                 if (modalCtx.mounted) {
@@ -1442,8 +1452,9 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
     final station = ticket['station_or_chair'] as String?;
     final staffName = ticket['assigned_staff_name'] as String?;
     final status = ticket['status'] as String? ?? 'waiting';
-    final waitMin = ticket['estimated_wait_minutes'] ??
-        ((_peopleAhead + 1) * 15);
+    final waitMin = _peopleAhead >= 0
+        ? (_peopleAhead == 0 ? 5 : (_peopleAhead * 15))
+        : (ticket['estimated_wait_minutes'] ?? 15);
 
     final isCalling = status == 'calling';
     final isServing = status == 'serving';

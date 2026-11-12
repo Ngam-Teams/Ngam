@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ngam/l10n/generated/app_localizations.dart';
+import '../../providers/auth_provider.dart';
 import '../../utils/glass_toast.dart';
 import 'bookings_view.dart';
 
@@ -128,24 +129,42 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
   DateTime _parseBookingDateTime(String dateStr, String timeStr) {
     final now = DateTime.now();
     try {
-      // 1. Extract the Day
-      final dayMatch = RegExp(r'\d+').firstMatch(dateStr);
-      int day = dayMatch != null ? int.parse(dayMatch.group(0)!) : now.day;
-
-      // 2. Extract the Month
+      final rawDate = dateStr.trim();
+      int year = now.year;
       int month = now.month;
-      final lowerDate = dateStr.toLowerCase();
-      const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-      for (int i = 0; i < months.length; i++) {
-        if (lowerDate.contains(months[i])) {
-          month = i + 1;
-          break;
+      int day = now.day;
+      bool hasExplicitYear = false;
+
+      if (RegExp(r'^\d{4}-\d{2}-\d{2}').hasMatch(rawDate)) {
+        final parts = rawDate.substring(0, 10).split('-');
+        year = int.parse(parts[0]);
+        month = int.parse(parts[1]);
+        day = int.parse(parts[2]);
+        hasExplicitYear = true;
+      } else {
+        // 1. Extract the Day
+        final dayMatch = RegExp(r'\d+').firstMatch(rawDate);
+        day = dayMatch != null ? int.parse(dayMatch.group(0)!) : now.day;
+
+        // 2. Extract the Month
+        final lowerDate = rawDate.toLowerCase();
+        const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+        for (int i = 0; i < months.length; i++) {
+          if (lowerDate.contains(months[i])) {
+            month = i + 1;
+            break;
+          }
+        }
+
+        final yearMatch = RegExp(r'\b(20\d{2})\b').firstMatch(rawDate);
+        if (yearMatch != null) {
+          year = int.parse(yearMatch.group(1)!);
+          hasExplicitYear = true;
         }
       }
 
-      // 3. Handle Year Rollover (If booking in Nov/Dec for Jan/Feb of next year)
-      int year = now.year;
-      if (month < now.month - 1) {
+      // 3. Handle Year Rollover (only if no explicit 4-digit year was parsed)
+      if (!hasExplicitYear && month < now.month - 1) {
         year += 1;
       }
 
@@ -731,7 +750,7 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
   Future<void> _executeDispute(String disputeType, String reason) async {
     try {
       final user = Supabase.instance.client.auth.currentUser;
-      final targetId = widget.bookingDbId;
+      final targetId = _resolvedBookingDbId ?? widget.bookingDbId;
       double price = double.tryParse(widget.totalPrice.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
 
       bool rpcSuccess = false;
@@ -799,7 +818,7 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
             'booking_id': targetId ?? widget.bookingId,
             'business_id': widget.shopId,
             'customer_id': user?.id,
-            'customer_name': widget.providerName,
+            'customer_name': AuthProvider.userName ?? 'Pelanggan Ngam',
             'service_name': widget.category,
             'dispute_type': disputeType,
             'dispute_reason': reason,
@@ -899,6 +918,10 @@ Disahkan melalui aplikasi *Ngam*.
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isCancelledNow = widget.isCancelled ||
+        _currentStatus == 'cancelled' ||
+        _currentStatus == 'rejected' ||
+        _currentStatus == 'declined';
 
     final String qrData = "ID:${widget.bookingId}|SHOP:${widget.shopName}|PROV:${widget.providerName}|DATE:${widget.date}|TIME:${widget.time}";
 
@@ -924,7 +947,7 @@ Disahkan melalui aplikasi *Ngam*.
               physics: const BouncingScrollPhysics(),
               child: Column(
                 children: [
-                  if (_currentStatus == 'cancelled')
+                  if (isCancelledNow)
                     Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
@@ -1137,10 +1160,7 @@ Disahkan melalui aplikasi *Ngam*.
                         _buildDashedDivider(isDark),
 
                         //  Only show QR if NOT cancelled!
-                        if (!widget.isCancelled)
-
-                        //  Only show QR if NOT cancelled!
-                        if (!widget.isCancelled)
+                        if (!isCancelledNow)
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 24),
                             child: Container(
@@ -1164,7 +1184,7 @@ Disahkan melalui aplikasi *Ngam*.
                       ],
                     ),
                   ),
-                  if (_currentStatus != 'cancelled' && _currentStatus != 'disputed') ...[
+                  if (!isCancelledNow && _currentStatus != 'disputed') ...[
                     const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -1257,7 +1277,7 @@ Disahkan melalui aplikasi *Ngam*.
                   ),
                   const SizedBox(width: 8),
 
-                  if (widget.isCancelled) ...[
+                  if (isCancelledNow) ...[
                     Expanded(
                       flex: 2,
                       child: ElevatedButton(

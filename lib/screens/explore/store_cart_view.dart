@@ -412,6 +412,12 @@ class _StoreCartViewState extends State<StoreCartView> {
       return;
     }
 
+    if (_fulfillmentMode == 3 && _deliveryAddressController.text.trim().isEmpty) {
+      if (!mounted) return;
+      showGlassToast(context, 'cart.delivery_address_required'.tr(), isError: true);
+      return;
+    }
+
     if (_selectedPaymentMethod == 'fpx_card' && _total < 10.0) {
       if (!mounted) return;
       setState(() => _selectedPaymentMethod = 'duitnow');
@@ -546,7 +552,7 @@ class _StoreCartViewState extends State<StoreCartView> {
 
       // Jika Bayar di Kaunter (Tunai), terus hantar pesanan ke kedai tanpa buka modal pembayaran kedua!
       if (_selectedPaymentMethod != 'cash' && _total > 0) {
-        final bool completed = await CustomerPaymentModal.show(
+        final bool paid = await CustomerPaymentModal.show(
           context: context,
           amount: _total,
           orderTitle: 'Pesanan #${orderId.length > 6 ? orderId.substring(0, 6).toUpperCase() : orderId} - $_shopName',
@@ -564,16 +570,37 @@ class _StoreCartViewState extends State<StoreCartView> {
           voucherCode: (_voucherApplied && _voucher != null) ? _voucher!['code']?.toString() : null,
           discountAmount: (_voucherApplied && _discountAmount > 0) ? _discountAmount : null,
           initialMethod: _selectedPaymentMethod,
+          onPaymentSuccess: (method, txRef) async {
+            try {
+              await Supabase.instance.client
+                  .from('orders')
+                  .update({'payment_status': 'paid'})
+                  .eq('id', orderId);
+            } catch (_) {}
+          },
         );
 
         if (!mounted) return;
-        if (!completed) {
+        if (!paid) {
           // Pelanggan membatalkan bayaran sebelum selesai -> batalkan draf pesanan supaya kedai tidak menerima pesanan belum bayar
-          await _cancelOrder(orderId);
+          try {
+            await Supabase.instance.client
+                .from('orders')
+                .update({'status': 'cancelled', 'payment_status': 'pending'})
+                .eq('id', orderId);
+          } catch (_) {
+            await _cancelOrder(orderId);
+          }
           if (!mounted) return;
           showGlassToast(context, 'Pembayaran dibatalkan. Troli anda masih disimpan.', isError: true);
           return;
         }
+        try {
+          await Supabase.instance.client
+              .from('orders')
+              .update({'payment_status': 'paid'})
+              .eq('id', orderId);
+        } catch (_) {}
       }
 
       // Rekod penebusan baucar supaya kuota tidak boleh diguna tanpa had
@@ -1812,7 +1839,7 @@ class _StoreCartViewState extends State<StoreCartView> {
         onTap: () {
           setState(() {
             _fulfillmentMode = index;
-            if (index == 2) _isPreOrder = true;
+            _isPreOrder = index == 2;
           });
         },
         child: AnimatedContainer(

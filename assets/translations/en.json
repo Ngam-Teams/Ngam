@@ -865,7 +865,8 @@
     "check_queue_ticket": "Check Queue Ticket",
     "bookings_and_orders": "Bookings & Orders",
     "stamp_card_status": "Stamp Card • 4/5 Stars",
-    "stamps_remaining": "{} More Stamp"
+    "stamps_remaining": "{} More Stamp",
+    "join_error": "Failed to join the queue. Please try again."
   },
   "stamp": {
     "title": "My Digital Stamp Cards",
@@ -936,7 +937,8 @@
     "fpx_min_spend_badge": "MIN. RM 10.00",
     "fpx_min_spend_error": "FPX Online Banking & Card require a minimum order of RM 10.00. Please use DuitNow QR or Cash.",
     "fpx_min_spend_subtitle": "Available for orders RM 10.00 and above via Online Banking and Cards",
-    "back_to_cart": "Back to Cart"
+    "back_to_cart": "Back to Cart",
+    "delivery_address_required": "Please enter your delivery address before placing the order."
   },
   "store": {
     "call": "Call Store",

@@ -766,6 +766,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
             if (_syncedOperatingHours != null)
               'operating_hours': _syncedOperatingHours,
           },
+          allowDirectJoin: true,
         ),
       ),
     );
