@@ -13,7 +13,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-import '../../models/shop_data.dart';
 import 'notifications_sheet.dart';
 import '../../models/notification_data.dart';
 import '../../widgets/glass_toast.dart';
@@ -45,6 +44,8 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
   String _userName = 'Pelanggan';
   List<Map<String, dynamic>> _nearbyShops = [];
   bool _isLoadingShops = true;
+  bool _hasFetchError = false;
+  bool _isUsingCachedData = false;
   bool _isFetchingLocation = false;
   double? _userLat;
   double? _userLng;
@@ -54,84 +55,83 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
 
   final List<Map<String, dynamic>> _stories = [
     {
-      'title': 'Flash RM10',
-      'subtitle': 'Potong Rambut',
+      'titleKey': 'customer.story_flash_title',
+      'subtitleKey': 'customer.story_flash_subtitle',
       'icon': HugeIcons.strokeRoundedScissor,
       'gradient': [Color(0xFF2196F3), Color(0xFF64B5F6)],
-      'badge': 'Terhad',
+      'badgeKey': 'customer.story_flash_badge',
+      'categoryKey': 'barber',
     },
     {
-      'title': 'Port Viral',
-      'subtitle': 'Kopi & Roti',
+      'titleKey': 'customer.story_viral_title',
+      'subtitleKey': 'customer.story_viral_subtitle',
       'icon': HugeIcons.strokeRoundedCoffee02,
       'gradient': [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
-      'badge': 'Trending',
+      'badgeKey': 'customer.story_viral_badge',
+      'categoryKey': 'cafe',
     },
     {
-      'title': 'Nano Detailing',
-      'subtitle': 'Diskaun 30%',
+      'titleKey': 'customer.story_detailing_title',
+      'subtitleKey': 'customer.story_detailing_subtitle',
       'icon': HugeIcons.strokeRoundedCar01,
       'gradient': [Color(0xFF00ACC1), Color(0xFF0077B6)],
-      'badge': 'Jimat',
+      'badgeKey': 'customer.story_detailing_badge',
+      'categoryKey': 'carwash',
     },
     {
-      'title': 'Daily Promo',
-      'subtitle': 'Kupon RM5',
+      'titleKey': 'customer.story_promo_title',
+      'subtitleKey': 'customer.story_promo_subtitle',
       'icon': HugeIcons.strokeRoundedTicket01,
       'gradient': [Color(0xFF0284C7), Color(0xFF38BDF8)],
-      'badge': 'Hari Ini',
+      'badgeKey': 'customer.story_promo_badge',
+      'categoryKey': 'workshop',
     },
     {
-      'title': 'Spa & Relaks',
-      'subtitle': 'Slot Petang',
+      'titleKey': 'customer.story_spa_title',
+      'subtitleKey': 'customer.story_spa_subtitle',
       'icon': HugeIcons.strokeRoundedSparkles,
       'gradient': [Color(0xFF6366F1), Color(0xFF4F46E5)],
-      'badge': 'Hot',
+      'badgeKey': 'customer.story_spa_badge',
+      'categoryKey': 'salon',
     },
   ];
 
   final List<Map<String, dynamic>> _quickIntents = [
     {
-      'title': 'Gunting Rambut',
+      'titleKey': 'customer.cat_haircut',
       'categoryKey': 'barber',
       'icon': HugeIcons.strokeRoundedScissor,
       'color': Color(0xFF2196F3),
-      'count': '12 Port',
     },
     {
-      'title': 'Cuci Kereta',
+      'titleKey': 'customer.cat_carwash',
       'categoryKey': 'carwash',
       'icon': HugeIcons.strokeRoundedCar01,
       'color': Color(0xFF0288D1),
-      'count': '8 Port',
     },
     {
-      'title': 'Kafe & Port Chill',
+      'titleKey': 'customer.cat_cafe',
       'categoryKey': 'cafe',
       'icon': HugeIcons.strokeRoundedCoffee02,
       'color': Color(0xFF3B82F6),
-      'count': '15 Port',
     },
     {
-      'title': 'Bengkel & Servis',
+      'titleKey': 'customer.cat_workshop',
       'categoryKey': 'workshop',
       'icon': HugeIcons.strokeRoundedWrench01,
       'color': Color(0xFF0EA5E9),
-      'count': '6 Port',
     },
     {
-      'title': 'Salun & Spa',
+      'titleKey': 'customer.cat_salon',
       'categoryKey': 'salon',
       'icon': HugeIcons.strokeRoundedSparkles,
       'color': Color(0xFF6366F1),
-      'count': '9 Port',
     },
     {
-      'title': 'Klinik & Kesihatan',
+      'titleKey': 'customer.cat_clinic',
       'categoryKey': 'health',
       'icon': HugeIcons.strokeRoundedFirstAidKit,
       'color': Color(0xFF2563EB),
-      'count': '5 Port',
     },
   ];
 
@@ -139,6 +139,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
   void initState() {
     super.initState();
     _loadUserInfoAndLocation();
+    _loadCachedShops();
     _fetchShops();
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((_) {
       if (mounted) {
@@ -397,8 +398,91 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
     return null;
   }
 
+  Future<void> _loadCachedShops() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString('cached_nearby_shops_v1');
+      if (jsonStr != null && jsonStr.trim().isNotEmpty) {
+        final List decoded = jsonDecode(jsonStr);
+        final List<Map<String, dynamic>> cached =
+            decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+        if (cached.isNotEmpty && mounted) {
+          _updateDistancesForList(cached);
+          setState(() {
+            _nearbyShops = cached;
+            _isLoadingShops = false;
+            _isUsingCachedData = true;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading cached shops: $e');
+    }
+  }
+
+  Future<void> _saveShopsToCache(List<Map<String, dynamic>> list) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final serializable = list.take(20).map((s) => {
+            'id': s['id'],
+            'name': s['name'],
+            'business_name': s['business_name'],
+            'category': s['category'],
+            'business_industry': s['business_industry'],
+            'business_logo_url': s['business_logo_url'],
+            'business_cover_url': s['business_cover_url'],
+            'rating_average': s['rating_average'],
+            'total_reviews': s['total_reviews'],
+            'latitude': s['latitude'],
+            'longitude': s['longitude'],
+            'distanceKm': s['distanceKm'],
+            'address_line': s['address_line'],
+            'address_city': s['address_city'],
+          }).toList();
+      await prefs.setString('cached_nearby_shops_v1', jsonEncode(serializable));
+    } catch (e) {
+      debugPrint('Error caching shops: $e');
+    }
+  }
+
+  void _updateDistancesForList(List<Map<String, dynamic>> list) {
+    if (_userLat == null || _userLng == null) return;
+    for (var map in list) {
+      if (map['latitude'] != null && map['longitude'] != null) {
+        final dLat = double.tryParse(map['latitude'].toString()) ?? 0.0;
+        final dLng = double.tryParse(map['longitude'].toString()) ?? 0.0;
+        map['distanceKm'] = _calculateDistance(_userLat!, _userLng!, dLat, dLng);
+      }
+    }
+    list.sort((a, b) => ((a['distanceKm'] ?? 999.0) as double).compareTo((b['distanceKm'] ?? 999.0) as double));
+  }
+
+  int _getCategoryShopCount(String catKey) {
+    if (_nearbyShops.isEmpty) return 0;
+    return _nearbyShops.where((shop) {
+      final cat = (shop['category'] ?? shop['business_industry'] ?? '').toString().toLowerCase();
+      switch (catKey) {
+        case 'barber':
+          return cat.contains('barber') || cat.contains('rambut') || cat.contains('gunting');
+        case 'carwash':
+          return cat.contains('carwash') || cat.contains('cuci') || cat.contains('kereta') || cat.contains('auto') || cat.contains('detailing');
+        case 'cafe':
+          return cat.contains('cafe') || cat.contains('kafe') || cat.contains('kopi') || cat.contains('food') || cat.contains('makan') || cat.contains('restoran');
+        case 'workshop':
+          return cat.contains('workshop') || cat.contains('bengkel') || cat.contains('servis') || cat.contains('motor');
+        case 'salon':
+          return cat.contains('salon') || cat.contains('salun') || cat.contains('spa');
+        case 'health':
+          return cat.contains('health') || cat.contains('klinik') || cat.contains('clinic') || cat.contains('kesihatan') || cat.contains('farmasi');
+        default:
+          return cat.contains(catKey);
+      }
+    }).length;
+  }
+
   void _fetchShops() {
     try {
+      _shopsSubscription?.cancel();
       _shopsSubscription = Supabase.instance.client
           .from('businesses')
           .stream(primaryKey: ['id'])
@@ -422,32 +506,40 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                   loaded.add(map);
                 }
                 loaded.sort((a, b) => ((a['distanceKm'] ?? 999.0) as double).compareTo((b['distanceKm'] ?? 999.0) as double));
+                _saveShopsToCache(loaded);
                 setState(() {
                   _nearbyShops = loaded;
                   _isLoadingShops = false;
+                  _hasFetchError = false;
+                  _isUsingCachedData = false;
                 });
               } else {
-                _loadFallbackShops();
+                setState(() {
+                  _nearbyShops = [];
+                  _isLoadingShops = false;
+                  _hasFetchError = false;
+                  _isUsingCachedData = false;
+                });
               }
             },
             onError: (err) {
               debugPrint('Supabase stream error in Home: $err');
-              _loadFallbackShops();
+              if (!mounted) return;
+              setState(() {
+                _isLoadingShops = false;
+                _hasFetchError = true;
+              });
             },
           );
     } catch (e) {
       debugPrint('Error setting up shops stream: $e');
-      _loadFallbackShops();
+      if (mounted) {
+        setState(() {
+          _isLoadingShops = false;
+          _hasFetchError = true;
+        });
+      }
     }
-  }
-
-  void _loadFallbackShops() {
-    if (!mounted) return;
-    final List<Map<String, dynamic>> fallback = List.from(ShopData.shops);
-    setState(() {
-      _nearbyShops = fallback;
-      _isLoadingShops = false;
-    });
   }
 
   double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
@@ -1152,11 +1244,11 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
 
           return GestureDetector(
             onTap: () {
-              showGlassToast(
-                context,
-                '${story['title']}: ${story['subtitle']}',
-                icon: story['icon'],
-              );
+              final catKey = story['categoryKey'] as String?;
+              if (catKey != null) {
+                ExploreView.pendingSearch.value = ExploreSearchRequest(categoryId: catKey);
+                widget.onSwitchTab?.call(1);
+              }
             },
             child: Column(
               children: [
@@ -1228,7 +1320,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                           ],
                         ),
                         child: Text(
-                          story['badge'],
+                          (story['badgeKey'] as String).tr(),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 8.0,
@@ -1242,7 +1334,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                 ),
                 const SizedBox(height: 7),
                 Text(
-                  story['title'],
+                  (story['titleKey'] as String).tr(),
                   style: TextStyle(
                     color: isDark ? Colors.white : Colors.black87,
                     fontSize: 10.5,
@@ -1384,7 +1476,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                               child: FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: Text(
-                                  cat['title'],
+                                  (cat['titleKey'] as String).tr(),
                                   textAlign: TextAlign.center,
                                   maxLines: 1,
                                   style: TextStyle(
@@ -1396,13 +1488,23 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                               ),
                             ),
                             const SizedBox(height: 2),
-                            Text(
-                              cat['count'],
-                              style: TextStyle(
-                                color: isDark ? Colors.white38 : Colors.grey.shade500,
-                                fontSize: 9.0,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            Builder(
+                              builder: (_) {
+                                final int count = _getCategoryShopCount(cat['categoryKey'] as String);
+                                final String countText = _isLoadingShops && _nearbyShops.isEmpty
+                                    ? '...'
+                                    : (count > 0
+                                        ? 'customer.port_count'.tr(args: [count.toString()])
+                                        : 'customer.no_port'.tr());
+                                return Text(
+                                  countText,
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white38 : Colors.grey.shade500,
+                                    fontSize: 9.0,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),
@@ -1561,12 +1663,180 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
 
   // --- WIDGET 6: LIVE RADAR NEARBY CARDS ---
   Widget _buildNearbyRadarCards(bool isDark) {
-    if (_isLoadingShops) {
-      return const SizedBox(
-        height: 220,
-        child: Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2196F3)),
+    if (_isLoadingShops && _nearbyShops.isEmpty) {
+      return SizedBox(
+        height: 236,
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          scrollDirection: Axis.horizontal,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: 3,
+          separatorBuilder: (_, __) => const SizedBox(width: 14),
+          itemBuilder: (context, _) => _buildRadarCardSkeleton(isDark),
+        ),
+      );
+    }
+
+    if (_hasFetchError && _nearbyShops.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            color: isDark ? const Color(0xFF161624).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.85),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedWifiDisconnected01,
+                    color: Color(0xFFEF4444),
+                    size: 24,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'common.offline_title'.tr(),
+                style: TextStyle(
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'common.offline_desc'.tr(),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDark ? Colors.white60 : Colors.black54,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 14),
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _isLoadingShops = true;
+                      _hasFetchError = false;
+                    });
+                    _fetchShops();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF2196F3).withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const HugeIcon(
+                          icon: HugeIcons.strokeRoundedRefresh,
+                          color: Colors.white,
+                          size: 15,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'common.retry'.tr(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_nearbyShops.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            color: isDark ? const Color(0xFF161624).withValues(alpha: 0.7) : Colors.white.withValues(alpha: 0.8),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2196F3).withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedStore01,
+                    color: Color(0xFF2196F3),
+                    size: 24,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'customer.no_nearby_shops'.tr(),
+                style: TextStyle(
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'customer.no_nearby_shops_desc'.tr(),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDark ? Colors.white54 : Colors.black54,
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -1574,25 +1844,142 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
 
     final displayList = _nearbyShops.take(6).toList();
 
-    return SizedBox(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (_isUsingCachedData || _hasFetchError)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.15 : 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  const HugeIcon(
+                    icon: HugeIcons.strokeRoundedWifiDisconnected01,
+                    color: Color(0xFFF59E0B),
+                    size: 15,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'common.offline_cached_banner'.tr(),
+                      style: TextStyle(
+                        color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _isLoadingShops = true;
+                          _hasFetchError = false;
+                        });
+                        _fetchShops();
+                      },
+                      child: Text(
+                        'common.retry'.tr(),
+                        style: const TextStyle(
+                          color: Color(0xFFF59E0B),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w900,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        SizedBox(
+          height: 236,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            cacheExtent: 3000,
+            addAutomaticKeepAlives: true,
+            itemCount: displayList.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 14),
+            itemBuilder: (context, index) {
+              final shop = displayList[index];
+              final shopId = shop['id']?.toString() ?? index.toString();
+              return _NearbyRadarCardItem(
+                key: ValueKey('radar_shop_$shopId'),
+                shop: shop,
+                isDark: isDark,
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRadarCardSkeleton(bool isDark) {
+    return Container(
+      width: 172,
       height: 236,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        cacheExtent: 3000,
-        addAutomaticKeepAlives: true,
-        itemCount: displayList.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 14),
-        itemBuilder: (context, index) {
-          final shop = displayList[index];
-          final shopId = shop['id']?.toString() ?? index.toString();
-          return _NearbyRadarCardItem(
-            key: ValueKey('radar_shop_$shopId'),
-            shop: shop,
-            isDark: isDark,
-          );
-        },
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        color: isDark ? const Color(0xFF161624).withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.7),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+        ),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 104,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            height: 12,
+            width: 70,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(6),
+              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            height: 14,
+            width: 120,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(6),
+              color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+            ),
+          ),
+          const Spacer(),
+          Container(
+            height: 28,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
+            ),
+          ),
+        ],
       ),
     );
   }
