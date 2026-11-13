@@ -1127,5 +1127,27 @@
   },
   "explore": {
     "search_hint": "Cari"
+  },
+  "app_update": {
+    "update_available": "Kemas Kini Baharu!",
+    "update_ready_subtitle": "Versi terkini sedia dipasang",
+    "web_update_ready_subtitle": "Binaan web & PWA baharu sudah tersedia di pelayan",
+    "current_version_label": "Versi Semasa: v{}",
+    "update_desc": "Terdapat kemas kini baharu untuk aplikasi {}. Muat turun APK terkini bagi ciri baharu, prestasi terpantas dan kestabilan sistem.",
+    "web_update_desc": "Versi web & PWA baharu bagi {} (v{}) sudah sedia! Muat semula sekarang untuk membersihkan cache dan menggunakan versi terkini.",
+    "update_now": "Kemas Kini",
+    "reload_now": "Muat Semula Sekarang",
+    "view_release": "Info Pelepasan",
+    "reloading_web": "Membersihkan cache & memuatkan versi terkini...",
+    "remind_later": "Nanti Sahaja",
+    "checking": "Menyemak kemas kini terkini...",
+    "latest_version": "Aplikasi {} adalah versi terkini (v{}).",
+    "latest_badge": "TERKINI",
+    "update_pill": "Kemas Kini v{}",
+    "update_available_tap": "Kemas kini v{} tersedia • Ketik untuk kemas kini",
+    "version_footer": "Ngam v{}",
+    "whats_new": "Apa yang Baharu",
+    "check_updates_tooltip": "Semak kemas kini & info versi terkini",
+    "fallback_changelog": "Pembaikan pepijat dan peningkatan kestabilan."
   }
 }

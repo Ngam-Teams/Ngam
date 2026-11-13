@@ -1127,5 +1127,27 @@
   },
   "explore": {
     "search_hint": "Search"
+  },
+  "app_update": {
+    "update_available": "New Update Available!",
+    "update_ready_subtitle": "Latest version is ready",
+    "web_update_ready_subtitle": "A new web build is live on server",
+    "current_version_label": "Current: v{}",
+    "update_desc": "A new update for {} is available. Download the latest APK for new features, faster performance, and stability improvements.",
+    "web_update_desc": "A new web & PWA version of {} (v{}) is ready! Reload now to clear cached assets and run the latest build.",
+    "update_now": "Update Now",
+    "reload_now": "Reload Now",
+    "view_release": "Release Info",
+    "reloading_web": "Clearing cache & loading latest version...",
+    "remind_later": "Later",
+    "checking": "Checking for latest updates...",
+    "latest_version": "{} is up to date (v{}).",
+    "latest_badge": "LATEST",
+    "update_pill": "Update v{}",
+    "update_available_tap": "Update v{} available • Tap to update",
+    "version_footer": "Ngam v{}",
+    "whats_new": "What's New",
+    "check_updates_tooltip": "Check for updates & release info",
+    "fallback_changelog": "Bug fixes and stability improvements."
   }
 }

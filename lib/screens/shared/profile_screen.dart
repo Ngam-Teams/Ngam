@@ -485,21 +485,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 isDark,
                                 HugeIcons.strokeRoundedCloudDownload,
                                 'profile.check_updates'.tr(),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      'v${AppUpdateService.currentVersion}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: isDark ? Colors.white54 : Colors.black45,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    _buildArrow(),
-                                  ],
+                                trailing: ValueListenableBuilder<String>(
+                                  valueListenable: AppUpdateService.versionNotifier,
+                                  builder: (context, ver, _) {
+                                    return ValueListenableBuilder<AppReleaseInfo?>(
+                                      valueListenable: AppUpdateService.availableUpdateNotifier,
+                                      builder: (context, update, _) {
+                                        final hasUpdate = update != null;
+                                        return Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: hasUpdate
+                                                    ? Colors.amber.withValues(alpha: 0.18)
+                                                    : const Color(0xFF10B981).withValues(alpha: 0.15),
+                                                borderRadius: BorderRadius.circular(8),
+                                                border: Border.all(
+                                                  color: hasUpdate
+                                                      ? Colors.amber.withValues(alpha: 0.45)
+                                                      : const Color(0xFF10B981).withValues(alpha: 0.35),
+                                                ),
+                                              ),
+                                              child: Text(
+                                                hasUpdate
+                                                    ? 'app_update.update_pill'.tr(args: [update.version])
+                                                    : 'v$ver • ${'app_update.latest_badge'.tr()}',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: hasUpdate
+                                                      ? (isDark ? Colors.amberAccent : Colors.amber.shade900)
+                                                      : (isDark ? const Color(0xFF34D399) : const Color(0xFF059669)),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            _buildArrow(),
+                                          ],
+                                        );
+                                      },
+                                    );
+                                  },
                                 ),
-                                onTap: () => AppUpdateService.checkManually(context),
+                                onTap: () {
+                                  final pendingUpdate = AppUpdateService.availableUpdateNotifier.value;
+                                  if (pendingUpdate != null) {
+                                    AppUpdateService.showUpdateDialog(context, pendingUpdate);
+                                  } else {
+                                    AppUpdateService.checkManually(context);
+                                  }
+                                },
                               ),
                             ],
                           ),
@@ -508,25 +545,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 12),
                         // ─── Kaki / Footer Bawah ─────────────────────────────
                         Center(
-                          child: Column(
-                            children: [
-                              Text(
-                                'Ngam v1.0.0',
-                                style: TextStyle(
-                                  color: Colors.grey.withValues(alpha: 0.5),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'profile.made_with_love'.tr(),
-                                style: TextStyle(
-                                  color: Colors.grey.withValues(alpha: 0.3),
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ],
+                          child: ValueListenableBuilder<String>(
+                            valueListenable: AppUpdateService.versionNotifier,
+                            builder: (context, ver, _) {
+                              return Column(
+                                children: [
+                                  Text(
+                                    'app_update.version_footer'.tr(args: [ver]),
+                                    style: TextStyle(
+                                      color: Colors.grey.withValues(alpha: 0.55),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'profile.made_with_love'.tr(),
+                                    style: TextStyle(
+                                      color: Colors.grey.withValues(alpha: 0.35),
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                         ),
                         const SizedBox(height: 32),

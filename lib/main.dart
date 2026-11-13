@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/supabase_service.dart';
+import 'services/app_update_service.dart';
 import 'utils/app_theme.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'services/push_service.dart';
@@ -43,6 +44,7 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   setCleanUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
+  AppUpdateService.getAppVersion();
 
   // Edge-to-edge transparent status bar & dark navigation bar matching website (#0A0A14)
   SystemChrome.setSystemUIOverlayStyle(

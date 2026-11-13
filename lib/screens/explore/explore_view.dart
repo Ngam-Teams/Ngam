@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'dart:ui' show ImageFilter;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -1286,7 +1287,12 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         'https://router.project-osrm.org/route/v1/driving/$userLng,$userLat;$destLng,$destLat?overview=full&geometries=geojson&steps=true',
       );
 
-      final response = await http.get(url, headers: {'User-Agent': 'NgamApp/1.0'}).timeout(const Duration(seconds: 8));
+      final response = await http
+          .get(
+            url,
+            headers: kIsWeb ? null : const {'User-Agent': 'NgamApp/1.0'},
+          )
+          .timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

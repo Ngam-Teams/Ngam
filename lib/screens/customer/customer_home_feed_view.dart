@@ -23,6 +23,7 @@ import '../explore/order_status_tracker_screen.dart';
 import '../explore/qr_scanner_screen.dart';
 import '../explore/store_route_loader.dart';
 import '../shared/my_queue_ticket_screen.dart';
+import '../../services/app_update_service.dart';
 import 'package:flutter/services.dart';
 
 // =============================================================================
@@ -359,9 +360,12 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
       final uri = Uri.parse(
         'https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lng&format=json&addressdetails=1',
       );
-      final response = await http.get(uri, headers: {
-        'User-Agent': 'NgamApp/1.0 (com.ngam.app)',
-      }).timeout(const Duration(seconds: 5));
+      final response = await http
+          .get(
+            uri,
+            headers: kIsWeb ? null : const {'User-Agent': 'NgamApp/1.0 (com.ngam.app)'},
+          )
+          .timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
         final addr = data['address'] as Map<String, dynamic>?;
@@ -620,6 +624,95 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                   ),
                 ),
 
+              // 5b. Reactive Update Banner (shows automatically when PWA or App update is live)
+              SliverToBoxAdapter(
+                child: ValueListenableBuilder<AppReleaseInfo?>(
+                  valueListenable: AppUpdateService.availableUpdateNotifier,
+                  builder: (context, update, _) {
+                    if (update == null) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+                      child: InkWell(
+                        onTap: () => AppUpdateService.showUpdateDialog(context, update),
+                        borderRadius: BorderRadius.circular(18),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF10B981).withValues(alpha: isDark ? 0.22 : 0.14),
+                                const Color(0xFF059669).withValues(alpha: isDark ? 0.14 : 0.08),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.45),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.rocket_launch_rounded,
+                                  color: Color(0xFF10B981),
+                                  size: 18,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'app_update.update_available'.tr(),
+                                      style: TextStyle(
+                                        color: isDark ? Colors.white : const Color(0xFF065F46),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'app_update.update_available_tap'.tr(args: [update.version]),
+                                      style: TextStyle(
+                                        color: isDark ? Colors.white70 : const Color(0xFF047857),
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF10B981),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  kIsWeb ? 'app_update.reload_now'.tr() : 'app_update.update_now'.tr(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
               // 6. Live Radar & Port Berdekatan Header
               SliverToBoxAdapter(
                 child: Padding(
@@ -709,6 +802,85 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: _buildPromoBanner(isDark),
+                ),
+              ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+              // 9. Live Version & Update Footer Pill (visible across Mobile, PWA & Web)
+              SliverToBoxAdapter(
+                child: Center(
+                  child: ValueListenableBuilder<String>(
+                    valueListenable: AppUpdateService.versionNotifier,
+                    builder: (context, ver, _) {
+                      return ValueListenableBuilder<AppReleaseInfo?>(
+                        valueListenable: AppUpdateService.availableUpdateNotifier,
+                        builder: (context, update, _) {
+                          final hasUpdate = update != null;
+                          final accent = hasUpdate ? const Color(0xFFF59E0B) : const Color(0xFF10B981);
+                          return Tooltip(
+                            message: 'app_update.check_updates_tooltip'.tr(),
+                            child: InkWell(
+                              onTap: () {
+                                if (update != null) {
+                                  AppUpdateService.showUpdateDialog(context, update);
+                                } else {
+                                  AppUpdateService.checkManually(context);
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(20),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.04)
+                                      : Colors.black.withValues(alpha: 0.03),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: hasUpdate
+                                        ? accent.withValues(alpha: 0.45)
+                                        : (isDark ? Colors.white10 : Colors.black12),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 6.5,
+                                      height: 6.5,
+                                      decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'app_update.version_footer'.tr(args: [ver]),
+                                      style: TextStyle(
+                                        color: isDark ? Colors.white60 : const Color(0xFF475569),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      hasUpdate
+                                          ? '• ${'app_update.update_pill'.tr(args: [update.version])}'
+                                          : '• ${'app_update.latest_badge'.tr()}',
+                                      style: TextStyle(
+                                        color: hasUpdate
+                                            ? (isDark ? Colors.amberAccent : Colors.amber.shade900)
+                                            : (isDark ? const Color(0xFF34D399) : const Color(0xFF059669)),
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ),
               ),
 

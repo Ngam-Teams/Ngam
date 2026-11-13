@@ -533,7 +533,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
     try {
       final biz = await Supabase.instance.client
           .from('businesses')
-          .select('business_name, business_cover_url, business_logo_url, is_open, business_industry')
+          .select()
           .eq('id', shopId)
           .maybeSingle();
 

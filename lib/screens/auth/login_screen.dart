@@ -7,6 +7,7 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:hugeicons/hugeicons.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../services/app_update_service.dart';
 import '../../utils/constants.dart';
 
 // =============================================================================
@@ -60,6 +61,8 @@ class _LoginScreenState extends State<LoginScreen>
   void initState() {
     super.initState();
     _currentMode = widget.initialMode;
+    AppUpdateService.getAppVersion();
+    AppUpdateService.checkForUpdate();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FlutterNativeSplash.remove();
     });
@@ -378,10 +381,12 @@ class _LoginScreenState extends State<LoginScreen>
                       ],
                     ),
 
-                    // Bottom Branding Footer
+                    // Bottom Branding Footer + Live Version & Update Status
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        _buildVersionBadge(),
+                        const SizedBox(height: 12),
                         Text(
                           'auth.portal_copyright'.tr(),
                           style: GoogleFonts.inter(
@@ -428,6 +433,86 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildVersionBadge() {
+    return ValueListenableBuilder<String>(
+      valueListenable: AppUpdateService.versionNotifier,
+      builder: (context, ver, _) {
+        return ValueListenableBuilder<AppReleaseInfo?>(
+          valueListenable: AppUpdateService.availableUpdateNotifier,
+          builder: (context, update, _) {
+            final hasUpdate = update != null;
+            final Color accentColor =
+                hasUpdate ? const Color(0xFFF59E0B) : const Color(0xFF10B981);
+
+            return Tooltip(
+              message: 'app_update.check_updates_tooltip'.tr(),
+              child: InkWell(
+                onTap: () {
+                  if (update != null) {
+                    AppUpdateService.showUpdateDialog(context, update);
+                  } else {
+                    AppUpdateService.checkManually(context);
+                  }
+                },
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: hasUpdate ? 0.16 : 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: accentColor.withValues(alpha: hasUpdate ? 0.45 : 0.25),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: accentColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'app_update.version_footer'.tr(args: [ver]),
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white.withValues(alpha: 0.88),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: accentColor.withValues(alpha: 0.22),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          hasUpdate
+                              ? 'app_update.update_available_tap'.tr(args: [update.version])
+                              : 'app_update.latest_badge'.tr(),
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: hasUpdate ? Colors.amberAccent : const Color(0xFF34D399),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -487,6 +572,8 @@ class _LoginScreenState extends State<LoginScreen>
                     FadeTransition(opacity: anim, child: child),
                 child: _buildRightSideCard(context),
               ),
+              const SizedBox(height: 16),
+              _buildVersionBadge(),
             ],
           ),
         ),

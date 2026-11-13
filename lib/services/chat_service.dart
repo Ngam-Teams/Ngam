@@ -240,18 +240,12 @@ class ChatService {
       throw Exception('You cannot chat with yourself.');
     }
 
-    var query = _supabase
+    final existing = await _supabase
         .from('conversations')
         .select()
-        .or('and(user1_id.eq.$currentUserId,user2_id.eq.$otherUserId),and(user1_id.eq.$otherUserId,user2_id.eq.$currentUserId)');
-
-    if (gigId != null) {
-      query = query.eq('gig_id', gigId);
-    } else {
-      query = query.isFilter('gig_id', null);
-    }
-
-    final existing = await query.maybeSingle();
+        .or('and(user1_id.eq.$currentUserId,user2_id.eq.$otherUserId),and(user1_id.eq.$otherUserId,user2_id.eq.$currentUserId)')
+        .limit(1)
+        .maybeSingle();
 
     if (existing != null) {
       return ConversationModel.fromJson(existing, currentUserId);
@@ -260,7 +254,6 @@ class ChatService {
     final response = await _supabase.from('conversations').insert({
       'user1_id': currentUserId,
       'user2_id': otherUserId,
-      'gig_id': gigId,
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     }).select().single();
 
