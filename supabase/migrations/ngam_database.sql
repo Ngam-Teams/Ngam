@@ -397,6 +397,12 @@ CREATE TABLE IF NOT EXISTS public.queue_tickets (
 
 ALTER TABLE public.queue_tickets ENABLE ROW LEVEL SECURITY;
 
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Queue tickets public select" ON public.queue_tickets;
+  DROP POLICY IF EXISTS "Queue tickets public insert" ON public.queue_tickets;
+  DROP POLICY IF EXISTS "Queue tickets management" ON public.queue_tickets;
+EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
 CREATE POLICY "Queue tickets public select"
   ON public.queue_tickets FOR SELECT
   USING (true);
@@ -409,7 +415,7 @@ CREATE POLICY "Queue tickets management"
   ON public.queue_tickets FOR ALL TO authenticated
   USING (
     EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = queue_tickets.business_id AND b.owner_user_id = auth.uid()) OR
-    EXISTS (SELECT 1 FROM public.team_members tm WHERE tm.business_id = queue_tickets.business_id AND tm.user_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM public.team_members tm WHERE tm.business_id = queue_tickets.business_id AND tm.user_id = auth.uid() AND tm.status != 'inactive') OR
     EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
   );
 
@@ -491,6 +497,24 @@ CREATE TABLE IF NOT EXISTS public.team_members (
 
 ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
 
+-- Recursion-safe helper to verify whether current authenticated user is an active staff member of a business
+CREATE OR REPLACE FUNCTION public.is_active_staff_of(
+  p_business_id UUID,
+  p_roles TEXT[] DEFAULT NULL
+)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.team_members tm
+    WHERE tm.business_id = p_business_id
+      AND tm.user_id = auth.uid()
+      AND tm.status != 'inactive'
+      AND (p_roles IS NULL OR tm.role = ANY(p_roles))
+  );
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
+
 DO $$ BEGIN
   DROP POLICY IF EXISTS "Team members read" ON public.team_members;
   DROP POLICY IF EXISTS "Team members write" ON public.team_members;
@@ -498,57 +522,81 @@ DO $$ BEGIN
   DROP POLICY IF EXISTS "Staff can update own details" ON public.team_members;
 EXCEPTION WHEN OTHERS THEN NULL; END $$;
 
--- 1. Read: Staff can read their own record, owners can read their business's staff
+-- 1. Read: Staff can read own row or active coworkers, owners/managers can read their business staff
 CREATE POLICY "Team members read"
   ON public.team_members FOR SELECT TO authenticated
   USING (
     user_id = auth.uid() OR
     LOWER(email) = LOWER(COALESCE(auth.jwt()->>'email', '')) OR
+    public.is_active_staff_of(team_members.business_id) OR
     EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = team_members.business_id AND b.owner_user_id = auth.uid()) OR
     EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
   );
 
--- 2. Owner / Admin Full Management
+-- 2. Owner / Active Tenant Admin / Manager Full Management
 CREATE POLICY "Team members write"
   ON public.team_members FOR ALL TO authenticated
   USING (
     EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = team_members.business_id AND b.owner_user_id = auth.uid()) OR
+    public.is_active_staff_of(team_members.business_id, ARRAY['tenant_admin', 'manager']) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
+  )
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = team_members.business_id AND b.owner_user_id = auth.uid()) OR
+    public.is_active_staff_of(team_members.business_id, ARRAY['tenant_admin', 'manager']) OR
     EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
   );
 
--- 3. Staff Self-Update: Staff can update their own details safely
+-- 3. Staff Self-Update: Active/pending staff can claim invite or update own non-inactive record safely
 CREATE POLICY "Staff can update own details"
   ON public.team_members FOR UPDATE TO authenticated
   USING (
-    user_id = auth.uid() OR
-    LOWER(email) = LOWER(COALESCE(auth.jwt()->>'email', ''))
+    status != 'inactive' AND (
+      user_id = auth.uid() OR
+      (user_id IS NULL AND LOWER(email) = LOWER(COALESCE(auth.jwt()->>'email', '')))
+    )
   )
   WITH CHECK (
-    user_id = auth.uid() OR
-    LOWER(email) = LOWER(COALESCE(auth.jwt()->>'email', ''))
+    status != 'inactive' AND (
+      user_id = auth.uid() OR
+      LOWER(email) = LOWER(COALESCE(auth.jwt()->>'email', ''))
+    )
   );
 
 -- 5.1.1 Automatic linking of staff members upon Supabase Auth signup
 CREATE OR REPLACE FUNCTION public.handle_staff_auth_signup()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_matched_role TEXT;
 BEGIN
-  -- 1. Auto-link team_members row matching email
+  -- 1. Auto-link non-inactive team_members row matching email
   UPDATE public.team_members
   SET user_id = NEW.id,
       status = 'active'
   WHERE LOWER(email) = LOWER(NEW.email)
+    AND status != 'inactive'
     AND (user_id IS NULL OR user_id = NEW.id);
 
-  -- 2. If matched, assign the 'staff' role in user_roles
+  -- 2. If matched, assign appropriate global role in user_roles
   IF FOUND THEN
+    SELECT CASE WHEN role = 'tenant_admin' THEN 'tenant_admin' ELSE 'staff' END
+    INTO v_matched_role
+    FROM public.team_members
+    WHERE user_id = NEW.id
+      AND status != 'inactive'
+    ORDER BY created_at DESC
+    LIMIT 1;
+
     INSERT INTO public.user_roles (user_id, role)
-    VALUES (NEW.id, 'staff')
-    ON CONFLICT (user_id) DO NOTHING;
+    VALUES (NEW.id, COALESCE(v_matched_role, 'staff'))
+    ON CONFLICT (user_id) DO UPDATE
+    SET role = EXCLUDED.role
+    WHERE public.user_roles.role = 'customer';
   END IF;
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS trg_auto_link_staff_on_auth_signup ON auth.users;
 
@@ -567,6 +615,7 @@ RETURNS JSONB AS $$
 DECLARE
   v_member RECORD;
   v_biz RECORD;
+  v_global_role TEXT;
 BEGIN
   -- Look up member by staff_code (case-insensitive, trimmed)
   SELECT * INTO v_member
@@ -577,7 +626,23 @@ BEGIN
   IF NOT FOUND THEN
     RETURN jsonb_build_object(
       'success', false, 
-      'message', 'Staff code "' || p_staff_code || '" was not found. Please verify with your store owner.'
+      'message', 'Staff code "' || COALESCE(p_staff_code, '') || '" was not found. Please verify with your store owner.'
+    );
+  END IF;
+
+  -- Reject deactivated staff accounts
+  IF v_member.status = 'inactive' THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'message', 'This staff account has been deactivated. Please contact your store manager.'
+    );
+  END IF;
+
+  -- Prevent hijacking a code already claimed by another user
+  IF v_member.user_id IS NOT NULL AND v_member.user_id != p_user_id THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'message', 'This staff code is already linked to another user account.'
     );
   END IF;
 
@@ -601,19 +666,26 @@ BEGIN
     status = 'active'
   WHERE id = v_member.id;
 
-  -- Assign staff role in user_roles
+  v_global_role := CASE WHEN v_member.role = 'tenant_admin' THEN 'tenant_admin' ELSE 'staff' END;
+
+  -- Assign appropriate role in user_roles
   INSERT INTO public.user_roles (user_id, role)
-  VALUES (p_user_id, 'staff')
-  ON CONFLICT (user_id) DO NOTHING;
+  VALUES (p_user_id, v_global_role)
+  ON CONFLICT (user_id) DO UPDATE
+  SET role = EXCLUDED.role
+  WHERE public.user_roles.role = 'customer';
 
   RETURN jsonb_build_object(
     'success', true, 
     'message', 'Successfully linked to ' || v_biz.business_name || '!',
     'business_id', v_biz.id,
-    'business_name', v_biz.business_name
+    'business_name', v_biz.business_name,
+    'role', v_member.role,
+    'staff_code', v_member.staff_code,
+    'name', v_member.name
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 GRANT EXECUTE ON FUNCTION public.fn_link_staff_by_code(TEXT, UUID, TEXT) TO authenticated;
 
@@ -632,18 +704,33 @@ CREATE TABLE IF NOT EXISTS public.staff_attendance (
 
 ALTER TABLE public.staff_attendance ENABLE ROW LEVEL SECURITY;
 
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Attendance read" ON public.staff_attendance;
+  DROP POLICY IF EXISTS "Attendance write" ON public.staff_attendance;
+EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
 CREATE POLICY "Attendance read"
   ON public.staff_attendance FOR SELECT TO authenticated
   USING (
     user_id = auth.uid() OR
-    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = staff_attendance.business_id AND b.owner_user_id = auth.uid())
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = staff_attendance.business_id AND b.owner_user_id = auth.uid()) OR
+    public.is_active_staff_of(staff_attendance.business_id, ARRAY['tenant_admin', 'manager']) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
   );
 
 CREATE POLICY "Attendance write"
   ON public.staff_attendance FOR ALL TO authenticated
   USING (
-    user_id = auth.uid() OR
-    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = staff_attendance.business_id AND b.owner_user_id = auth.uid())
+    (user_id = auth.uid() AND public.is_active_staff_of(staff_attendance.business_id)) OR
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = staff_attendance.business_id AND b.owner_user_id = auth.uid()) OR
+    public.is_active_staff_of(staff_attendance.business_id, ARRAY['tenant_admin', 'manager']) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
+  )
+  WITH CHECK (
+    (user_id = auth.uid() AND public.is_active_staff_of(staff_attendance.business_id)) OR
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = staff_attendance.business_id AND b.owner_user_id = auth.uid()) OR
+    public.is_active_staff_of(staff_attendance.business_id, ARRAY['tenant_admin', 'manager']) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
   );
 
 -- 5.3 Staff Leave Requests
@@ -663,11 +750,46 @@ CREATE TABLE IF NOT EXISTS public.staff_leaves (
 
 ALTER TABLE public.staff_leaves ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Leaves read and manage"
-  ON public.staff_leaves FOR ALL TO authenticated
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Leaves read and manage" ON public.staff_leaves;
+  DROP POLICY IF EXISTS "Leaves read" ON public.staff_leaves;
+  DROP POLICY IF EXISTS "Leaves staff insert" ON public.staff_leaves;
+  DROP POLICY IF EXISTS "Leaves manager manage" ON public.staff_leaves;
+  DROP POLICY IF EXISTS "Leaves manager delete" ON public.staff_leaves;
+EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
+CREATE POLICY "Leaves read"
+  ON public.staff_leaves FOR SELECT TO authenticated
   USING (
     user_id = auth.uid() OR
-    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = staff_leaves.business_id AND b.owner_user_id = auth.uid())
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = staff_leaves.business_id AND b.owner_user_id = auth.uid()) OR
+    public.is_active_staff_of(staff_leaves.business_id, ARRAY['tenant_admin', 'manager']) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
+  );
+
+CREATE POLICY "Leaves staff insert"
+  ON public.staff_leaves FOR INSERT TO authenticated
+  WITH CHECK (
+    (user_id = auth.uid() AND public.is_active_staff_of(staff_leaves.business_id) AND status = 'Pending') OR
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = staff_leaves.business_id AND b.owner_user_id = auth.uid()) OR
+    public.is_active_staff_of(staff_leaves.business_id, ARRAY['tenant_admin', 'manager'])
+  );
+
+CREATE POLICY "Leaves manager manage"
+  ON public.staff_leaves FOR UPDATE TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = staff_leaves.business_id AND b.owner_user_id = auth.uid()) OR
+    public.is_active_staff_of(staff_leaves.business_id, ARRAY['tenant_admin', 'manager']) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
+  );
+
+CREATE POLICY "Leaves manager delete"
+  ON public.staff_leaves FOR DELETE TO authenticated
+  USING (
+    (user_id = auth.uid() AND status = 'Pending') OR
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = staff_leaves.business_id AND b.owner_user_id = auth.uid()) OR
+    public.is_active_staff_of(staff_leaves.business_id, ARRAY['tenant_admin', 'manager']) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
   );
 
 -- 5.4 Internal Business Announcements
@@ -685,16 +807,31 @@ CREATE TABLE IF NOT EXISTS public.business_announcements (
 
 ALTER TABLE public.business_announcements ENABLE ROW LEVEL SECURITY;
 
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Announcements read" ON public.business_announcements;
+  DROP POLICY IF EXISTS "Announcements write" ON public.business_announcements;
+EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
 CREATE POLICY "Announcements read"
   ON public.business_announcements FOR SELECT TO authenticated
   USING (
-    EXISTS (SELECT 1 FROM public.team_members tm WHERE tm.business_id = business_announcements.business_id AND tm.user_id = auth.uid()) OR
-    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = business_announcements.business_id AND b.owner_user_id = auth.uid())
+    public.is_active_staff_of(business_announcements.business_id) OR
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = business_announcements.business_id AND b.owner_user_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
   );
 
 CREATE POLICY "Announcements write"
   ON public.business_announcements FOR ALL TO authenticated
-  USING (EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = business_announcements.business_id AND b.owner_user_id = auth.uid()));
+  USING (
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = business_announcements.business_id AND b.owner_user_id = auth.uid()) OR
+    public.is_active_staff_of(business_announcements.business_id, ARRAY['tenant_admin', 'manager']) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
+  )
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = business_announcements.business_id AND b.owner_user_id = auth.uid()) OR
+    public.is_active_staff_of(business_announcements.business_id, ARRAY['tenant_admin', 'manager']) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
+  );
 
 -- 5.2 Staff Compensation & Payroll Settings
 CREATE TABLE IF NOT EXISTS public.staff_payroll_settings (
@@ -715,10 +852,16 @@ CREATE TABLE IF NOT EXISTS public.staff_payroll_settings (
 
 ALTER TABLE public.staff_payroll_settings ENABLE ROW LEVEL SECURITY;
 
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Staff payroll settings read" ON public.staff_payroll_settings;
+  DROP POLICY IF EXISTS "Staff payroll settings write" ON public.staff_payroll_settings;
+EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
 CREATE POLICY "Staff payroll settings read"
   ON public.staff_payroll_settings FOR SELECT TO authenticated
   USING (
     EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = staff_payroll_settings.business_id AND b.owner_user_id = auth.uid()) OR
+    public.is_active_staff_of(staff_payroll_settings.business_id, ARRAY['tenant_admin', 'manager']) OR
     EXISTS (SELECT 1 FROM public.team_members tm WHERE tm.id = staff_payroll_settings.staff_id AND tm.user_id = auth.uid()) OR
     EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
   );
@@ -727,6 +870,12 @@ CREATE POLICY "Staff payroll settings write"
   ON public.staff_payroll_settings FOR ALL TO authenticated
   USING (
     EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = staff_payroll_settings.business_id AND b.owner_user_id = auth.uid()) OR
+    public.is_active_staff_of(staff_payroll_settings.business_id, ARRAY['tenant_admin', 'manager']) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
+  )
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = staff_payroll_settings.business_id AND b.owner_user_id = auth.uid()) OR
+    public.is_active_staff_of(staff_payroll_settings.business_id, ARRAY['tenant_admin', 'manager']) OR
     EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
   );
 
@@ -741,13 +890,21 @@ CREATE TABLE IF NOT EXISTS public.monthly_payrolls (
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE INDEX IF NOT EXISTS idx_monthly_payrolls_lookup
+  ON public.monthly_payrolls (business_id, year, month, created_at DESC);
+
 ALTER TABLE public.monthly_payrolls ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Monthly payrolls read" ON public.monthly_payrolls;
+  DROP POLICY IF EXISTS "Monthly payrolls write" ON public.monthly_payrolls;
+EXCEPTION WHEN OTHERS THEN NULL; END $$;
 
 CREATE POLICY "Monthly payrolls read"
   ON public.monthly_payrolls FOR SELECT TO authenticated
   USING (
     EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = monthly_payrolls.business_id AND b.owner_user_id = auth.uid()) OR
-    EXISTS (SELECT 1 FROM public.team_members tm WHERE tm.business_id = monthly_payrolls.business_id AND tm.user_id = auth.uid()) OR
+    public.is_active_staff_of(monthly_payrolls.business_id) OR
     EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
   );
 
@@ -755,6 +912,12 @@ CREATE POLICY "Monthly payrolls write"
   ON public.monthly_payrolls FOR ALL TO authenticated
   USING (
     EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = monthly_payrolls.business_id AND b.owner_user_id = auth.uid()) OR
+    public.is_active_staff_of(monthly_payrolls.business_id, ARRAY['tenant_admin', 'manager']) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
+  )
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = monthly_payrolls.business_id AND b.owner_user_id = auth.uid()) OR
+    public.is_active_staff_of(monthly_payrolls.business_id, ARRAY['tenant_admin', 'manager']) OR
     EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
   );
 
@@ -772,7 +935,7 @@ CREATE TABLE IF NOT EXISTS public.bookings (
   service_name     TEXT NOT NULL,
   booking_date     DATE NOT NULL,
   booking_time     VARCHAR(20) NOT NULL,
-  status           VARCHAR(50) NOT NULL DEFAULT 'holding' CHECK (status IN ('holding', 'pending', 'confirmed', 'completed', 'cancelled')),
+  status           VARCHAR(50) NOT NULL DEFAULT 'holding' CHECK (status IN ('holding', 'pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'disputed')),
   total_price      NUMERIC(10, 2) DEFAULT 0.00,
   pax              INTEGER NOT NULL DEFAULT 1,
   booking_metadata JSONB DEFAULT '{}'::jsonb,
@@ -783,7 +946,7 @@ ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS staff_id UUID REFERENCES pu
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS total_price NUMERIC(10, 2) DEFAULT 0.00;
 DO $$ BEGIN
   ALTER TABLE public.bookings DROP CONSTRAINT IF EXISTS bookings_status_check;
-  ALTER TABLE public.bookings ADD CONSTRAINT bookings_status_check CHECK (status IN ('holding', 'pending', 'confirmed', 'completed', 'cancelled'));
+  ALTER TABLE public.bookings ADD CONSTRAINT bookings_status_check CHECK (status IN ('holding', 'pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'disputed'));
 EXCEPTION WHEN OTHERS THEN NULL; END $$;
 
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
@@ -793,6 +956,7 @@ DO $$ BEGIN
   DROP POLICY IF EXISTS "Users can insert booking hold" ON public.bookings;
   DROP POLICY IF EXISTS "Users can update own booking" ON public.bookings;
   DROP POLICY IF EXISTS "Business owners can view and manage their bookings" ON public.bookings;
+  DROP POLICY IF EXISTS "Staff can view and manage business bookings" ON public.bookings;
 EXCEPTION WHEN OTHERS THEN NULL; END $$;
 
 -- Allow public read so real-time calendar can see taken slots
@@ -808,10 +972,19 @@ CREATE POLICY "Users can update own booking"
   ON public.bookings FOR UPDATE TO authenticated
   USING (customer_id = auth.uid() OR (booking_metadata->>'customer_auth_id')::TEXT = auth.uid()::TEXT);
 
--- Business owners can manage all bookings for their business
+-- Business owners & active team members can manage all bookings for their business
 CREATE POLICY "Business owners can view and manage their bookings"
   ON public.bookings FOR ALL TO authenticated
-  USING (EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = bookings.business_id AND b.owner_user_id = auth.uid()));
+  USING (
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = bookings.business_id AND b.owner_user_id = auth.uid()) OR
+    public.is_active_staff_of(bookings.business_id) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
+  )
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = bookings.business_id AND b.owner_user_id = auth.uid()) OR
+    public.is_active_staff_of(bookings.business_id) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
+  );
 
 
 -- =========================================================================================
@@ -1193,6 +1366,7 @@ ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN
   DROP POLICY IF EXISTS "Users can view own notifications" ON public.notifications;
   DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
+  DROP POLICY IF EXISTS "Business owners and managers can insert notifications" ON public.notifications;
 EXCEPTION WHEN OTHERS THEN NULL; END $$;
 
 CREATE POLICY "Users can view own notifications"
@@ -1202,6 +1376,19 @@ CREATE POLICY "Users can view own notifications"
 CREATE POLICY "Users can update own notifications"
   ON public.notifications FOR UPDATE TO authenticated
   USING (user_id = auth.uid());
+
+CREATE POLICY "Business owners and managers can insert notifications"
+  ON public.notifications FOR INSERT TO authenticated
+  WITH CHECK (
+    user_id = auth.uid() OR
+    (
+      notifications.business_id IS NOT NULL AND (
+        EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = notifications.business_id AND b.owner_user_id = auth.uid()) OR
+        public.is_active_staff_of(notifications.business_id, ARRAY['tenant_admin', 'manager'])
+      )
+    ) OR
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'super_admin')
+  );
 
 
 -- =========================================================================================

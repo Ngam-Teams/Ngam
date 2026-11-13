@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
@@ -6,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:ngam/widgets/glass_box.dart';
 import 'package:provider/provider.dart';
@@ -23,13 +23,12 @@ import '../../widgets/typing_indicator.dart';
 import '../../services/review_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:open_filex/open_filex.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import '../../services/local_database_service.dart';
+import '../../utils/file_saver/file_saver.dart';
 
 import '../../services/push_service.dart';
 
@@ -58,7 +57,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _searchQuery = query.trim().toLowerCase();
     });
 
-    if (_searchQuery.isNotEmpty) {
+    if (_searchQuery.isNotEmpty && !kIsWeb) {
       final db = await LocalDatabaseService.instance.database;
       final maps = await db.query(
         'messages',
@@ -959,7 +958,13 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
       });
 
       try {
-        final actualMsg = await ChatService.sendImageMessage(pendingMsg, File(pickedFile.path), contextGigId: _linkedGig?.id);
+        final imageBytes = await pickedFile.readAsBytes();
+        final actualMsg = await ChatService.sendImageMessage(
+          pendingMsg,
+          imageBytes,
+          pickedFile.name,
+          contextGigId: _linkedGig?.id,
+        );
         if (mounted) {
           setState(() {
             final index = _messages.indexWhere((m) => m.id == pendingMsg.id);
@@ -1209,15 +1214,17 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'doc', 'docx', 'txt', 'csv'],
+        withData: true,
       );
 
-      if (result != null && result.files.single.path != null) {
+      final pickedFile = result?.files.single;
+      final fileBytes = pickedFile?.bytes;
+      if (pickedFile != null && fileBytes != null) {
         setState(() => _isUploadingImage = true);
-        
+
         await _ensureContextIsSet();
-        
-        final file = File(result.files.single.path!);
-        final fileName = result.files.single.name;
+
+        final fileName = pickedFile.name;
 
         final pendingMsg = MessageModel(
           id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
@@ -1228,7 +1235,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
           createdAt: DateTime.now(),
           messageType: 'file',
           fileName: fileName,
-          fileSize: file.lengthSync(),
+          fileSize: fileBytes.lengthInBytes,
           status: 'sending',
         );
 
@@ -1237,7 +1244,12 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
         });
 
         try {
-          final actualMsg = await ChatService.sendFileMessage(pendingMsg, file, fileName, contextGigId: _linkedGig?.id);
+          final actualMsg = await ChatService.sendFileMessage(
+            pendingMsg,
+            fileBytes,
+            fileName,
+            contextGigId: _linkedGig?.id,
+          );
           if (mounted) {
             setState(() {
               final index = _messages.indexWhere((m) => m.id == pendingMsg.id);
@@ -1250,7 +1262,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
               final index = _messages.indexWhere((m) => m.id == pendingMsg.id);
               if (index != -1) _messages[index] = pendingMsg.copyWith(status: 'failed');
             });
-            showGlassToast(context, 'Failed to send file: $e', isError: true);
+            showGlassToast(context, 'Gagal menghantar fail: $e', isError: true);
           }
         } finally {
           if (mounted) setState(() => _isUploadingImage = false);
@@ -2301,32 +2313,21 @@ class _MessageBubbleState extends State<_MessageBubble> {
   Future<void> _openFile() async {
     final url = widget.message.imageUrl;
     if (url == null || url.isEmpty) return;
-    
+
     setState(() {
       _isDownloading = true;
     });
 
     try {
       final fileName = widget.message.displayFileName;
-      final dir = await getApplicationDocumentsDirectory();
-      final filePath = '${dir.path}/$fileName';
-      final file = File(filePath);
-
-      if (!await file.exists()) {
-        final httpClient = HttpClient();
-        final request = await httpClient.getUrl(Uri.parse(url));
-        final response = await request.close();
-        final bytes = await consolidateHttpClientResponseBytes(response);
-        await file.writeAsBytes(bytes);
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 20));
+      if (response.statusCode != 200) {
+        throw Exception('HTTP ${response.statusCode}');
       }
-
-      final result = await OpenFilex.open(filePath);
-      if (result.type != ResultType.done && mounted) {
-        showGlassToast(context, 'Could not open file: ${result.message}', isError: true);
-      }
+      await saveAndDownloadFile(bytes: response.bodyBytes, fileName: fileName);
     } catch (e) {
       if (mounted) {
-        showGlassToast(context, 'Error: $e', isError: true);
+        showGlassToast(context, 'Ralat memuat turun fail: $e', isError: true);
       }
     } finally {
       if (mounted) {

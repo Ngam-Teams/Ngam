@@ -1,5 +1,4 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -362,9 +361,6 @@ class AuthProvider extends ChangeNotifier {
       } else if (imageInput is XFile) {
         rawBytes = await imageInput.readAsBytes();
         extensionHint = imageInput.name.contains('.') ? imageInput.name.split('.').last : null;
-      } else if (imageInput is File) {
-        rawBytes = await imageInput.readAsBytes();
-        extensionHint = imageInput.path.contains('.') ? imageInput.path.split('.').last : null;
       } else {
         return 'Format fail gambar tidak disokong';
       }
@@ -423,9 +419,6 @@ class AuthProvider extends ChangeNotifier {
       } else if (imageInput is XFile) {
         rawBytes = await imageInput.readAsBytes();
         extensionHint = imageInput.name.contains('.') ? imageInput.name.split('.').last : null;
-      } else if (imageInput is File) {
-        rawBytes = await imageInput.readAsBytes();
-        extensionHint = imageInput.path.contains('.') ? imageInput.path.split('.').last : null;
       } else {
         return 'Format fail gambar tidak disokong';
       }

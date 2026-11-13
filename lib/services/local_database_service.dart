@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/chat_model.dart';
@@ -10,6 +11,9 @@ class LocalDatabaseService {
   LocalDatabaseService._init();
 
   Future<Database> get database async {
+    if (kIsWeb) {
+      throw UnsupportedError('SQLite cache tidak disokong di pelayar web.');
+    }
     if (_database != null) return _database!;
     _database = await _initDB('chat_database.db');
     return _database!;
@@ -81,6 +85,7 @@ CREATE TABLE conversations (
 
   // Urusan Mesej
   Future<void> insertMessage(MessageModel message) async {
+    if (kIsWeb) return;
     final db = await instance.database;
     final json = message.toJson();
     json['is_read'] = message.isRead ? 1 : 0;
@@ -96,6 +101,7 @@ CREATE TABLE conversations (
   }
 
   Future<void> insertMessages(List<MessageModel> messages) async {
+    if (kIsWeb) return;
     final db = await instance.database;
     final batch = db.batch();
     for (var message in messages) {
@@ -110,6 +116,7 @@ CREATE TABLE conversations (
   }
 
   Future<List<MessageModel>> getMessages(String conversationId, {int limit = 50, int offset = 0}) async {
+    if (kIsWeb) return [];
     final db = await instance.database;
     final maps = await db.query(
       'messages',
@@ -137,6 +144,7 @@ CREATE TABLE conversations (
   }
 
   Future<void> updateMessageStatus(String id, String status) async {
+    if (kIsWeb) return;
     final db = await instance.database;
     await db.update(
       'messages',
@@ -147,6 +155,7 @@ CREATE TABLE conversations (
   }
 
   Future<void> deleteMessage(String id) async {
+    if (kIsWeb) return;
     final db = await instance.database;
     await db.delete(
       'messages',
@@ -157,6 +166,7 @@ CREATE TABLE conversations (
 
   // Urusan Chat/Perbualan
   Future<void> insertConversation(ConversationModel conversation) async {
+    if (kIsWeb) return;
     final db = await instance.database;
     final json = conversation.toJson();
     json['last_message_is_read'] = conversation.lastMessageIsRead ? 1 : 0;
@@ -170,6 +180,7 @@ CREATE TABLE conversations (
   }
 
   Future<void> insertConversations(List<ConversationModel> conversations) async {
+    if (kIsWeb) return;
     final db = await instance.database;
     final batch = db.batch();
     for (var conv in conversations) {
@@ -187,6 +198,7 @@ CREATE TABLE conversations (
   }
 
   Future<List<ConversationModel>> getConversations() async {
+    if (kIsWeb) return [];
     final db = await instance.database;
     final maps = await db.query(
       'conversations',

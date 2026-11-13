@@ -1,7 +1,8 @@
 import 'dart:convert';
-import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -118,16 +119,17 @@ class _MapPickerState extends State<MapPicker> {
 
     // 1. Enjin Utama: Nominatim (Rasmi OpenStreetMap Malaysia)
     try {
-      final client = HttpClient();
       final nomUri = Uri.parse(
         'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(trimmed)}&format=json&addressdetails=1&limit=5&countrycodes=my',
       );
-      final request = await client.getUrl(nomUri);
-      request.headers.set('User-Agent', 'NgamApp/1.0 (contact@ngam.dev)');
-      final response = await request.close().timeout(const Duration(seconds: 3));
+      final response = await http
+          .get(
+            nomUri,
+            headers: kIsWeb ? null : const {'User-Agent': 'NgamApp/1.0 (contact@ngam.dev)'},
+          )
+          .timeout(const Duration(seconds: 4));
       if (response.statusCode == 200) {
-        final body = await response.transform(utf8.decoder).join();
-        final list = jsonDecode(body) as List? ?? [];
+        final list = jsonDecode(response.body) as List? ?? [];
         for (final item in list) {
           final lat = double.tryParse(item['lat']?.toString() ?? '') ?? 0.0;
           final lon = double.tryParse(item['lon']?.toString() ?? '') ?? 0.0;
@@ -155,15 +157,12 @@ class _MapPickerState extends State<MapPicker> {
     // 2. Sandaran (Fallback): Photon Komoot
     if (results.isEmpty) {
       try {
-        final client = HttpClient();
         final uri = Uri.parse(
           'https://photon.komoot.io/api/?q=${Uri.encodeComponent(trimmed)}&limit=5&lat=${widget.initialCenter.latitude}&lon=${widget.initialCenter.longitude}',
         );
-        final request = await client.getUrl(uri);
-        final response = await request.close().timeout(const Duration(seconds: 3));
+        final response = await http.get(uri).timeout(const Duration(seconds: 4));
         if (response.statusCode == 200) {
-          final body = await response.transform(utf8.decoder).join();
-          final data = jsonDecode(body) as Map<String, dynamic>;
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
           final features = data['features'] as List? ?? [];
           for (final f in features) {
             final props = f['properties'] as Map<String, dynamic>? ?? {};

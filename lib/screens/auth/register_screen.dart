@@ -77,7 +77,7 @@ class _RegisterScreenState extends State<RegisterScreen>
       email: _emailController.text.trim(),
       password: _passwordController.text,
       name: _nameController.text.trim(),
-      phone: 'N/A', // Nombor telefon pilihan, boleh dikemaskini dalam profil kemudian
+      phone: 'N/A', // Nombor telefon pilihan, boleh dikemas kini dalam profil kemudian
       role: UserRole.customer,
     );
 

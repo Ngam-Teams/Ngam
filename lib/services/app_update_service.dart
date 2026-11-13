@@ -1,7 +1,8 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:hugeicons/hugeicons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -87,22 +88,24 @@ class AppUpdateService {
     try {
       final activeVersion = current ?? await getAppVersion();
 
-      final client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 10);
-
       final uri = Uri.parse('https://api.github.com/repos/$orgName/$repo/releases/latest');
-      final request = await client.getUrl(uri);
-      request.headers.set('User-Agent', 'NgamApp');
-      request.headers.set('Accept', 'application/vnd.github.v3+json');
+      final response = await http
+          .get(
+            uri,
+            headers: kIsWeb
+                ? const {'Accept': 'application/vnd.github.v3+json'}
+                : const {
+                    'User-Agent': 'NgamApp',
+                    'Accept': 'application/vnd.github.v3+json',
+                  },
+          )
+          .timeout(const Duration(seconds: 10));
 
-      final response = await request.close();
       if (response.statusCode != 200) {
-        client.close();
         return null;
       }
 
-      final body = await response.transform(utf8.decoder).join();
-      client.close();
+      final body = response.body;
 
       final data = json.decode(body) as Map<String, dynamic>;
       final tagName = data['tag_name'] as String? ?? '';
@@ -427,6 +430,7 @@ class AppUpdateService {
     String? current,
     String repo = repoName,
   }) async {
+    if (kIsWeb) return;
     await Future.delayed(const Duration(seconds: 2));
     if (!context.mounted) return;
 

@@ -1,10 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/chat_model.dart';
 import '../models/user_model.dart';
 import 'local_database_service.dart';
+import 'r2_storage_service.dart';
 
 class ChatService {
   static final _supabase = Supabase.instance.client;
@@ -318,20 +317,44 @@ class ChatService {
     }
   }
 
-  /// Upload image and send an image message
-  static Future<MessageModel> sendImageMessage(MessageModel pendingMessage, File imageFile, {String? contextGigId}) async {
+  /// Upload image and send an image message (Web/PWA & Mobile compatible via R2 / Storage uploadBinary)
+  static Future<MessageModel> sendImageMessage(
+    MessageModel pendingMessage,
+    Uint8List imageBytes,
+    String originalFileName, {
+    String? contextGigId,
+  }) async {
     try {
-      final fileExt = imageFile.path.split('.').last;
+      final fileExt = originalFileName.contains('.')
+          ? originalFileName.split('.').last.toLowerCase()
+          : 'jpg';
+      final mimeType = fileExt == 'png'
+          ? 'image/png'
+          : (fileExt == 'webp' ? 'image/webp' : 'image/jpeg');
       final fileName = '${DateTime.now().millisecondsSinceEpoch}_${pendingMessage.senderId}.$fileExt';
       final filePath = '${pendingMessage.conversationId}/$fileName';
-      
-      await _supabase.storage.from('chat_images').upload(filePath, imageFile);
-      final imageUrl = _supabase.storage.from('chat_images').getPublicUrl(filePath);
+
+      String imageUrl;
+      if (R2StorageService().isConfigured) {
+        imageUrl = await R2StorageService().uploadMedia(
+          bytes: imageBytes,
+          fileName: fileName,
+          folder: 'chat/${pendingMessage.conversationId}',
+          mimeType: mimeType,
+        );
+      } else {
+        await _supabase.storage.from('chat_images').uploadBinary(
+          filePath,
+          imageBytes,
+          fileOptions: FileOptions(contentType: mimeType, upsert: true),
+        );
+        imageUrl = _supabase.storage.from('chat_images').getPublicUrl(filePath);
+      }
 
       final newMsg = pendingMessage.copyWith(
-        imageUrl: imageUrl, 
+        imageUrl: imageUrl,
         fileName: fileName,
-        fileSize: imageFile.lengthSync(),
+        fileSize: imageBytes.lengthInBytes,
       );
 
       final response = await _supabase.from('messages').insert(newMsg.toSupabaseJson()).select().single();
@@ -352,10 +375,10 @@ class ChatService {
           'updated_at': actualMessage.createdAt.toUtc().toIso8601String(),
         }).eq('id', pendingMessage.conversationId);
       }
-      
+
       final sentMsg = actualMessage.copyWith(status: 'sent');
       await LocalDatabaseService.instance.insertMessage(sentMsg);
-      
+
       return actualMessage;
     } catch (e) {
       await LocalDatabaseService.instance.insertMessage(pendingMessage.copyWith(status: 'failed'));
@@ -363,18 +386,44 @@ class ChatService {
     }
   }
 
-  /// Upload file and send a file message
-  static Future<MessageModel> sendFileMessage(MessageModel pendingMessage, File file, String fileName, {String? contextGigId}) async {
+  /// Upload file and send a file message (Web/PWA & Mobile compatible via R2 / Storage uploadBinary)
+  static Future<MessageModel> sendFileMessage(
+    MessageModel pendingMessage,
+    Uint8List fileBytes,
+    String fileName, {
+    String? contextGigId,
+  }) async {
     try {
-      final filePath = '${pendingMessage.conversationId}/${DateTime.now().millisecondsSinceEpoch}_$fileName';
-      
-      await _supabase.storage.from('chat_images').upload(filePath, file);
-      final fileUrl = _supabase.storage.from('chat_images').getPublicUrl(filePath);
+      final lower = fileName.toLowerCase();
+      final mimeType = lower.endsWith('.pdf')
+          ? 'application/pdf'
+          : (lower.endsWith('.csv')
+              ? 'text/csv'
+              : (lower.endsWith('.txt') ? 'text/plain' : 'application/octet-stream'));
+      final safeName = '${DateTime.now().millisecondsSinceEpoch}_$fileName';
+      final filePath = '${pendingMessage.conversationId}/$safeName';
+
+      String fileUrl;
+      if (R2StorageService().isConfigured) {
+        fileUrl = await R2StorageService().uploadMedia(
+          bytes: fileBytes,
+          fileName: safeName,
+          folder: 'chat/${pendingMessage.conversationId}',
+          mimeType: mimeType,
+        );
+      } else {
+        await _supabase.storage.from('chat_images').uploadBinary(
+          filePath,
+          fileBytes,
+          fileOptions: FileOptions(contentType: mimeType, upsert: true),
+        );
+        fileUrl = _supabase.storage.from('chat_images').getPublicUrl(filePath);
+      }
 
       final newMsg = pendingMessage.copyWith(
         imageUrl: fileUrl,
         fileName: fileName,
-        fileSize: file.lengthSync(),
+        fileSize: fileBytes.lengthInBytes,
       );
 
       final response = await _supabase.from('messages').insert(newMsg.toSupabaseJson()).select().single();
@@ -395,10 +444,10 @@ class ChatService {
           'updated_at': actualMessage.createdAt.toUtc().toIso8601String(),
         }).eq('id', pendingMessage.conversationId);
       }
-      
+
       final sentMsg = actualMessage.copyWith(status: 'sent');
       await LocalDatabaseService.instance.insertMessage(sentMsg);
-      
+
       return actualMessage;
     } catch (e) {
       await LocalDatabaseService.instance.insertMessage(pendingMessage.copyWith(status: 'failed'));

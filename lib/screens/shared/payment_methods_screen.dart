@@ -1,5 +1,5 @@
 import '../../widgets/glass_nav_button.dart';
-import 'dart:io';
+import 'dart:convert';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -452,7 +452,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
 
   // ─── DuitNow QR Sheet (Runner je boleh pakai) ────────────────
   void _showAddDuitNowSheet(BuildContext context, bool isDark) {
-    File? pickedQr;
+    Uint8List? pickedQrBytes;
     final picker = ImagePicker();
 
     showModalBottomSheet(
@@ -494,16 +494,13 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text("DuitNow QR", style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 18, fontWeight: FontWeight.bold)),
+                                  Text("wallet.duitnow_qr".tr(), style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 18, fontWeight: FontWeight.bold)),
                                   Text("wallet.customers_scan_qr".tr(), style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
                                 ],
                               ),
                             ],
                           ),
                           const SizedBox(height: 20),
-
-                          // Label nama dibuang sebab QR DuitNow tu sendiri dah ada nama kat gambar.
-
 
                           // Kawasan upload QR
                           Text("wallet.your_qr_code".tr().toUpperCase(), style: const TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
@@ -512,7 +509,8 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                             onTap: () async {
                               final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 90);
                               if (picked != null) {
-                                setSheetState(() => pickedQr = File(picked.path));
+                                final bytes = await picked.readAsBytes();
+                                setSheetState(() => pickedQrBytes = bytes);
                               }
                             },
                             child: AnimatedContainer(
@@ -523,15 +521,15 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                 color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: pickedQr != null ? const Color(0xFF00A86B).withValues(alpha: 0.6) : Colors.grey.withValues(alpha: 0.3),
-                                  width: pickedQr != null ? 2 : 1.5,
-                                  style: pickedQr != null ? BorderStyle.solid : BorderStyle.solid,
+                                  color: pickedQrBytes != null ? const Color(0xFF00A86B).withValues(alpha: 0.6) : Colors.grey.withValues(alpha: 0.3),
+                                  width: pickedQrBytes != null ? 2 : 1.5,
+                                  style: BorderStyle.solid,
                                 ),
                               ),
-                              child: pickedQr != null
+                              child: pickedQrBytes != null
                                 ? ClipRRect(
                                     borderRadius: BorderRadius.circular(15),
-                                    child: Image.file(pickedQr!, fit: BoxFit.contain),
+                                    child: Image.memory(pickedQrBytes!, fit: BoxFit.contain),
                                   )
                                 : Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -561,7 +559,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    "Your QR will be displayed in a clean, standardized format. Bank branding will be removed.",
+                                    "wallet.qr_clean_info".tr(),
                                     style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 11),
                                   ),
                                 ),
@@ -573,7 +571,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                           // Butang Save
                           _AnimatedPressable(
                             onTap: () {
-                              if (pickedQr == null) {
+                              if (pickedQrBytes == null) {
                                 showGlassToast(
                                   context,
                                   "wallet.upload_qr_first".tr(),
@@ -581,11 +579,12 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                 );
                                 return;
                               }
+                              final dataUri = 'data:image/png;base64,${base64Encode(pickedQrBytes!)}';
                               PaymentData.addPaymentMethod({
                                 "id": DateTime.now().millisecondsSinceEpoch.toString(),
                                 "type": "duitnow_qr",
                                 "name": "DuitNow QR",
-                                "qrPath": pickedQr!.path,
+                                "qrPath": dataUri,
                                 "isPrimary": false,
                               });
                               Navigator.pop(context);
@@ -1068,8 +1067,8 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("DuitNow QR", style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
-                      Text("Registered Name in Image", style: TextStyle(color: Colors.white70, fontSize: 11)),
+                      Text("wallet.duitnow_qr".tr(), style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+                      Text("wallet.registered_name_in_image".tr(), style: const TextStyle(color: Colors.white70, fontSize: 11)),
                     ],
                   ),
                 ),
@@ -1098,20 +1097,12 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.file(
-                      File(qr["qrPath"]),
-                      width: double.infinity,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const SizedBox(
-                        height: 160,
-                        child: Center(child: HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.grey, size: 40)),
-                      ),
-                    ),
+                    child: _buildQrPreview(qr["qrPath"]?.toString()),
                   ),
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  "Scan with any banking app to pay",
+                  "wallet.scan_to_pay".tr(),
                   style: TextStyle(color: isDark ? Colors.white54 : Colors.black45, fontSize: 12),
                 ),
               ],
@@ -1150,6 +1141,36 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildQrPreview(String? qrSource) {
+    const fallback = SizedBox(
+      height: 160,
+      child: Center(child: HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.grey, size: 40)),
+    );
+    if (qrSource == null || qrSource.isEmpty) return fallback;
+    if (qrSource.startsWith('http://') || qrSource.startsWith('https://')) {
+      return Image.network(
+        qrSource,
+        width: double.infinity,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => fallback,
+      );
+    }
+    try {
+      final raw = qrSource.startsWith('data:image')
+          ? qrSource.split(',').last
+          : qrSource;
+      final bytes = base64Decode(raw);
+      return Image.memory(
+        bytes,
+        width: double.infinity,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => fallback,
+      );
+    } catch (_) {
+      return fallback;
+    }
   }
 
   Widget _buildAddButton(BuildContext context, bool isDark) {

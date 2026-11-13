@@ -427,7 +427,10 @@
     "type_credit_debit": "Credit / Debit Card",
     "type_credit_debit_desc": "Visa, Mastercard, Amex",
     "type_link_bank": "Link Bank Account",
-    "type_link_bank_desc": "For quick payments & refunds"
+    "type_link_bank_desc": "For quick payments & refunds",
+    "qr_clean_info": "Your QR will be displayed in a clean, standardized format. Bank branding will be removed.",
+    "scan_to_pay": "Scan with any banking app to pay",
+    "registered_name_in_image": "Registered Name in Image"
   },
   "payment": {
     "card_number": "Card Number",

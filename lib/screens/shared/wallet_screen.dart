@@ -1,6 +1,6 @@
 import '../../widgets/glass_nav_button.dart';
-import 'dart:io';
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -624,14 +624,29 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: method["qrPath"] != null 
-                  ? Image.file(File(method["qrPath"]), fit: BoxFit.cover, errorBuilder: (_,__,___) => const Center(child: HugeIcon(icon: HugeIcons.strokeRoundedQrCode, color: Colors.black87, size: 60)))
-                  : const Center(child: HugeIcon(icon: HugeIcons.strokeRoundedQrCode, color: Colors.black87, size: 60)),
+              child: _buildQrPreview(method["qrPath"]?.toString()),
             )
           )
         ],
       ),
     );
+  }
+
+  Widget _buildQrPreview(String? qrSource) {
+    const fallback = Center(child: HugeIcon(icon: HugeIcons.strokeRoundedQrCode, color: Colors.black87, size: 60));
+    if (qrSource == null || qrSource.isEmpty) return fallback;
+    if (qrSource.startsWith('http://') || qrSource.startsWith('https://')) {
+      return Image.network(qrSource, fit: BoxFit.cover, errorBuilder: (_, __, ___) => fallback);
+    }
+    try {
+      final raw = qrSource.startsWith('data:image')
+          ? qrSource.split(',').last
+          : qrSource;
+      final bytes = base64Decode(raw);
+      return Image.memory(bytes, fit: BoxFit.cover, errorBuilder: (_, __, ___) => fallback);
+    } catch (_) {
+      return fallback;
+    }
   }
 
   Widget _buildRealisticChip() {
