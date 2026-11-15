@@ -1159,5 +1159,31 @@
     "whats_new": "What's New",
     "check_updates_tooltip": "Check for updates & release info",
     "fallback_changelog": "Bug fixes and stability improvements."
+  },
+  "feed_comments": {
+    "title": "Comments",
+    "empty_title": "No comments yet.",
+    "empty_subtitle": "Be the first to share your thoughts!",
+    "badge_owner": "Store Owner",
+    "badge_creator": "Creator",
+    "badge_you": "You",
+    "liked_by_owner": "❤️ Liked by Owner",
+    "pinned_badge": "📌 Pinned by Owner",
+    "reply_btn": "Reply",
+    "delete_btn": "Delete",
+    "hide_replies": "Hide",
+    "view_replies": "View {} replies",
+    "replying_to": "Replying to ",
+    "reply_hint": "Reply to @{}...",
+    "add_comment_hint": "Add comment...",
+    "reply_as_owner_hint": "Reply as Owner ({})...",
+    "comment_sent": "Comment posted!",
+    "reply_sent": "Reply posted!",
+    "comment_deleted": "Comment deleted",
+    "reply_deleted": "Reply deleted",
+    "just_now": "Just now",
+    "default_customer": "Ngam Customer",
+    "audio_muted": "Audio Muted",
+    "audio_unmuted": "Audio Unmuted"
   }
 }

@@ -1159,5 +1159,31 @@
     "whats_new": "Apa yang Baharu",
     "check_updates_tooltip": "Semak kemas kini & info versi terkini",
     "fallback_changelog": "Pembaikan pepijat dan peningkatan kestabilan."
+  },
+  "feed_comments": {
+    "title": "Komen",
+    "empty_title": "Belum ada komen lagi.",
+    "empty_subtitle": "Jadilah yang pertama berkongsi pandangan!",
+    "badge_owner": "Pemilik Kedai",
+    "badge_creator": "Pencipta",
+    "badge_you": "Anda",
+    "liked_by_owner": "❤️ Disukai oleh Pemilik",
+    "pinned_badge": "📌 Disemat oleh Pemilik",
+    "reply_btn": "Balas",
+    "delete_btn": "Padam",
+    "hide_replies": "Sembunyikan",
+    "view_replies": "Lihat {} balasan",
+    "replying_to": "Membalas kepada ",
+    "reply_hint": "Balas kepada @{}...",
+    "add_comment_hint": "Tambah komen...",
+    "reply_as_owner_hint": "Balas sebagai Pemilik ({})...",
+    "comment_sent": "Komen berjaya dihantar!",
+    "reply_sent": "Balasan dihantar!",
+    "comment_deleted": "Komen telah dipadam",
+    "reply_deleted": "Balasan telah dipadam",
+    "just_now": "Baru saja",
+    "default_customer": "Pelanggan Ngam",
+    "audio_muted": "Audio Dimatikan",
+    "audio_unmuted": "Audio Dihidupkan"
   }
 }

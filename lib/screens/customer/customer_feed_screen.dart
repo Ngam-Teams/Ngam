@@ -5,6 +5,7 @@ import '../../models/user_data.dart';
 import 'package:ngam/l10n/generated/app_localizations.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -452,6 +453,10 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
   Future<void> _fetchLivePosts() async {
     setState(() => _isLoading = true);
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final Set<String> likedPostIds =
+          (prefs.getStringList('ngam_liked_feed_posts') ?? const <String>[]).toSet();
+
       final res = await Supabase.instance.client
           .from('feed_posts')
           .select('''
@@ -474,6 +479,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             created_at,
             businesses (
               id,
+              owner_user_id,
               business_name,
               business_handle,
               business_logo_url,
@@ -496,6 +502,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
               : <String, dynamic>{};
 
           final shopName = biz['business_name']?.toString() ?? 'Kedai Ngam';
+          final ownerUserId = biz['owner_user_id']?.toString() ?? '';
           final handleRaw = biz['business_handle']?.toString();
           final shopHandle = (handleRaw != null && handleRaw.trim().isNotEmpty)
               ? (handleRaw.trim().startsWith('@')
@@ -529,7 +536,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           final diff = DateTime.now().difference(createdAt);
           String timeAgo;
           if (diff.isNegative || diff.inSeconds < 60) {
-            timeAgo = 'Baru saja';
+            timeAgo = 'feed_comments.just_now'.tr();
           } else if (diff.inMinutes < 60) {
             final m = diff.inMinutes;
             timeAgo = '$m min lepas';
@@ -556,10 +563,14 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           final ctaText = row['cta_text']?.toString() ?? 'AMBIL GILIRAN';
           final serviceTag =
               row['service_tag']?.toString() ?? 'Servis Pantas Ngam';
+          final postIdStr = row['id'].toString();
+          final isPostLiked = likedPostIds.contains(postIdStr);
+          final dbLikes = (row['likes_count'] as num?)?.toInt() ?? 0;
 
           loaded.add({
-            'id': row['id'].toString(),
+            'id': postIdStr,
             'businessId': row['business_id']?.toString(),
+            'ownerUserId': ownerUserId,
             'shopName': shopName,
             'shopHandle': shopHandle,
             'shopAvatar': shopAvatar,
@@ -581,14 +592,16 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             'serviceTag': serviceTag,
             'ctaType': ctaType,
             'ctaText': ctaText,
-            'likes': (row['likes_count'] as num?)?.toInt() ?? 0,
-            'isLiked': false,
-            'isSaved': SavedService.isPostSaved(row['id']?.toString()),
+            'views': (row['views_count'] as num?)?.toInt() ?? 0,
+            'likes': isPostLiked && dbLikes == 0 ? 1 : dbLikes,
+            'isLiked': isPostLiked,
+            'isSaved': SavedService.isPostSaved(postIdStr),
             'isFollowed': false,
             'comments': (row['comments_count'] as num?)?.toInt() ?? 0,
             'commentList': <Map<String, dynamic>>[],
             'shopData': {
               'id': biz['id'] ?? row['business_id'],
+              'owner_user_id': ownerUserId,
               'name': shopName,
               'business_name': shopName,
               'business_handle': shopHandle,
@@ -616,6 +629,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             }
           });
           _preloadNearbyVideos(_currentPage);
+          _recordPostView(_currentPage);
         }
         return;
       }
@@ -634,6 +648,23 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         _isLoading = false;
       });
       _preloadNearbyVideos(_currentPage);
+    }
+  }
+
+  static final Set<String> _viewedPostIdsInSession = {};
+
+  void _recordPostView(int index) {
+    if (index < 0 || index >= _posts.length) return;
+    final post = _posts[index];
+    final postId = post['id']?.toString() ?? '';
+    if (postId.length > 20 && !_viewedPostIdsInSession.contains(postId)) {
+      _viewedPostIdsInSession.add(postId);
+      post['views'] = ((post['views'] as num?)?.toInt() ?? 0) + 1;
+      Supabase.instance.client.rpc('increment_feed_post_views', params: {
+        'p_post_id': postId,
+      }).catchError((e) {
+        debugPrint('[CustomerFeedScreen] View count RPC failed: $e');
+      });
     }
   }
 
@@ -686,12 +717,14 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           .where((id) => id.length > 20)
           .toList();
 
+      bool fetchedDbCounts = false;
       if (livePostIds.isNotEmpty) {
         try {
           final rows = await Supabase.instance.client
               .from('feed_comments')
               .select('id, post_id')
               .inFilter('post_id', livePostIds);
+          fetchedDbCounts = true;
           for (final r in rows) {
             final pid = r['post_id']?.toString() ?? '';
             if (pid.isNotEmpty) {
@@ -704,6 +737,14 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       for (final post in postsList) {
         final String postId = post['id']?.toString() ?? '';
         if (postId.isEmpty) continue;
+
+        if (postId.length > 20 && fetchedDbCounts) {
+          final int liveDbRowsCount = dbCommentCounts[postId] ?? 0;
+          post['comments'] = liveDbRowsCount;
+          await prefs.setInt('ngam_feed_comments_base_$postId', 0);
+          await prefs.setInt('ngam_feed_comments_total_$postId', liveDbRowsCount);
+          continue;
+        }
 
         final int initialMetaCount = (post['comments'] as num?)?.toInt() ?? 0;
         final int liveDbRowsCount = dbCommentCounts[postId] ?? 0;
@@ -773,6 +814,19 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     });
   }
 
+  Future<void> _persistPostLikeState(String postId, bool isLiked) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = (prefs.getStringList('ngam_liked_feed_posts') ?? <String>[]).toSet();
+      if (isLiked) {
+        list.add(postId);
+      } else {
+        list.remove(postId);
+      }
+      await prefs.setStringList('ngam_liked_feed_posts', list.toList());
+    } catch (_) {}
+  }
+
   // Double-tap handler for heart animation
   void _handleDoubleTap(Offset position, Map<String, dynamic> post) {
     final bool wasLiked = post['isLiked'] == true;
@@ -796,32 +850,39 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
 
     if (!wasLiked) {
       final postId = post['id']?.toString();
-      if (postId != null && postId.length > 20) {
-        Supabase.instance.client.rpc('toggle_feed_post_like', params: {
-          'p_post_id': postId,
-          'p_increment': true,
-        }).catchError((e) {
-          debugPrint('[CustomerFeedScreen] Double-tap like RPC failed: $e');
-        });
+      if (postId != null && postId.isNotEmpty) {
+        _persistPostLikeState(postId, true);
+        if (postId.length > 20) {
+          Supabase.instance.client.rpc('toggle_feed_post_like', params: {
+            'p_post_id': postId,
+            'p_increment': true,
+          }).catchError((e) {
+            debugPrint('[CustomerFeedScreen] Double-tap like RPC failed: $e');
+          });
+        }
       }
     }
   }
 
   void _toggleLike(Map<String, dynamic> post) {
+    final bool wasLiked = post['isLiked'] == true;
+    final bool nowLiked = !wasLiked;
     setState(() {
-      final isLiked = post['isLiked'] as bool;
-      post['isLiked'] = !isLiked;
-      post['likes'] = (post['likes'] as int) + (isLiked ? -1 : 1);
+      post['isLiked'] = nowLiked;
+      post['likes'] = math.max(0, (post['likes'] as int) + (nowLiked ? 1 : -1));
     });
 
     final postId = post['id']?.toString();
-    if (postId != null && postId.length > 20) {
-      Supabase.instance.client.rpc('toggle_feed_post_like', params: {
-        'p_post_id': postId,
-        'p_increment': post['isLiked'] == true,
-      }).catchError((e) {
-        debugPrint('[CustomerFeedScreen] Like RPC failed: $e');
-      });
+    if (postId != null && postId.isNotEmpty) {
+      _persistPostLikeState(postId, nowLiked);
+      if (postId.length > 20) {
+        Supabase.instance.client.rpc('toggle_feed_post_like', params: {
+          'p_post_id': postId,
+          'p_increment': nowLiked,
+        }).catchError((e) {
+          debugPrint('[CustomerFeedScreen] Like RPC failed: $e');
+        });
+      }
     }
   }
 
@@ -835,17 +896,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       }
     });
     _preloadNearbyVideos(index);
-    if (index >= 0 && index < _posts.length) {
-      final post = _posts[index];
-      final postId = post['id']?.toString();
-      if (postId != null && postId.length > 20) {
-        Supabase.instance.client.rpc('increment_feed_post_views', params: {
-          'p_post_id': postId,
-        }).catchError((e) {
-          debugPrint('[CustomerFeedScreen] View count RPC failed: $e');
-        });
-      }
-    }
+    _recordPostView(index);
   }
 
   void _toggleMute() {
@@ -855,7 +906,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     });
     showGlassToast(
       context,
-      _isMuted ? 'Audio Dimatikan' : 'Audio Dihidupkan',
+      _isMuted ? 'feed_comments.audio_muted'.tr() : 'feed_comments.audio_unmuted'.tr(),
       icon: _isMuted
           ? HugeIcons.strokeRoundedVolumeOff
           : HugeIcons.strokeRoundedVolumeHigh,
@@ -2392,20 +2443,50 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
   late final ScrollController _scrollController;
   final List<Map<String, dynamic>> _comments = [];
   final Set<String> _expandedCommentIds = {};
+  final Set<String> _likedCommentIds = {};
 
   bool _isLoading = false;
   bool _isSubmitting = false;
   String? _loadedPostId;
   int _baseCommentOffset = 0;
+  Timer? _livePollTimer;
 
   // Reply state (TikTok / Instagram Reels nested thread target)
   String? _replyingToCommentId;
   String? _replyingToUser;
   bool _hasInputText = false;
 
+  // Cached current user Ngam App profile from public.users (never raw Google OAuth fallback if Ngam profile exists)
+  String _resolvedAppUserName = '';
+  String _resolvedAppUserAvatar = '';
+
+  static const List<String> _quickEmojis = [
+    '🔥',
+    '😍',
+    '👏',
+    '❤️',
+    '😂',
+    '👍',
+    '✨',
+    '🙌',
+  ];
+
   int get _totalCommentCount =>
       _baseCommentOffset +
       _CustomerFeedScreenState.countAllCommentsAndReplies(_comments);
+
+  bool get _isCurrentUserStoreOwner {
+    final myUid = Supabase.instance.client.auth.currentUser?.id;
+    final ownerUid = widget.post['ownerUserId']?.toString() ??
+        (widget.post['shopData'] is Map
+            ? widget.post['shopData']['owner_user_id']?.toString()
+            : null) ??
+        '';
+    if (myUid != null && myUid.isNotEmpty && ownerUid.isNotEmpty && myUid == ownerUid) {
+      return true;
+    }
+    return false;
+  }
 
   @override
   void initState() {
@@ -2421,17 +2502,28 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
       }
     });
 
-    // Muat komen secara segerak (synchronous) dari memori sedia ada supaya terbuka serta-merta tanpa loading
     final rawList = widget.post['commentList'] as List?;
     if (rawList != null && rawList.isNotEmpty) {
       _comments.addAll(_normalizeCommentsList(rawList));
     }
+    final String postId = widget.post['id']?.toString() ?? '';
     final int currentListItems =
         _CustomerFeedScreenState.countAllCommentsAndReplies(_comments);
     final int postMetaComments = (widget.post['comments'] as num?)?.toInt() ?? 0;
-    _baseCommentOffset = math.max(0, postMetaComments - currentListItems);
+    _baseCommentOffset = postId.length > 20
+        ? 0
+        : math.max(0, postMetaComments - currentListItems);
 
+    _hydrateCurrentUserAppProfile();
     _initAndFetchComments();
+
+    // Poll live comments every 8 seconds while sheet is open so comments/replies from other devices appear live
+    _livePollTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      final pid = _loadedPostId;
+      if (mounted && pid != null && pid.length > 20 && !_isSubmitting) {
+        _fetchLiveComments(pid, silent: true);
+      }
+    });
   }
 
   @override
@@ -2441,16 +2533,114 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
       _replyingToCommentId = null;
       _replyingToUser = null;
       _commentController.clear();
+      _hydrateCurrentUserAppProfile();
       _initAndFetchComments();
     }
   }
 
   @override
   void dispose() {
+    _livePollTimer?.cancel();
     _commentController.dispose();
     _commentFocusNode.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  /// Pastikan profil komen sentiasa menggunakan profil sebenar Ngam App (`public.users`),
+  /// BUKAN nama/gambar Google OAuth mentah.
+  Future<void> _hydrateCurrentUserAppProfile() async {
+    try {
+      final authProvider = context.read<AuthProvider>();
+      final appUser = authProvider.user;
+      if (appUser != null) {
+        if (appUser.userName.trim().isNotEmpty) {
+          _resolvedAppUserName = appUser.userName.trim();
+          UserData.userName.value = _resolvedAppUserName;
+        }
+        if ((appUser.userAvatarUrl ?? '').trim().isNotEmpty) {
+          _resolvedAppUserAvatar = appUser.userAvatarUrl!.trim();
+          UserData.userProfilePic.value = _resolvedAppUserAvatar;
+        }
+      }
+    } catch (_) {}
+
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    if (currentUser != null) {
+      try {
+        final row = await Supabase.instance.client
+            .from('users')
+            .select('user_name, user_avatar_url')
+            .eq('id', currentUser.id)
+            .maybeSingle();
+        if (row != null && mounted) {
+          final dbName = row['user_name']?.toString().trim() ?? '';
+          final dbAvatar = row['user_avatar_url']?.toString().trim() ?? '';
+          setState(() {
+            if (dbName.isNotEmpty) {
+              _resolvedAppUserName = dbName;
+              UserData.userName.value = dbName;
+            }
+            // Gunakan user_avatar_url dari jadual public.users (walaupun kosong jika pengguna tiada gambar profil Ngam)
+            _resolvedAppUserAvatar = dbAvatar;
+            UserData.userProfilePic.value = dbAvatar;
+          });
+        }
+      } catch (_) {}
+    }
+  }
+
+  ({String name, String avatar, bool isOwner}) _getActiveCommenterIdentity() {
+    final String shopName = widget.post['shopName']?.toString() ?? '';
+    final String shopAvatar = widget.post['shopAvatar']?.toString() ?? '';
+    final bool isOwner = _isCurrentUserStoreOwner;
+
+    String name = _resolvedAppUserName.trim();
+    if (name.isEmpty) {
+      try {
+        final authUser = context.read<AuthProvider>().user;
+        if (authUser != null && authUser.userName.trim().isNotEmpty) {
+          name = authUser.userName.trim();
+        }
+      } catch (_) {}
+    }
+    if (name.isEmpty && UserData.userName.value.trim().isNotEmpty) {
+      name = UserData.userName.value.trim();
+    }
+    if (name.isEmpty) {
+      final currentUser = Supabase.instance.client.auth.currentUser;
+      name = (currentUser?.userMetadata?['display_name'] as String?)?.trim() ??
+          (currentUser?.userMetadata?['user_name'] as String?)?.trim() ??
+          (currentUser?.email?.split('@').first) ??
+          'feed_comments.default_customer'.tr();
+    }
+
+    String avatar = _resolvedAppUserAvatar.trim();
+    if (avatar.isEmpty) {
+      try {
+        final authUser = context.read<AuthProvider>().user;
+        if (authUser != null && (authUser.userAvatarUrl ?? '').trim().isNotEmpty) {
+          avatar = authUser.userAvatarUrl!.trim();
+        }
+      } catch (_) {}
+    }
+    if (avatar.isEmpty && UserData.userProfilePic.value.trim().isNotEmpty) {
+      avatar = UserData.userProfilePic.value.trim();
+    }
+
+    // Jika pemilik kedai membalas dan tiada avatar peribadi, gunakan logo kedai
+    if (isOwner && avatar.isEmpty && shopAvatar.isNotEmpty) {
+      avatar = shopAvatar;
+    }
+
+    final bool matchesShop = shopName.isNotEmpty &&
+        name.toLowerCase().trim() == shopName.toLowerCase().trim();
+
+    return (
+      name: name,
+      avatar: avatar,
+      isOwner: isOwner || matchesShop,
+    );
   }
 
   String _storageKey(String postId) => 'ngam_feed_comments_$postId';
@@ -2517,6 +2707,10 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     SharedPreferences? prefs;
     try {
       prefs = await SharedPreferences.getInstance();
+      final savedLikes = prefs.getStringList('ngam_liked_feed_comments') ?? const <String>[];
+      _likedCommentIds
+        ..clear()
+        ..addAll(savedLikes);
     } catch (_) {}
 
     // 1. Load cached comments from SharedPreferences if present
@@ -2542,33 +2736,35 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
       }
     }
 
-    // 3. Determine base comment offset so adding a comment ALWAYS increments by +1
-    final int currentListItems =
-        _CustomerFeedScreenState.countAllCommentsAndReplies(_comments);
-    final int postMetaComments = (widget.post['comments'] as num?)?.toInt() ?? 0;
-
-    if (prefs != null && prefs.containsKey(_baseKey(postId))) {
-      _baseCommentOffset = prefs.getInt(_baseKey(postId)) ?? 0;
+    // 3. For live Supabase posts, base offset is 0 so count matches DB 1:1
+    if (postId.length > 20) {
+      _baseCommentOffset = 0;
     } else {
-      _baseCommentOffset = math.max(0, postMetaComments - currentListItems);
-      prefs?.setInt(_baseKey(postId), _baseCommentOffset);
+      final int currentListItems =
+          _CustomerFeedScreenState.countAllCommentsAndReplies(_comments);
+      final int postMetaComments = (widget.post['comments'] as num?)?.toInt() ?? 0;
+      if (prefs != null && prefs.containsKey(_baseKey(postId))) {
+        _baseCommentOffset = prefs.getInt(_baseKey(postId)) ?? 0;
+      } else {
+        _baseCommentOffset = math.max(0, postMetaComments - currentListItems);
+        prefs?.setInt(_baseKey(postId), _baseCommentOffset);
+      }
     }
 
     if (mounted) {
       setState(() {});
-      // Sync count immediately so feed badge matches
       widget.post['comments'] = _totalCommentCount;
       widget.onCommentCountChanged?.call(_totalCommentCount, _comments);
     }
 
-    // 4. For real backend posts (UUID > 20 chars), sync live from Supabase in background
+    // 4. For real backend posts (UUID > 20 chars), sync live from Supabase
     if (postId.length > 20) {
       _fetchLiveComments(postId);
     }
   }
 
   String _formatTimeAgo(String rawDate) {
-    if (rawDate.isEmpty) return 'Baru saja';
+    if (rawDate.isEmpty) return 'feed_comments.just_now'.tr();
     DateTime dt;
     if (!rawDate.endsWith('Z') && !rawDate.contains('+') && rawDate.contains('T')) {
       dt = DateTime.tryParse('${rawDate}Z')?.toLocal() ?? DateTime.now();
@@ -2577,7 +2773,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     }
     final diff = DateTime.now().difference(dt);
     if (diff.isNegative || diff.inSeconds < 60) {
-      return 'Baru saja';
+      return 'feed_comments.just_now'.tr();
     } else if (diff.inMinutes < 60) {
       return '${diff.inMinutes}m';
     } else if (diff.inHours < 24) {
@@ -2589,9 +2785,9 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     }
   }
 
-  Future<void> _fetchLiveComments(String postId) async {
-    if (_isLoading) return;
-    if (_comments.isEmpty) {
+  Future<void> _fetchLiveComments(String postId, {bool silent = false}) async {
+    if (_isLoading && !silent) return;
+    if (_comments.isEmpty && !silent) {
       setState(() => _isLoading = true);
     }
     try {
@@ -2600,127 +2796,209 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
           .select()
           .eq('post_id', postId)
           .order('created_at', ascending: true)
-          .limit(100);
+          .limit(200);
 
       if (!mounted || _loadedPostId != postId) return;
 
-      if (dbRes.isNotEmpty) {
-        final myUid = Supabase.instance.client.auth.currentUser?.id;
-        final String shopName = widget.post['shopName']?.toString() ?? '';
+      final myUid = Supabase.instance.client.auth.currentUser?.id;
+      final String shopName = widget.post['shopName']?.toString() ?? '';
+      final String shopAvatar = widget.post['shopAvatar']?.toString() ?? '';
+      final String ownerUserId = widget.post['ownerUserId']?.toString() ??
+          (widget.post['shopData'] is Map
+              ? widget.post['shopData']['owner_user_id']?.toString()
+              : null) ??
+          '';
 
-        // Parse top-level comments and encoded replies [[REPLY:parentId|replyToUser]]
-        final List<Map<String, dynamic>> topLevelDb = [];
-        final Map<String, List<Map<String, dynamic>>> repliesByParent = {};
+      // Batch-fetch profil sebenar Ngam (`public.users`) untuk semua user_id komen
+      // supaya semua peranti melihat nama & gambar profil Ngam terkini (bukan Google profile).
+      final Set<String> userIds = {};
+      for (final row in dbRes) {
+        final uid = row['user_id']?.toString() ?? '';
+        if (uid.length > 20) {
+          userIds.add(uid);
+        }
+      }
 
-        final replyRegex = RegExp(r'^\[\[REPLY:([^|]+)\|([^\]]*)\]\]\s*(.*)$', dotAll: true);
+      final Map<String, Map<String, String>> appProfilesByUid = {};
+      if (userIds.isNotEmpty) {
+        try {
+          final usersRows = await Supabase.instance.client
+              .from('users')
+              .select('id, user_name, user_avatar_url')
+              .inFilter('id', userIds.toList());
+          for (final u in usersRows) {
+            final uid = u['id']?.toString() ?? '';
+            if (uid.isNotEmpty) {
+              appProfilesByUid[uid] = {
+                'name': u['user_name']?.toString().trim() ?? '',
+                'avatar': u['user_avatar_url']?.toString().trim() ?? '',
+              };
+            }
+          }
+        } catch (e) {
+          debugPrint('[FeedCommentsView] Users profile hydration note: $e');
+        }
+      }
 
-        for (final row in dbRes) {
-          final String rowId = row['id']?.toString() ?? 'db_${DateTime.now().microsecondsSinceEpoch}';
-          final String rawText = row['comment_text']?.toString() ?? '';
-          final String userName = row['user_name']?.toString() ?? 'Pelanggan Ngam';
-          final String userAvatar = row['user_avatar']?.toString() ?? '';
-          final String timeAgo = _formatTimeAgo(row['created_at']?.toString() ?? '');
-          final int likes = (row['likes_count'] as num?)?.toInt() ?? 0;
-          final bool isMine = myUid != null && row['user_id'] == myUid;
-          final bool isCreator = shopName.isNotEmpty &&
-              userName.toLowerCase().trim() == shopName.toLowerCase().trim();
+      final List<Map<String, dynamic>> topLevelDb = [];
+      final Map<String, List<Map<String, dynamic>>> repliesByParent = {};
 
-          final match = replyRegex.firstMatch(rawText);
-          if (match != null) {
-            final String parentId = match.group(1)!.trim();
-            final String replyToUser = match.group(2)!.trim();
-            final String cleanText = match.group(3)!.trim();
-            repliesByParent.putIfAbsent(parentId, () => []).add({
-              'id': rowId,
-              'parentId': parentId,
-              'user': userName,
-              'replyToUser': replyToUser,
-              'avatar': userAvatar,
-              'text': cleanText,
-              'time': timeAgo,
-              'likes': likes,
-              'isLiked': false,
-              'isMyComment': isMine,
-              'isCreator': isCreator,
-            });
-          } else {
+      // Regex menyokong [[REPLY:parentId|replyToUser]] dan [[REPLY:parentId|replyToUser|OWNER]] serta [[OWNER]]
+      final replyRegex = RegExp(
+        r'^\[\[REPLY:([^|\]]+)\|([^|\]]*)(?:\|([^\]]*))?\]\]\s*(.*)$',
+        dotAll: true,
+      );
+
+      for (final row in dbRes) {
+        final String rowId =
+            row['id']?.toString() ?? 'db_${DateTime.now().microsecondsSinceEpoch}';
+        final String rowUserId = row['user_id']?.toString() ?? '';
+        String rawText = row['comment_text']?.toString() ?? '';
+
+        bool hasOwnerTagInText = false;
+        if (rawText.startsWith('[[OWNER]]')) {
+          hasOwnerTagInText = true;
+          rawText = rawText.replaceFirst(RegExp(r'^\[\[OWNER\]\]\s*'), '');
+        }
+
+        final match = replyRegex.firstMatch(rawText);
+        if (match != null && (match.group(3)?.toUpperCase().contains('OWNER') ?? false)) {
+          hasOwnerTagInText = true;
+        }
+
+        String userName = row['user_name']?.toString().trim() ?? '';
+        String userAvatar = row['user_avatar']?.toString().trim() ?? '';
+
+        final bool isRowByOwnerId =
+            ownerUserId.isNotEmpty && rowUserId.isNotEmpty && rowUserId == ownerUserId;
+        final bool isRowMatchingShopName = shopName.isNotEmpty &&
+            userName.toLowerCase().trim() == shopName.toLowerCase().trim();
+        final bool isCreator =
+            hasOwnerTagInText || isRowByOwnerId || isRowMatchingShopName;
+
+        // Jika bukan balasan rasmi jenama kedai yang menggunakan nama kedai, gunakan profil Ngam dari public.users
+        if (rowUserId.isNotEmpty && appProfilesByUid.containsKey(rowUserId)) {
+          final appProf = appProfilesByUid[rowUserId]!;
+          if (!isRowMatchingShopName && (appProf['name'] ?? '').isNotEmpty) {
+            userName = appProf['name']!;
+          }
+          // Sentiasa utamakan avatar dari public.users (supaya tidak guna gambar Google OAuth lama)
+          if (!isRowMatchingShopName) {
+            userAvatar = appProf['avatar'] ?? '';
+          }
+        }
+
+        if (userName.isEmpty) {
+          userName = 'feed_comments.default_customer'.tr();
+        }
+        if (isCreator && userAvatar.isEmpty && shopAvatar.isNotEmpty) {
+          userAvatar = shopAvatar;
+        }
+
+        final String timeAgo = _formatTimeAgo(row['created_at']?.toString() ?? '');
+        final int likes = (row['likes_count'] as num?)?.toInt() ?? 0;
+        final bool isMine = myUid != null && rowUserId == myUid;
+        final bool isLikedByMe = _likedCommentIds.contains(rowId);
+
+        if (match != null) {
+          final String parentId = match.group(1)!.trim();
+          final String replyToUser = match.group(2)!.trim();
+          String cleanText = match.group(4)!.trim();
+          if (cleanText.startsWith('[[OWNER]]')) {
+            cleanText = cleanText.replaceFirst(RegExp(r'^\[\[OWNER\]\]\s*'), '');
+          }
+          repliesByParent.putIfAbsent(parentId, () => []).add({
+            'id': rowId,
+            'parentId': parentId,
+            'userId': rowUserId,
+            'user': userName,
+            'replyToUser': replyToUser,
+            'avatar': userAvatar,
+            'text': cleanText,
+            'time': timeAgo,
+            'likes': isLikedByMe && likes == 0 ? 1 : likes,
+            'isLiked': isLikedByMe,
+            'isMyComment': isMine,
+            'isCreator': isCreator,
+          });
+        } else {
+          topLevelDb.add({
+            'id': rowId,
+            'userId': rowUserId,
+            'user': userName,
+            'avatar': userAvatar,
+            'text': rawText,
+            'time': timeAgo,
+            'likes': isLikedByMe && likes == 0 ? 1 : likes,
+            'isLiked': isLikedByMe,
+            'isMyComment': isMine,
+            'isCreator': isCreator,
+            'likedByOwner': false,
+            'replies': <Map<String, dynamic>>[],
+          });
+        }
+      }
+
+      // Attach DB replies to their parent comments (and mark if Owner replied!)
+      for (final c in topLevelDb) {
+        final cid = c['id'].toString();
+        if (repliesByParent.containsKey(cid)) {
+          final rList = repliesByParent[cid]!;
+          c['replies'] = rList;
+          _expandedCommentIds.add(cid);
+        } else {
+          // Fallback: if a reply's parentId wasn't found (e.g. legacy cm_ id), attach to most recent comment or show as top-level
+        }
+      }
+
+      // Handle any orphan replies whose parentId wasn't matched so no comment is ever invisible
+      final matchedParentIds = topLevelDb.map((c) => c['id'].toString()).toSet();
+      for (final entry in repliesByParent.entries) {
+        if (!matchedParentIds.contains(entry.key)) {
+          for (final orphan in entry.value) {
             topLevelDb.add({
-              'id': rowId,
-              'user': userName,
-              'avatar': userAvatar,
-              'text': rawText,
-              'time': timeAgo,
-              'likes': likes,
-              'isLiked': false,
-              'isMyComment': isMine,
-              'isCreator': isCreator,
+              ...orphan,
               'replies': <Map<String, dynamic>>[],
             });
           }
         }
-
-        // Attach DB replies to their parent comments
-        for (final c in topLevelDb) {
-          final cid = c['id'].toString();
-          if (repliesByParent.containsKey(cid)) {
-            c['replies'] = repliesByParent[cid]!;
-            _expandedCommentIds.add(cid);
-          }
-        }
-
-        // Newest top-level comments first, while keeping replies chronological
-        final List<Map<String, dynamic>> orderedTopLevel = topLevelDb.reversed.toList();
-
-        // Merge any local-only comments/replies from _comments that aren't in DB yet
-        for (final localC in _comments) {
-          final String localId = localC['id']?.toString() ?? '';
-          final String localText = localC['text']?.toString() ?? '';
-          final String localUser = localC['user']?.toString() ?? '';
-
-          final existingIdx = orderedTopLevel.indexWhere((dbC) =>
-              dbC['id'] == localId ||
-              (dbC['text'] == localText && dbC['user'] == localUser));
-
-          if (existingIdx == -1) {
-            orderedTopLevel.insert(0, localC);
-          } else {
-            // Merge any local-only replies under this comment
-            final List<Map<String, dynamic>> dbReplies =
-                List<Map<String, dynamic>>.from(orderedTopLevel[existingIdx]['replies'] as List? ?? []);
-            final List localReplies = localC['replies'] as List? ?? [];
-            for (final lr in localReplies) {
-              if (lr is Map) {
-                final lrMap = Map<String, dynamic>.from(lr);
-                final bool existsInDb = dbReplies.any((dr) =>
-                    dr['id'] == lrMap['id'] ||
-                    (dr['text'] == lrMap['text'] && dr['user'] == lrMap['user']));
-                if (!existsInDb) {
-                  dbReplies.add(lrMap);
-                }
-              }
-            }
-            orderedTopLevel[existingIdx]['replies'] = dbReplies;
-            if (dbReplies.isNotEmpty) {
-              _expandedCommentIds.add(orderedTopLevel[existingIdx]['id'].toString());
-            }
-          }
-        }
-
-        setState(() {
-          _comments
-            ..clear()
-            ..addAll(orderedTopLevel);
-          _isLoading = false;
-        });
-
-        await _persistAndNotifyCount(postId);
-      } else {
-        if (mounted) setState(() => _isLoading = false);
       }
+
+      // Newest top-level comments first (with Owner comments prioritized or chronological)
+      final List<Map<String, dynamic>> orderedTopLevel = topLevelDb.reversed.toList();
+
+      setState(() {
+        _baseCommentOffset = 0;
+        _comments
+          ..clear()
+          ..addAll(orderedTopLevel);
+        _isLoading = false;
+      });
+
+      await _persistAndNotifyCount(postId);
     } catch (e) {
       debugPrint('[FeedCommentsView] Supabase fetch fallback to local cache: $e');
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _insertQuickEmoji(String emoji) {
+    HapticFeedback.selectionClick();
+    final text = _commentController.text;
+    final selection = _commentController.selection;
+    final newText = selection.isValid && selection.start >= 0
+        ? text.replaceRange(selection.start, selection.end, emoji)
+        : '$text$emoji';
+    _commentController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(
+        offset: (selection.isValid && selection.start >= 0
+                ? selection.start
+                : text.length) +
+            emoji.length,
+      ),
+    );
+    _commentFocusNode.requestFocus();
   }
 
   void _handleSendComment() async {
@@ -2731,43 +3009,34 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     HapticFeedback.lightImpact();
 
     final currentUser = Supabase.instance.client.auth.currentUser;
-    String userName = UserData.userName.value.trim();
-    if (userName.isEmpty) {
-      userName = (currentUser?.userMetadata?['full_name'] as String?) ??
-          (currentUser?.userMetadata?['name'] as String?) ??
-          (currentUser?.email?.split('@').first) ??
-          'Pelanggan Ngam';
-    }
-    String userAvatar = UserData.userProfilePic.value.trim();
-    if (userAvatar.isEmpty) {
-      userAvatar = (currentUser?.userMetadata?['avatar_url'] as String?) ?? '';
-    }
+    final identity = _getActiveCommenterIdentity();
+    final String userName = identity.name;
+    final String userAvatar = identity.avatar;
+    final bool isCreator = identity.isOwner;
 
     final String postId = widget.post['id']?.toString() ?? '';
-    final String shopName = widget.post['shopName']?.toString() ?? '';
-    final bool isCreator = shopName.isNotEmpty &&
-        userName.toLowerCase().trim() == shopName.toLowerCase().trim();
-
     final String? targetParentId = _replyingToCommentId;
     final String? targetReplyUser = _replyingToUser;
     final bool isReply = targetParentId != null && targetParentId.isNotEmpty;
 
-    String dbCommentPayloadText = text;
+    String dbCommentPayloadText = isCreator ? '[[OWNER]] $text' : text;
+    final String tempId = isReply
+        ? 'rp_${DateTime.now().millisecondsSinceEpoch}'
+        : 'cm_${DateTime.now().millisecondsSinceEpoch}';
 
     if (isReply) {
-      // Cari komen utama (parent comment) dan masukkan balasan terus di bawahnya (gaya TikTok / Reels)
       final int parentIdx =
           _comments.indexWhere((c) => c['id']?.toString() == targetParentId);
 
-      final String replyId = 'rp_${DateTime.now().millisecondsSinceEpoch}';
       final Map<String, dynamic> newReply = {
-        'id': replyId,
+        'id': tempId,
         'parentId': targetParentId,
+        'userId': currentUser?.id ?? '',
         'user': userName,
         'replyToUser': targetReplyUser ?? '',
         'avatar': userAvatar,
         'text': text,
-        'time': 'Baru saja',
+        'time': 'feed_comments.just_now'.tr(),
         'likes': 0,
         'isLiked': false,
         'isMyComment': true,
@@ -2778,12 +3047,12 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
       setState(() {
         if (parentIdx != -1) {
           final List<Map<String, dynamic>> currentReplies =
-              List<Map<String, dynamic>>.from(_comments[parentIdx]['replies'] as List? ?? []);
+              List<Map<String, dynamic>>.from(
+                  _comments[parentIdx]['replies'] as List? ?? []);
           currentReplies.add(newReply);
           _comments[parentIdx]['replies'] = currentReplies;
           _expandedCommentIds.add(targetParentId);
         } else {
-          // Fallback jika komen induk tidak dijumpai
           _comments.insert(0, {
             ...newReply,
             'replies': <Map<String, dynamic>>[],
@@ -2793,15 +3062,17 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
         _replyingToUser = null;
       });
 
-      dbCommentPayloadText = '[[REPLY:$targetParentId|${targetReplyUser ?? ""}]] $text';
+      final String ownerFlag = isCreator ? '|OWNER' : '';
+      dbCommentPayloadText =
+          '[[REPLY:$targetParentId|${targetReplyUser ?? ""}$ownerFlag]] $text';
     } else {
-      final String commentId = 'cm_${DateTime.now().millisecondsSinceEpoch}';
       final Map<String, dynamic> newEntry = {
-        'id': commentId,
+        'id': tempId,
+        'userId': currentUser?.id ?? '',
         'user': userName,
         'avatar': userAvatar,
         'text': text,
-        'time': 'Baru saja',
+        'time': 'feed_comments.just_now'.tr(),
         'likes': 0,
         'isLiked': false,
         'isMyComment': true,
@@ -2816,7 +3087,6 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
         _replyingToUser = null;
       });
 
-      // Scroll ke atas untuk komen utama baharu
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           0.0,
@@ -2829,23 +3099,44 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     _commentController.clear();
     await _persistAndNotifyCount(postId);
 
-    // Cuba simpan ke Supabase jika pos sebenar
+    // Simpan ke Supabase dan kemas kini ID tempatan dengan UUID sebenar supaya balasan (reply) merentas semua peranti 100% tepat
     if (postId.length > 20) {
       try {
-        await Supabase.instance.client.from('feed_comments').insert({
-          'post_id': postId,
-          'user_id': currentUser?.id,
-          'user_name': userName,
-          'user_avatar': userAvatar,
-          'comment_text': dbCommentPayloadText,
-        });
+        final inserted = await Supabase.instance.client
+            .from('feed_comments')
+            .insert({
+              'post_id': postId,
+              'user_id': currentUser?.id,
+              'user_name': userName,
+              'user_avatar': userAvatar,
+              'comment_text': dbCommentPayloadText,
+            })
+            .select()
+            .single();
 
-        try {
-          await Supabase.instance.client
-              .from('feed_posts')
-              .update({'comments_count': _totalCommentCount})
-              .eq('id', postId);
-        } catch (_) {}
+        final String realUuid = inserted['id']?.toString() ?? '';
+        if (realUuid.isNotEmpty && mounted) {
+          setState(() {
+            if (!isReply) {
+              final idx = _comments.indexWhere((c) => c['id'] == tempId);
+              if (idx != -1) {
+                _comments[idx]['id'] = realUuid;
+              }
+            } else {
+              for (final c in _comments) {
+                final replies = c['replies'] as List?;
+                if (replies != null) {
+                  for (final r in replies) {
+                    if (r is Map && r['id'] == tempId) {
+                      r['id'] = realUuid;
+                    }
+                  }
+                }
+              }
+            }
+          });
+          await _persistAndNotifyCount(postId);
+        }
       } catch (err) {
         debugPrint('[FeedCommentsView] Supabase insert note (saved locally): $err');
       }
@@ -2855,7 +3146,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
       setState(() => _isSubmitting = false);
       showGlassToast(
         context,
-        isReply ? 'Balasan dihantar!' : 'Komen berjaya dihantar!',
+        isReply ? 'feed_comments.reply_sent'.tr() : 'feed_comments.comment_sent'.tr(),
         icon: HugeIcons.strokeRoundedCheckmarkCircle02,
       );
     }
@@ -2875,11 +3166,10 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
         !commentId.startsWith('demo_') &&
         postId.length > 20) {
       try {
-        await Supabase.instance.client.from('feed_comments').delete().eq('id', commentId);
         await Supabase.instance.client
-            .from('feed_posts')
-            .update({'comments_count': _totalCommentCount})
-            .eq('id', postId);
+            .from('feed_comments')
+            .delete()
+            .eq('id', commentId);
       } catch (e) {
         debugPrint('[FeedCommentsView] Supabase delete error: $e');
       }
@@ -2888,7 +3178,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     if (mounted) {
       showGlassToast(
         context,
-        'Komen telah dipadam',
+        'feed_comments.comment_deleted'.tr(),
         icon: HugeIcons.strokeRoundedDelete02,
       );
     }
@@ -2914,18 +3204,17 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
         !replyId.startsWith('demo_') &&
         postId.length > 20) {
       try {
-        await Supabase.instance.client.from('feed_comments').delete().eq('id', replyId);
         await Supabase.instance.client
-            .from('feed_posts')
-            .update({'comments_count': _totalCommentCount})
-            .eq('id', postId);
+            .from('feed_comments')
+            .delete()
+            .eq('id', replyId);
       } catch (_) {}
     }
 
     if (mounted) {
       showGlassToast(
         context,
-        'Balasan telah dipadam',
+        'feed_comments.reply_deleted'.tr(),
         icon: HugeIcons.strokeRoundedDelete02,
       );
     }
@@ -2944,17 +3233,49 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     _commentFocusNode.requestFocus();
   }
 
+  Future<void> _persistCommentLike(String commentId, bool nowLiked, int newLikes) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (nowLiked) {
+        _likedCommentIds.add(commentId);
+      } else {
+        _likedCommentIds.remove(commentId);
+      }
+      await prefs.setStringList('ngam_liked_feed_comments', _likedCommentIds.toList());
+    } catch (_) {}
+
+    if (commentId.length > 20 &&
+        !commentId.startsWith('cm_') &&
+        !commentId.startsWith('rp_')) {
+      try {
+        await Supabase.instance.client
+            .from('feed_comments')
+            .update({'likes_count': newLikes})
+            .eq('id', commentId);
+      } catch (_) {}
+    }
+  }
+
   void _toggleLikeComment(int index) async {
     HapticFeedback.lightImpact();
     final c = _comments[index];
+    final String cid = c['id']?.toString() ?? '';
     final bool isCommentLiked = c['isLiked'] == true;
     final int commentLikes = (c['likes'] as num?)?.toInt() ?? 0;
+    final bool nowLiked = !isCommentLiked;
+    final int newLikes = nowLiked ? commentLikes + 1 : math.max(0, commentLikes - 1);
 
     setState(() {
-      c['isLiked'] = !isCommentLiked;
-      c['likes'] = isCommentLiked ? math.max(0, commentLikes - 1) : commentLikes + 1;
+      c['isLiked'] = nowLiked;
+      c['likes'] = newLikes;
+      if (_isCurrentUserStoreOwner) {
+        c['likedByOwner'] = nowLiked;
+      }
     });
 
+    if (cid.isNotEmpty) {
+      await _persistCommentLike(cid, nowLiked, newLikes);
+    }
     final String postId = widget.post['id']?.toString() ?? '';
     await _persistAndNotifyCount(postId);
   }
@@ -2967,15 +3288,24 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     if (replyIndex < 0 || replyIndex >= replies.length) return;
 
     final r = replies[replyIndex];
+    final String rid = r['id']?.toString() ?? '';
     final bool isLiked = r['isLiked'] == true;
     final int likes = (r['likes'] as num?)?.toInt() ?? 0;
+    final bool nowLiked = !isLiked;
+    final int newLikes = nowLiked ? likes + 1 : math.max(0, likes - 1);
 
     setState(() {
-      r['isLiked'] = !isLiked;
-      r['likes'] = isLiked ? math.max(0, likes - 1) : likes + 1;
+      r['isLiked'] = nowLiked;
+      r['likes'] = newLikes;
+      if (_isCurrentUserStoreOwner) {
+        r['likedByOwner'] = nowLiked;
+      }
       parent['replies'] = replies;
     });
 
+    if (rid.isNotEmpty) {
+      await _persistCommentLike(rid, nowLiked, newLikes);
+    }
     final String postId = widget.post['id']?.toString() ?? '';
     await _persistAndNotifyCount(postId);
   }
@@ -2984,21 +3314,32 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     required String text,
     required Color color,
     required Color bgColor,
+    IconData? icon,
   }) {
     return Container(
       margin: const EdgeInsets.only(left: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(5),
+        border: Border.all(color: color.withValues(alpha: 0.35), width: 0.8),
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: color,
-          fontSize: 9.5,
-          fontWeight: FontWeight.w800,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 10, color: color),
+            const SizedBox(width: 3),
+          ],
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -3012,7 +3353,8 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     required String shopName,
     required bool isDark,
   }) {
-    final String replyUser = reply['user']?.toString() ?? 'Pelanggan';
+    final String replyUser =
+        reply['user']?.toString() ?? 'feed_comments.default_customer'.tr();
     final String replyToUser = reply['replyToUser']?.toString() ?? '';
     final bool isReplyLiked = reply['isLiked'] == true;
     final int replyLikes = (reply['likes'] as num?)?.toInt() ?? 0;
@@ -3031,35 +3373,40 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
             name: replyUser,
             size: 26,
             imageUrl: reply['avatar']?.toString(),
-            borderColor: isDark ? Colors.white12 : Colors.black12,
-            borderWidth: 1.0,
+            borderColor: isCreator
+                ? const Color(0xFFFE2C55)
+                : (isDark ? Colors.white12 : Colors.black12),
+            borderWidth: isCreator ? 1.5 : 1.0,
           ),
           const SizedBox(width: 9),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // TikTok / Reels Reply Header: Replier ▸ TargetUser
+                // TikTok / Reels Reply Header: Replier [Pemilik Kedai] ▸ TargetUser
                 Wrap(
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
                       replyUser,
                       style: TextStyle(
-                        color: isDark ? Colors.white70 : const Color(0xFF1E293B),
+                        color: isCreator
+                            ? const Color(0xFFFE2C55)
+                            : (isDark ? Colors.white70 : const Color(0xFF1E293B)),
                         fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                     if (isCreator)
                       _buildBadgePill(
-                        text: 'Pencipta',
+                        text: 'feed_comments.badge_owner'.tr(),
                         color: const Color(0xFFFE2C55),
                         bgColor: const Color(0xFFFE2C55).withValues(alpha: 0.14),
+                        icon: Icons.storefront_rounded,
                       ),
                     if (isMyReply)
                       _buildBadgePill(
-                        text: 'Anda',
+                        text: 'feed_comments.badge_you'.tr(),
                         color: const Color(0xFF00E5FF),
                         bgColor: const Color(0xFF00E5FF).withValues(alpha: 0.15),
                       ),
@@ -3098,7 +3445,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                 Row(
                   children: [
                     Text(
-                      reply['time']?.toString() ?? 'Baru saja',
+                      reply['time']?.toString() ?? 'feed_comments.just_now'.tr(),
                       style: TextStyle(
                         color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
                         fontSize: 11,
@@ -3114,7 +3461,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 2),
                         child: Text(
-                          'Balas',
+                          'feed_comments.reply_btn'.tr(),
                           style: TextStyle(
                             color: isDark ? Colors.white54 : const Color(0xFF64748B),
                             fontSize: 11,
@@ -3123,7 +3470,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                         ),
                       ),
                     ),
-                    if (isMyReply) ...[
+                    if (isMyReply || _isCurrentUserStoreOwner) ...[
                       const SizedBox(width: 14),
                       GestureDetector(
                         behavior: HitTestBehavior.opaque,
@@ -3131,7 +3478,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 2),
                           child: Text(
-                            'Padam',
+                            'feed_comments.delete_btn'.tr(),
                             style: TextStyle(
                               color: Colors.red.withValues(alpha: 0.8),
                               fontSize: 11,
@@ -3188,20 +3535,14 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     final shopName = widget.post['shopName']?.toString() ?? 'Ngam Feed';
     final shopHandle = widget.post['shopHandle']?.toString() ?? '';
     final shopAvatar = widget.post['shopAvatar']?.toString() ?? '';
-    final caption = widget.post['caption']?.toString() ?? widget.post['title']?.toString() ?? '';
+    final caption = widget.post['caption']?.toString() ??
+        widget.post['title']?.toString() ??
+        '';
 
-    final currentUser = Supabase.instance.client.auth.currentUser;
-    String currentUserName = UserData.userName.value.trim();
-    if (currentUserName.isEmpty) {
-      currentUserName = (currentUser?.userMetadata?['full_name'] as String?) ??
-          (currentUser?.userMetadata?['name'] as String?) ??
-          (currentUser?.email?.split('@').first) ??
-          'Pelanggan';
-    }
-    String currentUserAvatar = UserData.userProfilePic.value.trim();
-    if (currentUserAvatar.isEmpty) {
-      currentUserAvatar = (currentUser?.userMetadata?['avatar_url'] as String?) ?? '';
-    }
+    final identity = _getActiveCommenterIdentity();
+    final String currentUserName = identity.name;
+    final String currentUserAvatar = identity.avatar;
+    final bool isOwner = identity.isOwner;
 
     return Column(
       children: [
@@ -3250,7 +3591,8 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                             ),
                           ),
                           const SizedBox(width: 4),
-                          const Icon(Icons.verified_rounded, size: 14, color: Color(0xFF00E5FF)),
+                          const Icon(Icons.verified_rounded,
+                              size: 14, color: Color(0xFF00E5FF)),
                         ],
                       ),
                       if (shopHandle.isNotEmpty)
@@ -3273,7 +3615,9 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                     width: 34,
                     height: 34,
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                      color: isDark
+                          ? Colors.white10
+                          : Colors.black.withValues(alpha: 0.05),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
@@ -3323,7 +3667,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
               Row(
                 children: [
                   Text(
-                    'Komen',
+                    'feed_comments.title'.tr(),
                     style: TextStyle(
                       color: isDark ? Colors.white : const Color(0xFF0F172A),
                       fontSize: 14.5,
@@ -3355,7 +3699,9 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                   child: Container(
                     padding: const EdgeInsets.all(5),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                      color: isDark
+                          ? Colors.white10
+                          : Colors.black.withValues(alpha: 0.05),
                       shape: BoxShape.circle,
                     ),
                     child: HugeIcon(
@@ -3402,26 +3748,32 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                               child: Center(
                                 child: HugeIcon(
                                   icon: HugeIcons.strokeRoundedComment01,
-                                  color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                                  color: isDark
+                                      ? Colors.white38
+                                      : const Color(0xFF94A3B8),
                                   size: 24,
                                 ),
                               ),
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              'Belum ada komen lagi.',
+                              'feed_comments.empty_title'.tr(),
                               style: TextStyle(
-                                color: isDark ? Colors.white70 : const Color(0xFF1E293B),
+                                color: isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF1E293B),
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Jadilah yang pertama berkongsi pandangan!',
+                              'feed_comments.empty_subtitle'.tr(),
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                                color: isDark
+                                    ? Colors.white38
+                                    : const Color(0xFF94A3B8),
                                 fontSize: 11.5,
                               ),
                             ),
@@ -3436,10 +3788,13 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                       separatorBuilder: (_, __) => const SizedBox(height: 16),
                       itemBuilder: (_, idx) {
                         final c = _comments[idx];
-                        final String commentId = c['id']?.toString() ?? 'cm_$idx';
+                        final String commentId =
+                            c['id']?.toString() ?? 'cm_$idx';
                         final bool isCommentLiked = c['isLiked'] == true;
-                        final int commentLikes = (c['likes'] as num?)?.toInt() ?? 0;
-                        final String commentUser = c['user']?.toString() ?? 'Pelanggan';
+                        final int commentLikes =
+                            (c['likes'] as num?)?.toInt() ?? 0;
+                        final String commentUser = c['user']?.toString() ??
+                            'feed_comments.default_customer'.tr();
                         final bool isMyComment = c['isMyComment'] == true ||
                             commentUser == currentUserName;
                         final bool isCreator = c['isCreator'] == true ||
@@ -3449,20 +3804,29 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
 
                         final List<Map<String, dynamic>> replies =
                             (c['replies'] as List?)
-                                    ?.map((e) => Map<String, dynamic>.from(e as Map))
+                                    ?.map((e) =>
+                                        Map<String, dynamic>.from(e as Map))
                                     .toList() ??
                                 [];
-                        final bool isExpanded = _expandedCommentIds.contains(commentId);
-                        final bool isBeingRepliedTo = _replyingToCommentId == commentId;
+                        final bool hasOwnerReply =
+                            replies.any((r) => r['isCreator'] == true);
+                        final bool isLikedByOwner =
+                            c['likedByOwner'] == true || hasOwnerReply;
+                        final bool isExpanded =
+                            _expandedCommentIds.contains(commentId);
+                        final bool isBeingRepliedTo =
+                            _replyingToCommentId == commentId;
 
                         return AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           padding: isBeingRepliedTo
-                              ? const EdgeInsets.symmetric(horizontal: 8, vertical: 6)
+                              ? const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 6)
                               : EdgeInsets.zero,
                           decoration: BoxDecoration(
                             color: isBeingRepliedTo
-                                ? const Color(0xFF00E5FF).withValues(alpha: 0.06)
+                                ? const Color(0xFF00E5FF)
+                                    .withValues(alpha: 0.06)
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -3477,13 +3841,18 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                                     name: commentUser,
                                     size: 36,
                                     imageUrl: c['avatar']?.toString(),
-                                    borderColor: isDark ? Colors.white12 : Colors.black12,
-                                    borderWidth: 1.0,
+                                    borderColor: isCreator
+                                        ? const Color(0xFFFE2C55)
+                                        : (isDark
+                                            ? Colors.white12
+                                            : Colors.black12),
+                                    borderWidth: isCreator ? 1.5 : 1.0,
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Row(
                                           children: [
@@ -3491,24 +3860,34 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                                               child: Text(
                                                 commentUser,
                                                 style: TextStyle(
-                                                  color: isDark ? Colors.white70 : const Color(0xFF1E293B),
+                                                  color: isCreator
+                                                      ? const Color(0xFFFE2C55)
+                                                      : (isDark
+                                                          ? Colors.white70
+                                                          : const Color(
+                                                              0xFF1E293B)),
                                                   fontSize: 12.5,
-                                                  fontWeight: FontWeight.w700,
+                                                  fontWeight: FontWeight.w800,
                                                 ),
                                                 overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
                                             if (isCreator)
                                               _buildBadgePill(
-                                                text: 'Pencipta',
+                                                text: 'feed_comments.badge_owner'
+                                                    .tr(),
                                                 color: const Color(0xFFFE2C55),
-                                                bgColor: const Color(0xFFFE2C55).withValues(alpha: 0.14),
+                                                bgColor: const Color(0xFFFE2C55)
+                                                    .withValues(alpha: 0.14),
+                                                icon: Icons.storefront_rounded,
                                               ),
                                             if (isMyComment)
                                               _buildBadgePill(
-                                                text: 'Anda',
+                                                text: 'feed_comments.badge_you'
+                                                    .tr(),
                                                 color: const Color(0xFF00E5FF),
-                                                bgColor: const Color(0xFF00E5FF).withValues(alpha: 0.15),
+                                                bgColor: const Color(0xFF00E5FF)
+                                                    .withValues(alpha: 0.15),
                                               ),
                                           ],
                                         ),
@@ -3516,19 +3895,46 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                                         Text(
                                           c['text']?.toString() ?? '',
                                           style: TextStyle(
-                                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                            color: isDark
+                                                ? Colors.white
+                                                : const Color(0xFF0F172A),
                                             fontSize: 13.5,
                                             height: 1.35,
                                           ),
                                         ),
+                                        if (isLikedByOwner && !isCreator) ...[
+                                          const SizedBox(height: 5),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 7, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFFE2C55)
+                                                  .withValues(alpha: 0.12),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              'feed_comments.liked_by_owner'
+                                                  .tr(),
+                                              style: const TextStyle(
+                                                color: Color(0xFFFE2C55),
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                         const SizedBox(height: 5),
                                         // TikTok Meta & Action Row: Time · Balas · Padam
                                         Row(
                                           children: [
                                             Text(
-                                              c['time']?.toString() ?? 'Baru saja',
+                                              c['time']?.toString() ??
+                                                  'feed_comments.just_now'.tr(),
                                               style: TextStyle(
-                                                color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                                                color: isDark
+                                                    ? Colors.white38
+                                                    : const Color(0xFF94A3B8),
                                                 fontSize: 11.5,
                                               ),
                                             ),
@@ -3540,30 +3946,44 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                                                 targetUser: commentUser,
                                               ),
                                               child: Padding(
-                                                padding: const EdgeInsets.symmetric(vertical: 2),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        vertical: 2),
                                                 child: Text(
-                                                  'Balas',
+                                                  'feed_comments.reply_btn'
+                                                      .tr(),
                                                   style: TextStyle(
-                                                    color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                                                    color: isDark
+                                                        ? Colors.white54
+                                                        : const Color(
+                                                            0xFF64748B),
                                                     fontSize: 11.5,
                                                     fontWeight: FontWeight.w700,
                                                   ),
                                                 ),
                                               ),
                                             ),
-                                            if (isMyComment) ...[
+                                            if (isMyComment ||
+                                                _isCurrentUserStoreOwner) ...[
                                               const SizedBox(width: 16),
                                               GestureDetector(
-                                                behavior: HitTestBehavior.opaque,
-                                                onTap: () => _handleDeleteComment(idx),
+                                                behavior:
+                                                    HitTestBehavior.opaque,
+                                                onTap: () =>
+                                                    _handleDeleteComment(idx),
                                                 child: Padding(
-                                                  padding: const EdgeInsets.symmetric(vertical: 2),
+                                                  padding: const EdgeInsets
+                                                      .symmetric(vertical: 2),
                                                   child: Text(
-                                                    'Padam',
+                                                    'feed_comments.delete_btn'
+                                                        .tr(),
                                                     style: TextStyle(
-                                                      color: Colors.red.withValues(alpha: 0.8),
+                                                      color: Colors.red
+                                                          .withValues(
+                                                              alpha: 0.8),
                                                       fontSize: 11.5,
-                                                      fontWeight: FontWeight.w600,
+                                                      fontWeight:
+                                                          FontWeight.w600,
                                                     ),
                                                   ),
                                                 ),
@@ -3583,11 +4003,15 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                                       child: Column(
                                         children: [
                                           Icon(
-                                            isCommentLiked ? Icons.favorite : Icons.favorite_border_rounded,
+                                            isCommentLiked
+                                                ? Icons.favorite
+                                                : Icons.favorite_border_rounded,
                                             size: 17,
                                             color: isCommentLiked
                                                 ? const Color(0xFFFE2C55)
-                                                : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
+                                                : (isDark
+                                                    ? Colors.white38
+                                                    : const Color(0xFF94A3B8)),
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
@@ -3595,7 +4019,10 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                                             style: TextStyle(
                                               color: isCommentLiked
                                                   ? const Color(0xFFFE2C55)
-                                                  : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
+                                                  : (isDark
+                                                      ? Colors.white38
+                                                      : const Color(
+                                                          0xFF94A3B8)),
                                               fontSize: 10.5,
                                               fontWeight: FontWeight.bold,
                                             ),
@@ -3612,7 +4039,8 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                                 Padding(
                                   padding: const EdgeInsets.only(left: 46),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       if (isExpanded)
                                         ...List.generate(
@@ -3636,9 +4064,11 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                                             HapticFeedback.selectionClick();
                                             setState(() {
                                               if (isExpanded) {
-                                                _expandedCommentIds.remove(commentId);
+                                                _expandedCommentIds
+                                                    .remove(commentId);
                                               } else {
-                                                _expandedCommentIds.add(commentId);
+                                                _expandedCommentIds
+                                                    .add(commentId);
                                               }
                                             });
                                           },
@@ -3648,15 +4078,24 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                                               Container(
                                                 width: 22,
                                                 height: 1.2,
-                                                color: isDark ? Colors.white24 : Colors.black26,
+                                                color: isDark
+                                                    ? Colors.white24
+                                                    : Colors.black26,
                                               ),
                                               const SizedBox(width: 8),
                                               Text(
                                                 isExpanded
-                                                    ? 'Sembunyikan'
-                                                    : 'Lihat ${replies.length} balasan',
+                                                    ? 'feed_comments.hide_replies'
+                                                        .tr()
+                                                    : 'feed_comments.view_replies'
+                                                        .tr(args: [
+                                                        replies.length
+                                                            .toString()
+                                                      ]),
                                                 style: TextStyle(
-                                                  color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                                                  color: isDark
+                                                      ? Colors.white54
+                                                      : const Color(0xFF64748B),
                                                   fontSize: 11.5,
                                                   fontWeight: FontWeight.w700,
                                                 ),
@@ -3664,10 +4103,14 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                                               const SizedBox(width: 2),
                                               Icon(
                                                 isExpanded
-                                                    ? Icons.keyboard_arrow_up_rounded
-                                                    : Icons.keyboard_arrow_down_rounded,
+                                                    ? Icons
+                                                        .keyboard_arrow_up_rounded
+                                                    : Icons
+                                                        .keyboard_arrow_down_rounded,
                                                 size: 16,
-                                                color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                                                color: isDark
+                                                    ? Colors.white54
+                                                    : const Color(0xFF64748B),
                                               ),
                                             ],
                                           ),
@@ -3683,7 +4126,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                     ),
         ),
 
-        // 5. Sticky Bottom Input Field (TikTok / Reels Reply Banner & Input Bar)
+        // 5. Sticky Bottom Input Field (TikTok / Reels Quick Emoji Bar + Reply Banner + Input Bar)
         Container(
           padding: EdgeInsets.fromLTRB(
             14,
@@ -3695,18 +4138,45 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
             color: isDark ? const Color(0xFF0F1318) : const Color(0xFFF8FAFC),
             border: Border(
               top: BorderSide(
-                color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.08),
+                color: isDark
+                    ? Colors.white10
+                    : Colors.black.withValues(alpha: 0.08),
               ),
             ),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Quick Emoji Bar (TikTok / Instagram Reels style)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: _quickEmojis
+                      .map(
+                        (emoji) => GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => _insertQuickEmoji(emoji),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            child: Text(
+                              emoji,
+                              style: const TextStyle(fontSize: 19),
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+
               // Reply indicator badge (if user clicked 'Balas' on any comment/reply)
               if (_replyingToUser != null)
                 Container(
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: isDark
                         ? Colors.white.withValues(alpha: 0.06)
@@ -3722,9 +4192,11 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'Membalas kepada ',
+                        'feed_comments.replying_to'.tr(),
                         style: TextStyle(
-                          color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                          color: isDark
+                              ? Colors.white54
+                              : const Color(0xFF64748B),
                           fontSize: 11.5,
                         ),
                       ),
@@ -3751,7 +4223,9 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                         child: Icon(
                           Icons.close_rounded,
                           size: 16,
-                          color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                          color: isDark
+                              ? Colors.white54
+                              : const Color(0xFF64748B),
                         ),
                       ),
                     ],
@@ -3760,13 +4234,15 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
 
               Row(
                 children: [
-                  // User Avatar preview
+                  // User Avatar preview (with Store Owner ring if owner)
                   _buildFeedAvatar(
                     name: currentUserName,
                     size: 34,
                     imageUrl: currentUserAvatar,
-                    borderColor: isDark ? Colors.white12 : Colors.black12,
-                    borderWidth: 1.0,
+                    borderColor: isOwner
+                        ? const Color(0xFFFE2C55)
+                        : (isDark ? Colors.white12 : Colors.black12),
+                    borderWidth: isOwner ? 1.5 : 1.0,
                   ),
                   const SizedBox(width: 10),
 
@@ -3793,19 +4269,27 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                         keyboardType: TextInputType.text,
                         onSubmitted: (_) => _handleSendComment(),
                         style: TextStyle(
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          color:
+                              isDark ? Colors.white : const Color(0xFF0F172A),
                           fontSize: 13,
                         ),
                         decoration: InputDecoration(
                           hintText: _replyingToUser != null
-                              ? 'Balas kepada @$_replyingToUser...'
-                              : 'Tambah komen...',
+                              ? 'feed_comments.reply_hint'
+                                  .tr(args: [_replyingToUser!])
+                              : (isOwner
+                                  ? 'feed_comments.reply_as_owner_hint'
+                                      .tr(args: [shopName])
+                                  : 'feed_comments.add_comment_hint'.tr()),
                           hintStyle: TextStyle(
-                            color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                            color: isDark
+                                ? Colors.white38
+                                : const Color(0xFF94A3B8),
                             fontSize: 13,
                           ),
                           border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 10),
                         ),
                       ),
                     ),
@@ -3835,7 +4319,8 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                         boxShadow: _hasInputText
                             ? [
                                 BoxShadow(
-                                  color: const Color(0xFF00E5FF).withValues(alpha: 0.35),
+                                  color: const Color(0xFF00E5FF)
+                                      .withValues(alpha: 0.35),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2),
                                 ),
@@ -3856,7 +4341,9 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                                 icon: HugeIcons.strokeRoundedArrowUp01,
                                 color: _hasInputText
                                     ? Colors.black
-                                    : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
+                                    : (isDark
+                                        ? Colors.white38
+                                        : const Color(0xFF94A3B8)),
                                 size: 20,
                               ),
                       ),

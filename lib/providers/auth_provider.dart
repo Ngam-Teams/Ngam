@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/user_data.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
@@ -18,9 +19,14 @@ import '../services/supabase_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   static String? get userName {
+    if (UserData.userName.value.trim().isNotEmpty) {
+      return UserData.userName.value.trim();
+    }
     final u = Supabase.instance.client.auth.currentUser;
     if (u == null) return null;
-    final name = (u.userMetadata?['full_name'] as String?) ??
+    final name = (u.userMetadata?['display_name'] as String?) ??
+        (u.userMetadata?['user_name'] as String?) ??
+        (u.userMetadata?['full_name'] as String?) ??
         (u.userMetadata?['name'] as String?) ??
         u.email?.split('@').first;
     return (name != null && name.trim().isNotEmpty) ? name.trim() : null;
@@ -97,6 +103,26 @@ class AuthProvider extends ChangeNotifier {
   bool get isCustomer => true;
   bool get isRunner => false;
 
+  void _syncUserData() {
+    if (_user != null) {
+      if (_user!.userName.trim().isNotEmpty) {
+        UserData.userName.value = _user!.userName.trim();
+      }
+      if ((_user!.userAvatarUrl ?? '').trim().isNotEmpty) {
+        UserData.userProfilePic.value = _user!.userAvatarUrl!.trim();
+      }
+      if (_user!.userEmail.trim().isNotEmpty) {
+        UserData.userEmail.value = _user!.userEmail.trim();
+      }
+      if ((_user!.userPhone ?? '').trim().isNotEmpty) {
+        UserData.userPhone.value = _user!.userPhone!.trim();
+      }
+    } else {
+      UserData.userName.value = '';
+      UserData.userProfilePic.value = '';
+    }
+  }
+
   /// Try to restore session on app start
   Future<void> initialize() async {
     _isInitializing = true;
@@ -104,12 +130,14 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       _user = await AuthService.getCurrentUser();
+      _syncUserData();
       if (_user != null) {
         await PushService.saveTokenToSupabase(_user!.id);
         ChatService.prefetchChats(_user!.id); // Auto-fetch chats background
       }
     } catch (e) {
       _user = null;
+      _syncUserData();
     }
 
     _isInitializing = false;
@@ -136,6 +164,7 @@ class AuthProvider extends ChangeNotifier {
         phone: phone,
         role: role,
       );
+      _syncUserData();
       _isLoading = false;
       notifyListeners();
       return true;
@@ -161,6 +190,7 @@ class AuthProvider extends ChangeNotifier {
         email: email,
         password: password,
       );
+      _syncUserData();
       if (_user != null) {
         await PushService.saveTokenToSupabase(_user!.id);
         ChatService.prefetchChats(_user!.id); // Auto-fetch chats background
@@ -184,6 +214,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       _user = await AuthService.signInWithGoogle();
+      _syncUserData();
       if (_user != null) {
         await PushService.saveTokenToSupabase(_user!.id);
         ChatService.prefetchChats(_user!.id); // Auto-fetch chats background
@@ -213,6 +244,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       _user = await AuthService.signInWithApple();
+      _syncUserData();
       if (_user != null) {
         await PushService.saveTokenToSupabase(_user!.id);
         ChatService.prefetchChats(_user!.id); // Auto-fetch chats background
@@ -240,6 +272,7 @@ class AuthProvider extends ChangeNotifier {
     }
     await AuthService.signOut();
     _user = null;
+    _syncUserData();
     _error = null;
     notifyListeners();
   }
@@ -341,6 +374,7 @@ class AuthProvider extends ChangeNotifier {
           userBirthDate: birthDate,
           userAddress: address,
         );
+        _syncUserData();
         notifyListeners();
       }
       return error;
@@ -398,6 +432,7 @@ class AuthProvider extends ChangeNotifier {
 
       if (error == null) {
         _user = _user!.copyWith(userAvatarUrl: publicUrl);
+        _syncUserData();
         notifyListeners();
       }
       return error;
