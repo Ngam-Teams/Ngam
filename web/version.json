@@ -1,6 +1,6 @@
 {
-  "version": "1.0.29",
-  "build_number": 3,
-  "released_at": "2026-11-15T10:00:00Z",
-  "changelog": "Penyeragaman label Makan Sini / Dine In tanpa sempang dan sokongan terjemahan penuh troli kedai."
+  "version": "1.0.30",
+  "build_number": 4,
+  "released_at": "2026-11-16T01:25:00Z",
+  "changelog": "Betulkan pengesanan versi Web/PWA, tambah notifikasi toast kemas kini, dan paparkan label versi hanya dalam Tetapan."
 }
