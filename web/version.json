@@ -1,6 +1,6 @@
 {
-  "version": "1.0.27",
-  "build_number": 1,
-  "released_at": "2026-11-13T12:00:00Z",
-  "changelog": "Kemas kini prestasi PWA dan sokongan landskap penuh."
+  "version": "1.0.28",
+  "build_number": 2,
+  "released_at": "2026-11-14T19:00:00Z",
+  "changelog": "Penambahan skala paparan landskap automatik penuh skrin (100% viewport) untuk telefon dan tablet sepadan dengan Ngam Business."
 }

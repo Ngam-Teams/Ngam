@@ -32,6 +32,7 @@ import 'screens/receipt/payment_result_screen.dart';
 import 'core/router/url_strategy.dart';
 
 import 'widgets/app_lock_wrapper.dart';
+import 'widgets/responsive_landscape_scale.dart';
 
 // ============================================================
 // Ngam — Local Errands, Powered by Community
@@ -155,7 +156,10 @@ class NgamApp extends StatelessWidget {
             navigatorKey: navigatorKey,
             title: 'Ngam',
             builder: (context, child) {
-              return AppLockWrapper(child: child!);
+              final content = child != null
+                  ? ResponsiveLandscapeScale(child: child)
+                  : const SizedBox.shrink();
+              return AppLockWrapper(child: content);
             },
             localizationsDelegates: [
               ...context.localizationDelegates,
