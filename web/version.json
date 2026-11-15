@@ -1,6 +1,6 @@
 {
-  "version": "1.0.28",
-  "build_number": 2,
-  "released_at": "2026-11-14T19:00:00Z",
-  "changelog": "Penambahan skala paparan landskap automatik penuh skrin (100% viewport) untuk telefon dan tablet sepadan dengan Ngam Business."
+  "version": "1.0.29",
+  "build_number": 3,
+  "released_at": "2026-11-15T10:00:00Z",
+  "changelog": "Penyeragaman label Makan Sini / Dine In tanpa sempang dan sokongan terjemahan penuh troli kedai."
 }

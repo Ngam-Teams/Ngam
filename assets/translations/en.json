@@ -941,7 +941,16 @@
     "fpx_min_spend_error": "FPX Online Banking & Card require a minimum order of RM 10.00. Please use DuitNow QR or Cash.",
     "fpx_min_spend_subtitle": "Available for orders RM 10.00 and above via Online Banking and Cards",
     "back_to_cart": "Back to Cart",
-    "delivery_address_required": "Please enter your delivery address before placing the order."
+    "delivery_address_required": "Please enter your delivery address before placing the order.",
+    "takeaway_tab": "Take Away",
+    "dine_in_tab": "Dine In",
+    "preorder_tab": "Pre-Order",
+    "delivery_tab": "Delivery",
+    "dine_in_pickup_label": "Dine In (Table)",
+    "table_dine_in_banner_title": "Dine In Order: Table #{}",
+    "table_dine_in_banner_sub": "Food will be served directly to your table.",
+    "dine_in_table_info": "Dine In at Table #{}. Your order will be served directly to your table.",
+    "dine_in_store_info": "Dine In at Store. Enter your Table No. in the notes below if available."
   },
   "store": {
     "call": "Call Store",
@@ -972,7 +981,8 @@
     "walkin_hero_desc": "Check the live queue status in real time, or scan the QR code at the shop counter when you arrive to get your Walk-In ticket.",
     "mode_badge_walkin": "Walk-In Queue",
     "mode_badge_booking": "Slot Booking",
-    "mode_badge_order": "Direct Order"
+    "mode_badge_order": "Direct Order",
+    "table_dine_in_badge": "Table #{} (Dine In)"
   },
   "feed": {
     "title": "Ngam Feed",
@@ -1046,7 +1056,7 @@
     "default_service": "Service",
     "default_staff": "Staff",
     "fulfillment_takeaway": "Takeaway",
-    "fulfillment_dine_in": "Dine-In",
+    "fulfillment_dine_in": "Dine In",
     "fulfillment_delivery": "Delivery",
     "fulfillment_preorder": "Pre-Order",
     "payment_cash": "Cash",

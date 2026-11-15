@@ -448,7 +448,7 @@ class _StoreCartViewState extends State<StoreCartView> {
           ? 'Pre-Order: $_selectedPickupDate, $_selectedPickupTime'
           : (_fulfillmentMode == 3
               ? 'Delivery: $_selectedPickupDate, $_selectedPickupTime${deliveryAddress.isNotEmpty ? " (Alamat: $deliveryAddress)" : ""}'
-              : (_fulfillmentMode == 1 ? 'Dine-In' : 'Bungkus (Ambil Pantas)'));
+              : (_fulfillmentMode == 1 ? 'Dine In' : 'Bungkus (Ambil Pantas)'));
 
       final String fulfillmentLabel = scheduleInfo;
 
@@ -649,7 +649,7 @@ class _StoreCartViewState extends State<StoreCartView> {
             totalAmount: _total,
             pickupTime: (_fulfillmentMode == 2 || _fulfillmentMode == 3)
                 ? '$_selectedPickupDate, $_selectedPickupTime'
-                : (_fulfillmentMode == 1 ? 'Dine-In (Meja)' : _selectedPickupTime),
+                : (_fulfillmentMode == 1 ? 'cart.dine_in_pickup_label'.tr() : _selectedPickupTime),
             fulfillmentType: fulfillmentLabel,
             items: _items.map((i) => {'name': i.formattedProductName, 'qty': i.quantity, 'price': i.totalPrice}).toList(),
           ),
@@ -871,7 +871,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'Pesanan Dine-In: Meja #${widget.tableNumber}',
+                                        'cart.table_dine_in_banner_title'.tr(args: [widget.tableNumber!]),
                                         style: TextStyle(
                                           color: textPrimary,
                                           fontSize: 14,
@@ -880,7 +880,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        'Makanan akan dihantar terus ke meja anda.',
+                                        'cart.table_dine_in_banner_sub'.tr(),
                                         style: TextStyle(
                                           color: textSecondary,
                                           fontSize: 12,
@@ -1561,7 +1561,7 @@ class _StoreCartViewState extends State<StoreCartView> {
           ),
           const SizedBox(height: 14),
 
-          // Fulfillment Tabs: Bungkus, Dine-in, Pre-Order, and Delivery (if supported)
+          // Fulfillment Tabs: Bungkus, Dine In, Pre-Order, and Delivery (if supported)
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
@@ -1570,11 +1570,11 @@ class _StoreCartViewState extends State<StoreCartView> {
             ),
             child: Row(
               children: [
-                _buildFulfillmentTab(0, 'Bungkus', HugeIcons.strokeRoundedShoppingBag01, isDark, textPrimary, textSecondary),
-                _buildFulfillmentTab(1, 'Dine-In', HugeIcons.strokeRoundedDesk01, isDark, textPrimary, textSecondary),
-                _buildFulfillmentTab(2, 'Pre-Order', HugeIcons.strokeRoundedCalendar02, isDark, textPrimary, textSecondary),
+                _buildFulfillmentTab(0, 'cart.takeaway_tab'.tr(), HugeIcons.strokeRoundedShoppingBag01, isDark, textPrimary, textSecondary),
+                _buildFulfillmentTab(1, 'cart.dine_in_tab'.tr(), HugeIcons.strokeRoundedDesk01, isDark, textPrimary, textSecondary),
+                _buildFulfillmentTab(2, 'cart.preorder_tab'.tr(), HugeIcons.strokeRoundedCalendar02, isDark, textPrimary, textSecondary),
                 if (supportsDelivery)
-                  _buildFulfillmentTab(3, 'Delivery', HugeIcons.strokeRoundedDeliveryTruck01, isDark, textPrimary, textSecondary),
+                  _buildFulfillmentTab(3, 'cart.delivery_tab'.tr(), HugeIcons.strokeRoundedDeliveryTruck01, isDark, textPrimary, textSecondary),
               ],
             ),
           ),
@@ -1605,7 +1605,7 @@ class _StoreCartViewState extends State<StoreCartView> {
               ),
             ),
           ] else if (_fulfillmentMode == 1) ...[
-            // Dine-in Table
+            // Dine In Table
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
@@ -1620,8 +1620,8 @@ class _StoreCartViewState extends State<StoreCartView> {
                   Expanded(
                     child: Text(
                       widget.tableNumber != null && widget.tableNumber!.isNotEmpty
-                          ? 'Dine-In di Meja #${widget.tableNumber}. Pesanan dihantar ke meja anda.'
-                          : 'Dine-In di Kedai. Masukkan No. Meja dalam nota di bawah jika ada.',
+                          ? 'cart.dine_in_table_info'.tr(args: [widget.tableNumber!])
+                          : 'cart.dine_in_store_info'.tr(),
                       style: TextStyle(fontSize: 12, color: textPrimary, fontWeight: FontWeight.w600),
                     ),
                   ),

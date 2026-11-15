@@ -186,7 +186,7 @@ class _StoreRouteLoaderState extends State<StoreRouteLoader> {
         'operating_hours': opHours,
         'rating': (row['rating_average'] as num?)?.toDouble() ?? 4.8,
         'reviews': (row['total_reviews'] as num?)?.toInt() ?? 0,
-        'services': ['Dine-In', 'Takeaway', 'Pesanan Meja'],
+        'services': ['Dine In', 'Takeaway', 'Pesanan Meja'],
       };
 
       if (mounted) {

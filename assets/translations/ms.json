@@ -941,7 +941,16 @@
     "fpx_min_spend_error": "Perbankan FPX & Kad memerlukan jumlah pesanan minima RM 10.00. Sila gunakan DuitNow QR atau Tunai.",
     "fpx_min_spend_subtitle": "Tersedia untuk pesanan RM 10.00 ke atas melalui Perbankan Dalam Talian dan Kad",
     "back_to_cart": "Kembali ke Troli",
-    "delivery_address_required": "Sila masukkan alamat penghantaran anda sebelum membuat pesanan."
+    "delivery_address_required": "Sila masukkan alamat penghantaran anda sebelum membuat pesanan.",
+    "takeaway_tab": "Bungkus",
+    "dine_in_tab": "Makan Sini",
+    "preorder_tab": "Pre-Order",
+    "delivery_tab": "Hantar",
+    "dine_in_pickup_label": "Makan Sini (Meja)",
+    "table_dine_in_banner_title": "Pesanan Makan Sini: Meja #{}",
+    "table_dine_in_banner_sub": "Makanan akan dihantar terus ke meja anda.",
+    "dine_in_table_info": "Makan Sini di Meja #{}. Pesanan dihantar ke meja anda.",
+    "dine_in_store_info": "Makan Sini di Kedai. Masukkan No. Meja dalam nota di bawah jika ada."
   },
   "store": {
     "call": "Hubungi Kedai",
@@ -972,7 +981,8 @@
     "walkin_hero_desc": "Semak status giliran semasa secara langsung, atau imbas kod QR di kaunter kedai apabila anda tiba untuk mengambil nombor giliran Walk-In.",
     "mode_badge_walkin": "Giliran Walk-In",
     "mode_badge_booking": "Tempahan Slot",
-    "mode_badge_order": "Pesanan Menu"
+    "mode_badge_order": "Pesanan Menu",
+    "table_dine_in_badge": "Meja #{} (Makan Sini)"
   },
   "feed": {
     "title": "Ngam Feed",
@@ -1046,7 +1056,7 @@
     "default_service": "Servis",
     "default_staff": "Staf",
     "fulfillment_takeaway": "Bungkus Bawa Pulang",
-    "fulfillment_dine_in": "Makan di Restoran",
+    "fulfillment_dine_in": "Makan Sini",
     "fulfillment_delivery": "Penghantaran Runner",
     "fulfillment_preorder": "Pesanan Tempahan Awal",
     "payment_cash": "Tunai",

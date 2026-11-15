@@ -972,7 +972,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
           const HugeIcon(icon: HugeIcons.strokeRoundedDesk01, color: Color(0xFF00E676), size: 14),
           const SizedBox(width: 5),
           Text(
-            'Meja #${widget.tableNumber} (Dine-In)',
+            'store.table_dine_in_badge'.tr(args: [widget.tableNumber!]),
             style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
