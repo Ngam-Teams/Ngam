@@ -4161,6 +4161,11 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
     if (oldWidget.isCurrentPage != widget.isCurrentPage && !widget.isCurrentPage) {
       _playIndicatorTimer?.cancel();
       _showPlayIndicator = false;
+      _isUserPaused = false;
+      if (_isInitialized) {
+        _controller.pause();
+        _controller.seekTo(Duration.zero);
+      }
     }
     if (_isInitialized) {
       final shouldPlay = widget.isCurrentPage && !widget.isPausedExternally && !_isUserPaused;
@@ -4197,6 +4202,7 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
       _controller.dispose();
     } else {
       _controller.pause();
+      _controller.seekTo(Duration.zero);
     }
     super.dispose();
   }
