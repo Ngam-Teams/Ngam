@@ -1,6 +1,6 @@
 {
-  "version": "1.0.33",
-  "build_number": 7,
-  "released_at": "2026-11-16T09:30:00Z",
-  "changelog": "Dialog kemas kini aplikasi kini bergaya glassmorphism seperti dialog log keluar dan responsif tanpa limpahan."
+  "version": "1.0.34",
+  "build_number": 8,
+  "released_at": "2026-11-16T09:50:00Z",
+  "changelog": "Dialog kemas kini kini menggunakan ikon bersih tanpa kotak, tema biru Ngam GlassConfirmDialog, dan muat semula cache PWA diperkukuh."
 }
