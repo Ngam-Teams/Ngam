@@ -17,6 +17,8 @@ import 'store_cart_view.dart';
 import 'store_info_view.dart';
 import 'store_reviews_view.dart';
 import '../shared/my_queue_ticket_screen.dart';
+import '../../services/chat_service.dart';
+import '../shared/chat_screen.dart';
 
 // ============================================================
 // BusinessStoreView — Main store landing page
@@ -829,6 +831,37 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
     );
   }
 
+  Future<void> _openShopChat() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      if (mounted) {
+        showGlassToast(context, 'chat.login_required'.tr(), isError: true);
+      }
+      return;
+    }
+
+    final businessId = widget.shop['id']?.toString() ?? '';
+    if (businessId.isEmpty) return;
+
+    try {
+      final conv = await ChatService.getOrCreateBusinessConversation(
+        businessId,
+        contextType: 'general',
+      );
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatThreadScreen(conversation: conv),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        showGlassToast(context, 'chat.open_chat_failed'.tr(), isError: true);
+      }
+    }
+  }
+
   // ── Shared UI Helpers ────────────────────────────────────────
 
   Widget _buildWalkInEmptyStateCard(bool isDark, Color textPrimary, Color textSecondary) {
@@ -1427,6 +1460,17 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                           textPrimary: textPrimary,
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildQuickActionButton(
+                          icon: HugeIcons.strokeRoundedChatting01,
+                          label: 'store.chat_shop'.tr(),
+                          color: const Color(0xFF42A5F5),
+                          onTap: _openShopChat,
+                          isDark: isDark,
+                          textPrimary: textPrimary,
+                        ),
+                      ),
                     ],
                   ),
 
@@ -1762,6 +1806,17 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                         label: AppLocalizations.of(context)?.reviews ?? 'Reviews',
                         color: Colors.amber,
                         onTap: _openReviews,
+                        isDark: isDark,
+                        textPrimary: textPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildQuickActionButton(
+                        icon: HugeIcons.strokeRoundedChatting01,
+                        label: 'store.chat_shop'.tr(),
+                        color: const Color(0xFF42A5F5),
+                        onTap: _openShopChat,
                         isDark: isDark,
                         textPrimary: textPrimary,
                       ),

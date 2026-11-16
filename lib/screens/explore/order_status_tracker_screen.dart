@@ -7,8 +7,10 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/receipt_pdf_service.dart';
+import '../../services/chat_service.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../../widgets/glass_toast.dart';
+import '../shared/chat_screen.dart';
 
 class OrderStatusTrackerScreen extends StatefulWidget {
   final String orderId;
@@ -243,6 +245,35 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
     }
     if (_subtotal == 0.0) {
       _subtotal = _totalAmount;
+    }
+  }
+
+  Future<void> _openShopChat() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      if (mounted) showGlassToast(context, 'chat.login_required'.tr(), isError: true);
+      return;
+    }
+    final bizId = _shopId ?? widget.shopId ?? '';
+    if (bizId.isEmpty) {
+      if (mounted) showGlassToast(context, 'chat.open_chat_failed'.tr(), isError: true);
+      return;
+    }
+    try {
+      final conv = await ChatService.getOrCreateBusinessConversation(
+        bizId,
+        contextType: 'order',
+        contextId: widget.orderId,
+      );
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatThreadScreen(conversation: conv),
+        ),
+      );
+    } catch (_) {
+      if (mounted) showGlassToast(context, 'chat.open_chat_failed'.tr(), isError: true);
     }
   }
 
@@ -1060,39 +1091,78 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                                     ),
                                   ],
                                 ),
-                                if (_shopPhone != null && _shopPhone!.trim().isNotEmpty)
-                                  GestureDetector(
-                                    onTap: _contactShopWhatsApp,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF25D366).withValues(alpha: 0.14),
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(
-                                          color: const Color(0xFF25D366).withValues(alpha: 0.35),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const HugeIcon(
-                                            icon: HugeIcons.strokeRoundedWhatsapp,
-                                            color: Color(0xFF25D366),
-                                            size: 14,
-                                          ),
-                                          const SizedBox(width: 5),
-                                          Text(
-                                            'order_status.contact_shop'.tr(),
-                                            style: const TextStyle(
-                                              color: Color(0xFF25D366),
-                                              fontSize: 11.5,
-                                              fontWeight: FontWeight.bold,
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if ((_shopId ?? widget.shopId ?? '').isNotEmpty)
+                                      GestureDetector(
+                                        onTap: _openShopChat,
+                                        child: Container(
+                                          margin: const EdgeInsets.only(right: 6),
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF42A5F5).withValues(alpha: 0.14),
+                                            borderRadius: BorderRadius.circular(10),
+                                            border: Border.all(
+                                              color: const Color(0xFF42A5F5).withValues(alpha: 0.35),
                                             ),
                                           ),
-                                        ],
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const HugeIcon(
+                                                icon: HugeIcons.strokeRoundedChatting01,
+                                                color: Color(0xFF42A5F5),
+                                                size: 14,
+                                              ),
+                                              const SizedBox(width: 5),
+                                              Text(
+                                                'store.chat_shop'.tr(),
+                                                style: const TextStyle(
+                                                  color: Color(0xFF42A5F5),
+                                                  fontSize: 11.5,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
+                                    if (_shopPhone != null && _shopPhone!.trim().isNotEmpty)
+                                      GestureDetector(
+                                        onTap: _contactShopWhatsApp,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF25D366).withValues(alpha: 0.14),
+                                            borderRadius: BorderRadius.circular(10),
+                                            border: Border.all(
+                                              color: const Color(0xFF25D366).withValues(alpha: 0.35),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const HugeIcon(
+                                                icon: HugeIcons.strokeRoundedWhatsapp,
+                                                color: Color(0xFF25D366),
+                                                size: 14,
+                                              ),
+                                              const SizedBox(width: 5),
+                                              Text(
+                                                'order_status.contact_shop'.tr(),
+                                                style: const TextStyle(
+                                                  color: Color(0xFF25D366),
+                                                  fontSize: 11.5,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ],
                             ),
                             const SizedBox(height: 16),

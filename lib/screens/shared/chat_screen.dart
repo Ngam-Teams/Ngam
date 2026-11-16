@@ -144,7 +144,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Log Masuk untuk Mula Mesej',
+                  'chat.login_prompt_title'.tr(),
                   textAlign: TextAlign.center,
                   style: GoogleFonts.outfit(
                     fontSize: 20,
@@ -154,7 +154,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Hubungi peniaga, tempah servis, dan dapatkan bantuan pantas terus melalui aplikasi.',
+                  'chat.login_prompt_desc'.tr(),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13,
@@ -172,9 +172,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     color: Colors.white,
                     size: 18,
                   ),
-                  label: const Text(
-                    'Log Masuk / Daftar',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                  label: Text(
+                    'chat.login_btn'.tr(),
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primary,
@@ -500,7 +500,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 if (context.mounted) {
                   showGlassToast(
                     context,
-                    'Gagal memadam perbualan: $e',
+                    'chat.delete_failed'.tr(args: [e.toString()]),
                     isError: true,
                   );
                 }
@@ -684,10 +684,16 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
               _messages.insert(0, newMsg);
             }
           });
+          if (widget.conversation.isBusinessChat && newMsg.senderId != currentUserId) {
+            ChatService.markBusinessConversationRead(widget.conversation.id, viewerRole: 'customer');
+          }
         }
       },
       onTypingStatus: (String userId, bool isTyping) {
-        if (userId == otherUserId && mounted) {
+        final isOther = widget.conversation.isBusinessChat
+            ? (userId != currentUserId)
+            : (userId == otherUserId);
+        if (isOther && mounted) {
           setState(() {
             _isOtherTyping = isTyping;
           });
@@ -698,6 +704,9 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     // Listen supaya bila user reply dari notification, chat auto-refresh
     lastNotificationReplyConversationId.addListener(_onNotificationReply);
 
+    if (widget.conversation.isBusinessChat) {
+      ChatService.markBusinessConversationRead(widget.conversation.id, viewerRole: 'customer');
+    }
     // Dah buang markMessagesAsRead global dari initState
     // Sekarang dia handle waktu _loadGigDetails dengan onPageChanged je
   }
@@ -726,6 +735,9 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   }
 
   Future<void> _loadGigDetails() async {
+    if (widget.conversation.isBusinessChat) {
+      return;
+    }
     try {
       final shared = await GigService.fetchSharedGigs(currentUserId, otherUserId);
       if (mounted) {
@@ -775,6 +787,20 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   }
 
   Future<void> _loadOtherUserProfile() async {
+    if (widget.conversation.isBusinessChat) {
+      final biz = await ChatService.getCachedBusiness(widget.conversation.businessId!);
+      final profile = <String, dynamic>{
+        'name': biz?['business_name'] ?? widget.conversation.businessName ?? 'Ngam Shop',
+        'avatar_url': biz?['business_logo_url'] ?? widget.conversation.businessLogoUrl,
+        'phone': biz?['business_phone'] ?? widget.conversation.businessPhone,
+      };
+      if (mounted) {
+        setState(() {
+          _otherUserProfile = profile;
+        });
+      }
+      return;
+    }
     final profile = await ChatService.getUserProfile(otherUserId);
     if (mounted) {
       setState(() {
@@ -906,7 +932,11 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     }
 
     try {
-      final actualMsg = await ChatService.sendMessage(pendingMsg, contextGigId: _linkedGig?.id);
+      final actualMsg = await ChatService.sendMessage(
+        pendingMsg,
+        contextGigId: _linkedGig?.id,
+        isBusinessChat: widget.conversation.isBusinessChat,
+      );
       if (mounted) {
         setState(() {
           final index = _messages.indexWhere((m) => m.id == pendingMsg.id);
@@ -922,7 +952,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
         if (mounted) {
           showGlassToast(
             context,
-            'Gagal menghantar mesej: $e',
+            'chat.send_failed'.tr(args: [e.toString()]),
             isError: true,
           );
         }
@@ -964,6 +994,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
           imageBytes,
           pickedFile.name,
           contextGigId: _linkedGig?.id,
+          isBusinessChat: widget.conversation.isBusinessChat,
         );
         if (mounted) {
           setState(() {
@@ -979,7 +1010,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
           });
           showGlassToast(
             context,
-            'Gagal menghantar gambar: $e',
+            'chat.image_send_failed'.tr(args: [e.toString()]),
             isError: true,
           );
         }
@@ -1249,6 +1280,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
             fileBytes,
             fileName,
             contextGigId: _linkedGig?.id,
+            isBusinessChat: widget.conversation.isBusinessChat,
           );
           if (mounted) {
             setState(() {
@@ -1262,7 +1294,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
               final index = _messages.indexWhere((m) => m.id == pendingMsg.id);
               if (index != -1) _messages[index] = pendingMsg.copyWith(status: 'failed');
             });
-            showGlassToast(context, 'Gagal menghantar fail: $e', isError: true);
+            showGlassToast(context, 'chat.file_send_failed'.tr(args: [e.toString()]), isError: true);
           }
         } finally {
           if (mounted) setState(() => _isUploadingImage = false);
@@ -1995,10 +2027,21 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                             ),
                             Expanded(
                               child: FutureBuilder<Map<String, dynamic>>(
-                                future: ChatService.getUserProfile(otherUserId),
+                                future: widget.conversation.isBusinessChat
+                                    ? Future.value(_otherUserProfile ?? {
+                                        'name': widget.conversation.businessName ?? 'Ngam Shop',
+                                        'avatar_url': widget.conversation.businessLogoUrl,
+                                        'phone': widget.conversation.businessPhone,
+                                      })
+                                    : ChatService.getUserProfile(otherUserId),
                                 builder: (context, snapshot) {
-                                  final name = snapshot.data?['name'] ?? '...';
-                                  final avatarUrl = snapshot.data?['avatar_url'];
+                                  final name = (widget.conversation.isBusinessChat
+                                          ? (_otherUserProfile?['name'] ?? widget.conversation.businessName ?? snapshot.data?['name'])
+                                          : snapshot.data?['name']) ??
+                                      '...';
+                                  final avatarUrl = widget.conversation.isBusinessChat
+                                      ? (_otherUserProfile?['avatar_url'] ?? widget.conversation.businessLogoUrl ?? snapshot.data?['avatar_url'])
+                                      : snapshot.data?['avatar_url'];
                                   final avatar = name.isNotEmpty ? name[0] : '?';
                                   final avatarColor = AppTheme.primary;
                                   return GestureDetector(

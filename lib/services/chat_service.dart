@@ -21,6 +21,45 @@ class ChatService {
       return null;
     }
   }
+  static final Map<String, Map<String, dynamic>> _businessCache = {};
+
+  static Future<Map<String, dynamic>?> getCachedBusiness(String businessId) async {
+    if (_businessCache.containsKey(businessId)) return _businessCache[businessId];
+    try {
+      final data = await _supabase
+          .from('businesses')
+          .select('id, business_name, business_logo_url, business_phone, owner_user_id')
+          .eq('id', businessId)
+          .maybeSingle();
+      if (data != null) {
+        _businessCache[businessId] = Map<String, dynamic>.from(data);
+      }
+      return data;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static UserModel _syntheticBusinessUser(
+    String businessId,
+    String? name,
+    String? logoUrl,
+    String? phone,
+  ) {
+    final now = DateTime.now();
+    return UserModel(
+      id: 'biz_$businessId',
+      role: 'business',
+      createdAt: now,
+      updatedAt: now,
+      userName: (name != null && name.isNotEmpty) ? name : 'Ngam Shop',
+      userAvatarUrl: logoUrl,
+      userPhone: phone,
+      businessName: name,
+      businessLogoUrl: logoUrl,
+    );
+  }
+
   static final Map<String, Map<String, dynamic>> _gigCache = {};
   
   static Map<String, dynamic>? getCachedGigSync(String gigId) => _gigCache[gigId];
@@ -48,6 +87,22 @@ class ChatService {
       // Untuk chat local, kita penuhkan terus dengan user yang dah di-cache
       List<ConversationModel> populatedLocal = [];
       for (var conv in localConversations) {
+        if (conv.isBusinessChat) {
+          if (isRunner) continue;
+          final biz = _businessCache[conv.businessId!];
+          final bName = conv.businessName ?? biz?['business_name']?.toString();
+          final bLogo = conv.businessLogoUrl ?? biz?['business_logo_url']?.toString();
+          final bPhone = conv.businessPhone ?? biz?['business_phone']?.toString();
+          populatedLocal.add(conv.copyWith(
+            businessName: bName,
+            businessLogoUrl: bLogo,
+            businessPhone: bPhone,
+            unreadCount: conv.customerUnreadCount,
+            otherUser: _syntheticBusinessUser(conv.businessId!, bName, bLogo, bPhone),
+          ));
+          continue;
+        }
+
         if (conv.gigId != null) {
            final gigData = _gigCache[conv.gigId!];
            if (gigData != null) {
@@ -82,6 +137,23 @@ class ChatService {
           List<ConversationModel> conversations = [];
           for (var e in filtered) {
              final conv = ConversationModel.fromJson(e, currentUserId);
+
+             if (conv.isBusinessChat) {
+               // Business chats belong to customer inbox (when user1 is customer)
+               if (isRunner || conv.user1Id != currentUserId) continue;
+               final biz = await getCachedBusiness(conv.businessId!);
+               final bName = biz?['business_name']?.toString();
+               final bLogo = biz?['business_logo_url']?.toString();
+               final bPhone = biz?['business_phone']?.toString();
+               conversations.add(conv.copyWith(
+                 businessName: bName,
+                 businessLogoUrl: bLogo,
+                 businessPhone: bPhone,
+                 unreadCount: conv.customerUnreadCount,
+                 otherUser: _syntheticBusinessUser(conv.businessId!, bName, bLogo, bPhone),
+               ));
+               continue;
+             }
 
              if (conv.gigId != null) {
                final gigData = await getCachedGig(conv.gigId!);
@@ -260,28 +332,86 @@ class ChatService {
     return ConversationModel.fromJson(response, currentUserId);
   }
 
+  /// Create or get a customer <-> business conversation via SECURITY DEFINER RPC
+  static Future<ConversationModel> getOrCreateBusinessConversation(
+    String businessId, {
+    String? contextType,
+    String? contextId,
+  }) async {
+    final currentUserId = _supabase.auth.currentUser?.id;
+    if (currentUserId == null) {
+      throw Exception('Authentication required');
+    }
+
+    final response = await _supabase.rpc(
+      'get_or_create_business_conversation',
+      params: {
+        'p_business_id': businessId,
+        if (contextType != null) 'p_context_type': contextType,
+        if (contextId != null) 'p_context_id': contextId,
+      },
+    );
+
+    final row = Map<String, dynamic>.from(response as Map);
+    final biz = await getCachedBusiness(businessId);
+    final bName = biz?['business_name']?.toString();
+    final bLogo = biz?['business_logo_url']?.toString();
+    final bPhone = biz?['business_phone']?.toString();
+
+    return ConversationModel.fromJson(row, currentUserId).copyWith(
+      businessName: bName,
+      businessLogoUrl: bLogo,
+      businessPhone: bPhone,
+      otherUser: _syntheticBusinessUser(businessId, bName, bLogo, bPhone),
+    );
+  }
+
+  /// Mark a business conversation as read via SECURITY DEFINER RPC
+  static Future<void> markBusinessConversationRead(
+    String conversationId, {
+    String viewerRole = 'customer',
+  }) async {
+    try {
+      await _supabase.rpc(
+        'mark_business_conversation_read',
+        params: {
+          'p_conversation_id': conversationId,
+          'p_viewer_role': viewerRole,
+        },
+      );
+    } catch (e) {
+      debugPrint('markBusinessConversationRead failed: $e');
+    }
+  }
+
   /// Send a message
-  static Future<MessageModel> sendMessage(MessageModel message, {String? contextGigId}) async {
+  static Future<MessageModel> sendMessage(
+    MessageModel message, {
+    String? contextGigId,
+    bool isBusinessChat = false,
+  }) async {
     try {
       // 1. Sumbat mesej baru masuk DB pastu ambil UUID betul dia
       final response = await _supabase.from('messages').insert(message.toSupabaseJson()).select().single();
       final actualMessage = MessageModel.fromJson(response);
 
-      // 2. Update table perbualan
-      if (contextGigId != null) {
-        await _supabase.rpc('update_conversation_task_message', params: {
-          'p_conversation_id': message.conversationId,
-          'p_sender_id': message.senderId,
-          'p_message_content': message.content,
-          'p_gig_id': contextGigId,
-        });
-      } else {
-        await _supabase.from('conversations').update({
-          'last_message': message.content,
-          'last_message_sender_id': message.senderId,
-          'last_message_is_read': false,
-          'updated_at': message.createdAt.toUtc().toIso8601String(),
-        }).eq('id', message.conversationId);
+      // 2. Update table perbualan (untuk business chat, trigger DB yang uruskan)
+      if (!isBusinessChat) {
+        if (contextGigId != null) {
+          await _supabase.rpc('update_conversation_task_message', params: {
+            'p_conversation_id': message.conversationId,
+            'p_sender_id': message.senderId,
+            'p_message_content': message.content,
+            'p_gig_id': contextGigId,
+          });
+        } else {
+          await _supabase.from('conversations').update({
+            'last_message': message.content,
+            'last_message_sender_id': message.senderId,
+            'last_message_is_read': false,
+            'updated_at': message.createdAt.toUtc().toIso8601String(),
+          }).eq('id', message.conversationId);
+        }
       }
       
       // Update local dengan REAL ID supaya tak ter-duplicate bila reload nanti
@@ -316,6 +446,7 @@ class ChatService {
     Uint8List imageBytes,
     String originalFileName, {
     String? contextGigId,
+    bool isBusinessChat = false,
   }) async {
     try {
       final fileExt = originalFileName.contains('.')
@@ -353,20 +484,22 @@ class ChatService {
       final response = await _supabase.from('messages').insert(newMsg.toSupabaseJson()).select().single();
       final actualMessage = MessageModel.fromJson(response);
 
-      if (contextGigId != null) {
-        await _supabase.rpc('update_conversation_task_message', params: {
-          'p_conversation_id': pendingMessage.conversationId,
-          'p_sender_id': pendingMessage.senderId,
-          'p_message_content': 'Photo',
-          'p_gig_id': contextGigId,
-        });
-      } else {
-        await _supabase.from('conversations').update({
-          'last_message': 'Photo',
-          'last_message_sender_id': pendingMessage.senderId,
-          'last_message_is_read': false,
-          'updated_at': actualMessage.createdAt.toUtc().toIso8601String(),
-        }).eq('id', pendingMessage.conversationId);
+      if (!isBusinessChat) {
+        if (contextGigId != null) {
+          await _supabase.rpc('update_conversation_task_message', params: {
+            'p_conversation_id': pendingMessage.conversationId,
+            'p_sender_id': pendingMessage.senderId,
+            'p_message_content': 'Photo',
+            'p_gig_id': contextGigId,
+          });
+        } else {
+          await _supabase.from('conversations').update({
+            'last_message': 'Photo',
+            'last_message_sender_id': pendingMessage.senderId,
+            'last_message_is_read': false,
+            'updated_at': actualMessage.createdAt.toUtc().toIso8601String(),
+          }).eq('id', pendingMessage.conversationId);
+        }
       }
 
       final sentMsg = actualMessage.copyWith(status: 'sent');
@@ -385,6 +518,7 @@ class ChatService {
     Uint8List fileBytes,
     String fileName, {
     String? contextGigId,
+    bool isBusinessChat = false,
   }) async {
     try {
       final lower = fileName.toLowerCase();
@@ -422,20 +556,22 @@ class ChatService {
       final response = await _supabase.from('messages').insert(newMsg.toSupabaseJson()).select().single();
       final actualMessage = MessageModel.fromJson(response);
 
-      if (contextGigId != null) {
-        await _supabase.rpc('update_conversation_task_message', params: {
-          'p_conversation_id': pendingMessage.conversationId,
-          'p_sender_id': pendingMessage.senderId,
-          'p_message_content': 'File',
-          'p_gig_id': contextGigId,
-        });
-      } else {
-        await _supabase.from('conversations').update({
-          'last_message': 'File',
-          'last_message_sender_id': pendingMessage.senderId,
-          'last_message_is_read': false,
-          'updated_at': actualMessage.createdAt.toUtc().toIso8601String(),
-        }).eq('id', pendingMessage.conversationId);
+      if (!isBusinessChat) {
+        if (contextGigId != null) {
+          await _supabase.rpc('update_conversation_task_message', params: {
+            'p_conversation_id': pendingMessage.conversationId,
+            'p_sender_id': pendingMessage.senderId,
+            'p_message_content': 'File',
+            'p_gig_id': contextGigId,
+          });
+        } else {
+          await _supabase.from('conversations').update({
+            'last_message': 'File',
+            'last_message_sender_id': pendingMessage.senderId,
+            'last_message_is_read': false,
+            'updated_at': actualMessage.createdAt.toUtc().toIso8601String(),
+          }).eq('id', pendingMessage.conversationId);
+        }
       }
 
       final sentMsg = actualMessage.copyWith(status: 'sent');

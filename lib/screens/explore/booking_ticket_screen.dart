@@ -8,7 +8,9 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ngam/l10n/generated/app_localizations.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/chat_service.dart';
 import '../../utils/glass_toast.dart';
+import '../shared/chat_screen.dart';
 import 'bookings_view.dart';
 
 class BookingTicketScreen extends StatefulWidget {
@@ -245,6 +247,39 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
       }
     } catch (e) {
       debugPrint('Error fetching shop phone: $e');
+    }
+  }
+
+  Future<void> _openShopChat() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('chat.login_required'.tr())),
+        );
+      }
+      return;
+    }
+    if (widget.shopId.isEmpty) return;
+    try {
+      final conv = await ChatService.getOrCreateBusinessConversation(
+        widget.shopId,
+        contextType: 'booking',
+        contextId: widget.bookingId,
+      );
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatThreadScreen(conversation: conv),
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('chat.open_chat_failed'.tr())),
+        );
+      }
     }
   }
 
@@ -1343,6 +1378,33 @@ Disahkan melalui aplikasi *Ngam*.
                       ),
                     ),
                   ] else ...[
+                    if (widget.shopId.isNotEmpty) ...[
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton.icon(
+                          onPressed: _openShopChat,
+                          icon: const HugeIcon(
+                            icon: HugeIcons.strokeRoundedChatting01,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          label: Text(
+                            'store.chat_shop'.tr(),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF42A5F5),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                    ],
                     Expanded(
                       flex: 2,
                       child: ElevatedButton.icon(

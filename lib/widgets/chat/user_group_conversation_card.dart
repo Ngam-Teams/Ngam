@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -44,6 +45,8 @@ class _UserGroupConversationCardState extends State<UserGroupConversationCard> {
   Timer? _typingTimer;
   List<GigModel>? _sharedGigs;
 
+  bool get _isBusinessChat => widget.otherUser.id.startsWith('biz_');
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +55,10 @@ class _UserGroupConversationCardState extends State<UserGroupConversationCard> {
   }
 
   Future<void> _loadSharedGigs() async {
+    if (_isBusinessChat) {
+      if (mounted) setState(() => _sharedGigs = []);
+      return;
+    }
     try {
       final gigs = await GigService.fetchSharedGigs(widget.currentUserId, widget.otherUser.id);
       if (mounted) setState(() => _sharedGigs = gigs);
@@ -69,8 +76,11 @@ class _UserGroupConversationCardState extends State<UserGroupConversationCard> {
             callback: (payload) {
               final userId = payload['user_id'] as String?;
               final isTyping = payload['is_typing'] as bool? ?? false;
-              
-              if (userId == widget.otherUser.id && mounted) {
+              final matchesOther = _isBusinessChat
+                  ? (userId != null && userId != widget.currentUserId)
+                  : (userId == widget.otherUser.id);
+
+              if (matchesOther && mounted) {
                 setState(() {
                   _isTyping = isTyping;
                 });
@@ -132,6 +142,10 @@ class _UserGroupConversationCardState extends State<UserGroupConversationCard> {
     int unreadCount = 0;
 
     for (var c in widget.conversations) {
+      if (c.isBusinessChat) {
+        unreadCount += c.customerUnreadCount;
+        continue;
+      }
       if (c.lastMessageSenderId == widget.currentUserId) {
         continue; // Aku yang hantar chat tu tadi, so tak payah la tunjuk unread
       }
@@ -288,6 +302,8 @@ class _UserGroupConversationCardState extends State<UserGroupConversationCard> {
                             spacing: 6,
                             runSpacing: 4,
                             children: [
+                              if (_isBusinessChat)
+                                _buildBadge(HugeIcons.strokeRoundedStore01, const Color(0xFF42A5F5), 'chat.shop_badge'.tr()),
                               if (openCount > 0) _buildBadge(HugeIcons.strokeRoundedWorkHistory, AppTheme.primary, '$openCount'),
                               if (inProgressCount > 0) _buildBadge(HugeIcons.strokeRoundedHourglass, Colors.blue, '$inProgressCount'),
                               if (completedCount > 0) _buildBadge(HugeIcons.strokeRoundedTick01, Colors.green, '$completedCount'),

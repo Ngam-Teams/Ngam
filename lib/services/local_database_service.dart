@@ -25,7 +25,7 @@ class LocalDatabaseService {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _createDB,
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -36,6 +36,16 @@ class LocalDatabaseService {
         }
         if (oldVersion < 4) {
           await db.execute('ALTER TABLE conversations ADD COLUMN task_unread_counts TEXT').catchError((e) => null);
+        }
+        if (oldVersion < 5) {
+          await db.execute('ALTER TABLE conversations ADD COLUMN business_id TEXT').catchError((e) => null);
+          await db.execute('ALTER TABLE conversations ADD COLUMN business_name TEXT').catchError((e) => null);
+          await db.execute('ALTER TABLE conversations ADD COLUMN business_logo_url TEXT').catchError((e) => null);
+          await db.execute('ALTER TABLE conversations ADD COLUMN business_phone TEXT').catchError((e) => null);
+          await db.execute('ALTER TABLE conversations ADD COLUMN context_type TEXT').catchError((e) => null);
+          await db.execute('ALTER TABLE conversations ADD COLUMN context_id TEXT').catchError((e) => null);
+          await db.execute('ALTER TABLE conversations ADD COLUMN customer_unread_count INTEGER DEFAULT 0').catchError((e) => null);
+          await db.execute('ALTER TABLE conversations ADD COLUMN business_unread_count INTEGER DEFAULT 0').catchError((e) => null);
         }
       },
     );
@@ -78,7 +88,15 @@ CREATE TABLE conversations (
   updated_at $textType,
   unread_count $integerType,
   task_last_messages $textNullType,
-  task_unread_counts $textNullType
+  task_unread_counts $textNullType,
+  business_id $textNullType,
+  business_name $textNullType,
+  business_logo_url $textNullType,
+  business_phone $textNullType,
+  context_type $textNullType,
+  context_id $textNullType,
+  customer_unread_count INTEGER DEFAULT 0,
+  business_unread_count INTEGER DEFAULT 0
 )
 ''');
   }

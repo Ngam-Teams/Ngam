@@ -543,7 +543,17 @@
     "status": "Status",
     "location_requested": "Lokasi Diminta",
     "share_location_desc": "Kongsi lokasi anda untuk membantu mengira jarak perjalanan.",
-    "share_location": "Kongsi Lokasi"
+    "share_location": "Kongsi Lokasi",
+    "shop_badge": "Kedai",
+    "login_prompt_title": "Log Masuk untuk Mula Mesej",
+    "login_prompt_desc": "Hubungi peniaga, tempah servis, dan dapatkan bantuan pantas terus melalui aplikasi.",
+    "login_btn": "Log Masuk / Daftar",
+    "delete_failed": "Gagal memadam perbualan: {}",
+    "send_failed": "Gagal menghantar mesej: {}",
+    "image_send_failed": "Gagal menghantar gambar: {}",
+    "file_send_failed": "Gagal menghantar fail: {}",
+    "login_required": "Sila log masuk untuk mula chat dengan kedai ini",
+    "open_chat_failed": "Tidak dapat membuka chat buat masa ini"
   },
   "privacy": {
     "title": "Privasi & Keselamatan",
@@ -982,7 +992,8 @@
     "mode_badge_walkin": "Giliran Walk-In",
     "mode_badge_booking": "Tempahan Slot",
     "mode_badge_order": "Pesanan Menu",
-    "table_dine_in_badge": "Meja #{} (Makan Sini)"
+    "table_dine_in_badge": "Meja #{} (Makan Sini)",
+    "chat_shop": "Chat Kedai"
   },
   "feed": {
     "title": "Ngam Feed",

@@ -543,7 +543,17 @@
     "status": "Status",
     "location_requested": "Location Requested",
     "share_location_desc": "Share your location to help calculate travel distance.",
-    "share_location": "Share Location"
+    "share_location": "Share Location",
+    "shop_badge": "Shop",
+    "login_prompt_title": "Sign In to Start Messaging",
+    "login_prompt_desc": "Contact merchants, book services, and get instant support right through the app.",
+    "login_btn": "Sign In / Register",
+    "delete_failed": "Failed to delete conversation: {}",
+    "send_failed": "Failed to send message: {}",
+    "image_send_failed": "Failed to send image: {}",
+    "file_send_failed": "Failed to send file: {}",
+    "login_required": "Please sign in to chat with this shop",
+    "open_chat_failed": "Unable to open chat right now"
   },
   "privacy": {
     "title": "Privacy & Security",
@@ -982,7 +992,8 @@
     "mode_badge_walkin": "Walk-In Queue",
     "mode_badge_booking": "Slot Booking",
     "mode_badge_order": "Direct Order",
-    "table_dine_in_badge": "Table #{} (Dine In)"
+    "table_dine_in_badge": "Table #{} (Dine In)",
+    "chat_shop": "Chat Shop"
   },
   "feed": {
     "title": "Ngam Feed",

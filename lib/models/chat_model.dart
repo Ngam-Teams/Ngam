@@ -17,6 +17,18 @@ class ConversationModel {
   final UserModel? otherUser;
   final int unreadCount;
 
+  // Business <-> Customer chat fields
+  final String? businessId;
+  final String? businessName;
+  final String? businessLogoUrl;
+  final String? businessPhone;
+  final String? contextType;
+  final String? contextId;
+  final int customerUnreadCount;
+  final int businessUnreadCount;
+
+  bool get isBusinessChat => businessId != null && businessId!.isNotEmpty;
+
   ConversationModel({
     required this.id,
     required this.user1Id,
@@ -30,6 +42,14 @@ class ConversationModel {
     this.taskUnreadCounts,
     this.otherUser,
     this.unreadCount = 0,
+    this.businessId,
+    this.businessName,
+    this.businessLogoUrl,
+    this.businessPhone,
+    this.contextType,
+    this.contextId,
+    this.customerUnreadCount = 0,
+    this.businessUnreadCount = 0,
   });
 
   factory ConversationModel.fromJson(Map<String, dynamic> json, String currentUserId) {
@@ -55,6 +75,14 @@ class ConversationModel {
       }
     }
 
+    final bizMap = json['businesses'] is Map ? Map<String, dynamic>.from(json['businesses'] as Map) : null;
+    final bizId = json['business_id']?.toString();
+    final bizName = (json['business_name'] ?? bizMap?['business_name'])?.toString();
+    final bizLogo = (json['business_logo_url'] ?? bizMap?['business_logo_url'])?.toString();
+    final bizPhone = (json['business_phone'] ?? bizMap?['business_phone'])?.toString();
+    final custUnread = (json['customer_unread_count'] as num?)?.toInt() ?? 0;
+    final bizUnread = (json['business_unread_count'] as num?)?.toInt() ?? 0;
+
     return ConversationModel(
       id: json['id'],
       user1Id: json['user1_id'],
@@ -71,7 +99,16 @@ class ConversationModel {
           ? Map<String, int>.from(json['task_unread_counts'].map((k, v) => MapEntry(k.toString(), v as int)))
           : null,
       otherUser: otherUserParsed,
-      unreadCount: json['unread_count'] ?? 0, 
+      unreadCount: (json['unread_count'] as num?)?.toInt() ??
+          (bizId != null && bizId.isNotEmpty ? custUnread : 0),
+      businessId: bizId,
+      businessName: bizName,
+      businessLogoUrl: bizLogo,
+      businessPhone: bizPhone,
+      contextType: json['context_type']?.toString(),
+      contextId: json['context_id']?.toString(),
+      customerUnreadCount: custUnread,
+      businessUnreadCount: bizUnread,
     );
   }
 
@@ -88,6 +125,14 @@ class ConversationModel {
       if (taskLastMessages != null) 'task_last_messages': taskLastMessages,
       if (taskUnreadCounts != null) 'task_unread_counts': taskUnreadCounts,
       'unread_count': unreadCount,
+      if (businessId != null) 'business_id': businessId,
+      if (businessName != null) 'business_name': businessName,
+      if (businessLogoUrl != null) 'business_logo_url': businessLogoUrl,
+      if (businessPhone != null) 'business_phone': businessPhone,
+      if (contextType != null) 'context_type': contextType,
+      if (contextId != null) 'context_id': contextId,
+      'customer_unread_count': customerUnreadCount,
+      'business_unread_count': businessUnreadCount,
     };
   }
 
@@ -119,6 +164,14 @@ class ConversationModel {
     Map<String, int>? taskUnreadCounts,
     UserModel? otherUser,
     int? unreadCount,
+    String? businessId,
+    String? businessName,
+    String? businessLogoUrl,
+    String? businessPhone,
+    String? contextType,
+    String? contextId,
+    int? customerUnreadCount,
+    int? businessUnreadCount,
   }) {
     return ConversationModel(
       id: id ?? this.id,
@@ -133,6 +186,14 @@ class ConversationModel {
       taskUnreadCounts: taskUnreadCounts ?? this.taskUnreadCounts,
       otherUser: otherUser ?? this.otherUser,
       unreadCount: unreadCount ?? this.unreadCount,
+      businessId: businessId ?? this.businessId,
+      businessName: businessName ?? this.businessName,
+      businessLogoUrl: businessLogoUrl ?? this.businessLogoUrl,
+      businessPhone: businessPhone ?? this.businessPhone,
+      contextType: contextType ?? this.contextType,
+      contextId: contextId ?? this.contextId,
+      customerUnreadCount: customerUnreadCount ?? this.customerUnreadCount,
+      businessUnreadCount: businessUnreadCount ?? this.businessUnreadCount,
     );
   }
 }
@@ -245,6 +306,9 @@ class MessageModel {
       'sender_id': senderId,
       'content': content,
       if (imageUrl != null) 'image_url': imageUrl,
+      'message_type': messageType,
+      if (fileName != null) 'file_name': fileName,
+      if (fileSize != null) 'file_size': fileSize,
       'is_read': isRead,
       if (replyToMessage != null) 'reply_to_message': replyToMessage,
     };
