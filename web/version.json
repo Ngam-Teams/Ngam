@@ -1,6 +1,6 @@
 {
-  "version": "1.0.32",
-  "build_number": 6,
-  "released_at": "2026-11-16T07:20:00Z",
-  "changelog": "Bottom sheet komen kini bergaya glassmorphism seperti dialog log keluar dan hanya pengguna log masuk boleh komen."
+  "version": "1.0.33",
+  "build_number": 7,
+  "released_at": "2026-11-16T09:30:00Z",
+  "changelog": "Dialog kemas kini aplikasi kini bergaya glassmorphism seperti dialog log keluar dan responsif tanpa limpahan."
 }
