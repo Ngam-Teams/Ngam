@@ -105,14 +105,16 @@ class AuthProvider extends ChangeNotifier {
 
   void _syncUserData() {
     if (_user != null) {
-      if (_user!.userName.trim().isNotEmpty) {
-        UserData.userName.value = _user!.userName.trim();
+      final name = (_user!.userName ?? '').trim();
+      if (name.isNotEmpty) {
+        UserData.userName.value = name;
       }
       if ((_user!.userAvatarUrl ?? '').trim().isNotEmpty) {
         UserData.userProfilePic.value = _user!.userAvatarUrl!.trim();
       }
-      if (_user!.userEmail.trim().isNotEmpty) {
-        UserData.userEmail.value = _user!.userEmail.trim();
+      final email = (_user!.userEmail ?? '').trim();
+      if (email.isNotEmpty) {
+        UserData.userEmail.value = email;
       }
       if ((_user!.userPhone ?? '').trim().isNotEmpty) {
         UserData.userPhone.value = _user!.userPhone!.trim();

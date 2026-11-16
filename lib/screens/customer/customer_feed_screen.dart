@@ -2554,8 +2554,9 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
       final authProvider = context.read<AuthProvider>();
       final appUser = authProvider.user;
       if (appUser != null) {
-        if (appUser.userName.trim().isNotEmpty) {
-          _resolvedAppUserName = appUser.userName.trim();
+        final appUserName = (appUser.userName ?? '').trim();
+        if (appUserName.isNotEmpty) {
+          _resolvedAppUserName = appUserName;
           UserData.userName.value = _resolvedAppUserName;
         }
         if ((appUser.userAvatarUrl ?? '').trim().isNotEmpty) {
@@ -2599,8 +2600,9 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     if (name.isEmpty) {
       try {
         final authUser = context.read<AuthProvider>().user;
-        if (authUser != null && authUser.userName.trim().isNotEmpty) {
-          name = authUser.userName.trim();
+        final authUserName = (authUser?.userName ?? '').trim();
+        if (authUserName.isNotEmpty) {
+          name = authUserName;
         }
       } catch (_) {}
     }
