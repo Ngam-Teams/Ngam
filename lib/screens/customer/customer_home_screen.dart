@@ -68,7 +68,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
   void _onTabTapped(int index, {bool recordHistory = true}) {
     if (index < 0 || index >= _tabPaths.length) return;
-    BottomNavCustomer.isVisible.value = true;
+    BottomNavCustomer.isVisible.value = !(index == 1 && ExploreView.isMobileProfileSheetOpen);
     if (recordHistory && _currentIndex != index) {
       _tabHistory.add(_currentIndex);
       if (_tabHistory.length > 25) {

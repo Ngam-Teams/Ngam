@@ -44,6 +44,7 @@ class ExploreSearchRequest {
 class ExploreView extends StatefulWidget {
   /// Set this, then switch to the Discover tab. ExploreView consumes it.
   static final ValueNotifier<ExploreSearchRequest?> pendingSearch = ValueNotifier<ExploreSearchRequest?>(null);
+  static bool isMobileProfileSheetOpen = false;
 
   const ExploreView({super.key});
 
@@ -119,6 +120,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   bool _followUser = true;
   bool _isSearching = false;
   bool _isProfileOpen = false;
+  int _activeProfileSheetToken = 0;
 
   Map<String, dynamic>? _selectedShop;
   List<Map<String, dynamic>> _nearbyShops = [];
@@ -426,6 +428,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
   @override
   void dispose() {
+    ExploreView.isMobileProfileSheetOpen = false;
     BottomNavCustomer.isVisible.value = true;
     _shopsSubscription?.cancel();
     _minuteTicker?.cancel();
@@ -1424,7 +1427,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
   }
 
   void _stopNavigation() {
-    BottomNavCustomer.isVisible.value = true;
+    if (!ExploreView.isMobileProfileSheetOpen) {
+      BottomNavCustomer.isVisible.value = true;
+    }
     setState(() {
       _isNavigating = false;
       _routePoints = [];
@@ -1948,7 +1953,9 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         ),
       ),
     ).then((_) {
-      BottomNavCustomer.isVisible.value = true;
+      if (!ExploreView.isMobileProfileSheetOpen && !_isNavigating) {
+        BottomNavCustomer.isVisible.value = true;
+      }
     });
   }
 
@@ -4672,6 +4679,8 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       return;
     }
 
+    final int sheetToken = ++_activeProfileSheetToken;
+    ExploreView.isMobileProfileSheetOpen = true;
     BottomNavCustomer.isVisible.value = false;
 
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
@@ -5216,7 +5225,11 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         });
       },
     ).closed.whenComplete(() {
-      BottomNavCustomer.isVisible.value = true;
+      if (sheetToken != _activeProfileSheetToken) return;
+      ExploreView.isMobileProfileSheetOpen = false;
+      if (!_isNavigating) {
+        BottomNavCustomer.isVisible.value = true;
+      }
       if (mounted) {
         setState(() {
           _isProfileOpen = false;
