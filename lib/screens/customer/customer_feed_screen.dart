@@ -16,6 +16,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 import '../../widgets/glass_toast.dart';
+import '../../widgets/glass_box.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../../widgets/customer_desktop_sidebar.dart';
 import '../../services/saved_service.dart';
@@ -2370,38 +2371,59 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
 
         return Padding(
           padding: EdgeInsets.only(bottom: bottomInset),
-          child: Container(
-            height: sheetHeight,
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF10141B) : Colors.white,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              border: Border.all(
-                color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.08),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            child: GlassContainer(
+              useOwnLayer: true,
+              quality: GlassQuality.standard,
+              shape: const LiquidRoundedSuperellipse(borderRadius: 24.0),
+              settings: const LiquidGlassSettings(
+                thickness: 0.1,
+                blur: 16.0,
+                glassColor: Colors.transparent,
+                lightAngle: 45.0,
+                lightIntensity: 0.1,
+                ambientStrength: 1.0,
+                saturation: 1.0,
+                chromaticAberration: 0.0,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.15),
-                  blurRadius: 28,
-                  offset: const Offset(0, -6),
+              child: Container(
+                height: sheetHeight,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.black.withValues(alpha: 0.22)
+                      : Colors.white.withValues(alpha: 0.30),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: isDark ? 0.16 : 0.45),
+                    width: 1.0,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+                      blurRadius: 18,
+                      offset: const Offset(0, -6),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: _FeedCommentsView(
-              post: post,
-              isDesktop: false,
-              onClose: () => Navigator.pop(ctx),
-              onCommentCountChanged: (count, updatedList) {
-                post['comments'] = count;
-                post['commentList'] = updatedList;
-                _syncPostCommentCount(
-                  post['id']?.toString() ?? '',
-                  count,
-                  updatedList,
-                );
-                if (mounted) {
-                  setState(() {});
-                }
-              },
+                child: _FeedCommentsView(
+                  post: post,
+                  isDesktop: false,
+                  onClose: () => Navigator.pop(ctx),
+                  onCommentCountChanged: (count, updatedList) {
+                    post['comments'] = count;
+                    post['commentList'] = updatedList;
+                    _syncPostCommentCount(
+                      post['id']?.toString() ?? '',
+                      count,
+                      updatedList,
+                    );
+                    if (mounted) {
+                      setState(() {});
+                    }
+                  },
+                ),
+              ),
             ),
           ),
         );
@@ -3003,7 +3025,13 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     _commentFocusNode.requestFocus();
   }
 
+  bool get _isSignedIn => Supabase.instance.client.auth.currentUser != null;
+
   void _handleSendComment() async {
+    if (!_isSignedIn) {
+      showGlassToast(context, 'feed_comments.login_required'.tr(), isError: true);
+      return;
+    }
     final text = _commentController.text.trim();
     if (text.isEmpty || _isSubmitting) return;
 
@@ -3226,6 +3254,10 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     required String parentCommentId,
     required String targetUser,
   }) {
+    if (!_isSignedIn) {
+      showGlassToast(context, 'feed_comments.login_required'.tr(), isError: true);
+      return;
+    }
     HapticFeedback.selectionClick();
     setState(() {
       _replyingToCommentId = parentCommentId;
@@ -3259,6 +3291,10 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
   }
 
   void _toggleLikeComment(int index) async {
+    if (!_isSignedIn) {
+      showGlassToast(context, 'feed_comments.login_required'.tr(), isError: true);
+      return;
+    }
     HapticFeedback.lightImpact();
     final c = _comments[index];
     final String cid = c['id']?.toString() ?? '';
@@ -3283,6 +3319,10 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
   }
 
   void _toggleLikeReply(int parentIndex, int replyIndex) async {
+    if (!_isSignedIn) {
+      showGlassToast(context, 'feed_comments.login_required'.tr(), isError: true);
+      return;
+    }
     HapticFeedback.lightImpact();
     final parent = _comments[parentIndex];
     final List<Map<String, dynamic>> replies =
@@ -3360,8 +3400,8 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     final String replyToUser = reply['replyToUser']?.toString() ?? '';
     final bool isReplyLiked = reply['isLiked'] == true;
     final int replyLikes = (reply['likes'] as num?)?.toInt() ?? 0;
-    final bool isMyReply =
-        reply['isMyComment'] == true || replyUser == currentUserName;
+    final bool isMyReply = _isSignedIn &&
+        (reply['isMyComment'] == true || replyUser == currentUserName);
     final bool isCreator = reply['isCreator'] == true ||
         (shopName.isNotEmpty &&
             replyUser.toLowerCase().trim() == shopName.toLowerCase().trim());
@@ -3797,8 +3837,9 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                             (c['likes'] as num?)?.toInt() ?? 0;
                         final String commentUser = c['user']?.toString() ??
                             'feed_comments.default_customer'.tr();
-                        final bool isMyComment = c['isMyComment'] == true ||
-                            commentUser == currentUserName;
+                        final bool isMyComment = _isSignedIn &&
+                            (c['isMyComment'] == true ||
+                                commentUser == currentUserName);
                         final bool isCreator = c['isCreator'] == true ||
                             (shopName.isNotEmpty &&
                                 commentUser.toLowerCase().trim() ==
@@ -4132,21 +4173,94 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
         Container(
           padding: EdgeInsets.fromLTRB(
             14,
-            8,
+            10,
             14,
             widget.isDesktop ? 16 : (12 + MediaQuery.of(context).padding.bottom),
           ),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF0F1318) : const Color(0xFFF8FAFC),
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.22)
+                : Colors.white.withValues(alpha: 0.35),
             border: Border(
               top: BorderSide(
-                color: isDark
-                    ? Colors.white10
-                    : Colors.black.withValues(alpha: 0.08),
+                color: Colors.white.withValues(alpha: isDark ? 0.14 : 0.45),
               ),
             ),
           ),
-          child: Column(
+          child: !_isSignedIn
+              ? Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.06),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.35),
+                        ),
+                      ),
+                      child: Center(
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedLockPassword,
+                          color: isDark ? Colors.white70 : const Color(0xFF334155),
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'feed_comments.sign_in_to_comment'.tr(),
+                        style: TextStyle(
+                          color: isDark ? Colors.white70 : const Color(0xFF334155),
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          if (!widget.isDesktop) {
+                            Navigator.pop(context);
+                          }
+                          Navigator.of(context).pushNamed('/login');
+                        },
+                        borderRadius: BorderRadius.circular(100),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF00E5FF), Color(0xFF0284C7)],
+                            ),
+                            borderRadius: BorderRadius.circular(100),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF00E5FF).withValues(alpha: 0.3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            'feed_comments.sign_in_btn'.tr(),
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               // Quick Emoji Bar (TikTok / Instagram Reels style)

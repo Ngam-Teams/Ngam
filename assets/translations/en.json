@@ -1195,6 +1195,9 @@
     "just_now": "Just now",
     "default_customer": "Ngam Customer",
     "audio_muted": "Audio Muted",
-    "audio_unmuted": "Audio Unmuted"
+    "audio_unmuted": "Audio Unmuted",
+    "login_required": "Please sign in to comment or react",
+    "sign_in_to_comment": "Sign in to join the conversation",
+    "sign_in_btn": "Sign In"
   }
 }

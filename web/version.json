@@ -1,6 +1,6 @@
 {
-  "version": "1.0.31",
-  "build_number": 5,
-  "released_at": "2026-11-16T07:15:00Z",
-  "changelog": "Integrasi chat dua hala masa nyata dengan kedai Ngam Business terus dari halaman kedai, pesanan, dan tempahan."
+  "version": "1.0.32",
+  "build_number": 6,
+  "released_at": "2026-11-16T07:20:00Z",
+  "changelog": "Bottom sheet komen kini bergaya glassmorphism seperti dialog log keluar dan hanya pengguna log masuk boleh komen."
 }

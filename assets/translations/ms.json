@@ -1195,6 +1195,9 @@
     "just_now": "Baru saja",
     "default_customer": "Pelanggan Ngam",
     "audio_muted": "Audio Dimatikan",
-    "audio_unmuted": "Audio Dihidupkan"
+    "audio_unmuted": "Audio Dihidupkan",
+    "login_required": "Sila log masuk untuk komen atau memberi reaksi",
+    "sign_in_to_comment": "Log masuk untuk sertai perbualan",
+    "sign_in_btn": "Log Masuk"
   }
 }
