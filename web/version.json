@@ -1,6 +1,6 @@
 {
-  "version": "1.0.36",
-  "build_number": 10,
-  "released_at": "2026-11-17T09:34:00Z",
-  "changelog": "Rekaan semula Laman Utama berkonsepkan glassmorphism moden & ringkas, tukar label navbar ke Utama, serta penambahbaikan fungsi semakan & muat semula kemas kini."
+  "version": "1.0.37",
+  "build_number": 11,
+  "released_at": "2026-11-17T11:00:00Z",
+  "changelog": "Paksa muat turun skrip flutter_bootstrap.js terkini (v1.0.37) supaya rekaan Laman Utama glassmorphism baharu & label Utama terus terpapar tanpa cache lama."
 }
