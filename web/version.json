@@ -1,6 +1,6 @@
 {
-  "version": "1.0.35",
-  "build_number": 9,
-  "released_at": "2026-11-17T07:19:00Z",
-  "changelog": "Dialog pengesahan sebelum kosongkan bakul & padam komen, penapis ulasan kedai aktif, serta kawalan butang tempahan mengikut tetapan kedai."
+  "version": "1.0.36",
+  "build_number": 10,
+  "released_at": "2026-11-17T09:34:00Z",
+  "changelog": "Rekaan semula Laman Utama berkonsepkan glassmorphism moden & ringkas, tukar label navbar ke Utama, serta penambahbaikan fungsi semakan & muat semula kemas kini."
 }

@@ -41,6 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int _tasksPosted = 0;
   int _tasksCompleted = 0;
   double _rating = 0.0;
+  bool _isCheckingUpdate = false;
 
   @override
   void initState() {
@@ -485,58 +486,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 isDark,
                                 HugeIcons.strokeRoundedCloudDownload,
                                 'profile.check_updates'.tr(),
-                                trailing: ValueListenableBuilder<String>(
-                                  valueListenable: AppUpdateService.versionNotifier,
-                                  builder: (context, ver, _) {
-                                    return ValueListenableBuilder<AppReleaseInfo?>(
-                                      valueListenable: AppUpdateService.availableUpdateNotifier,
-                                      builder: (context, update, _) {
-                                        final hasUpdate = update != null;
-                                        return Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                              decoration: BoxDecoration(
-                                                color: hasUpdate
-                                                    ? Colors.amber.withValues(alpha: 0.18)
-                                                    : const Color(0xFF10B981).withValues(alpha: 0.15),
-                                                borderRadius: BorderRadius.circular(8),
-                                                border: Border.all(
-                                                  color: hasUpdate
-                                                      ? Colors.amber.withValues(alpha: 0.45)
-                                                      : const Color(0xFF10B981).withValues(alpha: 0.35),
-                                                ),
-                                              ),
-                                              child: Text(
-                                                hasUpdate
-                                                    ? 'app_update.update_pill'.tr(args: [update.version])
-                                                    : 'v$ver • ${'app_update.latest_badge'.tr()}',
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: hasUpdate
-                                                      ? (isDark ? Colors.amberAccent : Colors.amber.shade900)
-                                                      : (isDark ? const Color(0xFF34D399) : const Color(0xFF059669)),
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 6),
-                                            _buildArrow(),
-                                          ],
-                                        );
+                                trailing: _isCheckingUpdate
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF38BDF8)),
+                                        ),
+                                      )
+                                    : ValueListenableBuilder<String>(
+                                        valueListenable: AppUpdateService.versionNotifier,
+                                        builder: (context, ver, _) {
+                                          return ValueListenableBuilder<AppReleaseInfo?>(
+                                            valueListenable: AppUpdateService.availableUpdateNotifier,
+                                            builder: (context, update, _) {
+                                              final hasUpdate = update != null;
+                                              return Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                    decoration: BoxDecoration(
+                                                      color: hasUpdate
+                                                          ? Colors.amber.withValues(alpha: 0.18)
+                                                          : const Color(0xFF10B981).withValues(alpha: 0.15),
+                                                      borderRadius: BorderRadius.circular(8),
+                                                      border: Border.all(
+                                                        color: hasUpdate
+                                                            ? Colors.amber.withValues(alpha: 0.45)
+                                                            : const Color(0xFF10B981).withValues(alpha: 0.35),
+                                                      ),
+                                                    ),
+                                                    child: Text(
+                                                      hasUpdate
+                                                          ? 'app_update.update_pill'.tr(args: [update.version])
+                                                          : 'v$ver • ${'app_update.latest_badge'.tr()}',
+                                                      style: TextStyle(
+                                                        fontSize: 11,
+                                                        fontWeight: FontWeight.w700,
+                                                        color: hasUpdate
+                                                            ? (isDark ? Colors.amberAccent : Colors.amber.shade900)
+                                                            : (isDark ? const Color(0xFF34D399) : const Color(0xFF059669)),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  _buildArrow(),
+                                                ],
+                                              );
+                                            },
+                                          );
+                                        },
+                                      ),
+                                onTap: _isCheckingUpdate
+                                    ? () {}
+                                    : () async {
+                                        final pendingUpdate = AppUpdateService.availableUpdateNotifier.value;
+                                        if (pendingUpdate != null) {
+                                          await AppUpdateService.showUpdateDialog(context, pendingUpdate);
+                                          return;
+                                        }
+                                        setState(() => _isCheckingUpdate = true);
+                                        try {
+                                          await AppUpdateService.checkManually(context);
+                                        } finally {
+                                          if (mounted) {
+                                            setState(() => _isCheckingUpdate = false);
+                                          }
+                                        }
                                       },
-                                    );
-                                  },
-                                ),
-                                onTap: () {
-                                  final pendingUpdate = AppUpdateService.availableUpdateNotifier.value;
-                                  if (pendingUpdate != null) {
-                                    AppUpdateService.showUpdateDialog(context, pendingUpdate);
-                                  } else {
-                                    AppUpdateService.checkManually(context);
-                                  }
-                                },
                               ),
                             ],
                           ),

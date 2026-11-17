@@ -573,20 +573,61 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
             colors: [bgGradStart, bgGradEnd],
           ),
         ),
-        child: SafeArea(
-          bottom: false,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: isDesktop ? 780 : double.infinity),
-              child: Stack(
-                children: [
-                  CustomScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    slivers: [
-                      // Top spacing for floating glass header
-                      const SliverToBoxAdapter(
-                        child: SizedBox(height: 68),
-                      ),
+        child: Stack(
+          children: [
+            // Subtle Ambient Aurora Glows for authentic glassmorphism depth
+            Positioned(
+              top: -80,
+              right: -70,
+              child: IgnorePointer(
+                child: Container(
+                  width: 280,
+                  height: 280,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        const Color(0xFF2196F3).withValues(alpha: isDark ? 0.14 : 0.10),
+                        const Color(0xFF2196F3).withValues(alpha: 0.0),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 220,
+              left: -90,
+              child: IgnorePointer(
+                child: Container(
+                  width: 260,
+                  height: 260,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        const Color(0xFF6366F1).withValues(alpha: isDark ? 0.11 : 0.07),
+                        const Color(0xFF6366F1).withValues(alpha: 0.0),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SafeArea(
+              bottom: false,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: isDesktop ? 780 : double.infinity),
+                  child: Stack(
+                    children: [
+                      CustomScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        slivers: [
+                          // Top spacing for floating glass header
+                          const SliverToBoxAdapter(
+                            child: SizedBox(height: 68),
+                          ),
 
                       // 2. Liquid Glass Search Bar
               SliverToBoxAdapter(
@@ -735,8 +776,10 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                   ),
                 ],
               ),
+            ),
+          ),
         ),
-      ),
+      ],
     ),
   ),
 );
@@ -1177,78 +1220,73 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
   Widget _buildSearchBar(bool isDark) {
     return GestureDetector(
       onTap: () {
-        // Switch to Discover tab and focus its search bar
         ExploreView.pendingSearch.value = const ExploreSearchRequest(focusSearch: true);
         widget.onSwitchTab?.call(1);
       },
       child: GlassContainer(
         useOwnLayer: true,
         quality: GlassQuality.standard,
-        shape: const LiquidRoundedSuperellipse(borderRadius: 30.0),
+        shape: const LiquidRoundedSuperellipse(borderRadius: 26.0),
         settings: LiquidGlassSettings(
           thickness: 0.1,
-          blur: 2.0,
+          blur: 10.0,
           lightIntensity: isDark ? 0.1 : 0.2,
           glassColor: Colors.transparent,
         ),
         child: Container(
-          height: 52,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          height: 48,
+          padding: const EdgeInsets.only(left: 16, right: 8),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(30),
-            color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white.withValues(alpha: 0.85),
+            borderRadius: BorderRadius.circular(26),
+            color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white.withValues(alpha: 0.78),
             border: Border.all(
-              color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.7),
+              color: Colors.white.withValues(alpha: isDark ? 0.14 : 0.65),
+              width: 1.0,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
-                blurRadius: 12,
+                color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.05),
+                blurRadius: 14,
                 offset: const Offset(0, 4),
               ),
             ],
           ),
           child: Row(
             children: [
-              HugeIcon(
+              const HugeIcon(
                 icon: HugeIcons.strokeRoundedSearch01,
-                color: const Color(0xFF2196F3),
-                size: 20,
+                color: Color(0xFF38BDF8),
+                size: 19,
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   AppLocalizations.of(context)?.homeSearchPlaceholder ?? 'Cari servis, kedai, barangan...',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: isDark ? Colors.white54 : Colors.grey.shade500,
+                    color: isDark ? Colors.white54 : Colors.grey.shade600,
                     fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
+                  shape: BoxShape.circle,
                   color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: isDark ? 0.10 : 0.4),
+                  ),
                 ),
-                child: Row(
-                  children: [
-                    HugeIcon(
-                      icon: HugeIcons.strokeRoundedSlidersHorizontal,
-                      color: isDark ? Colors.white70 : Colors.black54,
-                      size: 14,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Tapis',
-                      style: TextStyle(
-                        color: isDark ? Colors.white70 : Colors.black54,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+                child: Center(
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedSlidersHorizontal,
+                    color: isDark ? Colors.white70 : Colors.black54,
+                    size: 15,
+                  ),
                 ),
               ),
             ],
@@ -1258,120 +1296,82 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
     );
   }
 
-  // --- WIDGET 3: STORIES SECTION ---
+  // --- WIDGET 3: QUICK HIGHLIGHTS (MINIMAL GLASS PILLS) ---
   Widget _buildStoriesSection(bool isDark) {
     return SizedBox(
-      height: 88,
+      height: 40,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         itemCount: _stories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 14),
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (context, index) {
           final story = _stories[index];
           final List<Color> gradientColors = story['gradient'];
+          final Color accent = gradientColors[0];
 
-          return GestureDetector(
-            onTap: () {
-              final catKey = story['categoryKey'] as String?;
-              if (catKey != null) {
-                ExploreView.pendingSearch.value = ExploreSearchRequest(categoryId: catKey);
-                widget.onSwitchTab?.call(1);
-              }
-            },
-            child: Column(
-              children: [
-                Stack(
-                  alignment: Alignment.center,
-                  clipBehavior: Clip.none,
+          return MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () {
+                final catKey = story['categoryKey'] as String?;
+                if (catKey != null) {
+                  ExploreView.pendingSearch.value = ExploreSearchRequest(categoryId: catKey);
+                  widget.onSwitchTab?.call(1);
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.055)
+                      : Colors.white.withValues(alpha: 0.78),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.12)
+                        : Colors.black.withValues(alpha: 0.06),
+                    width: 1.0,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Outer glowing animated border ring
                     Container(
-                      width: 56,
-                      height: 56,
+                      width: 22,
+                      height: 22,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: gradientColors,
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: gradientColors[0].withValues(alpha: 0.25),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                        color: accent.withValues(alpha: isDark ? 0.22 : 0.14),
                       ),
-                      padding: const EdgeInsets.all(2.0),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isDark ? const Color(0xFF161624) : Colors.white,
-                        ),
-                        padding: const EdgeInsets.all(2.5),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: [
-                                gradientColors[0].withValues(alpha: isDark ? 0.25 : 0.15),
-                                gradientColors[1].withValues(alpha: isDark ? 0.08 : 0.04),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                          ),
-                          child: Center(
-                            child: HugeIcon(
-                              icon: story['icon'],
-                              color: gradientColors[0],
-                              size: 19,
-                            ),
-                          ),
+                      child: Center(
+                        child: HugeIcon(
+                          icon: story['icon'],
+                          color: accent,
+                          size: 13,
                         ),
                       ),
                     ),
-                    // Small floating badge
-                    Positioned(
-                      bottom: -2.5,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5.5, vertical: 1.5),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: gradientColors),
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: 3,
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          (story['badgeKey'] as String).tr(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 8.0,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
+                    const SizedBox(width: 8),
+                    Text(
+                      (story['titleKey'] as String).tr(),
+                      style: TextStyle(
+                        color: isDark ? Colors.white.withValues(alpha: 0.9) : const Color(0xFF1E293B),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 7),
-                Text(
-                  (story['titleKey'] as String).tr(),
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+              ),
             ),
           );
         },
@@ -1384,15 +1384,12 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final double width = constraints.maxWidth;
-        // On desktop / wide displays (>= 580), display all 6 categories in 1 sleek, balanced row!
-        // On mobile (< 580), display 3 columns (2 rows of 3).
         final int crossAxisCount = width >= 580 ? 6 : 3;
         final double spacing = width >= 580 ? 8.0 : 10.0;
         final double itemWidth = (width - ((crossAxisCount - 1) * spacing)) / crossAxisCount;
 
-        // Keep the card compact and proportional (~84-88px height) on both mobile and desktop
-        final double targetHeight = width >= 580 ? 86.0 : 82.0;
-        final double childAspectRatio = (itemWidth / targetHeight).clamp(1.10, 1.45);
+        final double targetHeight = width >= 580 ? 84.0 : 78.0;
+        final double childAspectRatio = (itemWidth / targetHeight).clamp(1.12, 1.50);
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1405,7 +1402,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                   style: TextStyle(
                     color: isDark ? Colors.white : const Color(0xFF0F172A),
                     fontSize: 15.5,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                     letterSpacing: -0.3,
                   ),
                 ),
@@ -1416,7 +1413,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                     child: Text(
                       'customer.all_categories'.tr(),
                       style: const TextStyle(
-                        color: Color(0xFF2196F3),
+                        color: Color(0xFF38BDF8),
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                       ),
@@ -1439,42 +1436,42 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
               itemBuilder: (context, index) {
                 final cat = _quickIntents[index];
                 final Color catColor = cat['color'];
+                final int count = _getCategoryShopCount(cat['categoryKey'] as String);
 
                 return MouseRegion(
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(
                     onTap: () {
-                      // Switch to Discover tab filtered by this category
                       ExploreView.pendingSearch.value = ExploreSearchRequest(categoryId: cat['categoryKey'] as String);
                       widget.onSwitchTab?.call(1);
                     },
                     child: GlassContainer(
                       useOwnLayer: true,
                       quality: GlassQuality.standard,
-                      shape: const LiquidRoundedSuperellipse(borderRadius: 16.0),
+                      shape: const LiquidRoundedSuperellipse(borderRadius: 18.0),
                       settings: LiquidGlassSettings(
                         thickness: 0.1,
-                        blur: 2.0,
+                        blur: 10.0,
                         lightIntensity: isDark ? 0.1 : 0.2,
                         glassColor: Colors.transparent,
                       ),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(18),
                           color: isDark
-                              ? const Color(0xFF161624).withValues(alpha: 0.85)
-                              : Colors.white.withValues(alpha: 0.85),
+                              ? Colors.white.withValues(alpha: 0.055)
+                              : Colors.white.withValues(alpha: 0.78),
                           border: Border.all(
                             color: isDark
-                                ? Colors.white.withValues(alpha: 0.08)
+                                ? Colors.white.withValues(alpha: 0.12)
                                 : Colors.black.withValues(alpha: 0.06),
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
+                              color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.04),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
                             ),
                           ],
                         ),
@@ -1482,13 +1479,13 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Container(
-                              width: 36,
-                              height: 36,
+                              width: 34,
+                              height: 34,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: catColor.withValues(alpha: isDark ? 0.18 : 0.12),
                                 border: Border.all(
-                                  color: catColor.withValues(alpha: isDark ? 0.35 : 0.25),
+                                  color: catColor.withValues(alpha: isDark ? 0.35 : 0.22),
                                   width: 1.0,
                                 ),
                               ),
@@ -1496,7 +1493,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                                 child: HugeIcon(
                                   icon: cat['icon'],
                                   color: catColor,
-                                  size: 18,
+                                  size: 17,
                                 ),
                               ),
                             ),
@@ -1510,32 +1507,24 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                                   textAlign: TextAlign.center,
                                   maxLines: 1,
                                   style: TextStyle(
-                                    color: isDark ? Colors.white : Colors.black87,
+                                    color: isDark ? Colors.white.withValues(alpha: 0.92) : Colors.black87,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 2),
-                            Builder(
-                              builder: (_) {
-                                final int count = _getCategoryShopCount(cat['categoryKey'] as String);
-                                final String countText = _isLoadingShops && _nearbyShops.isEmpty
-                                    ? '...'
-                                    : (count > 0
-                                        ? 'customer.port_count'.tr(args: [count.toString()])
-                                        : 'customer.no_port'.tr());
-                                return Text(
-                                  countText,
-                                  style: TextStyle(
-                                    color: isDark ? Colors.white38 : Colors.grey.shade500,
-                                    fontSize: 9.0,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                );
-                              },
-                            ),
+                            if (count > 0) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                'customer.port_count'.tr(args: [count.toString()]),
+                                style: TextStyle(
+                                  color: catColor.withValues(alpha: 0.9),
+                                  fontSize: 9.0,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -1601,88 +1590,102 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                 ),
               );
             },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    statusColor.withValues(alpha: isDark ? 0.22 : 0.15),
-                    const Color(0xFF2196F3).withValues(alpha: isDark ? 0.16 : 0.10),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: statusColor.withValues(alpha: 0.45), width: 1.3),
+            child: GlassContainer(
+              useOwnLayer: true,
+              quality: GlassQuality.standard,
+              shape: const LiquidRoundedSuperellipse(borderRadius: 20.0),
+              settings: LiquidGlassSettings(
+                thickness: 0.1,
+                blur: 10.0,
+                lightIntensity: isDark ? 0.1 : 0.2,
+                glassColor: Colors.transparent,
               ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: HugeIcon(
-                      icon: status == 'ready'
-                          ? HugeIcons.strokeRoundedShoppingBag01
-                          : HugeIcons.strokeRoundedRestaurant01,
-                      color: statusColor,
-                      size: 20,
-                    ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      statusColor.withValues(alpha: isDark ? 0.16 : 0.12),
+                      Colors.white.withValues(alpha: isDark ? 0.04 : 0.65),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              'customer.active_order'.tr(args: [shortId]),
-                              style: TextStyle(
-                                color: statusColor,
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '• RM ${total.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                color: isDark ? Colors.white70 : Colors.black54,
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          statusLabel,
-                          style: TextStyle(
-                            color: isDark ? Colors.white : const Color(0xFF0F172A),
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: statusColor,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'customer.track_qr'.tr(),
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: statusColor.withValues(alpha: 0.35), width: 1.0),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(9),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.16),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                      ),
+                      child: HugeIcon(
+                        icon: status == 'ready'
+                            ? HugeIcons.strokeRoundedShoppingBag01
+                            : HugeIcons.strokeRoundedRestaurant01,
+                        color: statusColor,
+                        size: 18,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'customer.active_order'.tr(args: [shortId]),
+                                style: TextStyle(
+                                  color: statusColor,
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '• RM ${total.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  color: isDark ? Colors.white60 : Colors.black54,
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            statusLabel,
+                            style: TextStyle(
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'customer.track_qr'.tr(),
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

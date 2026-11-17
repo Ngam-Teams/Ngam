@@ -72,7 +72,7 @@
     "val_enter_password": "Sila masukkan kata laluan",
     "val_password_min": "Kata laluan sekurang-kurangnya 6 aksara",
     "val_passwords_match": "Kata laluan tidak sepadan",
-    "tooltip_home": "Laman Utama",
+    "tooltip_home": "Utama",
     "tooltip_language": "Tukar Bahasa",
     "tooltip_theme": "Tukar Tema",
     "join_ngam": "SERTAI NGAM",
@@ -104,7 +104,7 @@
     "btn_update_password": "KEMAS KINI KATA LALUAN"
   },
   "nav": {
-    "home": "Laman Utama",
+    "home": "Utama",
     "my_tasks": "Tugasan",
     "chat": "Mesej",
     "profile": "Profil",

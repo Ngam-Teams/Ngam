@@ -45,7 +45,7 @@ class CustomerDesktopSidebar extends StatelessWidget {
   }
 
   static const List<({dynamic icon, String label})> navItems = [
-    (icon: HugeIcons.strokeRoundedHome11, label: 'Laman Utama'),
+    (icon: HugeIcons.strokeRoundedHome11, label: 'Utama'),
     (icon: HugeIcons.strokeRoundedMaps, label: 'Terokai Peta'),
     (icon: HugeIcons.strokeRoundedPlayCircle02, label: 'Ngam Feed'),
     (icon: HugeIcons.strokeRoundedMessage02, label: 'Mesej'),
@@ -60,7 +60,7 @@ class CustomerDesktopSidebar extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
 
     final localizedNavItems = [
-      (icon: HugeIcons.strokeRoundedHome11, label: l10n?.navHome ?? 'Laman Utama'),
+      (icon: HugeIcons.strokeRoundedHome11, label: l10n?.navHome ?? 'Utama'),
       (icon: HugeIcons.strokeRoundedMaps, label: l10n?.navDiscover ?? 'Terokai Peta'),
       (icon: HugeIcons.strokeRoundedPlayCircle02, label: l10n?.navFeed ?? 'Ngam Feed'),
       (icon: HugeIcons.strokeRoundedMessage02, label: l10n?.navInbox ?? 'Mesej'),
