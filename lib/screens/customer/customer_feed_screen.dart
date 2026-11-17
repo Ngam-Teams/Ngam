@@ -553,13 +553,17 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           if (mediaUrl.contains('mixkit.co')) {
             mediaUrl = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
           }
-          final cleanMedia = mediaUrl.trim().toLowerCase();
-          final isVideo = (row['media_type']?.toString().toLowerCase() == 'video') ||
-              cleanMedia.endsWith('.mp4') ||
-              cleanMedia.endsWith('.mov') ||
-              cleanMedia.endsWith('.webm') ||
-              cleanMedia.contains('/video/') ||
-              cleanMedia.contains('.mp4?');
+          final List<Map<String, String>> mediaItems = _parseFeedMediaItems(
+            mediaUrl,
+            row['media_type']?.toString() ?? 'image',
+          );
+          final String primaryUrl = mediaItems.isNotEmpty
+              ? mediaItems.first['url']!
+              : 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=800';
+          final String primaryType = mediaItems.isNotEmpty
+              ? mediaItems.first['type']!
+              : (row['media_type']?.toString() ?? 'image');
+          final bool isVideo = primaryType == 'video';
           final ctaType = row['cta_type']?.toString() ?? 'queue';
           final ctaText = row['cta_text']?.toString() ?? 'AMBIL GILIRAN';
           final serviceTag =
@@ -578,16 +582,15 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             'category': row['category'] ?? biz['business_industry'] ?? 'general',
             'timeAgo': timeAgo,
             'location': location,
-            'image': mediaUrl.isNotEmpty
-                ? mediaUrl
-                : 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=800',
+            'image': primaryUrl,
+            'mediaItems': mediaItems,
             'cover': isVideo
                 ? (row['thumbnail_url'] ?? row['cover_url'] ?? '').toString().trim()
                 : ((biz['business_cover_url'] as String?)?.trim() ?? ''),
             'thumbnail': isVideo
                 ? (row['thumbnail_url'] ?? row['cover_url'] ?? '').toString().trim()
                 : ((biz['business_cover_url'] as String?)?.trim() ?? ''),
-            'mediaType': isVideo ? 'video' : (row['media_type'] ?? 'image'),
+            'mediaType': primaryType,
             'title': row['title'] ?? '',
             'caption': row['caption'] ?? '',
             'serviceTag': serviceTag,
@@ -669,6 +672,48 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     }
   }
 
+  static bool _isVideoMediaUrl(String url) {
+    final clean = url.trim().toLowerCase();
+    return clean.endsWith('.mp4') ||
+        clean.endsWith('.mov') ||
+        clean.endsWith('.webm') ||
+        clean.contains('/video/') ||
+        clean.contains('.mp4?');
+  }
+
+  static List<Map<String, String>> _parseFeedMediaItems(String rawMediaUrl, String fallbackMediaType) {
+    final trimmed = rawMediaUrl.trim();
+    if (trimmed.isEmpty) return const [];
+    if (trimmed.startsWith('[')) {
+      try {
+        final decoded = jsonDecode(trimmed);
+        if (decoded is List) {
+          final items = <Map<String, String>>[];
+          for (final entry in decoded) {
+            if (entry is Map) {
+              final u = entry['url']?.toString().trim() ?? '';
+              final t = entry['type']?.toString().trim().toLowerCase();
+              if (u.isNotEmpty) {
+                items.add({
+                  'url': u,
+                  'type': (t == 'video' || _isVideoMediaUrl(u)) ? 'video' : 'image',
+                });
+              }
+            } else if (entry is String && entry.trim().isNotEmpty) {
+              final u = entry.trim();
+              items.add({'url': u, 'type': _isVideoMediaUrl(u) ? 'video' : 'image'});
+            }
+          }
+          if (items.isNotEmpty) return items;
+        }
+      } catch (_) {}
+    }
+    final isVid = fallbackMediaType.toLowerCase() == 'video' || _isVideoMediaUrl(trimmed);
+    return [
+      {'url': trimmed, 'type': isVid ? 'video' : 'image'}
+    ];
+  }
+
   /// Pemuatan awal video berdekatan secara pintar (gaya TikTok)
   void _preloadNearbyVideos(int currentIndex) {
     if (_posts.isEmpty) return;
@@ -678,13 +723,24 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
 
     for (int i = start; i <= end; i++) {
       final p = _posts[i];
-      final mediaUrl = (p['image'] ?? '').toString().trim();
-      final bool isVid = (p['mediaType'] == 'video') ||
-          mediaUrl.toLowerCase().endsWith('.mp4') ||
-          mediaUrl.toLowerCase().contains('/video/');
-      if (isVid && mediaUrl.isNotEmpty) {
-        keepUrls.add(mediaUrl);
-        FeedVideoPreloadManager.preload(mediaUrl);
+      final rawItems = p['mediaItems'];
+      if (rawItems is List && rawItems.isNotEmpty) {
+        for (final item in rawItems) {
+          if (item is Map && item['type'] == 'video') {
+            final u = (item['url'] ?? '').toString().trim();
+            if (u.isNotEmpty) {
+              keepUrls.add(u);
+              FeedVideoPreloadManager.preload(u);
+            }
+          }
+        }
+      } else {
+        final mediaUrl = (p['image'] ?? '').toString().trim();
+        final bool isVid = (p['mediaType'] == 'video') || _isVideoMediaUrl(mediaUrl);
+        if (isVid && mediaUrl.isNotEmpty) {
+          keepUrls.add(mediaUrl);
+          FeedVideoPreloadManager.preload(mediaUrl);
+        }
       }
     }
     FeedVideoPreloadManager.pruneExcept(keepUrls);
@@ -1742,8 +1798,8 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
           ),
         ),
 
-        // 3. BOTTOM CONTENT OVERLAY (Mobile - for images only; video handles it inside _FeedVideoPlayerItem)
-        if (!isVideoMedia)
+        // 3. BOTTOM CONTENT OVERLAY (Mobile - for images & carousels; single video handles it inside _FeedVideoPlayerItem)
+        if (!isVideoMedia || (post['mediaItems'] is List && (post['mediaItems'] as List).length > 1))
           Positioned(
             left: 16,
             right: 76,
@@ -1754,7 +1810,7 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     );
   }
 
-  // --- MEDIA CONTENT BUILDER (VIDEO PLAYER OR IMAGE) ---
+  // --- MEDIA CONTENT BUILDER (CAROUSEL, VIDEO PLAYER, OR IMAGE) ---
   Widget _buildMediaContent(
     Map<String, dynamic> post,
     int index, {
@@ -1762,19 +1818,53 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     bool isDesktop = false,
     Widget? bottomContent,
   }) {
-    final String mediaUrl = post['image']?.toString() ?? '';
+    final rawItems = post['mediaItems'];
+    final List<Map<String, String>> mediaItems = [];
+    if (rawItems is List) {
+      for (final item in rawItems) {
+        if (item is Map) {
+          final u = (item['url'] ?? '').toString().trim();
+          final t = (item['type'] ?? 'image').toString().trim();
+          if (u.isNotEmpty) {
+            mediaItems.add({'url': u, 'type': t});
+          }
+        }
+      }
+    }
+
+    if (mediaItems.length > 1) {
+      return _FeedCarouselMediaView(
+        key: ValueKey('feed_carousel_${post['id']}'),
+        postId: post['id']?.toString() ?? '',
+        items: mediaItems,
+        isCurrentPage: index == _currentPage,
+        isPausedExternally: !widget.isTabActive || _isModalOrRouteOpen,
+        isMuted: _isMuted,
+        bottomOffset: bottomOffset,
+        isDesktop: isDesktop,
+        onToggleMute: _toggleMute,
+        onDoubleTap: (pos) => _handleDoubleTap(pos, post),
+        onPlayStateChanged: (playing) {
+          if (mounted && index == _currentPage && _isVideoPlaying != playing) {
+            setState(() => _isVideoPlaying = playing);
+          }
+        },
+      );
+    }
+
+    final String mediaUrl = mediaItems.isNotEmpty
+        ? mediaItems.first['url']!
+        : (post['image']?.toString() ?? '');
     final String cleanMedia = mediaUrl.trim().toLowerCase();
-    final bool isVideo = (post['mediaType'] == 'video' ||
-        cleanMedia.endsWith('.mp4') ||
-        cleanMedia.endsWith('.mov') ||
-        cleanMedia.endsWith('.webm') ||
-        cleanMedia.contains('/video/') ||
-        cleanMedia.contains('.mp4?')) && mediaUrl.isNotEmpty;
+    final bool isVideo = (mediaItems.isNotEmpty
+            ? mediaItems.first['type'] == 'video'
+            : (post['mediaType'] == 'video' || _isVideoMediaUrl(cleanMedia))) &&
+        mediaUrl.isNotEmpty;
 
     if (isVideo) {
       return _FeedVideoPlayerItem(
         key: ValueKey('feed_vid_${post['id']}_$mediaUrl'),
-        videoUrl: post['image'],
+        videoUrl: mediaUrl,
         isCurrentPage: index == _currentPage,
         isPausedExternally: !widget.isTabActive || _isModalOrRouteOpen,
         isMuted: _isMuted,
@@ -1802,22 +1892,27 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       );
     }
 
-    return CachedNetworkImage(
-      imageUrl: post['image'] ?? '',
-      fit: BoxFit.cover,
-      placeholder: (_, __) => Container(
-        color: const Color(0xFF11171E),
-        child: const Center(
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: Color(0xFF00E5FF),
+    return Container(
+      color: Colors.black,
+      child: SizedBox.expand(
+        child: CachedNetworkImage(
+          imageUrl: mediaUrl,
+          fit: BoxFit.contain,
+          placeholder: (_, __) => Container(
+            color: const Color(0xFF11171E),
+            child: const Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Color(0xFF00E5FF),
+              ),
+            ),
           ),
-        ),
-      ),
-      errorWidget: (_, __, ___) => Container(
-        color: const Color(0xFF11171E),
-        child: const Center(
-          child: HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.white38, size: 28),
+          errorWidget: (_, __, ___) => Container(
+            color: const Color(0xFF11171E),
+            child: const Center(
+              child: HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.white38, size: 28),
+            ),
+          ),
         ),
       ),
     );
@@ -5028,7 +5123,7 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
                       ? (isLandscape ? BoxFit.contain : BoxFit.cover)
                       : (isLandscape ? BoxFit.contain : BoxFit.fitWidth),
                   clipBehavior: Clip.hardEdge,
-                  alignment: widget.isDesktop ? Alignment.center : Alignment.topCenter,
+                  alignment: (widget.isDesktop || isLandscape) ? Alignment.center : Alignment.topCenter,
                   child: SizedBox(
                     width: _controller.value.size.width > 0 ? _controller.value.size.width : 720,
                     height: _controller.value.size.height > 0 ? _controller.value.size.height : 1280,
@@ -5879,5 +5974,214 @@ class _LandscapeVideoFullscreenDialogState
     }
 
     return content;
+  }
+}
+
+// =============================================================================
+// Widget: Carousel Media Gaya TikTok (Gambar & Video Campur, Portrait & Landscape)
+// =============================================================================
+class _FeedCarouselMediaView extends StatefulWidget {
+  final String postId;
+  final List<Map<String, String>> items;
+  final bool isCurrentPage;
+  final bool isPausedExternally;
+  final bool isMuted;
+  final double bottomOffset;
+  final bool isDesktop;
+  final VoidCallback onToggleMute;
+  final void Function(Offset position)? onDoubleTap;
+  final void Function(bool isPlaying)? onPlayStateChanged;
+
+  const _FeedCarouselMediaView({
+    super.key,
+    required this.postId,
+    required this.items,
+    required this.isCurrentPage,
+    required this.isPausedExternally,
+    required this.isMuted,
+    required this.bottomOffset,
+    required this.isDesktop,
+    required this.onToggleMute,
+    this.onDoubleTap,
+    this.onPlayStateChanged,
+  });
+
+  @override
+  State<_FeedCarouselMediaView> createState() => _FeedCarouselMediaViewState();
+}
+
+class _FeedCarouselMediaViewState extends State<_FeedCarouselMediaView> {
+  final PageController _pageController = PageController();
+  int _activeIndex = 0;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _goToPage(int idx) {
+    if (idx < 0 || idx >= widget.items.length) return;
+    _pageController.animateToPage(
+      idx,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          PageView.builder(
+            controller: _pageController,
+            physics: const BouncingScrollPhysics(),
+            itemCount: widget.items.length,
+            onPageChanged: (idx) {
+              setState(() => _activeIndex = idx);
+            },
+            itemBuilder: (ctx, i) {
+              final item = widget.items[i];
+              final url = item['url'] ?? '';
+              final isVideo = item['type'] == 'video';
+
+              if (isVideo) {
+                return _FeedVideoPlayerItem(
+                  key: ValueKey('carousel_vid_${widget.postId}_${i}_$url'),
+                  videoUrl: url,
+                  isCurrentPage: widget.isCurrentPage && i == _activeIndex,
+                  isPausedExternally: widget.isPausedExternally,
+                  isMuted: widget.isMuted,
+                  bottomOffset: widget.bottomOffset,
+                  isDesktop: widget.isDesktop,
+                  bottomContent: null,
+                  onToggleMute: widget.onToggleMute,
+                  onDoubleTap: widget.onDoubleTap,
+                  onPlayStateChanged: widget.onPlayStateChanged,
+                );
+              }
+
+              return SizedBox.expand(
+                child: CachedNetworkImage(
+                  imageUrl: url,
+                  fit: BoxFit.contain,
+                  placeholder: (_, __) => Container(
+                    color: const Color(0xFF11171E),
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFF00E5FF),
+                      ),
+                    ),
+                  ),
+                  errorWidget: (_, __, ___) => Container(
+                    color: const Color(0xFF11171E),
+                    child: const Center(
+                      child: HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.white38, size: 28),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+
+          // Badge bilangan slaid (cth: 1 / 4)
+          Positioned(
+            top: widget.isDesktop ? 16 : MediaQuery.paddingOf(context).top + 54,
+            right: 14,
+            child: IgnorePointer(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                ),
+                child: Text(
+                  '${_activeIndex + 1} / ${widget.items.length}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Dot Indicator ala TikTok Photo Mode
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: widget.isDesktop ? 14 : widget.bottomOffset + 128,
+            child: IgnorePointer(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(widget.items.length, (i) {
+                  final bool isActive = i == _activeIndex;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: isActive ? 16 : 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? const Color(0xFF00E5FF)
+                          : Colors.white.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ),
+
+          // Anak panah kiri/kanan untuk Desktop
+          if (widget.isDesktop && _activeIndex > 0)
+            Positioned(
+              left: 10,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: GestureDetector(
+                  onTap: () => _goToPage(_activeIndex - 1),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: const Icon(Icons.chevron_left_rounded, color: Colors.white, size: 22),
+                  ),
+                ),
+              ),
+            ),
+          if (widget.isDesktop && _activeIndex < widget.items.length - 1)
+            Positioned(
+              right: 10,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: GestureDetector(
+                  onTap: () => _goToPage(_activeIndex + 1),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 22),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }

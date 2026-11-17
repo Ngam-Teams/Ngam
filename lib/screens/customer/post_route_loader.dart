@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -142,9 +143,27 @@ class _PostRouteLoaderState extends State<PostRouteLoader> {
         final String shopName = (biz['business_name'] as String?)?.trim() ?? 'Kedai di Ngam';
         final String shopAvatar = (biz['business_logo_url'] as String?)?.trim() ?? '';
         final String shopHandle = (biz['business_handle'] as String?)?.trim() ?? '@kedai';
-        final String mediaUrl = (res['media_url'] as String?)?.trim() ?? '';
-        final bool isVideo = (res['media_type'] == 'video') ||
+        final String rawMediaUrl = (res['media_url'] as String?)?.trim() ?? '';
+        String mediaUrl = rawMediaUrl;
+        String resolvedType = res['media_type']?.toString() ?? 'image';
+        if (rawMediaUrl.startsWith('[')) {
+          try {
+            final decoded = jsonDecode(rawMediaUrl);
+            if (decoded is List && decoded.isNotEmpty) {
+              final first = decoded.first;
+              if (first is Map) {
+                mediaUrl = first['url']?.toString().trim() ?? '';
+                resolvedType = first['type']?.toString().trim() ?? resolvedType;
+              } else if (first is String) {
+                mediaUrl = first.trim();
+              }
+            }
+          } catch (_) {}
+        }
+        final bool isVideo = (resolvedType == 'video') ||
             mediaUrl.toLowerCase().endsWith('.mp4') ||
+            mediaUrl.toLowerCase().endsWith('.mov') ||
+            mediaUrl.toLowerCase().endsWith('.webm') ||
             mediaUrl.toLowerCase().contains('/video/');
 
         _loadPostMap({

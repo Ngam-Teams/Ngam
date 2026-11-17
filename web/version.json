@@ -1,6 +1,6 @@
 {
-  "version": "1.0.38",
-  "build_number": 12,
-  "released_at": "2026-11-17T12:00:00Z",
-  "changelog": "Baiki TextField lutsinar di troli kedai, tambah medan No. Meja + imbasan QR meja untuk Makan Sini, pilihan Sekarang/Pilih Masa untuk Bungkus, dan penyegerakan slot waktu operasi serta pemilih roda tarikh/masa untuk Pre-Order."
+  "version": "1.0.39",
+  "build_number": 13,
+  "released_at": "2026-11-17T12:15:00Z",
+  "changelog": "Sokong paparan carousel berbilang gambar & video ala TikTok di Ngam Feed serta paparan penuh lebar untuk gambar dan video landskap bersama butang Lihat Melintang."
 }
