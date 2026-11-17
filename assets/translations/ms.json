@@ -1215,6 +1215,20 @@
     "audio_unmuted": "Audio Dihidupkan",
     "login_required": "Sila log masuk untuk komen atau memberi reaksi",
     "sign_in_to_comment": "Log masuk untuk sertai perbualan",
-    "sign_in_btn": "Log Masuk"
+    "sign_in_btn": "Log Masuk",
+    "count_label": "{} komen",
+    "sort_top": "Teratas",
+    "sort_newest": "Terkini",
+    "attach_photo_tooltip": "Lampir gambar",
+    "emoji_tooltip": "Emoji",
+    "mention_tooltip": "Sebut @",
+    "uploading_image": "Memuat naik gambar...",
+    "image_upload_failed": "Gagal memuat naik gambar",
+    "remove_image": "Buang gambar",
+    "delete_comment_title": "Padam Komen?",
+    "delete_comment_confirm": "Adakah anda pasti mahu memadam komen ini?",
+    "delete_reply_title": "Padam Balasan?",
+    "delete_reply_confirm": "Adakah anda pasti mahu memadam balasan ini?",
+    "cancel_btn": "Batal"
   }
 }

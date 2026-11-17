@@ -1,6 +1,6 @@
 {
-  "version": "1.0.45",
-  "build_number": 18,
-  "released_at": "2026-11-17T14:35:00Z",
-  "changelog": "Naik taraf sembang pelanggan: sokongan penghantaran & pemain video terus dalam chat, fallback automatik muat naik gambar/video/fail ke Supabase Storage apabila R2 disekat CORS, dan pembaikan automatik sambungan sembang kedai."
+  "version": "1.0.46",
+  "build_number": 19,
+  "released_at": "2026-11-17T15:00:00Z",
+  "changelog": "Reka bentuk baharu ruang komen Feed ala TikTok (paparan video mini di atas + papan komen solid di bawah), ruangan komen lutsinar bersih tanpa kotak kelabu, sokongan komen gambar & susun Teratas/Terkini, serta leretan karusel video & gambar campur yang lebih lancar."
 }

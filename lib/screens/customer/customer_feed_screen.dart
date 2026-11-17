@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../models/user_data.dart';
@@ -12,9 +13,11 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
+import '../../services/r2_storage_service.dart';
 import '../../widgets/glass_toast.dart';
 import '../../widgets/glass_box.dart';
 import '../../widgets/glass_nav_button.dart';
@@ -2459,48 +2462,58 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.88),
       builder: (ctx) {
         final bool isDark = Theme.of(context).brightness == Brightness.dark;
+        final size = MediaQuery.of(ctx).size;
         final bottomInset = MediaQuery.of(ctx).viewInsets.bottom;
-        final sheetHeight = (MediaQuery.of(ctx).size.height * 0.72).clamp(380.0, 720.0);
+        final topPad = MediaQuery.of(ctx).padding.top;
+        final bool keyboardOpen = bottomInset > 80;
+        final double sheetHeight = keyboardOpen
+            ? (size.height - bottomInset - topPad - 60).clamp(300.0, size.height * 0.78)
+            : (size.height * 0.70).clamp(380.0, 700.0);
 
-        return Padding(
-          padding: EdgeInsets.only(bottom: bottomInset),
-          child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            child: GlassContainer(
-              useOwnLayer: true,
-              quality: GlassQuality.standard,
-              shape: const LiquidRoundedSuperellipse(borderRadius: 24.0),
-              settings: const LiquidGlassSettings(
-                thickness: 0.1,
-                blur: 16.0,
-                glassColor: Colors.transparent,
-                lightAngle: 45.0,
-                lightIntensity: 0.1,
-                ambientStrength: 1.0,
-                saturation: 1.0,
-                chromaticAberration: 0.0,
+        return Column(
+          children: [
+            // 1. Mini Video / Media Preview Stage at Top (TikTok style)
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => Navigator.pop(ctx),
+                child: SafeArea(
+                  bottom: false,
+                  child: _MiniCommentPostStage(
+                    post: post,
+                    onClose: () => Navigator.pop(ctx),
+                  ),
+                ),
               ),
+            ),
+
+            // 2. Solid TikTok Comments Sheet at Bottom
+            Padding(
+              padding: EdgeInsets.only(bottom: bottomInset),
               child: Container(
                 height: sheetHeight,
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.black.withValues(alpha: 0.22)
-                      : Colors.white.withValues(alpha: 0.30),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: isDark ? 0.16 : 0.45),
-                    width: 1.0,
+                  color: isDark ? const Color(0xFF16161B) : Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                  border: Border(
+                    top: BorderSide(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.06),
+                    ),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
-                      blurRadius: 18,
+                      color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.14),
+                      blurRadius: 20,
                       offset: const Offset(0, -6),
                     ),
                   ],
                 ),
+                clipBehavior: Clip.antiAlias,
                 child: _FeedCommentsView(
                   post: post,
                   isDesktop: false,
@@ -2520,13 +2533,124 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                 ),
               ),
             ),
-          ),
+          ],
         );
       },
     );
     if (mounted) {
       setState(() => _isModalOrRouteOpen = false);
     }
+  }
+}
+
+class _MiniCommentPostStage extends StatefulWidget {
+  final Map<String, dynamic> post;
+  final VoidCallback onClose;
+
+  const _MiniCommentPostStage({
+    required this.post,
+    required this.onClose,
+  });
+
+  @override
+  State<_MiniCommentPostStage> createState() => _MiniCommentPostStageState();
+}
+
+class _MiniCommentPostStageState extends State<_MiniCommentPostStage> {
+  VideoPlayerController? _vc;
+  bool _initialized = false;
+
+  String get _mediaUrl {
+    final items = widget.post['mediaItems'];
+    if (items is List && items.isNotEmpty && items.first is Map) {
+      final u = items.first['url']?.toString().trim() ?? '';
+      if (u.isNotEmpty) return u;
+    }
+    return widget.post['image']?.toString().trim() ?? '';
+  }
+
+  bool get _isVideo {
+    final items = widget.post['mediaItems'];
+    if (items is List && items.isNotEmpty && items.first is Map) {
+      if (items.first['type']?.toString() == 'video') return true;
+    }
+    return widget.post['mediaType'] == 'video' ||
+        _CustomerFeedScreenState._isVideoMediaUrl(_mediaUrl);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isVideo && _mediaUrl.isNotEmpty) {
+      final ctrl = VideoPlayerController.networkUrl(
+        Uri.parse(_mediaUrl),
+        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+      );
+      _vc = ctrl;
+      ctrl.initialize().then((_) {
+        if (!mounted) return;
+        ctrl.setLooping(true);
+        ctrl.setVolume(0.0);
+        ctrl.play();
+        setState(() => _initialized = true);
+      }).catchError((_) {});
+    }
+  }
+
+  @override
+  void dispose() {
+    _vc?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String thumbUrl =
+        (widget.post['cover']?.toString().trim().isNotEmpty == true)
+            ? widget.post['cover'].toString().trim()
+            : _mediaUrl;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Center(
+        child: AspectRatio(
+          aspectRatio: 9 / 14,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  blurRadius: 16,
+                ),
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: _isVideo && _initialized && _vc != null
+                ? FittedBox(
+                    fit: BoxFit.contain,
+                    child: SizedBox(
+                      width: _vc!.value.size.width > 0 ? _vc!.value.size.width : 9,
+                      height: _vc!.value.size.height > 0 ? _vc!.value.size.height : 16,
+                      child: VideoPlayer(_vc!),
+                    ),
+                  )
+                : (thumbUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: thumbUrl,
+                        fit: BoxFit.contain,
+                        errorWidget: (_, __, ___) => const Center(
+                          child: Icon(Icons.play_circle_outline_rounded, color: Colors.white54, size: 32),
+                        ),
+                      )
+                    : const Center(
+                        child: Icon(Icons.play_circle_outline_rounded, color: Colors.white54, size: 32),
+                      )),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -2564,9 +2688,17 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
 
   bool _isLoading = false;
   bool _isSubmitting = false;
+  bool _isUploadingImage = false;
+  bool _sortByTop = false;
+  bool _showEmojiStrip = false;
   String? _loadedPostId;
   int _baseCommentOffset = 0;
   Timer? _livePollTimer;
+
+  // Photo attachment state for TikTok-style photo comments
+  Uint8List? _pendingImageBytes;
+  String? _pendingImageName;
+  final ImagePicker _commentImagePicker = ImagePicker();
 
   // Reply state (TikTok / Instagram Reels nested thread target)
   String? _replyingToCommentId;
@@ -2649,6 +2781,9 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     if (widget.post['id'] != oldWidget.post['id']) {
       _replyingToCommentId = null;
       _replyingToUser = null;
+      _pendingImageBytes = null;
+      _pendingImageName = null;
+      _showEmojiStrip = false;
       _commentController.clear();
       _hydrateCurrentUserAppProfile();
       _initAndFetchComments();
@@ -2766,6 +2901,25 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
   String _baseKey(String postId) => 'ngam_feed_comments_base_$postId';
   String _totalKey(String postId) => 'ngam_feed_comments_total_$postId';
 
+  ({String text, String imageUrl}) _extractCommentTextAndImage(String raw) {
+    final imgRegex = RegExp(r'\[\[IMG:([^\]]+)\]\]', caseSensitive: false);
+    String imageUrl = '';
+    final match = imgRegex.firstMatch(raw);
+    if (match != null) {
+      imageUrl = (match.group(1) ?? '').trim();
+    }
+    final cleanText = raw.replaceAll(imgRegex, '').trim();
+    return (text: cleanText, imageUrl: imageUrl);
+  }
+
+  String _encodeCommentTextWithImage(String text, String? imageUrl) {
+    final cleanText = text.trim();
+    final cleanImg = (imageUrl ?? '').trim();
+    if (cleanImg.isEmpty) return cleanText;
+    if (cleanText.isEmpty) return '[[IMG:$cleanImg]]';
+    return '$cleanText\n[[IMG:$cleanImg]]';
+  }
+
   List<Map<String, dynamic>> _normalizeCommentsList(List<dynamic> raw) {
     final List<Map<String, dynamic>> result = [];
     for (int i = 0; i < raw.length; i++) {
@@ -2776,6 +2930,12 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
           ? map['id'].toString()
           : 'cm_seed_${i}_${map['user'] ?? 'u'}';
       map['id'] = cid;
+
+      final parsed = _extractCommentTextAndImage(map['text']?.toString() ?? '');
+      map['text'] = parsed.text;
+      if ((map['imageUrl']?.toString().trim() ?? '').isEmpty && parsed.imageUrl.isNotEmpty) {
+        map['imageUrl'] = parsed.imageUrl;
+      }
 
       final List<Map<String, dynamic>> normalizedReplies = [];
       final rawReplies = map['replies'];
@@ -2788,6 +2948,11 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                 ? rMap['id'].toString()
                 : 'rp_seed_${i}_$j';
             rMap['parentId'] = cid;
+            final rParsed = _extractCommentTextAndImage(rMap['text']?.toString() ?? '');
+            rMap['text'] = rParsed.text;
+            if ((rMap['imageUrl']?.toString().trim() ?? '').isEmpty && rParsed.imageUrl.isNotEmpty) {
+              rMap['imageUrl'] = rParsed.imageUrl;
+            }
             normalizedReplies.add(rMap);
           }
         }
@@ -2904,6 +3069,33 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     }
   }
 
+  void _applySortOrder(List<Map<String, dynamic>> list) {
+    if (_sortByTop) {
+      list.sort((a, b) {
+        final int likesB = (b['likes'] as num?)?.toInt() ?? 0;
+        final int likesA = (a['likes'] as num?)?.toInt() ?? 0;
+        if (likesB != likesA) return likesB.compareTo(likesA);
+        final ca = a['createdAt']?.toString() ?? '';
+        final cb = b['createdAt']?.toString() ?? '';
+        return cb.compareTo(ca);
+      });
+    } else {
+      list.sort((a, b) {
+        final ca = a['createdAt']?.toString() ?? '';
+        final cb = b['createdAt']?.toString() ?? '';
+        return cb.compareTo(ca);
+      });
+    }
+  }
+
+  void _toggleSort() {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _sortByTop = !_sortByTop;
+      _applySortOrder(_comments);
+    });
+  }
+
   Future<void> _fetchLiveComments(String postId, {bool silent = false}) async {
     if (_isLoading && !silent) return;
     if (_comments.isEmpty && !silent) {
@@ -2972,6 +3164,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
         final String rowId =
             row['id']?.toString() ?? 'db_${DateTime.now().microsecondsSinceEpoch}';
         final String rowUserId = row['user_id']?.toString() ?? '';
+        final String createdAtRaw = row['created_at']?.toString() ?? '';
         String rawText = row['comment_text']?.toString() ?? '';
 
         bool hasOwnerTagInText = false;
@@ -3014,7 +3207,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
           userAvatar = shopAvatar;
         }
 
-        final String timeAgo = _formatTimeAgo(row['created_at']?.toString() ?? '');
+        final String timeAgo = _formatTimeAgo(createdAtRaw);
         final int likes = (row['likes_count'] as num?)?.toInt() ?? 0;
         final bool isMine = myUid != null && rowUserId == myUid;
         final bool isLikedByMe = _likedCommentIds.contains(rowId);
@@ -3026,6 +3219,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
           if (cleanText.startsWith('[[OWNER]]')) {
             cleanText = cleanText.replaceFirst(RegExp(r'^\[\[OWNER\]\]\s*'), '');
           }
+          final parsed = _extractCommentTextAndImage(cleanText);
           repliesByParent.putIfAbsent(parentId, () => []).add({
             'id': rowId,
             'parentId': parentId,
@@ -3033,21 +3227,26 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
             'user': userName,
             'replyToUser': replyToUser,
             'avatar': userAvatar,
-            'text': cleanText,
+            'text': parsed.text,
+            'imageUrl': parsed.imageUrl,
             'time': timeAgo,
+            'createdAt': createdAtRaw,
             'likes': isLikedByMe && likes == 0 ? 1 : likes,
             'isLiked': isLikedByMe,
             'isMyComment': isMine,
             'isCreator': isCreator,
           });
         } else {
+          final parsed = _extractCommentTextAndImage(rawText);
           topLevelDb.add({
             'id': rowId,
             'userId': rowUserId,
             'user': userName,
             'avatar': userAvatar,
-            'text': rawText,
+            'text': parsed.text,
+            'imageUrl': parsed.imageUrl,
             'time': timeAgo,
+            'createdAt': createdAtRaw,
             'likes': isLikedByMe && likes == 0 ? 1 : likes,
             'isLiked': isLikedByMe,
             'isMyComment': isMine,
@@ -3065,8 +3264,6 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
           final rList = repliesByParent[cid]!;
           c['replies'] = rList;
           _expandedCommentIds.add(cid);
-        } else {
-          // Fallback: if a reply's parentId wasn't found (e.g. legacy cm_ id), attach to most recent comment or show as top-level
         }
       }
 
@@ -3083,8 +3280,10 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
         }
       }
 
-      // Newest top-level comments first (with Owner comments prioritized or chronological)
       final List<Map<String, dynamic>> orderedTopLevel = topLevelDb.reversed.toList();
+      if (_sortByTop) {
+        _applySortOrder(orderedTopLevel);
+      }
 
       setState(() {
         _baseCommentOffset = 0;
@@ -3120,6 +3319,87 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     _commentFocusNode.requestFocus();
   }
 
+  void _insertMention() {
+    if (!_isSignedIn) {
+      showGlassToast(context, 'feed_comments.login_required'.tr(), isError: true);
+      return;
+    }
+    _insertQuickEmoji('@');
+  }
+
+  Future<void> _pickCommentImage() async {
+    if (!_isSignedIn) {
+      showGlassToast(context, 'feed_comments.login_required'.tr(), isError: true);
+      return;
+    }
+    try {
+      final XFile? picked = await _commentImagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1440,
+        imageQuality: 85,
+      );
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      if (bytes.isEmpty || !mounted) return;
+      setState(() {
+        _pendingImageBytes = bytes;
+        _pendingImageName = picked.name;
+      });
+    } catch (e) {
+      debugPrint('[FeedCommentsView] Image picker error: $e');
+    }
+  }
+
+  void _clearPendingImage() {
+    setState(() {
+      _pendingImageBytes = null;
+      _pendingImageName = null;
+    });
+  }
+
+  void _openCommentImageViewer(String imageUrl) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.94),
+      builder: (dlgCtx) => Stack(
+        children: [
+          Center(
+            child: InteractiveViewer(
+              minScale: 0.8,
+              maxScale: 4.0,
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.contain,
+                placeholder: (_, __) => const Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Color(0xFF00E5FF),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: MediaQuery.paddingOf(dlgCtx).top + 12,
+            right: 16,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(dlgCtx),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.65),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: const Icon(Icons.close_rounded, color: Colors.white, size: 22),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   bool get _isSignedIn => Supabase.instance.client.auth.currentUser != null;
 
   void _handleSendComment() async {
@@ -3128,10 +3408,50 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
       return;
     }
     final text = _commentController.text.trim();
-    if (text.isEmpty || _isSubmitting) return;
+    final Uint8List? imageBytesToUpload = _pendingImageBytes;
+    final String imageNameToUpload =
+        _pendingImageName ?? 'comment_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-    setState(() => _isSubmitting = true);
+    if ((text.isEmpty && imageBytesToUpload == null) || _isSubmitting) return;
+
+    setState(() {
+      _isSubmitting = true;
+      if (imageBytesToUpload != null) _isUploadingImage = true;
+    });
     HapticFeedback.lightImpact();
+
+    String uploadedImageUrl = '';
+    if (imageBytesToUpload != null) {
+      try {
+        final String ext = imageNameToUpload.toLowerCase();
+        final String mime = ext.endsWith('.png')
+            ? 'image/png'
+            : (ext.endsWith('.webp') ? 'image/webp' : 'image/jpeg');
+        uploadedImageUrl = await R2StorageService().uploadMedia(
+          bytes: imageBytesToUpload,
+          fileName: imageNameToUpload,
+          folder: 'feed_comments',
+          mimeType: mime,
+        );
+      } catch (e) {
+        debugPrint('[FeedCommentsView] Image upload failed: $e');
+        if (mounted) {
+          setState(() {
+            _isSubmitting = false;
+            _isUploadingImage = false;
+          });
+          showGlassToast(
+            context,
+            'feed_comments.image_upload_failed'.tr(),
+            isError: true,
+          );
+        }
+        return;
+      }
+    }
+
+    if (!mounted) return;
+    setState(() => _isUploadingImage = false);
 
     final currentUser = Supabase.instance.client.auth.currentUser;
     final identity = _getActiveCommenterIdentity();
@@ -3144,7 +3464,8 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     final String? targetReplyUser = _replyingToUser;
     final bool isReply = targetParentId != null && targetParentId.isNotEmpty;
 
-    String dbCommentPayloadText = isCreator ? '[[OWNER]] $text' : text;
+    final String bodyWithImage = _encodeCommentTextWithImage(text, uploadedImageUrl);
+    String dbCommentPayloadText = isCreator ? '[[OWNER]] $bodyWithImage' : bodyWithImage;
     final String tempId = isReply
         ? 'rp_${DateTime.now().millisecondsSinceEpoch}'
         : 'cm_${DateTime.now().millisecondsSinceEpoch}';
@@ -3161,6 +3482,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
         'replyToUser': targetReplyUser ?? '',
         'avatar': userAvatar,
         'text': text,
+        'imageUrl': uploadedImageUrl,
         'time': 'feed_comments.just_now'.tr(),
         'likes': 0,
         'isLiked': false,
@@ -3185,11 +3507,14 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
         }
         _replyingToCommentId = null;
         _replyingToUser = null;
+        _pendingImageBytes = null;
+        _pendingImageName = null;
+        _showEmojiStrip = false;
       });
 
       final String ownerFlag = isCreator ? '|OWNER' : '';
       dbCommentPayloadText =
-          '[[REPLY:$targetParentId|${targetReplyUser ?? ""}$ownerFlag]] $text';
+          '[[REPLY:$targetParentId|${targetReplyUser ?? ""}$ownerFlag]] $bodyWithImage';
     } else {
       final Map<String, dynamic> newEntry = {
         'id': tempId,
@@ -3197,6 +3522,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
         'user': userName,
         'avatar': userAvatar,
         'text': text,
+        'imageUrl': uploadedImageUrl,
         'time': 'feed_comments.just_now'.tr(),
         'likes': 0,
         'isLiked': false,
@@ -3210,6 +3536,9 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
         _comments.insert(0, newEntry);
         _replyingToCommentId = null;
         _replyingToUser = null;
+        _pendingImageBytes = null;
+        _pendingImageName = null;
+        _showEmojiStrip = false;
       });
 
       if (_scrollController.hasClients) {
@@ -3278,17 +3607,36 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
   }
 
   void _handleDeleteComment(int index) async {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dlgCtx) => AlertDialog(
-        backgroundColor: const Color(0xFF141424),
+        backgroundColor: isDark ? const Color(0xFF141424) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Text('Padam Komen?', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-        content: const Text('Adakah anda pasti mahu memadam komen ini?', style: TextStyle(color: Colors.white70, fontSize: 13.5)),
+        title: Text(
+          'feed_comments.delete_comment_title'.tr(),
+          style: TextStyle(
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          'feed_comments.delete_comment_confirm'.tr(),
+          style: TextStyle(
+            color: isDark ? Colors.white70 : const Color(0xFF475569),
+            fontSize: 13.5,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dlgCtx, false),
-            child: const Text('Batal', style: TextStyle(color: Colors.white54)),
+            child: Text(
+              'feed_comments.cancel_btn'.tr(),
+              style: TextStyle(
+                color: isDark ? Colors.white54 : const Color(0xFF64748B),
+              ),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -3297,7 +3645,10 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () => Navigator.pop(dlgCtx, true),
-            child: const Text('Padam', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(
+              'feed_comments.delete_btn'.tr(),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -3335,17 +3686,36 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
   }
 
   void _handleDeleteReply(int parentIndex, int replyIndex) async {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dlgCtx) => AlertDialog(
-        backgroundColor: const Color(0xFF141424),
+        backgroundColor: isDark ? const Color(0xFF141424) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Text('Padam Balasan?', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-        content: const Text('Adakah anda pasti mahu memadam balasan ini?', style: TextStyle(color: Colors.white70, fontSize: 13.5)),
+        title: Text(
+          'feed_comments.delete_reply_title'.tr(),
+          style: TextStyle(
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          'feed_comments.delete_reply_confirm'.tr(),
+          style: TextStyle(
+            color: isDark ? Colors.white70 : const Color(0xFF475569),
+            fontSize: 13.5,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dlgCtx, false),
-            child: const Text('Batal', style: TextStyle(color: Colors.white54)),
+            child: Text(
+              'feed_comments.cancel_btn'.tr(),
+              style: TextStyle(
+                color: isDark ? Colors.white54 : const Color(0xFF64748B),
+              ),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -3354,7 +3724,10 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () => Navigator.pop(dlgCtx, true),
-            child: const Text('Padam', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(
+              'feed_comments.delete_btn'.tr(),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -3543,6 +3916,8 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     final String replyUser =
         reply['user']?.toString() ?? 'feed_comments.default_customer'.tr();
     final String replyToUser = reply['replyToUser']?.toString() ?? '';
+    final String replyText = reply['text']?.toString() ?? '';
+    final String replyImageUrl = reply['imageUrl']?.toString() ?? '';
     final bool isReplyLiked = reply['isLiked'] == true;
     final int replyLikes = (reply['likes'] as num?)?.toInt() ?? 0;
     final bool isMyReply = _isSignedIn &&
@@ -3561,41 +3936,52 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
             size: 26,
             imageUrl: reply['avatar']?.toString(),
             borderColor: isCreator
-                ? const Color(0xFFFE2C55)
+                ? const Color(0xFF00E5FF)
                 : (isDark ? Colors.white12 : Colors.black12),
-            borderWidth: isCreator ? 1.5 : 1.0,
+            borderWidth: isCreator ? 1.4 : 1.0,
           ),
           const SizedBox(width: 9),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // TikTok / Reels Reply Header: Replier [Pemilik Kedai] ▸ TargetUser
+                // TikTok Reply Header: Username · Creator ▸ TargetUser
                 Wrap(
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
                       replyUser,
                       style: TextStyle(
-                        color: isCreator
-                            ? const Color(0xFFFE2C55)
-                            : (isDark ? Colors.white70 : const Color(0xFF1E293B)),
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.72)
+                            : const Color(0xFF475569),
                         fontSize: 12,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    if (isCreator)
-                      _buildBadgePill(
-                        text: 'feed_comments.badge_owner'.tr(),
-                        color: const Color(0xFFFE2C55),
-                        bgColor: const Color(0xFFFE2C55).withValues(alpha: 0.14),
-                        icon: Icons.storefront_rounded,
+                    if (isCreator) ...[
+                      Text(
+                        ' · ',
+                        style: TextStyle(
+                          color: isDark ? Colors.white38 : Colors.black38,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
+                      Text(
+                        'feed_comments.badge_creator'.tr(),
+                        style: const TextStyle(
+                          color: Color(0xFF22D3EE),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                     if (isMyReply)
                       _buildBadgePill(
                         text: 'feed_comments.badge_you'.tr(),
                         color: const Color(0xFF00E5FF),
-                        bgColor: const Color(0xFF00E5FF).withValues(alpha: 0.15),
+                        bgColor: const Color(0xFF00E5FF).withValues(alpha: 0.14),
                       ),
                     if (replyToUser.isNotEmpty) ...[
                       Padding(
@@ -3617,28 +4003,56 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                     ],
                   ],
                 ),
-                const SizedBox(height: 3),
-                // Reply Text
-                Text(
-                  reply['text']?.toString() ?? '',
-                  style: TextStyle(
-                    color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    fontSize: 13,
-                    height: 1.35,
+                if (replyText.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    replyText,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      fontSize: 13,
+                      height: 1.35,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 5),
-                // TikTok Action Row: Time · Balas · Padam
+                ],
+                if (replyImageUrl.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  GestureDetector(
+                    onTap: () => _openCommentImageViewer(replyImageUrl),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 132, maxHeight: 144),
+                        child: CachedNetworkImage(
+                          imageUrl: replyImageUrl,
+                          fit: BoxFit.cover,
+                          placeholder: (_, __) => Container(
+                            width: 110,
+                            height: 110,
+                            color: isDark ? Colors.white10 : Colors.black12,
+                          ),
+                          errorWidget: (_, __, ___) => Container(
+                            width: 110,
+                            height: 80,
+                            color: isDark ? Colors.white10 : Colors.black12,
+                            child: const Icon(Icons.broken_image_outlined, size: 22),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 6),
+                // TikTok Inline Meta & Action Row: Time · Reply · [Delete]      ♡ count   ↪
                 Row(
                   children: [
                     Text(
                       reply['time']?.toString() ?? 'feed_comments.just_now'.tr(),
                       style: TextStyle(
                         color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
-                        fontSize: 11,
+                        fontSize: 11.5,
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 16),
                     GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTap: () => _handleReply(
@@ -3651,14 +4065,14 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                           'feed_comments.reply_btn'.tr(),
                           style: TextStyle(
                             color: isDark ? Colors.white54 : const Color(0xFF64748B),
-                            fontSize: 11,
+                            fontSize: 11.5,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
                     ),
                     if (isMyReply || _isCurrentUserStoreOwner) ...[
-                      const SizedBox(width: 14),
+                      const SizedBox(width: 16),
                       GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () => _handleDeleteReply(parentIndex, replyIndex),
@@ -3667,48 +4081,74 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                           child: Text(
                             'feed_comments.delete_btn'.tr(),
                             style: TextStyle(
-                              color: Colors.red.withValues(alpha: 0.8),
-                              fontSize: 11,
+                              color: Colors.redAccent.withValues(alpha: 0.85),
+                              fontSize: 11.5,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
                       ),
                     ],
+                    const Spacer(),
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _toggleLikeReply(parentIndex, replyIndex),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isReplyLiked
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              size: 16,
+                              color: isReplyLiked
+                                  ? const Color(0xFFFE2C55)
+                                  : (isDark ? Colors.white54 : const Color(0xFF64748B)),
+                            ),
+                            if (replyLikes > 0 || isReplyLiked) ...[
+                              const SizedBox(width: 4),
+                              Text(
+                                '$replyLikes',
+                                style: TextStyle(
+                                  color: isReplyLiked
+                                      ? const Color(0xFFFE2C55)
+                                      : (isDark
+                                          ? Colors.white54
+                                          : const Color(0xFF64748B)),
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _handleReply(
+                        parentCommentId: parentCommentId,
+                        targetUser: replyUser,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                        child: Transform(
+                          alignment: Alignment.center,
+                          transform: Matrix4.rotationY(math.pi),
+                          child: Icon(
+                            Icons.reply_rounded,
+                            size: 17,
+                            color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Heart Like Button for Reply
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => _toggleLikeReply(parentIndex, replyIndex),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              child: Column(
-                children: [
-                  Icon(
-                    isReplyLiked ? Icons.favorite : Icons.favorite_border_rounded,
-                    size: 15,
-                    color: isReplyLiked
-                        ? const Color(0xFFFE2C55)
-                        : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '$replyLikes',
-                    style: TextStyle(
-                      color: isReplyLiked
-                          ? const Color(0xFFFE2C55)
-                          : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
             ),
           ),
         ],
@@ -3730,14 +4170,16 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     final String currentUserName = identity.name;
     final String currentUserAvatar = identity.avatar;
     final bool isOwner = identity.isOwner;
+    final bool canSend =
+        (_hasInputText || _pendingImageBytes != null) && !_isSubmitting;
 
     return Column(
       children: [
         // 1. Mobile Drag Handle (Only on bottom sheet)
         if (!widget.isDesktop)
           Container(
-            margin: const EdgeInsets.only(top: 10, bottom: 6),
-            width: 40,
+            margin: const EdgeInsets.only(top: 8, bottom: 2),
+            width: 36,
             height: 4,
             decoration: BoxDecoration(
               color: isDark ? Colors.white24 : Colors.black12,
@@ -3745,7 +4187,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
             ),
           ),
 
-        // 2. Creator Info Snippet (Desktop signature header - TikTok/IG style)
+        // 2. Creator Info Snippet (Desktop signature header)
         if (widget.isDesktop)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 12, 12),
@@ -3794,13 +4236,12 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                     ],
                   ),
                 ),
-                // Close button
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: widget.onClose,
                   child: Container(
-                    width: 34,
-                    height: 34,
+                    width: 32,
+                    height: 32,
                     decoration: BoxDecoration(
                       color: isDark
                           ? Colors.white10
@@ -3811,7 +4252,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                       child: HugeIcon(
                         icon: HugeIcons.strokeRoundedCancel01,
                         color: isDark ? Colors.white70 : const Color(0xFF64748B),
-                        size: 18,
+                        size: 17,
                       ),
                     ),
                   ),
@@ -3820,7 +4261,6 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
             ),
           ),
 
-        // Post Caption Preview (if on desktop)
         if (widget.isDesktop && caption.isNotEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -3839,75 +4279,86 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
             ),
           ),
 
-        // Divider
-        Divider(
-          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.08),
-          height: 1,
-        ),
+        if (widget.isDesktop)
+          Divider(
+            color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.08),
+            height: 1,
+          ),
 
-        // 3. Comments Title Bar (Shows exact total comments + replies matching feed counter)
+        // 3. TikTok Centered Comments Header ("8 comments ≡") + Right Close X
         Padding(
-          padding: const EdgeInsets.fromLTRB(18, 12, 16, 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    'feed_comments.title'.tr(),
-                    style: TextStyle(
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w900,
-                    ),
+          padding: EdgeInsets.fromLTRB(
+            14,
+            widget.isDesktop ? 10 : 6,
+            12,
+            10,
+          ),
+          child: SizedBox(
+            height: 32,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _toggleSort,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'feed_comments.count_label'.tr(
+                          args: [_totalCommentCount.toString()],
+                        ),
+                        style: TextStyle(
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Tooltip(
+                        message: _sortByTop
+                            ? 'feed_comments.sort_top'.tr()
+                            : 'feed_comments.sort_newest'.tr(),
+                        child: Icon(
+                          Icons.filter_list_rounded,
+                          size: 17,
+                          color: _sortByTop
+                              ? const Color(0xFF00E5FF)
+                              : (isDark ? Colors.white70 : const Color(0xFF475569)),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF00E5FF).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '$_totalCommentCount',
-                      style: const TextStyle(
-                        color: Color(0xFF00E5FF),
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
+                ),
+                if (!widget.isDesktop)
+                  Positioned(
+                    right: 0,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: widget.onClose,
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.10)
+                              : Colors.black.withValues(alpha: 0.06),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.close_rounded,
+                          color: isDark ? Colors.white70 : const Color(0xFF475569),
+                          size: 17,
+                        ),
                       ),
                     ),
                   ),
-                ],
-              ),
-              if (!widget.isDesktop)
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: widget.onClose,
-                  child: Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? Colors.white10
-                          : Colors.black.withValues(alpha: 0.05),
-                      shape: BoxShape.circle,
-                    ),
-                    child: HugeIcon(
-                      icon: HugeIcons.strokeRoundedCancel01,
-                      color: isDark ? Colors.white70 : const Color(0xFF64748B),
-                      size: 16,
-                    ),
-                  ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
 
-        Divider(
-          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.08),
-          height: 1,
-        ),
-
-        // 4. Comments & Nested Replies List (TikTok / Instagram Reels Style)
+        // 4. Comments & Nested Replies List
         Expanded(
           child: _isLoading
               ? const Center(
@@ -3970,7 +4421,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                     )
                   : ListView.separated(
                       controller: _scrollController,
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
+                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 18),
                       itemCount: _comments.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 16),
                       itemBuilder: (_, idx) {
@@ -3980,6 +4431,9 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                         final bool isCommentLiked = c['isLiked'] == true;
                         final int commentLikes =
                             (c['likes'] as num?)?.toInt() ?? 0;
+                        final String commentText = c['text']?.toString() ?? '';
+                        final String commentImageUrl =
+                            c['imageUrl']?.toString() ?? '';
                         final String commentUser = c['user']?.toString() ??
                             'feed_comments.default_customer'.tr();
                         final bool isMyComment = _isSignedIn &&
@@ -4030,11 +4484,11 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                                     size: 36,
                                     imageUrl: c['avatar']?.toString(),
                                     borderColor: isCreator
-                                        ? const Color(0xFFFE2C55)
+                                        ? const Color(0xFF00E5FF)
                                         : (isDark
                                             ? Colors.white12
                                             : Colors.black12),
-                                    borderWidth: isCreator ? 1.5 : 1.0,
+                                    borderWidth: isCreator ? 1.4 : 1.0,
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
@@ -4042,54 +4496,110 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Row(
+                                        Wrap(
+                                          crossAxisAlignment:
+                                              WrapCrossAlignment.center,
                                           children: [
-                                            Flexible(
-                                              child: Text(
-                                                commentUser,
-                                                style: TextStyle(
-                                                  color: isCreator
-                                                      ? const Color(0xFFFE2C55)
-                                                      : (isDark
-                                                          ? Colors.white70
-                                                          : const Color(
-                                                              0xFF1E293B)),
-                                                  fontSize: 12.5,
-                                                  fontWeight: FontWeight.w800,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
+                                            Text(
+                                              commentUser,
+                                              style: TextStyle(
+                                                color: isDark
+                                                    ? Colors.white
+                                                        .withValues(alpha: 0.72)
+                                                    : const Color(0xFF475569),
+                                                fontSize: 12.5,
+                                                fontWeight: FontWeight.w700,
                                               ),
+                                              overflow: TextOverflow.ellipsis,
                                             ),
-                                            if (isCreator)
-                                              _buildBadgePill(
-                                                text: 'feed_comments.badge_owner'
-                                                    .tr(),
-                                                color: const Color(0xFFFE2C55),
-                                                bgColor: const Color(0xFFFE2C55)
-                                                    .withValues(alpha: 0.14),
-                                                icon: Icons.storefront_rounded,
+                                            if (isCreator) ...[
+                                              Text(
+                                                ' · ',
+                                                style: TextStyle(
+                                                  color: isDark
+                                                      ? Colors.white38
+                                                      : Colors.black38,
+                                                  fontSize: 12.5,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
                                               ),
+                                              Text(
+                                                'feed_comments.badge_creator'
+                                                    .tr(),
+                                                style: const TextStyle(
+                                                  color: Color(0xFF22D3EE),
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                            ],
                                             if (isMyComment)
                                               _buildBadgePill(
                                                 text: 'feed_comments.badge_you'
                                                     .tr(),
                                                 color: const Color(0xFF00E5FF),
                                                 bgColor: const Color(0xFF00E5FF)
-                                                    .withValues(alpha: 0.15),
+                                                    .withValues(alpha: 0.14),
                                               ),
                                           ],
                                         ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          c['text']?.toString() ?? '',
-                                          style: TextStyle(
-                                            color: isDark
-                                                ? Colors.white
-                                                : const Color(0xFF0F172A),
-                                            fontSize: 13.5,
-                                            height: 1.35,
+                                        if (commentText.isNotEmpty) ...[
+                                          const SizedBox(height: 3),
+                                          Text(
+                                            commentText,
+                                            style: TextStyle(
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : const Color(0xFF0F172A),
+                                              fontSize: 13.5,
+                                              height: 1.35,
+                                            ),
                                           ),
-                                        ),
+                                        ],
+                                        if (commentImageUrl.isNotEmpty) ...[
+                                          const SizedBox(height: 7),
+                                          GestureDetector(
+                                            onTap: () =>
+                                                _openCommentImageViewer(
+                                                    commentImageUrl),
+                                            child: ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              child: ConstrainedBox(
+                                                constraints:
+                                                    const BoxConstraints(
+                                                  maxWidth: 148,
+                                                  maxHeight: 162,
+                                                ),
+                                                child: CachedNetworkImage(
+                                                  imageUrl: commentImageUrl,
+                                                  fit: BoxFit.cover,
+                                                  placeholder: (_, __) =>
+                                                      Container(
+                                                    width: 120,
+                                                    height: 120,
+                                                    color: isDark
+                                                        ? Colors.white10
+                                                        : Colors.black12,
+                                                  ),
+                                                  errorWidget: (_, __, ___) =>
+                                                      Container(
+                                                    width: 120,
+                                                    height: 88,
+                                                    color: isDark
+                                                        ? Colors.white10
+                                                        : Colors.black12,
+                                                    child: const Icon(
+                                                      Icons
+                                                          .broken_image_outlined,
+                                                      size: 24,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                         if (isLikedByOwner && !isCreator) ...[
                                           const SizedBox(height: 5),
                                           Container(
@@ -4112,8 +4622,8 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                                             ),
                                           ),
                                         ],
-                                        const SizedBox(height: 5),
-                                        // TikTok Meta & Action Row: Time · Balas · Padam
+                                        const SizedBox(height: 6),
+                                        // TikTok Meta & Action Row: Time   Reply   [Delete]      ♡ count   ↪
                                         Row(
                                           children: [
                                             Text(
@@ -4166,9 +4676,9 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                                                     'feed_comments.delete_btn'
                                                         .tr(),
                                                     style: TextStyle(
-                                                      color: Colors.red
+                                                      color: Colors.redAccent
                                                           .withValues(
-                                                              alpha: 0.8),
+                                                              alpha: 0.85),
                                                       fontSize: 11.5,
                                                       fontWeight:
                                                           FontWeight.w600,
@@ -4177,52 +4687,95 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                                                 ),
                                               ),
                                             ],
+                                            const Spacer(),
+                                            GestureDetector(
+                                              behavior: HitTestBehavior.opaque,
+                                              onTap: () =>
+                                                  _toggleLikeComment(idx),
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 4,
+                                                        vertical: 2),
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      isCommentLiked
+                                                          ? Icons
+                                                              .favorite_rounded
+                                                          : Icons
+                                                              .favorite_border_rounded,
+                                                      size: 16.5,
+                                                      color: isCommentLiked
+                                                          ? const Color(
+                                                              0xFFFE2C55)
+                                                          : (isDark
+                                                              ? Colors.white54
+                                                              : const Color(
+                                                                  0xFF64748B)),
+                                                    ),
+                                                    if (commentLikes > 0 ||
+                                                        isCommentLiked) ...[
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        '$commentLikes',
+                                                        style: TextStyle(
+                                                          color: isCommentLiked
+                                                              ? const Color(
+                                                                  0xFFFE2C55)
+                                                              : (isDark
+                                                                  ? Colors
+                                                                      .white54
+                                                                  : const Color(
+                                                                      0xFF64748B)),
+                                                          fontSize: 11.5,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            GestureDetector(
+                                              behavior: HitTestBehavior.opaque,
+                                              onTap: () => _handleReply(
+                                                parentCommentId: commentId,
+                                                targetUser: commentUser,
+                                              ),
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 2,
+                                                        vertical: 2),
+                                                child: Transform(
+                                                  alignment: Alignment.center,
+                                                  transform:
+                                                      Matrix4.rotationY(math.pi),
+                                                  child: Icon(
+                                                    Icons.reply_rounded,
+                                                    size: 17.5,
+                                                    color: isDark
+                                                        ? Colors.white54
+                                                        : const Color(
+                                                            0xFF64748B),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
                                           ],
                                         ),
                                       ],
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  GestureDetector(
-                                    behavior: HitTestBehavior.opaque,
-                                    onTap: () => _toggleLikeComment(idx),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(4),
-                                      child: Column(
-                                        children: [
-                                          Icon(
-                                            isCommentLiked
-                                                ? Icons.favorite
-                                                : Icons.favorite_border_rounded,
-                                            size: 17,
-                                            color: isCommentLiked
-                                                ? const Color(0xFFFE2C55)
-                                                : (isDark
-                                                    ? Colors.white38
-                                                    : const Color(0xFF94A3B8)),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            '$commentLikes',
-                                            style: TextStyle(
-                                              color: isCommentLiked
-                                                  ? const Color(0xFFFE2C55)
-                                                  : (isDark
-                                                      ? Colors.white38
-                                                      : const Color(
-                                                          0xFF94A3B8)),
-                                              fontSize: 10.5,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
                                 ],
                               ),
 
-                              // Nested Replies Section directly underneath parent comment (TikTok / Reels style)
+                              // Nested Replies Section directly underneath parent comment
                               if (replies.isNotEmpty)
                                 Padding(
                                   padding: const EdgeInsets.only(left: 46),
@@ -4231,21 +4784,41 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       if (isExpanded)
-                                        ...List.generate(
-                                          replies.length,
-                                          (rIdx) => _buildNestedReplyItem(
-                                            reply: replies[rIdx],
-                                            parentCommentId: commentId,
-                                            parentIndex: idx,
-                                            replyIndex: rIdx,
-                                            currentUserName: currentUserName,
-                                            shopName: shopName,
-                                            isDark: isDark,
+                                        Container(
+                                          padding:
+                                              const EdgeInsets.only(left: 10),
+                                          decoration: BoxDecoration(
+                                            border: Border(
+                                              left: BorderSide(
+                                                color: isDark
+                                                    ? Colors.white
+                                                        .withValues(alpha: 0.12)
+                                                    : Colors.black
+                                                        .withValues(alpha: 0.10),
+                                                width: 1.3,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: List.generate(
+                                              replies.length,
+                                              (rIdx) => _buildNestedReplyItem(
+                                                reply: replies[rIdx],
+                                                parentCommentId: commentId,
+                                                parentIndex: idx,
+                                                replyIndex: rIdx,
+                                                currentUserName:
+                                                    currentUserName,
+                                                shopName: shopName,
+                                                isDark: isDark,
+                                              ),
+                                            ),
                                           ),
                                         ),
-                                      // TikTok Expand / Collapse Bar: ── Lihat X balasan ⌄ / ── Sembunyikan ⌃
                                       Padding(
-                                        padding: const EdgeInsets.only(top: 8),
+                                        padding: const EdgeInsets.only(top: 10),
                                         child: GestureDetector(
                                           behavior: HitTestBehavior.opaque,
                                           onTap: () {
@@ -4284,7 +4857,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                                                   color: isDark
                                                       ? Colors.white54
                                                       : const Color(0xFF64748B),
-                                                  fontSize: 11.5,
+                                                  fontSize: 12,
                                                   fontWeight: FontWeight.w700,
                                                 ),
                                               ),
@@ -4314,21 +4887,21 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                     ),
         ),
 
-        // 5. Sticky Bottom Input Field (TikTok / Reels Quick Emoji Bar + Reply Banner + Input Bar)
+        // 5. Sticky Bottom Input Field (TikTok Clean Pill + Photo/Emoji/@ Icons)
         Container(
           padding: EdgeInsets.fromLTRB(
             14,
             10,
             14,
-            widget.isDesktop ? 16 : (12 + MediaQuery.of(context).padding.bottom),
+            widget.isDesktop ? 14 : (10 + MediaQuery.of(context).padding.bottom),
           ),
           decoration: BoxDecoration(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.22)
-                : Colors.white.withValues(alpha: 0.35),
+            color: isDark ? const Color(0xFF16161B) : Colors.white,
             border: Border(
               top: BorderSide(
-                color: Colors.white.withValues(alpha: isDark ? 0.14 : 0.45),
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.07),
               ),
             ),
           ),
@@ -4406,214 +4979,348 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
                   ],
                 )
               : Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Quick Emoji Bar (TikTok / Instagram Reels style)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: _quickEmojis
-                      .map(
-                        (emoji) => GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () => _insertQuickEmoji(emoji),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            child: Text(
-                              emoji,
-                              style: const TextStyle(fontSize: 19),
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Collapsible Quick Emoji Bar (opened via Emoji icon in pill)
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
+                      child: _showEmojiStrip
+                          ? Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: _quickEmojis
+                                    .map(
+                                      (emoji) => GestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap: () => _insertQuickEmoji(emoji),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 2),
+                                          child: Text(
+                                            emoji,
+                                            style: const TextStyle(fontSize: 20),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+
+                    // Reply indicator badge
+                    if (_replyingToUser != null)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : Colors.black.withValues(alpha: 0.04),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.subdirectory_arrow_right_rounded,
+                              size: 14,
+                              color: Color(0xFF00E5FF),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'feed_comments.replying_to'.tr(),
+                              style: TextStyle(
+                                color: isDark
+                                    ? Colors.white54
+                                    : const Color(0xFF64748B),
+                                fontSize: 11.5,
+                              ),
+                            ),
+                            Flexible(
+                              child: Text(
+                                '@$_replyingToUser',
+                                style: const TextStyle(
+                                  color: Color(0xFF00E5FF),
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const Spacer(),
+                            GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () {
+                                setState(() {
+                                  _replyingToCommentId = null;
+                                  _replyingToUser = null;
+                                });
+                              },
+                              child: Icon(
+                                Icons.close_rounded,
+                                size: 16,
+                                color: isDark
+                                    ? Colors.white54
+                                    : const Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // Pending Photo Attachment Thumbnail Preview
+                    if (_pendingImageBytes != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          children: [
+                            Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.memory(
+                                    _pendingImageBytes!,
+                                    width: 58,
+                                    height: 58,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                                if (_isUploadingImage)
+                                  Positioned.fill(
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.black54,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Center(
+                                        child: SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Color(0xFF00E5FF),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                Positioned(
+                                  top: -6,
+                                  right: -6,
+                                  child: GestureDetector(
+                                    onTap: _clearPendingImage,
+                                    child: Tooltip(
+                                      message: 'feed_comments.remove_image'.tr(),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(3),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.black87,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.close_rounded,
+                                          color: Colors.white,
+                                          size: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (_isUploadingImage) ...[
+                              const SizedBox(width: 10),
+                              Text(
+                                'feed_comments.uploading_image'.tr(),
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white60
+                                      : const Color(0xFF475569),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+
+                    // TikTok Bottom Input Row: Avatar | Transparent Pill [Add comment... 🖼 😊 @] | [Send]
+                    Row(
+                      children: [
+                        _buildFeedAvatar(
+                          name: currentUserName,
+                          size: 34,
+                          imageUrl: currentUserAvatar,
+                          borderColor: isOwner
+                              ? const Color(0xFF00E5FF)
+                              : (isDark ? Colors.white12 : Colors.black12),
+                          borderWidth: isOwner ? 1.4 : 1.0,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.09)
+                                  : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            padding: const EdgeInsets.only(left: 14, right: 6),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _commentController,
+                                    focusNode: _commentFocusNode,
+                                    textInputAction: TextInputAction.send,
+                                    keyboardType: TextInputType.text,
+                                    onSubmitted: (_) => _handleSendComment(),
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white
+                                          : const Color(0xFF0F172A),
+                                      fontSize: 13.5,
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText: _replyingToUser != null
+                                          ? 'feed_comments.reply_hint'
+                                              .tr(args: [_replyingToUser!])
+                                          : (isOwner
+                                              ? 'feed_comments.reply_as_owner_hint'
+                                                  .tr(args: [shopName])
+                                              : 'feed_comments.add_comment_hint'
+                                                  .tr()),
+                                      hintStyle: TextStyle(
+                                        color: isDark
+                                            ? Colors.white54
+                                            : const Color(0xFF64748B),
+                                        fontSize: 13.5,
+                                      ),
+                                      filled: false,
+                                      fillColor: Colors.transparent,
+                                      isDense: true,
+                                      border: InputBorder.none,
+                                      enabledBorder: InputBorder.none,
+                                      focusedBorder: InputBorder.none,
+                                      disabledBorder: InputBorder.none,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              vertical: 10),
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: _pickCommentImage,
+                                  tooltip:
+                                      'feed_comments.attach_photo_tooltip'.tr(),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 32,
+                                    minHeight: 36,
+                                  ),
+                                  icon: Icon(
+                                    Icons.image_outlined,
+                                    size: 20,
+                                    color: _pendingImageBytes != null
+                                        ? const Color(0xFF00E5FF)
+                                        : (isDark
+                                            ? Colors.white70
+                                            : const Color(0xFF475569)),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () {
+                                    HapticFeedback.selectionClick();
+                                    setState(() =>
+                                        _showEmojiStrip = !_showEmojiStrip);
+                                  },
+                                  tooltip: 'feed_comments.emoji_tooltip'.tr(),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 32,
+                                    minHeight: 36,
+                                  ),
+                                  icon: Icon(
+                                    _showEmojiStrip
+                                        ? Icons.keyboard_alt_outlined
+                                        : Icons.sentiment_satisfied_alt_outlined,
+                                    size: 20,
+                                    color: _showEmojiStrip
+                                        ? const Color(0xFF00E5FF)
+                                        : (isDark
+                                            ? Colors.white70
+                                            : const Color(0xFF475569)),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: _insertMention,
+                                  tooltip:
+                                      'feed_comments.mention_tooltip'.tr(),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 30,
+                                    minHeight: 36,
+                                  ),
+                                  icon: Icon(
+                                    Icons.alternate_email_rounded,
+                                    size: 19.5,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : const Color(0xFF475569),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                      )
-                      .toList(),
-                ),
-              ),
-
-              // Reply indicator badge (if user clicked 'Balas' on any comment/reply)
-              if (_replyingToUser != null)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.06)
-                        : Colors.black.withValues(alpha: 0.04),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.subdirectory_arrow_right_rounded,
-                        size: 14,
-                        color: Color(0xFF00E5FF),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'feed_comments.replying_to'.tr(),
-                        style: TextStyle(
-                          color: isDark
-                              ? Colors.white54
-                              : const Color(0xFF64748B),
-                          fontSize: 11.5,
-                        ),
-                      ),
-                      Flexible(
-                        child: Text(
-                          '@$_replyingToUser',
-                          style: const TextStyle(
-                            color: Color(0xFF00E5FF),
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const Spacer(),
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          setState(() {
-                            _replyingToCommentId = null;
-                            _replyingToUser = null;
-                          });
-                        },
-                        child: Icon(
-                          Icons.close_rounded,
-                          size: 16,
-                          color: isDark
-                              ? Colors.white54
-                              : const Color(0xFF64748B),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              Row(
-                children: [
-                  // User Avatar preview (with Store Owner ring if owner)
-                  _buildFeedAvatar(
-                    name: currentUserName,
-                    size: 34,
-                    imageUrl: currentUserAvatar,
-                    borderColor: isOwner
-                        ? const Color(0xFFFE2C55)
-                        : (isDark ? Colors.white12 : Colors.black12),
-                    borderWidth: isOwner ? 1.5 : 1.0,
-                  ),
-                  const SizedBox(width: 10),
-
-                  // Comment Input Bar
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : Colors.black.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: _hasInputText || _replyingToUser != null
-                              ? const Color(0xFF00E5FF).withValues(alpha: 0.45)
-                              : Colors.transparent,
-                          width: 1.0,
-                        ),
-                      ),
-                      child: TextField(
-                        controller: _commentController,
-                        focusNode: _commentFocusNode,
-                        textInputAction: TextInputAction.send,
-                        keyboardType: TextInputType.text,
-                        onSubmitted: (_) => _handleSendComment(),
-                        style: TextStyle(
-                          color:
-                              isDark ? Colors.white : const Color(0xFF0F172A),
-                          fontSize: 13,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: _replyingToUser != null
-                              ? 'feed_comments.reply_hint'
-                                  .tr(args: [_replyingToUser!])
-                              : (isOwner
-                                  ? 'feed_comments.reply_as_owner_hint'
-                                      .tr(args: [shopName])
-                                  : 'feed_comments.add_comment_hint'.tr()),
-                          hintStyle: TextStyle(
-                            color: isDark
-                                ? Colors.white38
-                                : const Color(0xFF94A3B8),
-                            fontSize: 13,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding:
-                              const EdgeInsets.symmetric(vertical: 10),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-
-                  // Send Action Button
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: _handleSendComment,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        gradient: _hasInputText
-                            ? const LinearGradient(
-                                colors: [Color(0xFF00E5FF), Color(0xFF0284C7)],
-                              )
-                            : null,
-                        color: _hasInputText
-                            ? null
-                            : (isDark
-                                ? Colors.white.withValues(alpha: 0.1)
-                                : Colors.black.withValues(alpha: 0.08)),
-                        shape: BoxShape.circle,
-                        boxShadow: _hasInputText
-                            ? [
-                                BoxShadow(
-                                  color: const Color(0xFF00E5FF)
-                                      .withValues(alpha: 0.35),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
+                        if (_hasInputText ||
+                            _pendingImageBytes != null ||
+                            _isSubmitting) ...[
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: canSend ? _handleSendComment : null,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 160),
+                              width: 36,
+                              height: 36,
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Color(0xFFFE2C55),
+                                    Color(0xFFE11D48),
+                                  ],
                                 ),
-                              ]
-                            : null,
-                      ),
-                      child: Center(
-                        child: _isSubmitting
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.black,
-                                ),
-                              )
-                            : HugeIcon(
-                                icon: HugeIcons.strokeRoundedArrowUp01,
-                                color: _hasInputText
-                                    ? Colors.black
-                                    : (isDark
-                                        ? Colors.white38
-                                        : const Color(0xFF94A3B8)),
-                                size: 20,
+                                shape: BoxShape.circle,
                               ),
-                      ),
+                              child: Center(
+                                child: _isSubmitting
+                                    ? const SizedBox(
+                                        width: 15,
+                                        height: 15,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.arrow_upward_rounded,
+                                        color: Colors.white,
+                                        size: 19,
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+                  ],
+                ),
         ),
       ],
     );
@@ -4725,6 +5432,7 @@ class _FeedVideoPlayerItem extends StatefulWidget {
   final bool isMuted;
   final double bottomOffset;
   final bool isDesktop;
+  final bool isInsideCarousel;
   final Widget? bottomContent;
   final VoidCallback onToggleMute;
   final void Function(Offset position)? onDoubleTap;
@@ -4739,6 +5447,7 @@ class _FeedVideoPlayerItem extends StatefulWidget {
     required this.isMuted,
     required this.bottomOffset,
     required this.isDesktop,
+    this.isInsideCarousel = false,
     this.bottomContent,
     required this.onToggleMute,
     this.onDoubleTap,
@@ -5404,34 +6113,50 @@ class _FeedVideoPlayerItemState extends State<_FeedVideoPlayerItem> {
           right: widget.isDesktop ? 0 : 76,
           bottom: 0,
           height: widget.isDesktop ? 220 : (widget.bottomOffset + 260),
-          child: GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onHorizontalDragStart: (details) {
-              _onRegionScrubStart(details.globalPosition.dx, currentRatio);
-            },
-            onHorizontalDragUpdate: (details) {
-              _onRegionScrubUpdate(details.globalPosition.dx, constraints.maxWidth);
-            },
-            onHorizontalDragEnd: (details) {
-              _onRegionScrubEnd(duration);
-            },
-            onHorizontalDragCancel: () {
-              setState(() => _isScrubbing = false);
-            },
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                // Bottom Content (Caption, Store info, CTA)
-                if (widget.bottomContent != null)
-                  Positioned(
-                    left: 16,
-                    right: 0,
-                    bottom: widget.bottomOffset + 6,
-                    child: widget.bottomContent!,
+          child: widget.isInsideCarousel
+              ? IgnorePointer(
+                  ignoring: widget.bottomContent == null,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      if (widget.bottomContent != null)
+                        Positioned(
+                          left: 16,
+                          right: 0,
+                          bottom: widget.bottomOffset + 6,
+                          child: widget.bottomContent!,
+                        ),
+                    ],
                   ),
-              ],
-            ),
-          ),
+                )
+              : GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onHorizontalDragStart: (details) {
+                    _onRegionScrubStart(details.globalPosition.dx, currentRatio);
+                  },
+                  onHorizontalDragUpdate: (details) {
+                    _onRegionScrubUpdate(details.globalPosition.dx, constraints.maxWidth);
+                  },
+                  onHorizontalDragEnd: (details) {
+                    _onRegionScrubEnd(duration);
+                  },
+                  onHorizontalDragCancel: () {
+                    setState(() => _isScrubbing = false);
+                  },
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Bottom Content (Caption, Store info, CTA)
+                      if (widget.bottomContent != null)
+                        Positioned(
+                          left: 16,
+                          right: 0,
+                          bottom: widget.bottomOffset + 6,
+                          child: widget.bottomContent!,
+                        ),
+                    ],
+                  ),
+                ),
         ),
 
         // 7. Interactive Video Timeline Scrubber (TikTok Signature Ultra-Clean Progress Bar)
@@ -6057,6 +6782,7 @@ class _FeedCarouselMediaViewState extends State<_FeedCarouselMediaView> {
                   isMuted: widget.isMuted,
                   bottomOffset: widget.bottomOffset,
                   isDesktop: widget.isDesktop,
+                  isInsideCarousel: true,
                   bottomContent: null,
                   onToggleMute: widget.onToggleMute,
                   onDoubleTap: widget.onDoubleTap,
@@ -6064,23 +6790,28 @@ class _FeedCarouselMediaViewState extends State<_FeedCarouselMediaView> {
                 );
               }
 
-              return SizedBox.expand(
-                child: CachedNetworkImage(
-                  imageUrl: url,
-                  fit: BoxFit.contain,
-                  placeholder: (_, __) => Container(
-                    color: const Color(0xFF11171E),
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Color(0xFF00E5FF),
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onDoubleTapDown: (details) =>
+                    widget.onDoubleTap?.call(details.globalPosition),
+                child: SizedBox.expand(
+                  child: CachedNetworkImage(
+                    imageUrl: url,
+                    fit: BoxFit.contain,
+                    placeholder: (_, __) => Container(
+                      color: const Color(0xFF11171E),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF00E5FF),
+                        ),
                       ),
                     ),
-                  ),
-                  errorWidget: (_, __, ___) => Container(
-                    color: const Color(0xFF11171E),
-                    child: const Center(
-                      child: HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.white38, size: 28),
+                    errorWidget: (_, __, ___) => Container(
+                      color: const Color(0xFF11171E),
+                      child: const Center(
+                        child: HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.white38, size: 28),
+                      ),
                     ),
                   ),
                 ),
