@@ -20,7 +20,28 @@ CREATE INDEX IF NOT EXISTS idx_conversations_business_id
   ON public.conversations (business_id, updated_at DESC)
   WHERE business_id IS NOT NULL;
 
--- 2. Additional RLS Policies for Business Owners & Active Staff (Ngam Teams)
+-- 2. Ensure helper function public.is_active_staff_of exists (safe even if team_members is absent)
+CREATE OR REPLACE FUNCTION public.is_active_staff_of(
+  p_business_id UUID,
+  p_roles TEXT[] DEFAULT NULL
+)
+RETURNS BOOLEAN AS $$
+BEGIN
+  IF to_regclass('public.team_members') IS NULL THEN
+    RETURN FALSE;
+  END IF;
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.team_members tm
+    WHERE tm.business_id = p_business_id
+      AND tm.user_id = auth.uid()
+      AND tm.status != 'inactive'
+      AND (p_roles IS NULL OR tm.role = ANY(p_roles))
+  );
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
+
+-- 3. Additional RLS Policies for Business Owners & Active Staff (Ngam Teams)
 DO $$ BEGIN
   DROP POLICY IF EXISTS "Business staff can view business conversations" ON public.conversations;
   DROP POLICY IF EXISTS "Business staff can insert business conversations" ON public.conversations;
