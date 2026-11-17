@@ -1,6 +1,6 @@
 {
-  "version": "1.0.39",
-  "build_number": 13,
-  "released_at": "2026-11-17T12:15:00Z",
-  "changelog": "Sokong paparan carousel berbilang gambar & video ala TikTok di Ngam Feed serta paparan penuh lebar untuk gambar dan video landskap bersama butang Lihat Melintang."
+  "version": "1.0.40",
+  "build_number": 14,
+  "released_at": "2026-11-17T12:35:00Z",
+  "changelog": "Kecilkan ketinggian medan teks di troli kedai (kompak) dan letakkan ikon imbas QR meja terus di dalam medan No. Meja."
 }

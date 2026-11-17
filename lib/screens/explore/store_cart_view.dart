@@ -1474,21 +1474,23 @@ class _StoreCartViewState extends State<StoreCartView> {
                         // Special instructions textfield
                         _liquidGlassBox(
                           isDark: isDark,
-                          radius: 16,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          radius: 14,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                           child: TextField(
                             controller: _notesController,
-                            style: TextStyle(color: textPrimary, fontSize: 13),
+                            style: TextStyle(color: textPrimary, fontSize: 12.5),
                             decoration: InputDecoration(
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(vertical: 4),
                               hintText: 'cart.notes_hint'.tr(),
-                              hintStyle: TextStyle(color: textSecondary, fontSize: 13),
+                              hintStyle: TextStyle(color: textSecondary, fontSize: 12.5),
                               filled: false,
                               fillColor: Colors.transparent,
                               border: InputBorder.none,
                               enabledBorder: InputBorder.none,
                               focusedBorder: InputBorder.none,
-                              prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                              prefixIcon: UnconstrainedBox(child: HugeIcon(icon: HugeIcons.strokeRoundedTaskEdit01, color: textSecondary, size: 20)),
+                              prefixIconConstraints: const BoxConstraints(minWidth: 28, minHeight: 24),
+                              prefixIcon: UnconstrainedBox(child: HugeIcon(icon: HugeIcons.strokeRoundedTaskEdit01, color: textSecondary, size: 17)),
                             ),
                           ),
                         ),
@@ -2327,57 +2329,47 @@ class _StoreCartViewState extends State<StoreCartView> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.transparent,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
-                        ),
-                        child: TextField(
-                          controller: _tableController,
-                          onChanged: (_) => setState(() {}),
-                          style: TextStyle(color: textPrimary, fontSize: 13.5, fontWeight: FontWeight.w600),
-                          decoration: InputDecoration(
-                            isDense: true,
-                            filled: false,
-                            fillColor: Colors.transparent,
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            hintText: 'cart.table_no_hint'.tr(),
-                            hintStyle: TextStyle(color: textSecondary, fontSize: 12.5, fontWeight: FontWeight.normal),
-                            prefixIconConstraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                            prefixIcon: const UnconstrainedBox(
-                              child: HugeIcon(icon: HugeIcons.strokeRoundedDesk01, color: Color(0xFF00B0FF), size: 18),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
+                  ),
+                  child: TextField(
+                    controller: _tableController,
+                    onChanged: (_) => setState(() {}),
+                    style: TextStyle(color: textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                      filled: false,
+                      fillColor: Colors.transparent,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      hintText: 'cart.table_no_hint'.tr(),
+                      hintStyle: TextStyle(color: textSecondary, fontSize: 12.5, fontWeight: FontWeight.normal),
+                      prefixIconConstraints: const BoxConstraints(minWidth: 28, minHeight: 24),
+                      prefixIcon: const UnconstrainedBox(
+                        child: HugeIcon(icon: HugeIcons.strokeRoundedDesk01, color: Color(0xFF00B0FF), size: 17),
+                      ),
+                      suffixIconConstraints: const BoxConstraints(minWidth: 28, minHeight: 24),
+                      suffixIcon: Tooltip(
+                        message: 'cart.scan_table_qr_tooltip'.tr(),
+                        child: GestureDetector(
+                          onTap: _scanTableQr,
+                          behavior: HitTestBehavior.opaque,
+                          child: const UnconstrainedBox(
+                            child: Padding(
+                              padding: EdgeInsets.only(left: 6),
+                              child: HugeIcon(icon: HugeIcons.strokeRoundedQrCode01, color: Color(0xFF00B0FF), size: 19),
                             ),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Tooltip(
-                      message: 'cart.scan_table_qr_tooltip'.tr(),
-                      child: GestureDetector(
-                        onTap: _scanTableQr,
-                        child: Container(
-                          height: 46,
-                          width: 48,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF00B0FF).withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: const Color(0xFF00B0FF).withValues(alpha: 0.45)),
-                          ),
-                          child: const Center(
-                            child: HugeIcon(icon: HugeIcons.strokeRoundedQrCode01, color: Color(0xFF00B0FF), size: 22),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
@@ -2394,10 +2386,10 @@ class _StoreCartViewState extends State<StoreCartView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (_fulfillmentMode == 3) ...[
-                      // Delivery Address field (transparent)
+                      // Delivery Address field (transparent & compact)
                       Container(
                         margin: const EdgeInsets.only(bottom: 14),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
                           color: Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
@@ -2405,12 +2397,16 @@ class _StoreCartViewState extends State<StoreCartView> {
                         ),
                         child: TextField(
                           controller: _deliveryAddressController,
-                          style: TextStyle(color: textPrimary, fontSize: 13),
+                          style: TextStyle(color: textPrimary, fontSize: 12.5),
                           decoration: InputDecoration(
                             isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 4),
                             filled: false,
                             fillColor: Colors.transparent,
-                            icon: const HugeIcon(icon: HugeIcons.strokeRoundedLocation01, color: Color(0xFF00E5FF), size: 18),
+                            prefixIconConstraints: const BoxConstraints(minWidth: 28, minHeight: 24),
+                            prefixIcon: const UnconstrainedBox(
+                              child: HugeIcon(icon: HugeIcons.strokeRoundedLocation01, color: Color(0xFF00E5FF), size: 17),
+                            ),
                             hintText: 'Masukkan alamat penghantaran...',
                             hintStyle: TextStyle(color: textSecondary, fontSize: 12),
                             border: InputBorder.none,
