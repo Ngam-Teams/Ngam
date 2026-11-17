@@ -25,6 +25,8 @@ import '../explore/my_bookings_view.dart';
 import '../../services/app_update_service.dart';
 
 import 'package:easy_localization/easy_localization.dart';
+import '../../services/ereceipt_service.dart';
+import '../receipt/my_receipts_screen.dart';
 // ============================================================
 // Ngam App — Skrin Profil (Customer & Runner)
 // User profile with role toggle, stats, and settings (Glassmorphic)
@@ -46,6 +48,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    EreceiptService.init();
     _loadStats();
   }
 
@@ -271,6 +274,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => const MyBookingsView(),
+                                    ),
+                                  ),
+                                ),
+                                _buildDivider(isDark),
+                                _buildSettingsTile(
+                                  isDark,
+                                  HugeIcons.strokeRoundedInvoice01,
+                                  "profile.my_receipts".tr(),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      ValueListenableBuilder<int>(
+                                        valueListenable: EreceiptService.totalPointsNotifier,
+                                        builder: (context, pts, _) {
+                                          if (pts <= 0) return const SizedBox.shrink();
+                                          return Container(
+                                            margin: const EdgeInsets.only(right: 8),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 3,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF10B981).withValues(alpha: 0.16),
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                            child: Text(
+                                              'ereceipt.balance_pill'.tr(args: [pts.toString()]),
+                                              style: const TextStyle(
+                                                color: Color(0xFF10B981),
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      _buildArrow(),
+                                    ],
+                                  ),
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const MyReceiptsScreen(),
                                     ),
                                   ),
                                 ),

@@ -27,8 +27,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'screens/explore/store_route_loader.dart';
 import 'screens/shared/my_queue_ticket_screen.dart';
+import 'screens/shared/promo_claim_screen.dart';
 import 'screens/customer/post_route_loader.dart';
 import 'screens/receipt/payment_result_screen.dart';
+import 'screens/receipt/ereceipt_screen.dart';
+import 'screens/receipt/my_receipts_screen.dart';
+import 'services/ereceipt_service.dart';
 import 'core/router/url_strategy.dart';
 
 import 'widgets/app_lock_wrapper.dart';
@@ -100,6 +104,7 @@ void main() async {
 
   // Setup Supabase
   await SupabaseService.initialize();
+  EreceiptService.init();
 
   // Listen for Supabase password recovery event (bila user tekan link reset emel)
   SupabaseService.client.auth.onAuthStateChange.listen((data) {
@@ -253,10 +258,35 @@ Route<dynamic>? _generateRoute(RouteSettings settings) {
                   return MaterialPageRoute(settings: settings, builder: (_) => const HelpCenterScreen());
                 case '/contact':
                   return MaterialPageRoute(settings: settings, builder: (_) => const ContactUsScreen());
+                case '/my-receipts':
+                case '/receipts':
+                  return MaterialPageRoute(settings: settings, builder: (_) => const MyReceiptsScreen());
               }
 
-              // 0.1 Payment Receipt / Gateway Redirect: /receipt/:status (e.g. /receipt/success, /receipt/failed, /receipt/cancel)
+              // 0.1 Digital e-Receipt Viewer & Points Claim OR Payment Gateway Redirect
+              if (segments.isNotEmpty &&
+                  (segments.first == 'e-resit' || segments.first == 'ereceipt')) {
+                return MaterialPageRoute(
+                  settings: settings,
+                  builder: (_) => EreceiptScreen(uri: uri),
+                );
+              }
+
               if (segments.isNotEmpty && segments.first == 'receipt') {
+                final second = segments.length > 1 ? segments[1].toLowerCase() : '';
+                final isGatewayResult =
+                    second == 'success' || second == 'failed' || second == 'cancel';
+                if (!isGatewayResult &&
+                    (second == 'view' ||
+                        second == 'e-resit' ||
+                        uri.queryParameters.containsKey('ref') ||
+                        uri.queryParameters.containsKey('total') ||
+                        uri.queryParameters.containsKey('order_id'))) {
+                  return MaterialPageRoute(
+                    settings: settings,
+                    builder: (_) => EreceiptScreen(uri: uri),
+                  );
+                }
                 final status = segments.length > 1 ? segments[1] : 'success';
                 final orderId = uri.queryParameters['order_id'] ??
                     uri.queryParameters['reference'] ??
@@ -286,28 +316,52 @@ Route<dynamic>? _generateRoute(RouteSettings settings) {
               final tableNumber = uri.queryParameters['table'];
               final promoCode = uri.queryParameters['promo'] ?? uri.queryParameters['voucher'];
 
-              // 1. /@:handle or /@:handle?table=X&promo=Y (e.g. /@pisangkrispy?table=1)
+              // 1. /@:handle or /@:handle?table=X&promo=Y
               if (segments.isNotEmpty && Uri.decodeComponent(segments.first).startsWith('@')) {
                 final rawHandle = Uri.decodeComponent(segments.first).substring(1);
+                if (promoCode != null &&
+                    promoCode.trim().isNotEmpty &&
+                    (tableNumber == null || tableNumber.trim().isEmpty)) {
+                  return MaterialPageRoute(
+                    settings: settings,
+                    builder: (_) => PromoClaimScreen(
+                      promoCode: promoCode.trim(),
+                      businessIdentifier: rawHandle,
+                    ),
+                  );
+                }
                 return MaterialPageRoute(
                   settings: settings,
                   builder: (_) => StoreRouteLoader(
                     businessId: rawHandle,
                     tableNumber: tableNumber,
                     promoCode: promoCode,
+                    autoShowPromoPopup: promoCode != null && promoCode.trim().isNotEmpty,
                   ),
                 );
               }
 
-              // 2. /c/:handle or /store/:id or /shop/:id (e.g. /c/pisangkrispy?table=1)
+              // 2. /c/:handle or /store/:id or /shop/:id
               if (segments.isNotEmpty && (segments.first == 'c' || segments.first == 'store' || segments.first == 'shop')) {
                 final businessId = segments.length > 1 ? segments[1] : '';
+                if (promoCode != null &&
+                    promoCode.trim().isNotEmpty &&
+                    (tableNumber == null || tableNumber.trim().isEmpty)) {
+                  return MaterialPageRoute(
+                    settings: settings,
+                    builder: (_) => PromoClaimScreen(
+                      promoCode: promoCode.trim(),
+                      businessIdentifier: businessId,
+                    ),
+                  );
+                }
                 return MaterialPageRoute(
                   settings: settings,
                   builder: (_) => StoreRouteLoader(
                     businessId: businessId,
                     tableNumber: tableNumber,
                     promoCode: promoCode,
+                    autoShowPromoPopup: promoCode != null && promoCode.trim().isNotEmpty,
                   ),
                 );
               }
@@ -339,15 +393,18 @@ Route<dynamic>? _generateRoute(RouteSettings settings) {
                 );
               }
 
-              // 5. /voucher/:code or /promo/:code
+              // 5. /voucher/:code or /promo/:code -> Dedicated Promo Claim Page
               if (segments.isNotEmpty && (segments.first == 'voucher' || segments.first == 'promo')) {
-                final code = segments.length > 1 ? segments[1] : '';
+                final code = segments.length > 1
+                    ? Uri.decodeComponent(segments[1])
+                    : (uri.queryParameters['code'] ?? '');
                 final store = uri.queryParameters['store'] ?? uri.queryParameters['shop'] ?? '';
                 return MaterialPageRoute(
                   settings: settings,
-                  builder: (_) => StoreRouteLoader(
-                    businessId: store.isNotEmpty ? store : code,
+                  builder: (_) => PromoClaimScreen(
                     promoCode: code,
+                    businessIdentifier: store,
+                    tableNumber: tableNumber,
                   ),
                 );
               }
@@ -358,16 +415,28 @@ Route<dynamic>? _generateRoute(RouteSettings settings) {
                 'customer-home', 'review', 'profile', 'explore', 'bookings',
                 'cart', 'chat', 'wallet', 'orders', 'notifications', 'search',
                 'privacy', 'terms', 'support', 'about', 'feed', 'api', 'assets',
-                'p', 'post', 'receipt', 'payment'
+                'p', 'post', 'receipt', 'e-resit', 'ereceipt', 'my-receipts', 'receipts', 'payment'
               };
               if (segments.isNotEmpty && !reservedRoutes.contains(segments.first.toLowerCase())) {
                 final rawHandle = Uri.decodeComponent(segments.first);
+                if (promoCode != null &&
+                    promoCode.trim().isNotEmpty &&
+                    (tableNumber == null || tableNumber.trim().isEmpty)) {
+                  return MaterialPageRoute(
+                    settings: settings,
+                    builder: (_) => PromoClaimScreen(
+                      promoCode: promoCode.trim(),
+                      businessIdentifier: rawHandle,
+                    ),
+                  );
+                }
                 return MaterialPageRoute(
                   settings: settings,
                   builder: (_) => StoreRouteLoader(
                     businessId: rawHandle,
                     tableNumber: tableNumber,
                     promoCode: promoCode,
+                    autoShowPromoPopup: promoCode != null && promoCode.trim().isNotEmpty,
                   ),
                 );
               }

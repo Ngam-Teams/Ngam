@@ -17,6 +17,7 @@ import 'store_cart_view.dart';
 import 'store_info_view.dart';
 import '../shared/my_queue_ticket_screen.dart';
 import '../../services/chat_service.dart';
+import '../../widgets/promo_claim_sheet.dart';
 import '../shared/chat_screen.dart';
 
 // ============================================================
@@ -31,12 +32,14 @@ class BusinessStoreView extends StatefulWidget {
   final Map<String, dynamic> shop;
   final String? tableNumber;
   final String? promoCode;
+  final bool autoShowPromoPopup;
 
   const BusinessStoreView({
     super.key,
     required this.shop,
     this.tableNumber,
     this.promoCode,
+    this.autoShowPromoPopup = true,
   });
 
   @override
@@ -450,6 +453,17 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _initStream();
     _startStatusTicker();
+    final promo = widget.promoCode?.trim() ?? '';
+    if (promo.isNotEmpty && widget.autoShowPromoPopup) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        PromoClaimSheet.show(
+          context,
+          promoCode: promo,
+          shop: widget.shop,
+        );
+      });
+    }
   }
 
   @override

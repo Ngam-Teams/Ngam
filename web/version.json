@@ -1,6 +1,6 @@
 {
-  "version": "1.0.49",
-  "build_number": 19,
-  "released_at": "2026-11-17T15:00:00Z",
-  "changelog": "Reka bentuk baharu ruang komen Feed ala TikTok (paparan video mini di atas + papan komen solid di bawah), ruangan komen lutsinar bersih tanpa kotak kelabu, sokongan komen gambar & susun Teratas/Terkini, serta leretan karusel video & gambar campur yang lebih lancar."
+  "version": "1.0.50",
+  "build_number": 23,
+  "released_at": "2026-11-17T23:55:00Z",
+  "changelog": "Aliran baharu QR Resit Digital & Tuntutan Poin Ngam (EreceiptScreen), arkib Resit Saya untuk semak semula resit lampau, serta halaman/popup Tuntutan Promo khusus tanpa terus redirect ke halaman kedai."
 }

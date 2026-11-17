@@ -15,12 +15,14 @@ class StoreRouteLoader extends StatefulWidget {
   final String businessId;
   final String? tableNumber;
   final String? promoCode;
+  final bool autoShowPromoPopup;
 
   const StoreRouteLoader({
     super.key,
     required this.businessId,
     this.tableNumber,
     this.promoCode,
+    this.autoShowPromoPopup = true,
   });
 
   @override
@@ -337,6 +339,7 @@ class _StoreRouteLoaderState extends State<StoreRouteLoader> {
       shop: _shopData!,
       tableNumber: widget.tableNumber,
       promoCode: widget.promoCode,
+      autoShowPromoPopup: widget.autoShowPromoPopup,
     );
   }
 }

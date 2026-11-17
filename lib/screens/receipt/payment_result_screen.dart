@@ -4,6 +4,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../explore/order_status_tracker_screen.dart';
+import 'ereceipt_screen.dart';
 
 class PaymentResultScreen extends StatefulWidget {
   final String status; // 'success', 'failed', 'cancel'
@@ -297,7 +298,42 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => EreceiptScreen(orderId: widget.orderId!),
+                          ),
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF38BDF8),
+                        side: BorderSide(
+                          color: const Color(0xFF38BDF8).withValues(alpha: 0.45),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      icon: const HugeIcon(
+                        icon: HugeIcons.strokeRoundedInvoice01,
+                        color: Color(0xFF38BDF8),
+                        size: 19,
+                      ),
+                      label: Text(
+                        'payment_result.view_ereceipt_btn'.tr(),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                 ],
 
                 SizedBox(
