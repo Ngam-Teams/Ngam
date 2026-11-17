@@ -419,6 +419,21 @@ class ChatService {
 
         if (existing != null) {
           row = Map<String, dynamic>.from(existing);
+          if (ownerId != null &&
+              ownerId.isNotEmpty &&
+              existing['user2_id']?.toString() != ownerId) {
+            try {
+              final healed = await _supabase
+                  .from('conversations')
+                  .update({'user2_id': ownerId})
+                  .eq('id', existing['id'])
+                  .select()
+                  .maybeSingle();
+              if (healed != null) {
+                row = Map<String, dynamic>.from(healed);
+              }
+            } catch (_) {}
+          }
         } else {
           final targetUser2 = (ownerId != null && ownerId.isNotEmpty) ? ownerId : currentUserId;
           try {
@@ -505,7 +520,7 @@ class ChatService {
       final response = await _supabase.from('messages').insert(message.toSupabaseJson()).select().single();
       final actualMessage = MessageModel.fromJson(response);
 
-      // 2. Update table perbualan (untuk business chat, trigger DB yang uruskan)
+      // 2. Update table perbualan
       if (!isBusinessChat) {
         if (contextGigId != null) {
           await _supabase.rpc('update_conversation_task_message', params: {
@@ -522,6 +537,15 @@ class ChatService {
             'updated_at': message.createdAt.toUtc().toIso8601String(),
           }).eq('id', message.conversationId);
         }
+      } else {
+        try {
+          await _supabase.from('conversations').update({
+            'last_message': message.content,
+            'last_message_sender_id': message.senderId,
+            'last_message_is_read': false,
+            'updated_at': actualMessage.createdAt.toUtc().toIso8601String(),
+          }).eq('id', message.conversationId);
+        } catch (_) {}
       }
       
       // Update local dengan REAL ID supaya tak ter-duplicate bila reload nanti
@@ -566,24 +590,13 @@ class ChatService {
           ? 'image/png'
           : (fileExt == 'webp' ? 'image/webp' : 'image/jpeg');
       final fileName = '${DateTime.now().millisecondsSinceEpoch}_${pendingMessage.senderId}.$fileExt';
-      final filePath = '${pendingMessage.conversationId}/$fileName';
 
-      String imageUrl;
-      if (R2StorageService().isConfigured) {
-        imageUrl = await R2StorageService().uploadMedia(
-          bytes: imageBytes,
-          fileName: fileName,
-          folder: 'chat/${pendingMessage.conversationId}',
-          mimeType: mimeType,
-        );
-      } else {
-        await _supabase.storage.from('chat_images').uploadBinary(
-          filePath,
-          imageBytes,
-          fileOptions: FileOptions(contentType: mimeType, upsert: true),
-        );
-        imageUrl = _supabase.storage.from('chat_images').getPublicUrl(filePath);
-      }
+      final imageUrl = await R2StorageService().uploadMedia(
+        bytes: imageBytes,
+        fileName: fileName,
+        folder: 'chat/${pendingMessage.conversationId}',
+        mimeType: mimeType,
+      );
 
       final newMsg = pendingMessage.copyWith(
         imageUrl: imageUrl,
@@ -594,22 +607,84 @@ class ChatService {
       final response = await _supabase.from('messages').insert(newMsg.toSupabaseJson()).select().single();
       final actualMessage = MessageModel.fromJson(response);
 
-      if (!isBusinessChat) {
-        if (contextGigId != null) {
-          await _supabase.rpc('update_conversation_task_message', params: {
-            'p_conversation_id': pendingMessage.conversationId,
-            'p_sender_id': pendingMessage.senderId,
-            'p_message_content': 'Photo',
-            'p_gig_id': contextGigId,
-          });
-        } else {
+      if (!isBusinessChat && contextGigId != null) {
+        await _supabase.rpc('update_conversation_task_message', params: {
+          'p_conversation_id': pendingMessage.conversationId,
+          'p_sender_id': pendingMessage.senderId,
+          'p_message_content': 'Photo',
+          'p_gig_id': contextGigId,
+        });
+      } else {
+        try {
           await _supabase.from('conversations').update({
-            'last_message': 'Photo',
+            'last_message': '📷 Photo',
             'last_message_sender_id': pendingMessage.senderId,
             'last_message_is_read': false,
             'updated_at': actualMessage.createdAt.toUtc().toIso8601String(),
           }).eq('id', pendingMessage.conversationId);
-        }
+        } catch (_) {}
+      }
+
+      final sentMsg = actualMessage.copyWith(status: 'sent');
+      await LocalDatabaseService.instance.insertMessage(sentMsg);
+
+      return actualMessage;
+    } catch (e) {
+      await LocalDatabaseService.instance.insertMessage(pendingMessage.copyWith(status: 'failed'));
+      rethrow;
+    }
+  }
+
+  /// Upload video and send a video message (Web/PWA & Mobile compatible via R2 / Storage uploadBinary)
+  static Future<MessageModel> sendVideoMessage(
+    MessageModel pendingMessage,
+    Uint8List videoBytes,
+    String originalFileName, {
+    String? contextGigId,
+    bool isBusinessChat = false,
+  }) async {
+    try {
+      final fileExt = originalFileName.contains('.')
+          ? originalFileName.split('.').last.toLowerCase()
+          : 'mp4';
+      final mimeType = fileExt == 'mov'
+          ? 'video/quicktime'
+          : (fileExt == 'webm' ? 'video/webm' : 'video/mp4');
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${pendingMessage.senderId}.$fileExt';
+
+      final videoUrl = await R2StorageService().uploadMedia(
+        bytes: videoBytes,
+        fileName: fileName,
+        folder: 'chat/${pendingMessage.conversationId}',
+        mimeType: mimeType,
+      );
+
+      final newMsg = pendingMessage.copyWith(
+        imageUrl: videoUrl,
+        messageType: 'video',
+        fileName: originalFileName,
+        fileSize: videoBytes.lengthInBytes,
+      );
+
+      final response = await _supabase.from('messages').insert(newMsg.toSupabaseJson()).select().single();
+      final actualMessage = MessageModel.fromJson(response);
+
+      if (!isBusinessChat && contextGigId != null) {
+        await _supabase.rpc('update_conversation_task_message', params: {
+          'p_conversation_id': pendingMessage.conversationId,
+          'p_sender_id': pendingMessage.senderId,
+          'p_message_content': 'Video',
+          'p_gig_id': contextGigId,
+        });
+      } else {
+        try {
+          await _supabase.from('conversations').update({
+            'last_message': '🎬 Video',
+            'last_message_sender_id': pendingMessage.senderId,
+            'last_message_is_read': false,
+            'updated_at': actualMessage.createdAt.toUtc().toIso8601String(),
+          }).eq('id', pendingMessage.conversationId);
+        } catch (_) {}
       }
 
       final sentMsg = actualMessage.copyWith(status: 'sent');
@@ -638,24 +713,13 @@ class ChatService {
               ? 'text/csv'
               : (lower.endsWith('.txt') ? 'text/plain' : 'application/octet-stream'));
       final safeName = '${DateTime.now().millisecondsSinceEpoch}_$fileName';
-      final filePath = '${pendingMessage.conversationId}/$safeName';
 
-      String fileUrl;
-      if (R2StorageService().isConfigured) {
-        fileUrl = await R2StorageService().uploadMedia(
-          bytes: fileBytes,
-          fileName: safeName,
-          folder: 'chat/${pendingMessage.conversationId}',
-          mimeType: mimeType,
-        );
-      } else {
-        await _supabase.storage.from('chat_images').uploadBinary(
-          filePath,
-          fileBytes,
-          fileOptions: FileOptions(contentType: mimeType, upsert: true),
-        );
-        fileUrl = _supabase.storage.from('chat_images').getPublicUrl(filePath);
-      }
+      final fileUrl = await R2StorageService().uploadMedia(
+        bytes: fileBytes,
+        fileName: safeName,
+        folder: 'chat/${pendingMessage.conversationId}',
+        mimeType: mimeType,
+      );
 
       final newMsg = pendingMessage.copyWith(
         imageUrl: fileUrl,
@@ -666,22 +730,22 @@ class ChatService {
       final response = await _supabase.from('messages').insert(newMsg.toSupabaseJson()).select().single();
       final actualMessage = MessageModel.fromJson(response);
 
-      if (!isBusinessChat) {
-        if (contextGigId != null) {
-          await _supabase.rpc('update_conversation_task_message', params: {
-            'p_conversation_id': pendingMessage.conversationId,
-            'p_sender_id': pendingMessage.senderId,
-            'p_message_content': 'File',
-            'p_gig_id': contextGigId,
-          });
-        } else {
+      if (!isBusinessChat && contextGigId != null) {
+        await _supabase.rpc('update_conversation_task_message', params: {
+          'p_conversation_id': pendingMessage.conversationId,
+          'p_sender_id': pendingMessage.senderId,
+          'p_message_content': 'File',
+          'p_gig_id': contextGigId,
+        });
+      } else {
+        try {
           await _supabase.from('conversations').update({
-            'last_message': 'File',
+            'last_message': '📎 $fileName',
             'last_message_sender_id': pendingMessage.senderId,
             'last_message_is_read': false,
             'updated_at': actualMessage.createdAt.toUtc().toIso8601String(),
           }).eq('id', pendingMessage.conversationId);
-        }
+        } catch (_) {}
       }
 
       final sentMsg = actualMessage.copyWith(status: 'sent');

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 // =============================================================================
 // R2StorageService — Servis Muat Naik Terus ke Cloudflare R2 (AWS S3 SigV4)
@@ -47,11 +48,8 @@ class R2StorageService {
       _accessKeyId.isNotEmpty &&
       _secretAccessKey.isNotEmpty;
 
-  /// Muat naik fail media (Gambar / Kod QR / Dokumen) ke Cloudflare R2
-  /// [bytes]: Kandungan data binari fail (Uint8List — serasi Web & Mobile)
-  /// [fileName]: Nama fail asal (cth: profile.jpg)
-  /// [folder]: Subfolder dalam bucket (cth: 'avatars/user_123')
-  /// [mimeType]: Jenis fail cth 'image/jpeg', 'image/png'
+  /// Muat naik fail media (Gambar / Video / Kod QR / Dokumen) ke Cloudflare R2
+  /// dengan fallback automatik ke Supabase Storage jika disekat oleh CORS pelayar.
   Future<String> uploadMedia({
     required Uint8List bytes,
     required String fileName,
@@ -59,10 +57,12 @@ class R2StorageService {
     required String mimeType,
     void Function(double progress)? onProgress,
   }) async {
-    // 1. Sediakan Path unik dalam R2
+    // 1. Sediakan Path unik dalam R2 / Storage
     final ext = fileName.contains('.')
         ? fileName.split('.').last.toLowerCase()
-        : (mimeType.contains('png') ? 'png' : 'jpg');
+        : (mimeType.contains('video')
+            ? 'mp4'
+            : (mimeType.contains('png') ? 'png' : 'jpg'));
     final uniqueName = '${DateTime.now().millisecondsSinceEpoch}_${_randomHex(6)}.$ext';
     final objectKey = '$folder/$uniqueName';
 
@@ -124,38 +124,57 @@ class R2StorageService {
         'AWS4-HMAC-SHA256 Credential=$_accessKeyId/$credentialScope, '
         'SignedHeaders=$signedHeaders, Signature=$signature';
 
-    final headers = {
-      'Host': host,
+    final headers = <String, String>{
+      if (!kIsWeb) 'Host': host,
       'Content-Type': mimeType,
       'x-amz-date': amzDate,
       'x-amz-content-sha256': payloadHash,
       'Authorization': authorizationHeader,
     };
 
-    // 9. Hantar HTTP PUT Request ke Cloudflare R2
+    // 9. Hantar HTTP PUT Request ke Cloudflare R2 (dengan fallback automatik ke Supabase Storage)
     if (onProgress != null) onProgress(0.1);
 
-    final response = await http.put(
-      endpointUrl,
-      headers: headers,
-      body: bytes,
-    );
+    try {
+      final response = await http.put(
+        endpointUrl,
+        headers: headers,
+        body: bytes,
+      );
 
-    if (onProgress != null) onProgress(1.0);
-
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      // 10. Pulangkan URL awam CDN
-      if (_publicDomain.isNotEmpty) {
-        final domain = _publicDomain.endsWith('/')
-            ? _publicDomain.substring(0, _publicDomain.length - 1)
-            : _publicDomain;
-        return '$domain/$objectKey';
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (onProgress != null) onProgress(1.0);
+        if (_publicDomain.isNotEmpty) {
+          final domain = _publicDomain.endsWith('/')
+              ? _publicDomain.substring(0, _publicDomain.length - 1)
+              : _publicDomain;
+          return '$domain/$objectKey';
+        }
+        return 'https://$host$canonicalUri';
+      } else {
+        debugPrint('[R2StorageService] Ralat Muat Naik R2 (${response.statusCode}), beralih ke Supabase Storage...');
       }
-      return 'https://$host$canonicalUri';
-    } else {
-      debugPrint('[R2StorageService] Ralat Muat Naik R2: ${response.statusCode} - ${response.body}');
-      throw Exception('Gagal memuat naik imej (${response.statusCode}): ${response.body}');
+    } catch (r2Error) {
+      debugPrint('[R2StorageService] R2 PUT disekat/gagal ($r2Error), beralih ke Supabase Storage...');
     }
+
+    // 10. Fallback automatik ke Supabase Storage (chat_images -> business-assets)
+    final storage = Supabase.instance.client.storage;
+    for (final bucket in const ['chat_images', 'business-assets']) {
+      try {
+        await storage.from(bucket).uploadBinary(
+              objectKey,
+              bytes,
+              fileOptions: FileOptions(contentType: mimeType, upsert: true),
+            );
+        if (onProgress != null) onProgress(1.0);
+        return storage.from(bucket).getPublicUrl(objectKey);
+      } catch (storageErr) {
+        debugPrint('[R2StorageService] Supabase Storage bucket "$bucket" gagal: $storageErr');
+      }
+    }
+
+    throw Exception('Gagal memuat naik fail media ke storan awan.');
   }
 
   static String _randomHex(int length) {

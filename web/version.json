@@ -1,6 +1,6 @@
 {
-  "version": "1.0.44",
-  "build_number": 17,
-  "released_at": "2026-11-17T13:55:00Z",
-  "changelog": "Betulkan ralat kekangan kunci asing (foreign key) conversations_user2_id_fkey supaya pelanggan boleh terus Chat Kedai dan peniaga boleh membalas mesej pelanggan."
+  "version": "1.0.45",
+  "build_number": 18,
+  "released_at": "2026-11-17T14:35:00Z",
+  "changelog": "Naik taraf sembang pelanggan: sokongan penghantaran & pemain video terus dalam chat, fallback automatik muat naik gambar/video/fail ke Supabase Storage apabila R2 disekat CORS, dan pembaikan automatik sambungan sembang kedai."
 }

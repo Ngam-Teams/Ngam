@@ -551,6 +551,7 @@
     "delete_failed": "Failed to delete conversation: {}",
     "send_failed": "Failed to send message: {}",
     "image_send_failed": "Failed to send image: {}",
+    "video_send_failed": "Failed to send video: {}",
     "file_send_failed": "Failed to send file: {}",
     "login_required": "Please sign in to chat with this shop",
     "open_chat_failed": "Unable to open chat right now"

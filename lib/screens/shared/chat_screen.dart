@@ -31,6 +31,7 @@ import '../../services/local_database_service.dart';
 import '../../utils/file_saver/file_saver.dart';
 
 import '../../services/push_service.dart';
+import 'package:video_player/video_player.dart';
 
 // ============================================================
 // Ngam App — Skrin Chat
@@ -1020,6 +1021,64 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     }
   }
 
+  Future<void> _pickVideo(ImageSource source) async {
+    final pickedFile = await _picker.pickVideo(
+      source: source,
+      maxDuration: const Duration(minutes: 3),
+    );
+    if (pickedFile != null) {
+      setState(() => _isUploadingImage = true);
+
+      await _ensureContextIsSet();
+
+      final pendingMsg = MessageModel(
+        id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+        conversationId: widget.conversation.id,
+        senderId: currentUserId,
+        content: 'Video',
+        isRead: false,
+        createdAt: DateTime.now(),
+        messageType: 'video',
+        status: 'sending',
+      );
+
+      setState(() {
+        _messages.insert(0, pendingMsg);
+      });
+
+      try {
+        final videoBytes = await pickedFile.readAsBytes();
+        final actualMsg = await ChatService.sendVideoMessage(
+          pendingMsg,
+          videoBytes,
+          pickedFile.name,
+          contextGigId: _linkedGig?.id,
+          isBusinessChat: widget.conversation.isBusinessChat,
+        );
+        if (mounted) {
+          setState(() {
+            final index = _messages.indexWhere((m) => m.id == pendingMsg.id);
+            if (index != -1) _messages[index] = actualMsg;
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            final index = _messages.indexWhere((m) => m.id == pendingMsg.id);
+            if (index != -1) _messages[index] = pendingMsg.copyWith(status: 'failed');
+          });
+          showGlassToast(
+            context,
+            'chat.video_send_failed'.tr(args: [e.toString()]),
+            isError: true,
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isUploadingImage = false);
+      }
+    }
+  }
+
   void _showAttachmentOptions() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
@@ -1066,6 +1125,14 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: const HugeIcon(icon: HugeIcons.strokeRoundedVideo01, color: AppTheme.primary, size: 24),
+                title: Text('chat.video'.tr(), style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickVideo(ImageSource.gallery);
                 },
               ),
               ListTile(
@@ -2494,7 +2561,12 @@ class _MessageBubbleState extends State<_MessageBubble> {
                     ),
                   ),
                   if (message.imageUrl != null)
-                    message.isFile
+                    message.isVideo
+                    ? Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: _CustomerChatVideoPlayer(videoUrl: message.imageUrl!),
+                      )
+                    : message.isFile
                     ? GestureDetector(
                         onTap: _isDownloading ? null : _openFile,
                         child: Container(
@@ -3109,6 +3181,134 @@ class _SwipeToReplyState extends State<SwipeToReply> with SingleTickerProviderSt
             child: widget.child,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CustomerChatVideoPlayer extends StatefulWidget {
+  final String videoUrl;
+  const _CustomerChatVideoPlayer({required this.videoUrl});
+
+  @override
+  State<_CustomerChatVideoPlayer> createState() => _CustomerChatVideoPlayerState();
+}
+
+class _CustomerChatVideoPlayerState extends State<_CustomerChatVideoPlayer> {
+  VideoPlayerController? _controller;
+  bool _initialized = false;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initVideo();
+  }
+
+  Future<void> _initVideo() async {
+    try {
+      final ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+      _controller = ctrl;
+      await ctrl.initialize();
+      ctrl.setLooping(true);
+      if (mounted) {
+        setState(() => _initialized = true);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _hasError = true);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_hasError) {
+      return GestureDetector(
+        onTap: () => launchUrl(Uri.parse(widget.videoUrl), mode: LaunchMode.externalApplication),
+        child: Container(
+          width: 220,
+          height: 140,
+          decoration: BoxDecoration(
+            color: Colors.black38,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Center(
+            child: Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 42),
+          ),
+        ),
+      );
+    }
+
+    if (!_initialized || _controller == null) {
+      return Container(
+        width: 220,
+        height: 150,
+        decoration: BoxDecoration(
+          color: Colors.black26,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+          ),
+        ),
+      );
+    }
+
+    final aspect = _controller!.value.aspectRatio > 0 ? _controller!.value.aspectRatio : (16 / 9);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 250, maxHeight: 280),
+        child: AspectRatio(
+          aspectRatio: aspect,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              VideoPlayer(_controller!),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if (_controller!.value.isPlaying) {
+                      _controller!.pause();
+                    } else {
+                      _controller!.play();
+                    }
+                  });
+                },
+                child: Container(
+                  color: Colors.transparent,
+                  alignment: Alignment.center,
+                  child: AnimatedOpacity(
+                    opacity: _controller!.value.isPlaying ? 0.0 : 1.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

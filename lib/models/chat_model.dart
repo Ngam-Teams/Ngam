@@ -250,11 +250,25 @@ class MessageModel {
     );
   }
 
+  bool get isVideo {
+    if (messageType == 'video') return true;
+    if (imageUrl != null) {
+      final lowerUrl = imageUrl!.toLowerCase().split('?').first;
+      if (lowerUrl.endsWith('.mp4') ||
+          lowerUrl.endsWith('.mov') ||
+          lowerUrl.endsWith('.webm') ||
+          lowerUrl.endsWith('.m4v')) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   bool get isFile {
     if (messageType == 'file' || messageType == 'document') return true;
-    if (imageUrl != null) {
-      if (content == 'File' || (fileName != null && fileName!.isNotEmpty)) return true;
-      final lowerUrl = imageUrl!.toLowerCase();
+    if (imageUrl != null && !isVideo) {
+      if (content == 'File' || (fileName != null && fileName!.isNotEmpty && messageType != 'image')) return true;
+      final lowerUrl = imageUrl!.toLowerCase().split('?').first;
       if (lowerUrl.endsWith('.pdf') || lowerUrl.endsWith('.doc') || lowerUrl.endsWith('.docx') || lowerUrl.endsWith('.txt') || lowerUrl.endsWith('.csv')) {
         return true;
       }
@@ -262,7 +276,7 @@ class MessageModel {
     return false;
   }
   
-  bool get isImage => messageType == 'image' || (imageUrl != null && !isFile);
+  bool get isImage => messageType == 'image' || (imageUrl != null && !isFile && !isVideo);
 
   String get displayFileName {
     if (fileName != null && fileName!.isNotEmpty) return fileName!;
