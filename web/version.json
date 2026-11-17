@@ -1,6 +1,6 @@
 {
-  "version": "1.0.37",
-  "build_number": 11,
-  "released_at": "2026-11-17T11:00:00Z",
-  "changelog": "Paksa muat turun skrip flutter_bootstrap.js terkini (v1.0.37) supaya rekaan Laman Utama glassmorphism baharu & label Utama terus terpapar tanpa cache lama."
+  "version": "1.0.38",
+  "build_number": 12,
+  "released_at": "2026-11-17T12:00:00Z",
+  "changelog": "Baiki TextField lutsinar di troli kedai, tambah medan No. Meja + imbasan QR meja untuk Makan Sini, pilihan Sekarang/Pilih Masa untuk Bungkus, dan penyegerakan slot waktu operasi serta pemilih roda tarikh/masa untuk Pre-Order."
 }

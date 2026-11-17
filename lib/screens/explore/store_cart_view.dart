@@ -1,7 +1,9 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'order_status_tracker_screen.dart';
+import 'qr_scanner_screen.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:ngam/widgets/glass_box.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -81,7 +83,9 @@ class _StoreCartViewState extends State<StoreCartView> {
   late List<CartItem> _items;
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _voucherController = TextEditingController();
+  final TextEditingController _tableController = TextEditingController();
   int _fulfillmentMode = 0; // 0: Bungkus (Takeaway), 1: Dine-in, 2: Pre-Order, 3: Delivery
+  bool _bungkusChooseTime = false; // false = Sekarang, true = Pilih Masa
   String _selectedPickupTime = 'Segera (~15 minit)';
   String _selectedPickupDate = 'Hari Ini';
   DateTime? _customSelectedDate;
@@ -96,6 +100,20 @@ class _StoreCartViewState extends State<StoreCartView> {
   bool _isPreOrder = false;
   String _selectedPaymentMethod = 'duitnow'; // 'duitnow', 'fpx_card', 'cash'
   String? _syncedShopName;
+  Map<String, dynamic>? _syncedOperatingHours;
+
+  String? get _effectiveTableNumber {
+    final t = _tableController.text.trim();
+    return t.isNotEmpty ? t : null;
+  }
+
+  Map<String, dynamic>? get _effectiveOperatingHours {
+    if (_syncedOperatingHours != null) return _syncedOperatingHours;
+    final raw = widget.shop['operating_hours'];
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    return null;
+  }
 
   String get _shopName {
     if (_syncedShopName != null && _syncedShopName!.trim().isNotEmpty) {
@@ -114,38 +132,450 @@ class _StoreCartViewState extends State<StoreCartView> {
     return fallback.isNotEmpty ? fallback : 'Kedai Pilihan';
   }
 
-  Future<void> _ensureShopNameLoaded() async {
-    final current = _shopName;
-    if (current != 'Kedai Pilihan' && current != 'Kedai Ngam' && current != 'Store') return;
+  Future<void> _syncShopDetails() async {
     final shopId = widget.shop['id']?.toString() ?? '';
     if (shopId.length < 20) return;
+
+    final current = _shopName;
+    if (current == 'Kedai Pilihan' || current == 'Kedai Ngam' || current == 'Store') {
+      try {
+        final row = await Supabase.instance.client
+            .from('businesses')
+            .select('business_name')
+            .eq('id', shopId)
+            .maybeSingle();
+        final fetched = row?['business_name']?.toString().trim() ?? '';
+        if (fetched.isNotEmpty && mounted) {
+          setState(() => _syncedShopName = fetched);
+        }
+      } catch (_) {}
+    }
+
     try {
-      final row = await Supabase.instance.client
-          .from('businesses')
-          .select('business_name')
-          .eq('id', shopId)
+      final settings = await Supabase.instance.client
+          .from('business_settings')
+          .select('operating_hours')
+          .eq('business_id', shopId)
           .maybeSingle();
-      final fetched = row?['business_name']?.toString().trim() ?? '';
-      if (fetched.isNotEmpty && mounted) {
-        setState(() => _syncedShopName = fetched);
+      if (settings != null && settings['operating_hours'] is Map && mounted) {
+        setState(() {
+          _syncedOperatingHours = Map<String, dynamic>.from(settings['operating_hours'] as Map);
+          _syncDefaultSlotForSelectedDate();
+        });
       }
     } catch (_) {}
   }
 
-  final List<String> _quickTimeSlots = [
-    'Segera (~15 minit)',
-    '30 minit lagi',
-    '45 minit lagi',
-    '1 jam lagi',
-    '1 jam 30 min',
-    '2 jam lagi',
-  ];
+  DateTime get _selectedDateObject {
+    final now = DateTime.now();
+    if (_selectedPickupDate == 'Hari Ini') {
+      return DateTime(now.year, now.month, now.day);
+    }
+    if (_selectedPickupDate == 'Esok') {
+      final tmr = now.add(const Duration(days: 1));
+      return DateTime(tmr.year, tmr.month, tmr.day);
+    }
+    if (_customSelectedDate != null) {
+      return DateTime(_customSelectedDate!.year, _customSelectedDate!.month, _customSelectedDate!.day);
+    }
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  TimeOfDay _parseTimeOfDay(String? str, TimeOfDay fallback) {
+    if (str == null || !str.contains(':')) return fallback;
+    final parts = str.split(':');
+    final h = int.tryParse(parts[0].trim()) ?? fallback.hour;
+    final m = parts.length > 1 ? (int.tryParse(parts[1].trim().split(' ').first) ?? fallback.minute) : fallback.minute;
+    return TimeOfDay(hour: h.clamp(0, 23), minute: m.clamp(0, 59));
+  }
+
+  String _formatTimeOfDay(TimeOfDay t) {
+    final period = t.hour >= 12 ? 'PM' : 'AM';
+    int h = t.hour % 12;
+    if (h == 0) h = 12;
+    return '${h.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')} $period';
+  }
+
+  ({bool isOpen, TimeOfDay openTime, TimeOfDay closeTime, String? closedReason}) _getScheduleForDate(DateTime date) {
+    final oh = _effectiveOperatingHours;
+    TimeOfDay defaultOpen = TimeOfDay(
+      hour: (widget.shop['openHour'] as num?)?.toInt() ?? 9,
+      minute: (widget.shop['openMinute'] as num?)?.toInt() ?? 0,
+    );
+    TimeOfDay defaultClose = TimeOfDay(
+      hour: (widget.shop['closeHour'] as num?)?.toInt() ?? 22,
+      minute: (widget.shop['closeMinute'] as num?)?.toInt() ?? 0,
+    );
+
+    if (oh != null) {
+      defaultOpen = _parseTimeOfDay(oh['open_time']?.toString(), defaultOpen);
+      defaultClose = _parseTimeOfDay(oh['close_time']?.toString(), defaultClose);
+
+      final specialHolidays = oh['special_holidays'];
+      if (specialHolidays is List) {
+        final dateStr =
+            '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+        for (final h in specialHolidays) {
+          if (h is Map && h['date']?.toString().trim() == dateStr) {
+            final bool isClosed = h['isClosed'] != false && h['is_closed'] != false;
+            if (isClosed) {
+              return (
+                isOpen: false,
+                openTime: defaultOpen,
+                closeTime: defaultClose,
+                closedReason: h['name']?.toString() ?? 'Cuti Umum / Cuti Kedai',
+              );
+            }
+          }
+        }
+      }
+
+      final weekly = oh['weekly_schedule'];
+      if (weekly is List && weekly.isNotEmpty) {
+        const daysEn = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        final targetDay = daysEn[date.weekday - 1];
+        Map<String, dynamic>? dayEntry;
+        for (final item in weekly) {
+          if (item is Map) {
+            final dName = (item['day'] ?? item['name'] ?? '').toString().trim().toLowerCase();
+            final dIdx = (item['day_index'] ?? item['weekday']) as num?;
+            if (dName == targetDay || dName.startsWith(targetDay.substring(0, 3)) || (dIdx != null && dIdx.toInt() == date.weekday - 1)) {
+              dayEntry = Map<String, dynamic>.from(item);
+              break;
+            }
+          }
+        }
+        if (dayEntry != null) {
+          final bool dayOpen = dayEntry['is_open'] != false && dayEntry['isOpen'] != false && dayEntry['is_closed'] != true;
+          final oTime = _parseTimeOfDay((dayEntry['open_time'] ?? dayEntry['openTime'])?.toString(), defaultOpen);
+          final cTime = _parseTimeOfDay((dayEntry['close_time'] ?? dayEntry['closeTime'])?.toString(), defaultClose);
+          if (!dayOpen) {
+            return (
+              isOpen: false,
+              openTime: oTime,
+              closeTime: cTime,
+              closedReason: 'Hari Tutup Rasmi',
+            );
+          }
+          return (isOpen: true, openTime: oTime, closeTime: cTime, closedReason: null);
+        }
+      }
+    }
+
+    return (isOpen: true, openTime: defaultOpen, closeTime: defaultClose, closedReason: null);
+  }
+
+  List<String> _getAvailableSlotsForDate(DateTime date, {bool isBungkus = false}) {
+    final sched = _getScheduleForDate(date);
+    if (!sched.isOpen) return [];
+
+    final now = DateTime.now();
+    final bool isToday = date.year == now.year && date.month == now.month && date.day == now.day;
+
+    final int openMins = sched.openTime.hour * 60 + sched.openTime.minute;
+    int closeMins = sched.closeTime.hour * 60 + sched.closeTime.minute;
+    if (closeMins <= openMins) closeMins += 24 * 60;
+
+    if (isToday) {
+      final int nowMins = now.hour * 60 + now.minute;
+      if (nowMins + 15 >= closeMins) {
+        return [];
+      }
+      final slots = <String>[];
+      if (!isBungkus && widget.isStoreOpen && nowMins >= openMins) {
+        slots.add('Segera (~15 minit)');
+      }
+      const offsets = [
+        (mins: 30, label: '30 minit lagi'),
+        (mins: 45, label: '45 minit lagi'),
+        (mins: 60, label: '1 jam lagi'),
+        (mins: 90, label: '1 jam 30 min'),
+        (mins: 120, label: '2 jam lagi'),
+      ];
+      for (final off in offsets) {
+        final target = nowMins + off.mins;
+        if (target >= openMins && target <= closeMins - 5) {
+          slots.add(off.label);
+        }
+      }
+      // If store opens later today, generate slots starting from openMins
+      if (nowMins < openMins) {
+        for (int m = openMins + 15; m <= closeMins - 15 && slots.length < 6; m += 60) {
+          final h = (m ~/ 60) % 24;
+          final min = m % 60;
+          slots.add(_formatTimeOfDay(TimeOfDay(hour: h, minute: min)));
+        }
+      }
+      return slots;
+    } else {
+      final slots = <String>[];
+      for (int m = openMins + 15; m <= closeMins - 15 && slots.length < 8; m += 60) {
+        final h = (m ~/ 60) % 24;
+        final min = m % 60;
+        slots.add(_formatTimeOfDay(TimeOfDay(hour: h, minute: min)));
+      }
+      return slots;
+    }
+  }
+
+  void _syncDefaultSlotForSelectedDate() {
+    final date = _selectedDateObject;
+    final slots = _getAvailableSlotsForDate(date, isBungkus: _fulfillmentMode == 0);
+    if (slots.isNotEmpty) {
+      if (!slots.contains(_selectedPickupTime)) {
+        _selectedPickupTime = slots.first;
+      }
+    } else if (_fulfillmentMode == 2 && _selectedPickupDate == 'Hari Ini') {
+      // Auto-switch to Tomorrow if today's operating hours already ended
+      _selectedPickupDate = 'Esok';
+      final tmrSlots = _getAvailableSlotsForDate(DateTime.now().add(const Duration(days: 1)));
+      if (tmrSlots.isNotEmpty) {
+        _selectedPickupTime = tmrSlots.first;
+      }
+    }
+  }
+
+  Future<void> _scanTableQr() async {
+    final scanned = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const QRScannerScreen()),
+    );
+    if (scanned == null || scanned.trim().isEmpty || !mounted) return;
+
+    final raw = scanned.trim();
+    String? extracted;
+    final uri = Uri.tryParse(raw);
+    if (uri != null && (uri.queryParameters.containsKey('table') || uri.queryParameters.containsKey('meja'))) {
+      extracted = uri.queryParameters['table'] ?? uri.queryParameters['meja'];
+    } else if (raw.toUpperCase().startsWith('MEJA:') || raw.toUpperCase().startsWith('TABLE:')) {
+      extracted = raw.split(':').last.trim();
+    } else if (!raw.startsWith('http://') && !raw.startsWith('https://')) {
+      extracted = raw;
+    }
+
+    if (extracted != null && extracted.trim().isNotEmpty) {
+      setState(() {
+        _tableController.text = extracted!.trim();
+      });
+      showGlassToast(context, 'cart.table_linked_toast'.tr(args: [extracted.trim()]));
+    } else {
+      showGlassToast(context, 'cart.table_qr_invalid'.tr(), isError: true);
+    }
+  }
+
+  Future<void> _showWheelDatePicker(bool isDark, Color textPrimary) async {
+    final now = DateTime.now();
+    final minDate = DateTime(now.year, now.month, now.day);
+    final maxDate = minDate.add(const Duration(days: 30));
+    DateTime tempDate = _customSelectedDate ?? minDate;
+    if (tempDate.isBefore(minDate)) tempDate = minDate;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: 310,
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF141824) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _customSelectedDate = minDate;
+                        _selectedPickupDate = 'Hari Ini';
+                        _syncDefaultSlotForSelectedDate();
+                      });
+                      Navigator.pop(ctx);
+                    },
+                    child: Text(
+                      'cart.picker_today'.tr(),
+                      style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  Text(
+                    'cart.select_date_title'.tr(),
+                    style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _customSelectedDate = tempDate;
+                        if (tempDate.year == minDate.year && tempDate.month == minDate.month && tempDate.day == minDate.day) {
+                          _selectedPickupDate = 'Hari Ini';
+                        } else {
+                          final tmr = minDate.add(const Duration(days: 1));
+                          if (tempDate.year == tmr.year && tempDate.month == tmr.month && tempDate.day == tmr.day) {
+                            _selectedPickupDate = 'Esok';
+                          } else {
+                            _selectedPickupDate = '${tempDate.day}/${tempDate.month}/${tempDate.year}';
+                          }
+                        }
+                        _syncDefaultSlotForSelectedDate();
+                      });
+                      Navigator.pop(ctx);
+                    },
+                    child: Text(
+                      'cart.picker_done'.tr(),
+                      style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: CupertinoTheme(
+                data: CupertinoThemeData(
+                  brightness: isDark ? Brightness.dark : Brightness.light,
+                  textTheme: CupertinoTextThemeData(
+                    dateTimePickerTextStyle: TextStyle(color: textPrimary, fontSize: 18),
+                  ),
+                ),
+                child: CupertinoDatePicker(
+                  mode: CupertinoDatePickerMode.date,
+                  initialDateTime: tempDate,
+                  minimumDate: minDate,
+                  maximumDate: maxDate,
+                  onDateTimeChanged: (d) => tempDate = d,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showWheelTimePicker(bool isDark, Color textPrimary) async {
+    final targetDate = _fulfillmentMode == 0 ? DateTime.now() : _selectedDateObject;
+    final sched = _getScheduleForDate(targetDate);
+    if (!sched.isOpen) {
+      showGlassToast(
+        context,
+        'cart.closed_on_selected_date'.tr(args: [sched.closedReason ?? 'Tutup']),
+        isError: true,
+      );
+      return;
+    }
+
+    final now = DateTime.now();
+    final bool isToday = targetDate.year == now.year && targetDate.month == now.month && targetDate.day == now.day;
+    DateTime initialDT = DateTime(
+      targetDate.year,
+      targetDate.month,
+      targetDate.day,
+      _customSelectedTime?.hour ?? (isToday ? (now.hour + 1) % 24 : sched.openTime.hour),
+      _customSelectedTime?.minute ?? 0,
+    );
+    DateTime tempTime = initialDT;
+    final hoursStr = '${_formatTimeOfDay(sched.openTime)} – ${_formatTimeOfDay(sched.closeTime)}';
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: 320,
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF141824) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const SizedBox(width: 60),
+                  Column(
+                    children: [
+                      Text(
+                        'cart.select_time_title'.tr(),
+                        style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      Text(
+                        hoursStr,
+                        style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      final picked = TimeOfDay(hour: tempTime.hour, minute: tempTime.minute);
+                      final openMins = sched.openTime.hour * 60 + sched.openTime.minute;
+                      int closeMins = sched.closeTime.hour * 60 + sched.closeTime.minute;
+                      int pickedMins = picked.hour * 60 + picked.minute;
+                      if (closeMins <= openMins) {
+                        closeMins += 24 * 60;
+                        if (pickedMins < openMins) pickedMins += 24 * 60;
+                      }
+                      if (pickedMins < openMins || pickedMins > closeMins) {
+                        showGlassToast(
+                          context,
+                          'cart.invalid_time_outside_hours'.tr(args: [hoursStr]),
+                          isError: true,
+                        );
+                        return;
+                      }
+                      if (isToday) {
+                        final nowMins = now.hour * 60 + now.minute;
+                        if (pickedMins < nowMins + 10) {
+                          showGlassToast(
+                            context,
+                            'cart.invalid_time_outside_hours'.tr(args: [hoursStr]),
+                            isError: true,
+                          );
+                          return;
+                        }
+                      }
+                      setState(() {
+                        _customSelectedTime = picked;
+                        _selectedPickupTime = _formatTimeOfDay(picked);
+                      });
+                      Navigator.pop(ctx);
+                    },
+                    child: Text(
+                      'cart.picker_done'.tr(),
+                      style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: CupertinoTheme(
+                data: CupertinoThemeData(
+                  brightness: isDark ? Brightness.dark : Brightness.light,
+                  textTheme: CupertinoTextThemeData(
+                    dateTimePickerTextStyle: TextStyle(color: textPrimary, fontSize: 18),
+                  ),
+                ),
+                child: CupertinoDatePicker(
+                  mode: CupertinoDatePickerMode.time,
+                  initialDateTime: initialDT,
+                  minuteInterval: 5,
+                  onDateTimeChanged: (d) => tempTime = d,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
     super.initState();
-    // Copy each CartItem: the view mutates quantities locally and reports the
-    // delta to the parent via onUpdateQuantity (sharing instances double-counted).
     _items = widget.cartItems
         .map((c) => CartItem(
               product: c.product,
@@ -156,8 +586,10 @@ class _StoreCartViewState extends State<StoreCartView> {
             ))
         .toList();
     if (widget.tableNumber != null && widget.tableNumber!.isNotEmpty) {
+      _tableController.text = widget.tableNumber!;
       _fulfillmentMode = 1; // Dine-in
     }
+    _syncDefaultSlotForSelectedDate();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (Supabase.instance.client.auth.currentUser == null && mounted) {
         showGlassToast(context, 'Sila log masuk untuk membuat pesanan & membeli.', isError: true);
@@ -170,7 +602,7 @@ class _StoreCartViewState extends State<StoreCartView> {
       } else {
         _autoApplyBestVoucher();
       }
-      _ensureShopNameLoaded();
+      _syncShopDetails();
     });
   }
 
@@ -178,6 +610,7 @@ class _StoreCartViewState extends State<StoreCartView> {
   void dispose() {
     _notesController.dispose();
     _voucherController.dispose();
+    _tableController.dispose();
     _deliveryAddressController.dispose();
     super.dispose();
   }
@@ -433,14 +866,15 @@ class _StoreCartViewState extends State<StoreCartView> {
           (user.email?.split('@').first) ??
           '';
 
+      final String? activeTable = _effectiveTableNumber;
       final String customerName = rawName.isNotEmpty
           ? rawName
-          : ((widget.tableNumber != null && widget.tableNumber!.isNotEmpty)
-              ? 'Pelanggan Meja #${widget.tableNumber}'
+          : (activeTable != null
+              ? 'Pelanggan Meja #$activeTable'
               : 'Pelanggan Walk-In');
 
-      final String tablePrefix = (widget.tableNumber != null && widget.tableNumber!.isNotEmpty)
-          ? '[Meja #${widget.tableNumber}] '
+      final String tablePrefix = activeTable != null
+          ? '[Meja #$activeTable] '
           : '';
 
       final String deliveryAddress = _deliveryAddressController.text.trim();
@@ -448,11 +882,13 @@ class _StoreCartViewState extends State<StoreCartView> {
           ? 'Pre-Order: $_selectedPickupDate, $_selectedPickupTime'
           : (_fulfillmentMode == 3
               ? 'Delivery: $_selectedPickupDate, $_selectedPickupTime${deliveryAddress.isNotEmpty ? " (Alamat: $deliveryAddress)" : ""}'
-              : (_fulfillmentMode == 1 ? 'Dine In' : 'Bungkus (Ambil Pantas)'));
+              : (_fulfillmentMode == 1
+                  ? 'Dine In'
+                  : (_bungkusChooseTime ? 'Bungkus: Hari Ini, $_selectedPickupTime' : 'Bungkus (Ambil Pantas)')));
 
       final String fulfillmentLabel = scheduleInfo;
 
-      final String source = (widget.tableNumber != null && widget.tableNumber!.isNotEmpty) || _fulfillmentMode == 1
+      final String source = activeTable != null || _fulfillmentMode == 1
           ? 'table'
           : (_fulfillmentMode == 3
               ? 'delivery'
@@ -649,7 +1085,9 @@ class _StoreCartViewState extends State<StoreCartView> {
             totalAmount: _total,
             pickupTime: (_fulfillmentMode == 2 || _fulfillmentMode == 3)
                 ? '$_selectedPickupDate, $_selectedPickupTime'
-                : (_fulfillmentMode == 1 ? 'cart.dine_in_pickup_label'.tr() : _selectedPickupTime),
+                : (_fulfillmentMode == 1
+                    ? 'cart.dine_in_pickup_label'.tr()
+                    : (_bungkusChooseTime ? 'Hari Ini, $_selectedPickupTime' : _selectedPickupTime)),
             fulfillmentType: fulfillmentLabel,
             items: _items.map((i) => {'name': i.formattedProductName, 'qty': i.quantity, 'price': i.totalPrice}).toList(),
           ),
@@ -723,11 +1161,15 @@ class _StoreCartViewState extends State<StoreCartView> {
                 decoration: InputDecoration(
                   hintText: 'Nota khas item (cth: Tak nak bawang / Asing kuah)...',
                   hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.black38),
-                  filled: true,
-                  fillColor: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade100,
-                  border: OutlineInputBorder(
+                  filled: false,
+                  fillColor: Colors.transparent,
+                  enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
+                    borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Colors.blue),
                   ),
                 ),
               ),
@@ -849,7 +1291,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                           const SizedBox(height: 16),
                         ],
 
-                        if (widget.tableNumber != null && widget.tableNumber!.isNotEmpty) ...[
+                        if (_effectiveTableNumber != null) ...[
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             decoration: BoxDecoration(
@@ -871,7 +1313,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'cart.table_dine_in_banner_title'.tr(args: [widget.tableNumber!]),
+                                        'cart.table_dine_in_banner_title'.tr(args: [_effectiveTableNumber!]),
                                         style: TextStyle(
                                           color: textPrimary,
                                           fontSize: 14,
@@ -1038,11 +1480,15 @@ class _StoreCartViewState extends State<StoreCartView> {
                             controller: _notesController,
                             style: TextStyle(color: textPrimary, fontSize: 13),
                             decoration: InputDecoration(
-                              hintText: 'Add notes for store (e.g. less ice, door code)...',
+                              hintText: 'cart.notes_hint'.tr(),
                               hintStyle: TextStyle(color: textSecondary, fontSize: 13),
+                              filled: false,
+                              fillColor: Colors.transparent,
                               border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
                               prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                               prefixIcon: UnconstrainedBox(child: HugeIcon(icon: HugeIcons.strokeRoundedTaskEdit01, color: textSecondary, size: 20)),
+                              prefixIcon: UnconstrainedBox(child: HugeIcon(icon: HugeIcons.strokeRoundedTaskEdit01, color: textSecondary, size: 20)),
                             ),
                           ),
                         ),
@@ -1615,248 +2061,539 @@ class _StoreCartViewState extends State<StoreCartView> {
 
           // Details depending on fulfillment mode
           if (_fulfillmentMode == 0) ...[
-            // Takeaway Quick Status
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: [
-                  const HugeIcon(icon: HugeIcons.strokeRoundedCheckmarkCircle03, color: Color(0xFF10B981), size: 18),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Pesanan bungkus segera. Anggaran masa siap: ~15 minit di kaunter.',
-                      style: TextStyle(fontSize: 12, color: textPrimary, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ] else if (_fulfillmentMode == 1) ...[
-            // Dine In Table
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF00B0FF).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF00B0FF).withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: [
-                  const HugeIcon(icon: HugeIcons.strokeRoundedDesk01, color: Color(0xFF00B0FF), size: 18),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      widget.tableNumber != null && widget.tableNumber!.isNotEmpty
-                          ? 'cart.dine_in_table_info'.tr(args: [widget.tableNumber!])
-                          : 'cart.dine_in_store_info'.tr(),
-                      style: TextStyle(fontSize: 12, color: textPrimary, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ] else ...[
-            // Pre-Order & Delivery: Date & Time Picker
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_fulfillmentMode == 3) ...[
-                  // Delivery Address field
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 14),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
-                    ),
-                    child: TextField(
-                      controller: _deliveryAddressController,
-                      style: TextStyle(color: textPrimary, fontSize: 13),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        icon: const HugeIcon(icon: HugeIcons.strokeRoundedLocation01, color: Color(0xFF00E5FF), size: 18),
-                        hintText: 'Masukkan alamat penghantaran...',
-                        hintStyle: TextStyle(color: textSecondary, fontSize: 12),
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                ],
+            // Bungkus: Toggle Sekarang vs Pilih Masa
+            Builder(
+              builder: (context) {
+                final today = DateTime.now();
+                final sched = _getScheduleForDate(today);
+                final hoursStr = '${_formatTimeOfDay(sched.openTime)} – ${_formatTimeOfDay(sched.closeTime)}';
+                final slots = _getAvailableSlotsForDate(today, isBungkus: true);
 
-                // Date Selector (Hari Ini / Esok / Pilih Tarikh)
-                Row(
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildDatePill('Hari Ini', isDark, textPrimary, textSecondary),
-                    const SizedBox(width: 8),
-                    _buildDatePill('Esok', isDark, textPrimary, textSecondary),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: _customSelectedDate ?? DateTime.now(),
-                          firstDate: DateTime.now(),
-                          lastDate: DateTime.now().add(const Duration(days: 30)),
-                        );
-                        if (picked != null) {
-                          setState(() {
-                            _customSelectedDate = picked;
-                            _selectedPickupDate = '${picked.day}/${picked.month}/${picked.year}';
-                          });
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _bungkusChooseTime = false;
+                                _selectedPickupTime = 'Segera (~15 minit)';
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.symmetric(vertical: 9),
+                              decoration: BoxDecoration(
+                                color: !_bungkusChooseTime
+                                    ? const Color(0xFF10B981).withValues(alpha: 0.16)
+                                    : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: !_bungkusChooseTime ? const Color(0xFF10B981) : Colors.transparent,
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'cart.bungkus_now'.tr(),
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: !_bungkusChooseTime ? FontWeight.bold : FontWeight.w500,
+                                    color: !_bungkusChooseTime ? const Color(0xFF10B981) : textPrimary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _bungkusChooseTime = true;
+                                _selectedPickupDate = 'Hari Ini';
+                                _syncDefaultSlotForSelectedDate();
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.symmetric(vertical: 9),
+                              decoration: BoxDecoration(
+                                color: _bungkusChooseTime
+                                    ? const Color(0xFF00E5FF).withValues(alpha: 0.16)
+                                    : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: _bungkusChooseTime ? const Color(0xFF00E5FF) : Colors.transparent,
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'cart.bungkus_choose_time'.tr(),
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: _bungkusChooseTime ? FontWeight.bold : FontWeight.w500,
+                                    color: _bungkusChooseTime ? const Color(0xFF00E5FF) : textPrimary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (!_bungkusChooseTime) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         decoration: BoxDecoration(
-                          color: (_selectedPickupDate != 'Hari Ini' && _selectedPickupDate != 'Esok')
-                              ? Colors.deepPurpleAccent.withValues(alpha: 0.18)
-                              : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
-                          borderRadius: BorderRadius.circular(10),
+                          color: (sched.isOpen && widget.isStoreOpen ? const Color(0xFF10B981) : Colors.orangeAccent)
+                              .withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: (_selectedPickupDate != 'Hari Ini' && _selectedPickupDate != 'Esok')
-                                ? Colors.deepPurpleAccent
-                                : Colors.transparent,
-                            width: 1.2,
+                            color: (sched.isOpen && widget.isStoreOpen ? const Color(0xFF10B981) : Colors.orangeAccent)
+                                .withValues(alpha: 0.3),
                           ),
                         ),
                         child: Row(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
                             HugeIcon(
-                              icon: HugeIcons.strokeRoundedCalendar03,
-                              color: (_selectedPickupDate != 'Hari Ini' && _selectedPickupDate != 'Esok')
-                                  ? Colors.deepPurpleAccent
-                                  : textSecondary,
-                              size: 14,
+                              icon: sched.isOpen && widget.isStoreOpen
+                                  ? HugeIcons.strokeRoundedCheckmarkCircle03
+                                  : HugeIcons.strokeRoundedAlert02,
+                              color: sched.isOpen && widget.isStoreOpen ? const Color(0xFF10B981) : Colors.orangeAccent,
+                              size: 18,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              (_selectedPickupDate != 'Hari Ini' && _selectedPickupDate != 'Esok')
-                                  ? _selectedPickupDate
-                                  : 'Pilih Tarikh',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: (_selectedPickupDate != 'Hari Ini' && _selectedPickupDate != 'Esok')
-                                    ? FontWeight.bold
-                                    : FontWeight.w500,
-                                color: (_selectedPickupDate != 'Hari Ini' && _selectedPickupDate != 'Esok')
-                                    ? Colors.deepPurpleAccent
-                                    : textPrimary,
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                sched.isOpen && widget.isStoreOpen
+                                    ? 'cart.bungkus_now_ready'.tr()
+                                    : 'cart.bungkus_closed_now'.tr(args: [hoursStr]),
+                                style: TextStyle(fontSize: 12, color: textPrimary, fontWeight: FontWeight.w600),
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _fulfillmentMode == 3 ? 'Pilih Waktu Hantar:' : 'Pilih Slot Masa Ambil:',
-                      style: TextStyle(fontSize: 12, color: textSecondary, fontWeight: FontWeight.w600),
-                    ),
-                    // Custom Time Picker Button
-                    GestureDetector(
-                      onTap: () async {
-                        final picked = await showTimePicker(
-                          context: context,
-                          initialTime: _customSelectedTime ?? TimeOfDay.now(),
-                        );
-                        if (picked != null) {
-                          setState(() {
-                            _customSelectedTime = picked;
-                            final period = picked.hour >= 12 ? 'PM' : 'AM';
-                            int h = picked.hour % 12;
-                            if (h == 0) h = 12;
-                            _selectedPickupTime = '${h.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')} $period';
-                          });
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF00E5FF).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.4), width: 0.8),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
+                    ] else ...[
+                      Text(
+                        'cart.operating_hours_label'.tr(args: [hoursStr]),
+                        style: TextStyle(fontSize: 11, color: textSecondary, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      if (!sched.isOpen || slots.isEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.orangeAccent.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.35)),
+                          ),
+                          child: Row(
+                            children: [
+                              const HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.orangeAccent, size: 17),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  !sched.isOpen
+                                      ? 'cart.closed_on_selected_date'.tr(args: [sched.closedReason ?? 'Tutup'])
+                                      : 'cart.no_slots_today_closed'.tr(args: [hoursStr]),
+                                  style: TextStyle(fontSize: 12, color: textPrimary, fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            HugeIcon(icon: HugeIcons.strokeRoundedClock01, color: Color(0xFF00E5FF), size: 13),
-                            SizedBox(width: 4),
                             Text(
-                              'Masa Khusus',
-                              style: TextStyle(fontSize: 11, color: Color(0xFF00E5FF), fontWeight: FontWeight.bold),
+                              'Pilih Slot Masa Ambil:',
+                              style: TextStyle(fontSize: 12, color: textSecondary, fontWeight: FontWeight.w600),
+                            ),
+                            GestureDetector(
+                              onTap: () => _showWheelTimePicker(isDark, textPrimary),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF00E5FF).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.4), width: 0.8),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    HugeIcon(icon: HugeIcons.strokeRoundedClock01, color: Color(0xFF00E5FF), size: 13),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Masa Khusus',
+                                      style: TextStyle(fontSize: 11, color: Color(0xFF00E5FF), fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ],
                         ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ...slots.map((slot) {
+                              final bool isSel = _selectedPickupTime == slot;
+                              return GestureDetector(
+                                onTap: () => setState(() => _selectedPickupTime = slot),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                  decoration: BoxDecoration(
+                                    color: isSel
+                                        ? const Color(0xFF00E5FF).withValues(alpha: 0.18)
+                                        : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: isSel ? const Color(0xFF00E5FF) : Colors.transparent,
+                                      width: 1.2,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    slot,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+                                      color: isSel ? const Color(0xFF00E5FF) : textPrimary,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                            if (!slots.contains(_selectedPickupTime))
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF00E5FF).withValues(alpha: 0.22),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFF00E5FF), width: 1.2),
+                                ),
+                                child: Text(
+                                  _selectedPickupTime,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF00E5FF),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ],
+                );
+              },
+            ),
+          ] else if (_fulfillmentMode == 1) ...[
+            // Dine In Table + Dedicated Transparent Table No. Field + QR Scan Button
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00B0FF).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFF00B0FF).withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const HugeIcon(icon: HugeIcons.strokeRoundedDesk01, color: Color(0xFF00B0FF), size: 18),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _effectiveTableNumber != null
+                              ? 'cart.dine_in_table_info'.tr(args: [_effectiveTableNumber!])
+                              : 'cart.dine_in_store_info'.tr(),
+                          style: TextStyle(fontSize: 12, color: textPrimary, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
+                        ),
+                        child: TextField(
+                          controller: _tableController,
+                          onChanged: (_) => setState(() {}),
+                          style: TextStyle(color: textPrimary, fontSize: 13.5, fontWeight: FontWeight.w600),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            filled: false,
+                            fillColor: Colors.transparent,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            hintText: 'cart.table_no_hint'.tr(),
+                            hintStyle: TextStyle(color: textSecondary, fontSize: 12.5, fontWeight: FontWeight.normal),
+                            prefixIconConstraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                            prefixIcon: const UnconstrainedBox(
+                              child: HugeIcon(icon: HugeIcons.strokeRoundedDesk01, color: Color(0xFF00B0FF), size: 18),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Tooltip(
+                      message: 'cart.scan_table_qr_tooltip'.tr(),
+                      child: GestureDetector(
+                        onTap: _scanTableQr,
+                        child: Container(
+                          height: 46,
+                          width: 48,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF00B0FF).withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: const Color(0xFF00B0FF).withValues(alpha: 0.45)),
+                          ),
+                          child: const Center(
+                            child: HugeIcon(icon: HugeIcons.strokeRoundedQrCode01, color: Color(0xFF00B0FF), size: 22),
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+              ],
+            ),
+          ] else ...[
+            // Pre-Order & Delivery: Date & Time Picker synced with Operating Hours
+            Builder(
+              builder: (context) {
+                final targetDate = _selectedDateObject;
+                final sched = _getScheduleForDate(targetDate);
+                final hoursStr = '${_formatTimeOfDay(sched.openTime)} – ${_formatTimeOfDay(sched.closeTime)}';
+                final slots = _getAvailableSlotsForDate(targetDate);
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ..._quickTimeSlots.map((slot) {
-                      final bool isSel = _selectedPickupTime == slot;
-                      return GestureDetector(
-                        onTap: () => setState(() => _selectedPickupTime = slot),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                          decoration: BoxDecoration(
-                            color: isSel
-                                ? const Color(0xFF00E5FF).withValues(alpha: 0.18)
-                                : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: isSel ? const Color(0xFF00E5FF) : Colors.transparent,
-                              width: 1.2,
-                            ),
-                          ),
-                          child: Text(
-                            slot,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
-                              color: isSel ? const Color(0xFF00E5FF) : textPrimary,
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                    if (!_quickTimeSlots.contains(_selectedPickupTime))
+                    if (_fulfillmentMode == 3) ...[
+                      // Delivery Address field (transparent)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        margin: const EdgeInsets.only(bottom: 14),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF00E5FF).withValues(alpha: 0.22),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFF00E5FF), width: 1.2),
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
                         ),
-                        child: Text(
-                          _selectedPickupTime,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF00E5FF),
+                        child: TextField(
+                          controller: _deliveryAddressController,
+                          style: TextStyle(color: textPrimary, fontSize: 13),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            filled: false,
+                            fillColor: Colors.transparent,
+                            icon: const HugeIcon(icon: HugeIcons.strokeRoundedLocation01, color: Color(0xFF00E5FF), size: 18),
+                            hintText: 'Masukkan alamat penghantaran...',
+                            hintStyle: TextStyle(color: textSecondary, fontSize: 12),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
                           ),
                         ),
                       ),
+                    ],
+
+                    // Date Selector (Hari Ini / Esok / Pilih Tarikh)
+                    Row(
+                      children: [
+                        _buildDatePill('Hari Ini', isDark, textPrimary, textSecondary),
+                        const SizedBox(width: 8),
+                        _buildDatePill('Esok', isDark, textPrimary, textSecondary),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () => _showWheelDatePicker(isDark, textPrimary),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: (_selectedPickupDate != 'Hari Ini' && _selectedPickupDate != 'Esok')
+                                  ? Colors.deepPurpleAccent.withValues(alpha: 0.18)
+                                  : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: (_selectedPickupDate != 'Hari Ini' && _selectedPickupDate != 'Esok')
+                                    ? Colors.deepPurpleAccent
+                                    : Colors.transparent,
+                                width: 1.2,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                HugeIcon(
+                                  icon: HugeIcons.strokeRoundedCalendar03,
+                                  color: (_selectedPickupDate != 'Hari Ini' && _selectedPickupDate != 'Esok')
+                                      ? Colors.deepPurpleAccent
+                                      : textSecondary,
+                                  size: 14,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  (_selectedPickupDate != 'Hari Ini' && _selectedPickupDate != 'Esok')
+                                      ? _selectedPickupDate
+                                      : 'Pilih Tarikh',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: (_selectedPickupDate != 'Hari Ini' && _selectedPickupDate != 'Esok')
+                                        ? FontWeight.bold
+                                        : FontWeight.w500,
+                                    color: (_selectedPickupDate != 'Hari Ini' && _selectedPickupDate != 'Esok')
+                                        ? Colors.deepPurpleAccent
+                                        : textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'cart.operating_hours_label'.tr(args: [hoursStr]),
+                      style: TextStyle(fontSize: 11, color: textSecondary, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 10),
+
+                    if (!sched.isOpen || slots.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.orangeAccent.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.35)),
+                        ),
+                        child: Row(
+                          children: [
+                            const HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.orangeAccent, size: 17),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                !sched.isOpen
+                                    ? 'cart.closed_on_selected_date'.tr(args: [sched.closedReason ?? 'Tutup'])
+                                    : 'cart.no_slots_today_closed'.tr(args: [hoursStr]),
+                                style: TextStyle(fontSize: 12, color: textPrimary, fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _fulfillmentMode == 3 ? 'Pilih Waktu Hantar:' : 'Pilih Slot Masa Ambil:',
+                            style: TextStyle(fontSize: 12, color: textSecondary, fontWeight: FontWeight.w600),
+                          ),
+                          // Custom Wheel Time Picker Button
+                          GestureDetector(
+                            onTap: () => _showWheelTimePicker(isDark, textPrimary),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF00E5FF).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.4), width: 0.8),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  HugeIcon(icon: HugeIcons.strokeRoundedClock01, color: Color(0xFF00E5FF), size: 13),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Masa Khusus',
+                                    style: TextStyle(fontSize: 11, color: Color(0xFF00E5FF), fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          ...slots.map((slot) {
+                            final bool isSel = _selectedPickupTime == slot;
+                            return GestureDetector(
+                              onTap: () => setState(() => _selectedPickupTime = slot),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                decoration: BoxDecoration(
+                                  color: isSel
+                                      ? const Color(0xFF00E5FF).withValues(alpha: 0.18)
+                                      : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: isSel ? const Color(0xFF00E5FF) : Colors.transparent,
+                                    width: 1.2,
+                                  ),
+                                ),
+                                child: Text(
+                                  slot,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+                                    color: isSel ? const Color(0xFF00E5FF) : textPrimary,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                          if (!slots.contains(_selectedPickupTime))
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF00E5FF).withValues(alpha: 0.22),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFF00E5FF), width: 1.2),
+                              ),
+                              child: Text(
+                                _selectedPickupTime,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF00E5FF),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
                   ],
-                ),
-              ],
+                );
+              },
             ),
           ],
         ],
@@ -1872,6 +2609,11 @@ class _StoreCartViewState extends State<StoreCartView> {
           setState(() {
             _fulfillmentMode = index;
             _isPreOrder = index == 2;
+            if (index == 2 || index == 3 || (index == 0 && _bungkusChooseTime)) {
+              _syncDefaultSlotForSelectedDate();
+            } else if (index == 0 && !_bungkusChooseTime) {
+              _selectedPickupTime = 'Segera (~15 minit)';
+            }
           });
         },
         child: AnimatedContainer(
@@ -1913,7 +2655,10 @@ class _StoreCartViewState extends State<StoreCartView> {
   Widget _buildDatePill(String label, bool isDark, Color textPrimary, Color textSecondary) {
     final bool isSel = _selectedPickupDate == label;
     return GestureDetector(
-      onTap: () => setState(() => _selectedPickupDate = label),
+      onTap: () => setState(() {
+        _selectedPickupDate = label;
+        _syncDefaultSlotForSelectedDate();
+      }),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
