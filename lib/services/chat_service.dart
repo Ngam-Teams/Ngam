@@ -332,6 +332,35 @@ class ChatService {
     return ConversationModel.fromJson(response, currentUserId);
   }
 
+  static final RegExp _uuidRegex = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+  );
+
+  static Future<void> _ensureCurrentUserInPublicUsers() async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+    if (_userCache.containsKey(user.id)) return;
+    try {
+      final existing = await _supabase
+          .from('users')
+          .select('id')
+          .eq('id', user.id)
+          .maybeSingle();
+      if (existing == null) {
+        final fallbackName = user.userMetadata?['full_name']?.toString() ??
+            user.userMetadata?['name']?.toString() ??
+            user.email?.split('@').first ??
+            'Pengguna Ngam';
+        await _supabase.from('users').insert({
+          'id': user.id,
+          'role': 'customer',
+          'user_name': fallbackName,
+          if (user.email != null) 'user_email': user.email,
+        });
+      }
+    } catch (_) {}
+  }
+
   /// Create or get a customer <-> business conversation via SECURITY DEFINER RPC (with direct fallback)
   static Future<ConversationModel> getOrCreateBusinessConversation(
     String businessId, {
@@ -342,6 +371,12 @@ class ChatService {
     if (currentUserId == null) {
       throw Exception('Authentication required');
     }
+
+    await _ensureCurrentUserInPublicUsers();
+
+    final validContextId = (contextId != null && _uuidRegex.hasMatch(contextId.trim()))
+        ? contextId.trim()
+        : null;
 
     final biz = await getCachedBusiness(businessId);
     final bName = biz?['business_name']?.toString();
@@ -358,7 +393,7 @@ class ChatService {
         params: {
           'p_business_id': businessId,
           if (contextType != null) 'p_context_type': contextType,
-          if (contextId != null) 'p_context_id': contextId,
+          if (validContextId != null) 'p_context_id': validContextId,
         },
       );
       if (response is Map) {
@@ -384,20 +419,40 @@ class ChatService {
 
         if (existing != null) {
           row = Map<String, dynamic>.from(existing);
-        } else if (ownerId != null && ownerId.isNotEmpty) {
-          final inserted = await _supabase
-              .from('conversations')
-              .insert({
-                'user1_id': currentUserId,
-                'user2_id': ownerId,
-                'business_id': businessId,
-                'context_type': contextType ?? 'general',
-                if (contextId != null) 'context_id': contextId,
-                'updated_at': DateTime.now().toUtc().toIso8601String(),
-              })
-              .select()
-              .single();
-          row = Map<String, dynamic>.from(inserted);
+        } else {
+          final targetUser2 = (ownerId != null && ownerId.isNotEmpty) ? ownerId : currentUserId;
+          try {
+            final inserted = await _supabase
+                .from('conversations')
+                .insert({
+                  'user1_id': currentUserId,
+                  'user2_id': targetUser2,
+                  'business_id': businessId,
+                  'context_type': contextType ?? 'general',
+                  if (validContextId != null) 'context_id': validContextId,
+                  'updated_at': DateTime.now().toUtc().toIso8601String(),
+                })
+                .select()
+                .single();
+            row = Map<String, dynamic>.from(inserted);
+          } catch (fkErr) {
+            // Fallback 1B: If owner_user_id is not yet in public.users (FK 23503),
+            // bind user2_id to currentUserId so the business_id conversation succeeds immediately.
+            debugPrint('[ChatService] Owner FK fallback triggered: $fkErr');
+            final insertedSelf = await _supabase
+                .from('conversations')
+                .insert({
+                  'user1_id': currentUserId,
+                  'user2_id': currentUserId,
+                  'business_id': businessId,
+                  'context_type': contextType ?? 'general',
+                  if (validContextId != null) 'context_id': validContextId,
+                  'updated_at': DateTime.now().toUtc().toIso8601String(),
+                })
+                .select()
+                .single();
+            row = Map<String, dynamic>.from(insertedSelf);
+          }
         }
       } catch (directErr) {
         lastError = directErr;
@@ -405,24 +460,11 @@ class ChatService {
       }
     }
 
-    // Fallback 2: Standard 1-to-1 user conversation if business_id column/RPC is not yet migrated
-    if (row == null && ownerId != null && ownerId.isNotEmpty && ownerId != currentUserId) {
-      final fallbackConv = await createOrGetConversation(currentUserId, ownerId);
-      return fallbackConv.copyWith(
-        businessName: bName,
-        businessLogoUrl: bLogo,
-        businessPhone: bPhone,
-        otherUser: _syntheticBusinessUser(businessId, bName, bLogo, bPhone),
-      );
-    }
-
     if (row == null) {
       throw Exception(
-        ownerId == currentUserId
-            ? 'Anda adalah pemilik kedai ini.'
-            : (lastError != null
-                ? '$lastError'
-                : 'Tidak dapat memulakan sembang dengan kedai buat masa ini.'),
+        lastError != null
+            ? '$lastError'
+            : 'Tidak dapat memulakan sembang dengan kedai buat masa ini.',
       );
     }
 

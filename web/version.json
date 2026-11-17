@@ -1,6 +1,6 @@
 {
-  "version": "1.0.43",
-  "build_number": 16,
-  "released_at": "2026-11-17T12:45:00Z",
-  "changelog": "Betulkan ralat sintaks JavaScript pada ngamReloadPwa di web/index.html dan tambah fallback pembersihan cache terus daripada Dart supaya butang Kemaskini PWA sentiasa memuatkan versi baharu."
+  "version": "1.0.44",
+  "build_number": 17,
+  "released_at": "2026-11-17T13:55:00Z",
+  "changelog": "Betulkan ralat kekangan kunci asing (foreign key) conversations_user2_id_fkey supaya pelanggan boleh terus Chat Kedai dan peniaga boleh membalas mesej pelanggan."
 }

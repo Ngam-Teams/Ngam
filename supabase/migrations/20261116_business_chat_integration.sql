@@ -20,13 +20,22 @@ CREATE INDEX IF NOT EXISTS idx_conversations_business_id
   ON public.conversations (business_id, updated_at DESC)
   WHERE business_id IS NOT NULL;
 
--- 2. Ensure helper function public.is_active_staff_of exists (safe even if team_members is absent)
+-- 2. Ensure helper functions & auto-sync between auth.users / businesses and public.users
 CREATE OR REPLACE FUNCTION public.is_active_staff_of(
   p_business_id UUID,
   p_roles TEXT[] DEFAULT NULL
 )
 RETURNS BOOLEAN AS $$
 BEGIN
+  IF p_business_id IS NULL THEN
+    RETURN FALSE;
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.businesses b
+    WHERE b.id = p_business_id AND b.owner_user_id = auth.uid()
+  ) THEN
+    RETURN TRUE;
+  END IF;
   IF to_regclass('public.team_members') IS NULL THEN
     RETURN FALSE;
   END IF;
@@ -40,6 +49,152 @@ BEGIN
   );
 END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
+
+-- Ensure any auth.users / business owner UUID exists in public.users so FK constraints never fail
+CREATE OR REPLACE FUNCTION public.ensure_user_in_public_users(p_user_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_email TEXT;
+  v_name TEXT;
+  v_role TEXT := 'customer';
+BEGIN
+  IF p_user_id IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM public.users WHERE id = p_user_id) THEN
+    RETURN;
+  END IF;
+
+  SELECT
+    au.email,
+    COALESCE(
+      (SELECT b.business_name FROM public.businesses b WHERE b.owner_user_id = au.id LIMIT 1),
+      au.raw_user_meta_data->>'full_name',
+      au.raw_user_meta_data->>'name',
+      split_part(au.email, '@', 1),
+      'Pengguna Ngam'
+    ),
+    CASE
+      WHEN EXISTS (SELECT 1 FROM public.businesses b WHERE b.owner_user_id = au.id) THEN 'business'
+      ELSE 'customer'
+    END
+  INTO v_email, v_name, v_role
+  FROM auth.users au
+  WHERE au.id = p_user_id;
+
+  IF v_name IS NOT NULL OR v_email IS NOT NULL THEN
+    INSERT INTO public.users (id, role, user_name, user_email, created_at, updated_at)
+    VALUES (p_user_id, v_role, COALESCE(v_name, 'Pengguna Ngam'), v_email, now(), now())
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  NULL;
+END;
+$$;
+
+-- Backfill all existing auth.users (including Ngam Business merchants & staff) into public.users
+DO $$
+BEGIN
+  INSERT INTO public.users (id, role, user_name, user_email, created_at, updated_at)
+  SELECT
+    au.id,
+    CASE
+      WHEN EXISTS (SELECT 1 FROM public.businesses b WHERE b.owner_user_id = au.id) THEN 'business'
+      ELSE 'customer'
+    END,
+    COALESCE(
+      (SELECT b.business_name FROM public.businesses b WHERE b.owner_user_id = au.id LIMIT 1),
+      au.raw_user_meta_data->>'full_name',
+      au.raw_user_meta_data->>'name',
+      split_part(au.email, '@', 1),
+      'Pengguna Ngam'
+    ),
+    au.email,
+    COALESCE(au.created_at, now()),
+    now()
+  FROM auth.users au
+  WHERE NOT EXISTS (SELECT 1 FROM public.users pu WHERE pu.id = au.id)
+  ON CONFLICT (id) DO NOTHING;
+EXCEPTION WHEN OTHERS THEN
+  NULL;
+END $$;
+
+-- Trigger on businesses: whenever a business is created/updated, ensure owner_user_id exists in public.users
+CREATE OR REPLACE FUNCTION public.trg_fn_sync_business_owner_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  PERFORM public.ensure_user_in_public_users(NEW.owner_user_id);
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_sync_business_owner_user ON public.businesses;
+CREATE TRIGGER trg_sync_business_owner_user
+  BEFORE INSERT OR UPDATE ON public.businesses
+  FOR EACH ROW
+  EXECUTE FUNCTION public.trg_fn_sync_business_owner_user();
+
+-- Trigger on conversations: auto-ensure user1_id, user2_id, and last_message_sender_id exist in public.users
+CREATE OR REPLACE FUNCTION public.trg_fn_ensure_conversation_users()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_owner_id UUID;
+BEGIN
+  IF NEW.business_id IS NOT NULL THEN
+    SELECT owner_user_id INTO v_owner_id
+    FROM public.businesses
+    WHERE id = NEW.business_id;
+    IF v_owner_id IS NOT NULL THEN
+      NEW.user2_id := v_owner_id;
+    END IF;
+  END IF;
+
+  PERFORM public.ensure_user_in_public_users(NEW.user1_id);
+  PERFORM public.ensure_user_in_public_users(NEW.user2_id);
+  IF NEW.last_message_sender_id IS NOT NULL THEN
+    PERFORM public.ensure_user_in_public_users(NEW.last_message_sender_id);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_ensure_conversation_users ON public.conversations;
+CREATE TRIGGER trg_ensure_conversation_users
+  BEFORE INSERT OR UPDATE ON public.conversations
+  FOR EACH ROW
+  EXECUTE FUNCTION public.trg_fn_ensure_conversation_users();
+
+-- Trigger on messages: auto-ensure sender_id exists in public.users before FK check
+CREATE OR REPLACE FUNCTION public.trg_fn_ensure_message_sender()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  PERFORM public.ensure_user_in_public_users(NEW.sender_id);
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_ensure_message_sender ON public.messages;
+CREATE TRIGGER trg_ensure_message_sender
+  BEFORE INSERT OR UPDATE ON public.messages
+  FOR EACH ROW
+  EXECUTE FUNCTION public.trg_fn_ensure_message_sender();
 
 -- 3. Additional RLS Policies for Business Owners & Active Staff (Ngam Teams)
 DO $$ BEGIN
@@ -124,7 +279,7 @@ CREATE POLICY "Participants and business staff can update messages read state"
     )
   );
 
--- 3. RPC: Customer opens or creates a chat with a business
+-- 4. RPC: Customer opens or creates a chat with a business
 CREATE OR REPLACE FUNCTION public.get_or_create_business_conversation(
   p_business_id UUID,
   p_context_type TEXT DEFAULT NULL,
@@ -152,6 +307,9 @@ BEGIN
     RAISE EXCEPTION 'Business not found';
   END IF;
 
+  PERFORM public.ensure_user_in_public_users(v_customer_id);
+  PERFORM public.ensure_user_in_public_users(v_owner_id);
+
   SELECT * INTO v_conv
   FROM public.conversations
   WHERE user1_id = v_customer_id
@@ -177,12 +335,14 @@ BEGIN
     )
     ON CONFLICT (user1_id, business_id) WHERE business_id IS NOT NULL
     DO UPDATE SET
+      user2_id     = EXCLUDED.user2_id,
       context_type = COALESCE(EXCLUDED.context_type, public.conversations.context_type),
       context_id   = COALESCE(EXCLUDED.context_id, public.conversations.context_id)
     RETURNING * INTO v_conv;
-  ELSIF p_context_type IS NOT NULL OR p_context_id IS NOT NULL THEN
+  ELSE
     UPDATE public.conversations
-    SET context_type = COALESCE(p_context_type, context_type),
+    SET user2_id     = v_owner_id,
+        context_type = COALESCE(p_context_type, context_type),
         context_id   = COALESCE(p_context_id, context_id)
     WHERE id = v_conv.id
     RETURNING * INTO v_conv;
@@ -192,7 +352,7 @@ BEGIN
 END;
 $$;
 
--- 4. RPC: Merchant or active staff opens or creates a chat with a customer
+-- 5. RPC: Merchant or active staff opens or creates a chat with a customer
 CREATE OR REPLACE FUNCTION public.merchant_open_conversation(
   p_business_id UUID,
   p_customer_id UUID,
@@ -225,6 +385,10 @@ BEGIN
     RAISE EXCEPTION 'Not authorized for this business';
   END IF;
 
+  PERFORM public.ensure_user_in_public_users(p_customer_id);
+  PERFORM public.ensure_user_in_public_users(v_owner_id);
+  PERFORM public.ensure_user_in_public_users(v_caller);
+
   SELECT * INTO v_conv
   FROM public.conversations
   WHERE user1_id = p_customer_id
@@ -250,12 +414,14 @@ BEGIN
     )
     ON CONFLICT (user1_id, business_id) WHERE business_id IS NOT NULL
     DO UPDATE SET
+      user2_id     = EXCLUDED.user2_id,
       context_type = COALESCE(EXCLUDED.context_type, public.conversations.context_type),
       context_id   = COALESCE(EXCLUDED.context_id, public.conversations.context_id)
     RETURNING * INTO v_conv;
-  ELSIF p_context_type IS NOT NULL OR p_context_id IS NOT NULL THEN
+  ELSE
     UPDATE public.conversations
-    SET context_type = COALESCE(p_context_type, context_type),
+    SET user2_id     = v_owner_id,
+        context_type = COALESCE(p_context_type, context_type),
         context_id   = COALESCE(p_context_id, context_id)
     WHERE id = v_conv.id
     RETURNING * INTO v_conv;

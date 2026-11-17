@@ -265,7 +265,7 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
       final conv = await ChatService.getOrCreateBusinessConversation(
         widget.shopId,
         contextType: 'booking',
-        contextId: widget.bookingId,
+        contextId: _resolvedBookingDbId ?? widget.bookingDbId ?? widget.bookingId,
       );
       if (!mounted) return;
       Navigator.push(
