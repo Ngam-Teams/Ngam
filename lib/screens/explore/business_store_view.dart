@@ -15,7 +15,6 @@ import 'business_products_view.dart';
 import 'bookings_view.dart';
 import 'store_cart_view.dart';
 import 'store_info_view.dart';
-import 'store_reviews_view.dart';
 import '../shared/my_queue_ticket_screen.dart';
 import '../../services/chat_service.dart';
 import '../shared/chat_screen.dart';
@@ -818,19 +817,6 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
     );
   }
 
-  void _openReviews() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => StoreReviewsView(shop: {
-          ...widget.shop,
-          'name': _shopName,
-          'business_name': _shopName,
-        }),
-      ),
-    );
-  }
-
   Future<void> _openShopChat() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
@@ -1416,69 +1402,35 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                   Divider(color: isDark ? Colors.white12 : Colors.black12, height: 1),
                   const SizedBox(height: 16),
 
-                  // Quick Action Buttons (Adaptive to Walk-In & Booking Service Modes)
-                  Row(
-                    children: [
-                      if (_enableWalkIn) ...[
-                        Expanded(
-                          child: _buildQuickActionButton(
-                            icon: HugeIcons.strokeRoundedTicket01,
-                            label: 'store.walkin_queue_btn'.tr(),
-                            color: const Color(0xFF10B981),
-                            onTap: _openWalkInQueue,
-                            isDark: isDark,
-                            textPrimary: textPrimary,
+                  // Quick Action Buttons (Walk-In & Booking only — Chat is in top bar, Hours in status badge)
+                  if (_enableWalkIn || _enableBooking)
+                    Row(
+                      children: [
+                        if (_enableWalkIn)
+                          Expanded(
+                            child: _buildQuickActionButton(
+                              icon: HugeIcons.strokeRoundedTicket01,
+                              label: 'store.walkin_queue_btn'.tr(),
+                              color: const Color(0xFF10B981),
+                              onTap: _openWalkInQueue,
+                              isDark: isDark,
+                              textPrimary: textPrimary,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      if (_enableBooking) ...[
-                        Expanded(
-                          child: _buildQuickActionButton(
-                            icon: HugeIcons.strokeRoundedCalendar03,
-                            label: AppLocalizations.of(context)?.bookNow ?? 'Book Slot',
-                            color: Colors.blue,
-                            onTap: _openBookings,
-                            isDark: isDark,
-                            textPrimary: textPrimary,
+                        if (_enableWalkIn && _enableBooking) const SizedBox(width: 8),
+                        if (_enableBooking)
+                          Expanded(
+                            child: _buildQuickActionButton(
+                              icon: HugeIcons.strokeRoundedCalendar03,
+                              label: AppLocalizations.of(context)?.bookNow ?? 'Book Slot',
+                              color: Colors.blue,
+                              onTap: _openBookings,
+                              isDark: isDark,
+                              textPrimary: textPrimary,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
                       ],
-                      Expanded(
-                        child: _buildQuickActionButton(
-                          icon: HugeIcons.strokeRoundedInformationCircle,
-                          label: AppLocalizations.of(context)?.operatingHours ?? 'Info & Hours',
-                          color: Colors.blue,
-                          onTap: _openStoreInfo,
-                          isDark: isDark,
-                          textPrimary: textPrimary,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildQuickActionButton(
-                          icon: HugeIcons.strokeRoundedStar,
-                          label: AppLocalizations.of(context)?.reviews ?? 'Reviews',
-                          color: Colors.amber,
-                          onTap: _openReviews,
-                          isDark: isDark,
-                          textPrimary: textPrimary,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildQuickActionButton(
-                          icon: HugeIcons.strokeRoundedChatting01,
-                          label: 'store.chat_shop'.tr(),
-                          color: const Color(0xFF42A5F5),
-                          onTap: _openShopChat,
-                          isDark: isDark,
-                          textPrimary: textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
 
                   // Quick metadata summary (Hours, Location, Phone)
                   const SizedBox(height: 16),
@@ -1766,70 +1718,38 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
               children: [
                 _buildMobileHeroHeader(isDark, textPrimary, textSecondary),
                 const SizedBox(height: 16),
-                // Quick action buttons (Adaptive to Walk-In & Booking Service Modes)
-                Row(
-                  children: [
-                    if (_enableWalkIn) ...[
-                      Expanded(
-                        child: _buildQuickActionButton(
-                          icon: HugeIcons.strokeRoundedTicket01,
-                          label: 'store.walkin_queue_btn'.tr(),
-                          color: const Color(0xFF10B981),
-                          onTap: _openWalkInQueue,
-                          isDark: isDark,
-                          textPrimary: textPrimary,
+                // Quick action buttons (Walk-In & Booking only — Chat is in top bar, Hours in status badge)
+                if (_enableWalkIn || _enableBooking) ...[
+                  Row(
+                    children: [
+                      if (_enableWalkIn)
+                        Expanded(
+                          child: _buildQuickActionButton(
+                            icon: HugeIcons.strokeRoundedTicket01,
+                            label: 'store.walkin_queue_btn'.tr(),
+                            color: const Color(0xFF10B981),
+                            onTap: _openWalkInQueue,
+                            isDark: isDark,
+                            textPrimary: textPrimary,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    if (_enableBooking) ...[
-                      Expanded(
-                        child: _buildQuickActionButton(
-                          icon: HugeIcons.strokeRoundedCalendar03,
-                          label: AppLocalizations.of(context)?.bookNow ?? 'Book Slot',
-                          color: Colors.blue,
-                          onTap: _openBookings,
-                          isDark: isDark,
-                          textPrimary: textPrimary,
+                      if (_enableWalkIn && _enableBooking) const SizedBox(width: 8),
+                      if (_enableBooking)
+                        Expanded(
+                          child: _buildQuickActionButton(
+                            icon: HugeIcons.strokeRoundedCalendar03,
+                            label: AppLocalizations.of(context)?.bookNow ?? 'Book Slot',
+                            color: Colors.blue,
+                            onTap: _openBookings,
+                            isDark: isDark,
+                            textPrimary: textPrimary,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
                     ],
-                    Expanded(
-                      child: _buildQuickActionButton(
-                        icon: HugeIcons.strokeRoundedInformationCircle,
-                        label: AppLocalizations.of(context)?.operatingHours ?? 'Info & Hours',
-                        color: Colors.blue,
-                        onTap: _openStoreInfo,
-                        isDark: isDark,
-                        textPrimary: textPrimary,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildQuickActionButton(
-                        icon: HugeIcons.strokeRoundedStar,
-                        label: AppLocalizations.of(context)?.reviews ?? 'Reviews',
-                        color: Colors.amber,
-                        onTap: _openReviews,
-                        isDark: isDark,
-                        textPrimary: textPrimary,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildQuickActionButton(
-                        icon: HugeIcons.strokeRoundedChatting01,
-                        label: 'store.chat_shop'.tr(),
-                        color: const Color(0xFF42A5F5),
-                        onTap: _openShopChat,
-                        isDark: isDark,
-                        textPrimary: textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
+                  ),
+                  const SizedBox(height: 16),
+                ] else
+                  const SizedBox(height: 4),
                 if (_allProducts.isNotEmpty || _enableOrder) ...[
                   // Search Bar
                   _buildSearchBar(isDark, textPrimary),
@@ -2015,6 +1935,24 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                       ),
                     );
                   },
+                ),
+                // Chat Kedai button (next to Saved)
+                GestureDetector(
+                  onTap: _openShopChat,
+                  child: Tooltip(
+                    message: 'store.chat_shop'.tr(),
+                    child: SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Center(
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedChatting01,
+                          color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                          size: 21,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
                 // Cart button
                 GestureDetector(
