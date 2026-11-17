@@ -1,6 +1,6 @@
 {
-  "version": "1.0.34",
-  "build_number": 8,
-  "released_at": "2026-11-16T09:50:00Z",
-  "changelog": "Dialog kemas kini kini menggunakan ikon bersih tanpa kotak, tema biru Ngam GlassConfirmDialog, dan muat semula cache PWA diperkukuh."
+  "version": "1.0.35",
+  "build_number": 9,
+  "released_at": "2026-11-17T07:19:00Z",
+  "changelog": "Dialog pengesahan sebelum kosongkan bakul & padam komen, penapis ulasan kedai aktif, serta kawalan butang tempahan mengikut tetapan kedai."
 }

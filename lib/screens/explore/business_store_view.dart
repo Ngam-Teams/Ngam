@@ -2695,56 +2695,58 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                        ),
                                      ],
                                    ),
-                                   const SizedBox(height: 12),
-                                   // Book Service / Appointment Button
-                                   GestureDetector(
-                                     onTap: () {
-                                       Navigator.pop(context);
-                                       final user = Supabase.instance.client.auth.currentUser;
-                                       if (user == null) {
-                                         showGlassToast(
+                                   if (_enableBooking) ...[
+                                     const SizedBox(height: 12),
+                                     // Book Service / Appointment Button
+                                     GestureDetector(
+                                       onTap: () {
+                                         Navigator.pop(context);
+                                         final user = Supabase.instance.client.auth.currentUser;
+                                         if (user == null) {
+                                           showGlassToast(
+                                             context,
+                                             'Sila log masuk untuk membuat tempahan servis.',
+                                             isError: true,
+                                           );
+                                           Navigator.pushNamed(context, '/login');
+                                           return;
+                                         }
+                                         Navigator.push(
                                            context,
-                                           'Sila log masuk untuk membuat tempahan servis.',
-                                           isError: true,
-                                         );
-                                         Navigator.pushNamed(context, '/login');
-                                         return;
-                                       }
-                                       Navigator.push(
-                                         context,
-                                         MaterialPageRoute(
-                                           builder: (_) => BookingsView(
-                                             shopId: widget.shop['id']?.toString() ?? '1',
-                                             shopName: _shopName,
-                                             category: _shopCategory,
-                                             shopImage: _coverUrl.isNotEmpty ? _coverUrl : (_logoUrl.isNotEmpty ? _logoUrl : (widget.shop['image'] ?? '')),
-                                           ),
-                                         ),
-                                       );
-                                     },
-                                     child: _glassBox(
-                                       isDark: isDark,
-                                       radius: 18,
-                                       padding: const EdgeInsets.symmetric(vertical: 16),
-                                       child: Center(
-                                         child: Row(
-                                           mainAxisAlignment: MainAxisAlignment.center,
-                                           children: [
-                                             HugeIcon(icon: HugeIcons.strokeRoundedCalendar01, color: isDark ? Colors.white : Colors.black87, size: 18),
-                                             const SizedBox(width: 8),
-                                             Text(
-                                               'Book Appointment / Slot',
-                                               style: TextStyle(
-                                                 color: isDark ? Colors.white : Colors.black87,
-                                                 fontSize: 15,
-                                                 fontWeight: FontWeight.bold,
-                                               ),
+                                           MaterialPageRoute(
+                                             builder: (_) => BookingsView(
+                                               shopId: widget.shop['id']?.toString() ?? '1',
+                                               shopName: _shopName,
+                                               category: _shopCategory,
+                                               shopImage: _coverUrl.isNotEmpty ? _coverUrl : (_logoUrl.isNotEmpty ? _logoUrl : (widget.shop['image'] ?? '')),
                                              ),
-                                           ],
+                                           ),
+                                         );
+                                       },
+                                       child: _glassBox(
+                                         isDark: isDark,
+                                         radius: 18,
+                                         padding: const EdgeInsets.symmetric(vertical: 16),
+                                         child: Center(
+                                           child: Row(
+                                             mainAxisAlignment: MainAxisAlignment.center,
+                                             children: [
+                                               HugeIcon(icon: HugeIcons.strokeRoundedCalendar01, color: isDark ? Colors.white : Colors.black87, size: 18),
+                                               const SizedBox(width: 8),
+                                               Text(
+                                                 'Book Appointment / Slot',
+                                                 style: TextStyle(
+                                                   color: isDark ? Colors.white : Colors.black87,
+                                                   fontSize: 15,
+                                                   fontWeight: FontWeight.bold,
+                                                 ),
+                                               ),
+                                             ],
+                                           ),
                                          ),
                                        ),
                                      ),
-                                   ),
+                                   ],
                                 ],
                               ),
                             ),

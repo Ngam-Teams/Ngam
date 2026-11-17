@@ -1188,9 +1188,41 @@ class _StoreCartViewState extends State<StoreCartView> {
                         isDark: isDark,
                         size: 42,
                         iconSize: 20,
-                        onTap: () {
-                          setState(() => _items.clear());
-                          widget.onClearCart?.call();
+                        onTap: () async {
+                          final confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (dlgCtx) => AlertDialog(
+                              backgroundColor: isDark ? const Color(0xFF141424) : Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              title: Text(
+                                'Kosongkan Bakul?',
+                                style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                              content: Text(
+                                'Adakah anda pasti mahu membuang semua item daripada bakul?',
+                                style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 13.5),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dlgCtx, false),
+                                  child: Text('Batal', style: TextStyle(color: isDark ? Colors.white54 : Colors.black54)),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.redAccent,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                  onPressed: () => Navigator.pop(dlgCtx, true),
+                                  child: const Text('Kosongkan', style: TextStyle(fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirmed == true && mounted) {
+                            setState(() => _items.clear());
+                            widget.onClearCart?.call();
+                          }
                         },
                       ),
                     ]

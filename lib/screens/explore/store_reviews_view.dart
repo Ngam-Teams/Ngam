@@ -542,7 +542,15 @@ class _StoreReviewsViewState extends State<StoreReviewsView> {
                   const SizedBox(height: 18),
 
                   // Reviews List
-                  ..._reviews.map((rev) => Padding(
+                  ..._reviews.where((rev) {
+                    if (_selectedFilterIndex == 1) {
+                      final imgs = rev['images'] as List?;
+                      return (imgs != null && imgs.isNotEmpty) || rev['hasVideo'] == true;
+                    }
+                    if (_selectedFilterIndex == 2) return rev['rating'] == 5;
+                    if (_selectedFilterIndex == 3) return rev['rating'] == 4;
+                    return true;
+                  }).map((rev) => Padding(
                         padding: const EdgeInsets.only(bottom: 14),
                         child: _liquidGlassBox(
                           isDark: isDark,

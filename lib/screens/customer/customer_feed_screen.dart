@@ -3183,6 +3183,31 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
   }
 
   void _handleDeleteComment(int index) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dlgCtx) => AlertDialog(
+        backgroundColor: const Color(0xFF141424),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text('Padam Komen?', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+        content: const Text('Adakah anda pasti mahu memadam komen ini?', style: TextStyle(color: Colors.white70, fontSize: 13.5)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dlgCtx, false),
+            child: const Text('Batal', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(dlgCtx, true),
+            child: const Text('Padam', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     HapticFeedback.mediumImpact();
     final removed = _comments.removeAt(index);
     final String postId = widget.post['id']?.toString() ?? '';
@@ -3215,6 +3240,31 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
   }
 
   void _handleDeleteReply(int parentIndex, int replyIndex) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dlgCtx) => AlertDialog(
+        backgroundColor: const Color(0xFF141424),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text('Padam Balasan?', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+        content: const Text('Adakah anda pasti mahu memadam balasan ini?', style: TextStyle(color: Colors.white70, fontSize: 13.5)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dlgCtx, false),
+            child: const Text('Batal', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(dlgCtx, true),
+            child: const Text('Padam', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     HapticFeedback.mediumImpact();
     final parent = _comments[parentIndex];
     final List<Map<String, dynamic>> replies =
