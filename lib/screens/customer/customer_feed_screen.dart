@@ -973,8 +973,39 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
     );
   }
 
-  void _handleCtaAction(Map<String, dynamic> post) {
-    final ctaType = post['ctaType']?.toString() ?? 'queue';
+  List<Map<String, String>> _parseCtaItems(Map<String, dynamic> post) {
+    final rawText = (post['ctaText'] ?? '').toString().trim();
+    final fallbackType = (post['ctaType'] ?? 'queue').toString().trim();
+    if (rawText.isEmpty) return const [];
+    if (rawText.startsWith('[')) {
+      try {
+        final decoded = jsonDecode(rawText);
+        if (decoded is List) {
+          final items = <Map<String, String>>[];
+          for (final entry in decoded) {
+            if (entry is Map) {
+              final text = entry['text']?.toString().trim() ?? '';
+              final type = entry['type']?.toString().trim() ?? fallbackType;
+              if (text.isNotEmpty) {
+                items.add({'type': type, 'text': text});
+              }
+            }
+            if (items.length >= 3) break;
+          }
+          return items;
+        }
+      } catch (_) {}
+    }
+    return [
+      {
+        'type': fallbackType.isEmpty ? 'queue' : fallbackType,
+        'text': rawText,
+      }
+    ];
+  }
+
+  void _handleCtaAction(Map<String, dynamic> post, {String? overrideCtaType}) {
+    final ctaType = overrideCtaType ?? post['ctaType']?.toString() ?? 'queue';
     if (ctaType == 'queue') {
       _openStore(post);
       showGlassToast(
@@ -1923,61 +1954,88 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
 
   // --- BOTTOM CONTENT (CTA, SHOP HANDLE, CAPTION, MUSIC TICKER) ---
   Widget _buildBottomContent(Map<String, dynamic> post) {
+    final ctaItems = _parseCtaItems(post);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // EXCLUSIVE NGAM DIRECT CTA BUTTON
-        GestureDetector(
-          onTap: () => _handleCtaAction(post),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF00E5FF), Color(0xFF0284C7)],
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF00E5FF).withValues(alpha: 0.35),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const HugeIcon(
-                  icon: HugeIcons.strokeRoundedFlash,
-                  color: Colors.black,
-                  size: 16,
-                ),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    post['ctaText'] ?? 'AMBIL GILIRAN',
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.3,
+        // EXCLUSIVE NGAM DIRECT CTA BUTTON(S) — 0 to 3
+        if (ctaItems.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: ctaItems.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final cta = entry.value;
+                final isPrimary = idx == 0;
+                return GestureDetector(
+                  onTap: () => _handleCtaAction(post, overrideCtaType: cta['type']),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isPrimary ? 14 : 11,
+                      vertical: isPrimary ? 8 : 7,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    decoration: BoxDecoration(
+                      gradient: isPrimary
+                          ? const LinearGradient(
+                              colors: [Color(0xFF00E5FF), Color(0xFF0284C7)],
+                            )
+                          : null,
+                      color: isPrimary ? null : Colors.black.withValues(alpha: 0.62),
+                      borderRadius: BorderRadius.circular(16),
+                      border: isPrimary
+                          ? null
+                          : Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.6)),
+                      boxShadow: isPrimary
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xFF00E5FF).withValues(alpha: 0.35),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isPrimary) ...[
+                          const HugeIcon(
+                            icon: HugeIcons.strokeRoundedFlash,
+                            color: Colors.black,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                        Flexible(
+                          child: Text(
+                            cta['text'] ?? '',
+                            style: TextStyle(
+                              color: isPrimary ? Colors.black : Colors.white,
+                              fontSize: isPrimary ? 12 : 11,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.3,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        HugeIcon(
+                          icon: HugeIcons.strokeRoundedArrowRight01,
+                          color: isPrimary ? Colors.black : const Color(0xFF00E5FF),
+                          size: 11,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 4),
-                const HugeIcon(
-                  icon: HugeIcons.strokeRoundedArrowRight01,
-                  color: Colors.black,
-                  size: 11,
-                ),
-              ],
+                );
+              }).toList(),
             ),
           ),
-        ),
 
         // Shop Handle & Verified Badge
         GestureDetector(

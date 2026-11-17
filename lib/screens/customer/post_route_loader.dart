@@ -614,48 +614,92 @@ class _PostRouteLoaderState extends State<PostRouteLoader> {
                   ),
                 const SizedBox(height: 12),
 
-                // Primary CTA Button (Ambil Giliran / Lihat Kedai)
-                GestureDetector(
-                  onTap: _openStore,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF2563EB), Color(0xFF3B82F6)],
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF2563EB).withValues(alpha: 0.4),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const HugeIcon(
-                          icon: HugeIcons.strokeRoundedStore01,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          post['ctaText'] ?? 'LIHAT KEDAI',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.3,
+                // CTA Button(s) — 0 to 3
+                ...(() {
+                  final rawText = (post['ctaText'] ?? '').toString().trim();
+                  if (rawText.isEmpty) return <Widget>[];
+                  final labels = <String>[];
+                  if (rawText.startsWith('[')) {
+                    try {
+                      final decoded = jsonDecode(rawText);
+                      if (decoded is List) {
+                        for (final e in decoded) {
+                          if (e is Map) {
+                            final t = e['text']?.toString().trim() ?? '';
+                            if (t.isNotEmpty) labels.add(t);
+                          }
+                          if (labels.length >= 3) break;
+                        }
+                      }
+                    } catch (_) {}
+                  } else {
+                    labels.add(rawText);
+                  }
+                  if (labels.isEmpty) return <Widget>[];
+                  return <Widget>[
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: labels.asMap().entries.map((entry) {
+                        final isPrimary = entry.key == 0;
+                        return GestureDetector(
+                          onTap: _openStore,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isPrimary ? 16 : 12,
+                              vertical: isPrimary ? 10 : 8,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: isPrimary
+                                  ? const LinearGradient(
+                                      colors: [Color(0xFF2563EB), Color(0xFF3B82F6)],
+                                    )
+                                  : null,
+                              color: isPrimary ? null : Colors.black.withValues(alpha: 0.65),
+                              borderRadius: BorderRadius.circular(12),
+                              border: isPrimary
+                                  ? null
+                                  : Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.6)),
+                              boxShadow: isPrimary
+                                  ? [
+                                      BoxShadow(
+                                        color: const Color(0xFF2563EB).withValues(alpha: 0.4),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isPrimary) ...[
+                                  const HugeIcon(
+                                    icon: HugeIcons.strokeRoundedStore01,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                                Text(
+                                  entry.value,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: isPrimary ? 12 : 11,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 14),
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 14),
-                      ],
+                        );
+                      }).toList(),
                     ),
-                  ),
-                ),
+                  ];
+                })(),
               ],
             ),
           ),
