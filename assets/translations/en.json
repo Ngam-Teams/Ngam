@@ -631,7 +631,19 @@
     "faq_9_q": "Is my personal data and payment secure?",
     "faq_9_a": "Yes, your security is our priority. All transactions and personal details are protected by high-grade SSL and TLS encryption and processed through licensed Malaysian payment gateways.",
     "faq_10_q": "How do I register my business as a Ngam Partner?",
-    "faq_10_a": "Merchants can register and manage their store by using the Ngam Business app or visiting our official portal at business.ngam.dev."
+    "faq_10_a": "Merchants can register and manage their store by using the Ngam Business app or visiting our official portal at business.ngam.dev.",
+    "cat_all": "All",
+    "cat_orders": "Orders",
+    "cat_services": "Services",
+    "cat_vouchers": "Vouchers",
+    "cat_payments": "Payments",
+    "cat_merchants": "Merchants",
+    "questions_count": "{} questions",
+    "empty_title": "No questions found",
+    "empty_subtitle": "Try another keyword or contact us directly.",
+    "still_need_help": "Still need help?",
+    "team_ready": "Ngam support team is always ready to help.",
+    "other_channels": "Other Channels"
   },
   "about": {
     "like_ngam": "Like Ngam?",

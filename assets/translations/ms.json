@@ -631,7 +631,19 @@
     "faq_9_q": "Adakah maklumat dan transaksi saya selamat?",
     "faq_9_a": "Ya, keselamatan anda adalah keutamaan kami. Semua transaksi dan maklumat peribadi dilindungi dengan penyulitan keselamatan tinggi SSL dan TLS dan diproses melalui gerbang pembayaran berlesen.",
     "faq_10_q": "Bagaimana cara mendaftarkan perniagaan saya sebagai Rakan Niaga Ngam?",
-    "faq_10_a": "Peniaga boleh mendaftar dan menguruskan kedai dengan memuat turun aplikasi Ngam Business atau layari portal rasmi kami di business.ngam.dev."
+    "faq_10_a": "Peniaga boleh mendaftar dan menguruskan kedai dengan memuat turun aplikasi Ngam Business atau layari portal rasmi kami di business.ngam.dev.",
+    "cat_all": "Semua",
+    "cat_orders": "Pesanan",
+    "cat_services": "Servis",
+    "cat_vouchers": "Baucar",
+    "cat_payments": "Bayaran",
+    "cat_merchants": "Peniaga",
+    "questions_count": "{} soalan",
+    "empty_title": "Tiada soalan dijumpai",
+    "empty_subtitle": "Cuba kata kunci lain atau hubungi kami langsung.",
+    "still_need_help": "Masih perlukan bantuan?",
+    "team_ready": "Pasukan bantuan Ngam sentiasa sedia membantu.",
+    "other_channels": "Saluran Lain"
   },
   "about": {
     "like_ngam": "Suka Ngam?",

@@ -56,77 +56,77 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
 
   double _scrollOffset = 0.0;
   String _searchQuery = '';
-  String _selectedCategory = 'Semua';
+  String _selectedCategory = 'all';
   int? _expandedIndex;
 
   final List<String> _categories = [
-    'Semua',
-    'Pesanan',
-    'Servis',
-    'Baucar',
-    'Bayaran',
-    'Peniaga',
+    'all',
+    'orders',
+    'services',
+    'vouchers',
+    'payments',
+    'merchants',
   ];
 
   List<_FaqItem> get _faqs => [
     _FaqItem(
       question: "support.faq_1_q".tr(),
       answer: "support.faq_1_a".tr(),
-      category: 'Pesanan',
+      category: 'orders',
       icon: HugeIcons.strokeRoundedQrCode01,
     ),
     _FaqItem(
       question: "support.faq_2_q".tr(),
       answer: "support.faq_2_a".tr(),
-      category: 'Servis',
+      category: 'services',
       icon: HugeIcons.strokeRoundedScissor,
     ),
     _FaqItem(
       question: "support.faq_3_q".tr(),
       answer: "support.faq_3_a".tr(),
-      category: 'Baucar',
+      category: 'vouchers',
       icon: HugeIcons.strokeRoundedTicket02,
     ),
     _FaqItem(
       question: "support.faq_4_q".tr(),
       answer: "support.faq_4_a".tr(),
-      category: 'Bayaran',
+      category: 'payments',
       icon: HugeIcons.strokeRoundedCreditCard,
     ),
     _FaqItem(
       question: "support.faq_5_q".tr(),
       answer: "support.faq_5_a".tr(),
-      category: 'Pesanan',
+      category: 'orders',
       icon: HugeIcons.strokeRoundedClock01,
     ),
     _FaqItem(
       question: "support.faq_6_q".tr(),
       answer: "support.faq_6_a".tr(),
-      category: 'Servis',
+      category: 'services',
       icon: HugeIcons.strokeRoundedCalendar03,
     ),
     _FaqItem(
       question: "support.faq_7_q".tr(),
       answer: "support.faq_7_a".tr(),
-      category: 'Baucar',
+      category: 'vouchers',
       icon: HugeIcons.strokeRoundedGift,
     ),
     _FaqItem(
       question: "support.faq_8_q".tr(),
       answer: "support.faq_8_a".tr(),
-      category: 'Pesanan',
+      category: 'orders',
       icon: HugeIcons.strokeRoundedHelpCircle,
     ),
     _FaqItem(
       question: "support.faq_9_q".tr(),
       answer: "support.faq_9_a".tr(),
-      category: 'Bayaran',
+      category: 'payments',
       icon: HugeIcons.strokeRoundedShield01,
     ),
     _FaqItem(
       question: "support.faq_10_q".tr(),
       answer: "support.faq_10_a".tr(),
-      category: 'Peniaga',
+      category: 'merchants',
       icon: HugeIcons.strokeRoundedStore01,
     ),
   ];
@@ -174,7 +174,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
     final fullWidth = screenWidth - (horizontalMargin * 2);
     const searchHeight = 44.0;
     const endTop = 12.0;
-    const startTop = 152.0;
+    const startTop = 172.0;
 
     // Movement: The search bar moves up first with the scroll
     final currentTop = math.max(endTop, startTop - _scrollOffset);
@@ -187,7 +187,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
 
     // Filter FAQs by Category and Search Query
     final filteredFaqs = _faqs.where((faq) {
-      final matchesCategory = _selectedCategory == 'Semua' || faq.category == _selectedCategory;
+      final matchesCategory = _selectedCategory == 'all' || faq.category == _selectedCategory;
       if (!matchesCategory) return false;
       if (_searchQuery.isEmpty) return true;
       return faq.question.toLowerCase().contains(_searchQuery) ||
@@ -213,17 +213,25 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Greeting Title
-                  Text(
-                    "support.greeting".tr(),
-                    style: GoogleFonts.outfit(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                      height: 1.2,
+                  // Greeting Title (fixed 88px slot so 3-line BM text never overlaps search bar)
+                  SizedBox(
+                    height: 88,
+                    child: Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Text(
+                        "support.greeting".tr(),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          height: 1.18,
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
                   // Search Bar Placeholder (reserve exact 44px height so content doesn't jump)
                   const SizedBox(height: searchHeight),
@@ -247,7 +255,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                         ),
                       ),
                       Text(
-                        '${filteredFaqs.length} soalan',
+                        'support.questions_count'.tr(args: [filteredFaqs.length.toString()]),
                         style: TextStyle(
                           color: isDark ? Colors.white38 : Colors.black38,
                           fontSize: 11,
@@ -474,7 +482,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                   ),
                 ),
                 child: Text(
-                  cat,
+                  'support.cat_$cat'.tr(),
                   style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -630,7 +638,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Tiada soalan dijumpai',
+              'support.empty_title'.tr(),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -639,7 +647,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Cuba kata kunci lain atau hubungi kami langsung.',
+              'support.empty_subtitle'.tr(),
               style: TextStyle(
                 fontSize: 13,
                 color: isDark ? Colors.white54 : Colors.black54,
@@ -707,7 +715,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Masih perlukan bantuan?',
+                        'support.still_need_help'.tr(),
                         style: TextStyle(
                           fontSize: 15.5,
                           fontWeight: FontWeight.w800,
@@ -716,7 +724,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Pasukan bantuan Ngam sentiasa sedia membantu.',
+                        'support.team_ready'.tr(),
                         style: TextStyle(
                           fontSize: 12,
                           color: isDark ? Colors.white60 : const Color(0xFF64748B),
@@ -805,7 +813,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            'Saluran Lain',
+                            'support.other_channels'.tr(),
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w700,
