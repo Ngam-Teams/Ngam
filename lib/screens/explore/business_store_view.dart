@@ -858,7 +858,12 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
     } catch (e) {
       debugPrint('[BusinessStoreView] _openShopChat failed: $e');
       if (mounted) {
-        showGlassToast(context, 'chat.open_chat_failed'.tr(), isError: true);
+        final detail = e.toString().replaceFirst('Exception: ', '').trim();
+        showGlassToast(
+          context,
+          detail.isNotEmpty ? '${'chat.open_chat_failed'.tr()}: $detail' : 'chat.open_chat_failed'.tr(),
+          isError: true,
+        );
       }
     }
   }

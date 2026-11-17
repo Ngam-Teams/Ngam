@@ -350,6 +350,7 @@ class ChatService {
     final ownerId = biz?['owner_user_id']?.toString();
 
     Map<String, dynamic>? row;
+    Object? lastError;
 
     try {
       final response = await _supabase.rpc(
@@ -366,6 +367,7 @@ class ChatService {
         row = Map<String, dynamic>.from(response.first as Map);
       }
     } catch (rpcErr) {
+      lastError = rpcErr;
       debugPrint('[ChatService] get_or_create_business_conversation RPC failed, trying direct fallback: $rpcErr');
     }
 
@@ -398,6 +400,7 @@ class ChatService {
           row = Map<String, dynamic>.from(inserted);
         }
       } catch (directErr) {
+        lastError = directErr;
         debugPrint('[ChatService] Direct business conversation fallback failed: $directErr');
       }
     }
@@ -417,7 +420,9 @@ class ChatService {
       throw Exception(
         ownerId == currentUserId
             ? 'Anda adalah pemilik kedai ini.'
-            : 'Tidak dapat memulakan sembang dengan kedai buat masa ini.',
+            : (lastError != null
+                ? '$lastError'
+                : 'Tidak dapat memulakan sembang dengan kedai buat masa ini.'),
       );
     }
 
