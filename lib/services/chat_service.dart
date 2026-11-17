@@ -332,7 +332,7 @@ class ChatService {
     return ConversationModel.fromJson(response, currentUserId);
   }
 
-  /// Create or get a customer <-> business conversation via SECURITY DEFINER RPC
+  /// Create or get a customer <-> business conversation via SECURITY DEFINER RPC (with direct fallback)
   static Future<ConversationModel> getOrCreateBusinessConversation(
     String businessId, {
     String? contextType,
@@ -343,20 +343,83 @@ class ChatService {
       throw Exception('Authentication required');
     }
 
-    final response = await _supabase.rpc(
-      'get_or_create_business_conversation',
-      params: {
-        'p_business_id': businessId,
-        if (contextType != null) 'p_context_type': contextType,
-        if (contextId != null) 'p_context_id': contextId,
-      },
-    );
-
-    final row = Map<String, dynamic>.from(response as Map);
     final biz = await getCachedBusiness(businessId);
     final bName = biz?['business_name']?.toString();
     final bLogo = biz?['business_logo_url']?.toString();
     final bPhone = biz?['business_phone']?.toString();
+    final ownerId = biz?['owner_user_id']?.toString();
+
+    Map<String, dynamic>? row;
+
+    try {
+      final response = await _supabase.rpc(
+        'get_or_create_business_conversation',
+        params: {
+          'p_business_id': businessId,
+          if (contextType != null) 'p_context_type': contextType,
+          if (contextId != null) 'p_context_id': contextId,
+        },
+      );
+      if (response is Map) {
+        row = Map<String, dynamic>.from(response);
+      } else if (response is List && response.isNotEmpty && response.first is Map) {
+        row = Map<String, dynamic>.from(response.first as Map);
+      }
+    } catch (rpcErr) {
+      debugPrint('[ChatService] get_or_create_business_conversation RPC failed, trying direct fallback: $rpcErr');
+    }
+
+    // Fallback 1: Direct query/insert on conversations table with business_id
+    if (row == null) {
+      try {
+        final existing = await _supabase
+            .from('conversations')
+            .select()
+            .eq('user1_id', currentUserId)
+            .eq('business_id', businessId)
+            .limit(1)
+            .maybeSingle();
+
+        if (existing != null) {
+          row = Map<String, dynamic>.from(existing);
+        } else if (ownerId != null && ownerId.isNotEmpty) {
+          final inserted = await _supabase
+              .from('conversations')
+              .insert({
+                'user1_id': currentUserId,
+                'user2_id': ownerId,
+                'business_id': businessId,
+                'context_type': contextType ?? 'general',
+                if (contextId != null) 'context_id': contextId,
+                'updated_at': DateTime.now().toUtc().toIso8601String(),
+              })
+              .select()
+              .single();
+          row = Map<String, dynamic>.from(inserted);
+        }
+      } catch (directErr) {
+        debugPrint('[ChatService] Direct business conversation fallback failed: $directErr');
+      }
+    }
+
+    // Fallback 2: Standard 1-to-1 user conversation if business_id column/RPC is not yet migrated
+    if (row == null && ownerId != null && ownerId.isNotEmpty && ownerId != currentUserId) {
+      final fallbackConv = await createOrGetConversation(currentUserId, ownerId);
+      return fallbackConv.copyWith(
+        businessName: bName,
+        businessLogoUrl: bLogo,
+        businessPhone: bPhone,
+        otherUser: _syntheticBusinessUser(businessId, bName, bLogo, bPhone),
+      );
+    }
+
+    if (row == null) {
+      throw Exception(
+        ownerId == currentUserId
+            ? 'Anda adalah pemilik kedai ini.'
+            : 'Tidak dapat memulakan sembang dengan kedai buat masa ini.',
+      );
+    }
 
     return ConversationModel.fromJson(row, currentUserId).copyWith(
       businessName: bName,

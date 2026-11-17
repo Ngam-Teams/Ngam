@@ -1,6 +1,6 @@
 {
-  "version": "1.0.40",
-  "build_number": 14,
-  "released_at": "2026-11-17T12:35:00Z",
-  "changelog": "Kecilkan ketinggian medan teks di troli kedai (kompak) dan letakkan ikon imbas QR meja terus di dalam medan No. Meja."
+  "version": "1.0.41",
+  "build_number": 15,
+  "released_at": "2026-11-17T12:40:00Z",
+  "changelog": "Baiki fungsi Chat Kedai dengan fallback terus ke jadual conversations jika RPC sembang kedai belum aktif di Supabase."
 }
