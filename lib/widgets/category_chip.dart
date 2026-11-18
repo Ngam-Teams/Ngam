@@ -57,7 +57,7 @@ class CategoryChip extends StatelessWidget {
       case 'Food':
         return HugeIcons.strokeRoundedHamburger01;
       case 'Shopping':
-        return HugeIcons.strokeRoundedShoppingBag01;
+        return HugeIcons.strokeRoundedShoppingCart02;
       case 'Print':
         return HugeIcons.strokeRoundedPrinter;
       case 'Heavy':

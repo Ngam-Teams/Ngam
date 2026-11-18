@@ -86,7 +86,7 @@ class _VoucherScreenState extends State<VoucherScreen> {
     _VoucherCategoryTab(
       id: 'retail',
       label: 'Runcit & Mart',
-      icon: HugeIcons.strokeRoundedShoppingBag02,
+      icon: HugeIcons.strokeRoundedShoppingCart02,
       clusterKeys: ['retail'],
     ),
     _VoucherCategoryTab(

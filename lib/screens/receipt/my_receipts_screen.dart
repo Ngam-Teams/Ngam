@@ -393,7 +393,7 @@ class _MyReceiptsScreenState extends State<MyReceiptsScreen> {
               child: Center(
                 child: HugeIcon(
                   icon: isOnline
-                      ? HugeIcons.strokeRoundedShoppingBag02
+                      ? HugeIcons.strokeRoundedShoppingCart02
                       : HugeIcons.strokeRoundedInvoice01,
                   color: isOnline ? const Color(0xFF3B82F6) : const Color(0xFF10B981),
                   size: 22,

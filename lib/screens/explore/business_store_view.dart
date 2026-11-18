@@ -1226,7 +1226,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
           mainAxisSize: MainAxisSize.min,
           children: [
             HugeIcon(
-              icon: HugeIcons.strokeRoundedShoppingBag01,
+              icon: HugeIcons.strokeRoundedShoppingCart02,
               color: isDark ? Colors.white24 : Colors.black26,
               size: 56,
             ),
@@ -1818,7 +1818,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           HugeIcon(
-                            icon: HugeIcons.strokeRoundedShoppingBag01,
+                            icon: HugeIcons.strokeRoundedShoppingCart02,
                             color: isDark ? Colors.white24 : Colors.black26,
                             size: 48,
                           ),
@@ -2019,7 +2019,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                       alignment: Alignment.center,
                       children: [
                         HugeIcon(
-                          icon: HugeIcons.strokeRoundedShoppingBag01,
+                          icon: HugeIcons.strokeRoundedShoppingCart02,
                           color: isDark ? Colors.white : const Color(0xFF1C1C1E),
                           size: 22,
                           strokeWidth: 2.0,
@@ -2578,7 +2578,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                                mainAxisAlignment: MainAxisAlignment.center,
                                                children: [
                                                  HugeIcon(
-                                                   icon: HugeIcons.strokeRoundedShoppingBag01,
+                                                   icon: HugeIcons.strokeRoundedShoppingCart02,
                                                    color: isDark ? Colors.white : Colors.blue,
                                                    size: 18,
                                                  ),

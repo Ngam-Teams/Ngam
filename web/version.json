@@ -1,6 +1,6 @@
 {
   "version": "1.0.51",
   "build_number": 24,
-  "released_at": "2026-11-18T03:05:00Z",
-  "changelog": "Pemilih tarikh & masa (store_cart_view) kini bergaya glassmorphism seperti Product Details, buang PG/PM, dan tapis masa lepas serta luar waktu operasi (+15 minit tempoh penyediaan)."
+  "released_at": "2026-11-18T04:40:00Z",
+  "changelog": "Tukar semua ikon beg beli-belah kepada ikon troli (HugeIcons.strokeRoundedShoppingCart02) dan kemas kini pemilih masa & tarikh troli."
 }

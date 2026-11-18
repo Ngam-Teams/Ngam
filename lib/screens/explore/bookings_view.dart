@@ -928,7 +928,7 @@ class _BookingsViewState extends State<BookingsView> {
       case BookingType.beauty:
         return HugeIcons.strokeRoundedSparkles;
       case BookingType.retail:
-        return HugeIcons.strokeRoundedShoppingBag02;
+        return HugeIcons.strokeRoundedShoppingCart02;
       case BookingType.service:
         return HugeIcons.strokeRoundedWrench01;
     }

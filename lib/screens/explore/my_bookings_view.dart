@@ -264,7 +264,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                       const SizedBox(width: 8),
                       _buildCategoryChip('my_bookings.filter_slot'.tr(), 1, HugeIcons.strokeRoundedCalendar03, isDark),
                       const SizedBox(width: 8),
-                      _buildCategoryChip('my_bookings.filter_orders'.tr(), 2, HugeIcons.strokeRoundedShoppingBag01, isDark),
+                      _buildCategoryChip('my_bookings.filter_orders'.tr(), 2, HugeIcons.strokeRoundedShoppingCart02, isDark),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -793,7 +793,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                       Row(
                         children: [
                           HugeIcon(
-                            icon: HugeIcons.strokeRoundedShoppingBag02,
+                            icon: HugeIcons.strokeRoundedShoppingCart02,
                             size: 12,
                             color: isDark ? Colors.white54 : Colors.grey[600],
                           ),
@@ -1863,7 +1863,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
       case 'ready':
         color = const Color(0xFF10B981);
         label = 'my_bookings.status_ready'.tr();
-        icon = HugeIcons.strokeRoundedShoppingBag01;
+        icon = HugeIcons.strokeRoundedShoppingCart02;
         break;
       case 'completed':
         color = const Color(0xFF10B981);

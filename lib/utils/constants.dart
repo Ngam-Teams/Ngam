@@ -41,7 +41,7 @@ class TaskCategory {
       case food:
         return HugeIcons.strokeRoundedHamburger01;
       case shopping:
-        return HugeIcons.strokeRoundedShoppingBag01;
+        return HugeIcons.strokeRoundedShoppingCart02;
       case print:
         return HugeIcons.strokeRoundedPrinter;
       case heavy:

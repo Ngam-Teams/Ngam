@@ -343,7 +343,7 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
                                           HugeIcon(
-                                            icon: HugeIcons.strokeRoundedShoppingBag01,
+                                            icon: HugeIcons.strokeRoundedShoppingCart02,
                                             color: isDark ? Colors.white : Colors.blue,
                                             size: 18,
                                           ),
@@ -876,7 +876,7 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
                 title: widget.shopName,
                 actions: [
                   GlassNavButton(
-                    icon: HugeIcons.strokeRoundedShoppingBag01,
+                    icon: HugeIcons.strokeRoundedShoppingCart02,
                     isDark: isDark,
                     size: 42,
                     iconSize: 20,

@@ -1368,7 +1368,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                             radius: 100,
                             padding: const EdgeInsets.all(24),
                             child: HugeIcon(
-                              icon: HugeIcons.strokeRoundedShoppingBag01,
+                              icon: HugeIcons.strokeRoundedShoppingCart02,
                               color: isDark ? Colors.white30 : Colors.black26,
                               size: 48,
                             ),
@@ -1484,12 +1484,12 @@ class _StoreCartViewState extends State<StoreCartView> {
                                                 fit: BoxFit.cover,
                                                 errorBuilder: (_, __, ___) => Container(
                                                   color: Colors.blue.withValues(alpha: 0.1),
-                                                  child: const HugeIcon(icon: HugeIcons.strokeRoundedShoppingBag01, color: Colors.blue),
+                                                  child: const HugeIcon(icon: HugeIcons.strokeRoundedShoppingCart02, color: Colors.blue),
                                                 ),
                                               )
                                             : Container(
                                                 color: Colors.blue.withValues(alpha: 0.1),
-                                                child: const HugeIcon(icon: HugeIcons.strokeRoundedShoppingBag01, color: Colors.blue),
+                                                child: const HugeIcon(icon: HugeIcons.strokeRoundedShoppingCart02, color: Colors.blue),
                                               ),
                                       ),
                                     ),
@@ -2173,7 +2173,7 @@ class _StoreCartViewState extends State<StoreCartView> {
             ),
             child: Row(
               children: [
-                _buildFulfillmentTab(0, 'cart.takeaway_tab'.tr(), HugeIcons.strokeRoundedShoppingBag01, isDark, textPrimary, textSecondary),
+                _buildFulfillmentTab(0, 'cart.takeaway_tab'.tr(), HugeIcons.strokeRoundedShoppingCart02, isDark, textPrimary, textSecondary),
                 _buildFulfillmentTab(1, 'cart.dine_in_tab'.tr(), HugeIcons.strokeRoundedDesk01, isDark, textPrimary, textSecondary),
                 _buildFulfillmentTab(2, 'cart.preorder_tab'.tr(), HugeIcons.strokeRoundedCalendar02, isDark, textPrimary, textSecondary),
                 if (supportsDelivery)

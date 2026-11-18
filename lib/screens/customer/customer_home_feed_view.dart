@@ -1468,7 +1468,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                       ),
                       child: HugeIcon(
                         icon: status == 'ready'
-                            ? HugeIcons.strokeRoundedShoppingBag01
+                            ? HugeIcons.strokeRoundedShoppingCart02
                             : HugeIcons.strokeRoundedRestaurant01,
                         color: statusColor,
                         size: 18,

@@ -1609,7 +1609,7 @@ Disahkan melalui aplikasi *Ngam*.
         break;
       case 'ready':
         statusColor = const Color(0xFF10B981);
-        statusIcon = HugeIcons.strokeRoundedShoppingBag01;
+        statusIcon = HugeIcons.strokeRoundedShoppingCart02;
         statusTitle = 'Sedia Untuk Diambil / Tiba';
         statusSubtitle = 'Sila ke premis perniagaan sekarang!';
         currentStepIndex = 2;
