@@ -1,6 +1,6 @@
 {
-  "version": "1.0.60",
-  "build_number": 33,
-  "released_at": "2026-11-18T17:23:00Z",
-  "changelog": "Gunakan ketebalan ikon standard HugeIcon pada top header agar selaras dengan semua halaman lain."
+  "version": "1.0.61",
+  "build_number": 34,
+  "released_at": "2026-11-18T18:05:00Z",
+  "changelog": "Pusat Mediasi Pertikaian 3-Hala Shopee-style (Pelanggan, Peniaga & Admin Ngam Mediator), muat naik bukti foto R2 & pembekuan escrow."
 }

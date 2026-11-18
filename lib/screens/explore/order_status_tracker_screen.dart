@@ -9,10 +9,12 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/receipt_pdf_service.dart';
 import '../../services/chat_service.dart';
+import '../../services/dispute_service.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../../widgets/glass_toast.dart';
 import '../shared/chat_screen.dart';
+import 'dispute_center_screen.dart';
 
 class OrderStatusTrackerScreen extends StatefulWidget {
   final String orderId;
@@ -65,6 +67,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
   bool _isCancelling = false;
   bool _hasReviewed = false;
   bool _isDownloadingPdf = false;
+  DisputeCase? _activeDispute;
 
   Map<String, dynamic> _normalizeItem(Map<String, dynamic> raw) {
     final name = raw['name'] ?? raw['product_name'] ?? raw['title'] ?? raw['service_name'] ?? 'Item';
@@ -169,11 +172,62 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
           }
         });
       }
+      final disp = await DisputeService.fetchDisputeByOrder(widget.orderId) ??
+          await DisputeService.fetchDisputeByBooking(bookingId: widget.orderId);
+      if (mounted && disp != null) {
+        setState(() => _activeDispute = disp);
+      }
     } catch (e) {
       debugPrint('[OrderStatusTracker] Load order error: $e');
       if (mounted) {
         _loadBookingFallback();
       }
+    }
+  }
+
+  Future<void> _handleDisputeAction() async {
+    if (_activeDispute != null) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DisputeRoomScreen(initialDispute: _activeDispute!),
+        ),
+      );
+      _loadOrderData();
+      return;
+    }
+
+    if (_shopId == null || _shopId!.isEmpty) {
+      showGlassToast(context, 'Maklumat kedai belum dimuatkan.', type: GlassToastType.warning);
+      return;
+    }
+
+    final summary = _loadedItems.isNotEmpty
+        ? _loadedItems.map((e) => '${e['qty']}x ${e['name']}').join(', ')
+        : (_serviceName ?? _shopName);
+
+    final created = await showOpenDisputeSheet(
+      context: context,
+      targetType: 'order',
+      orderId: widget.orderId,
+      businessId: _shopId!,
+      businessName: _shopName,
+      totalAmount: _totalAmount,
+      itemSummary: summary,
+    );
+
+    if (created != null && mounted) {
+      setState(() {
+        _activeDispute = created;
+        _status = 'disputed';
+      });
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DisputeRoomScreen(initialDispute: created),
+        ),
+      );
+      _loadOrderData();
     }
   }
 
@@ -1833,6 +1887,69 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                                         fontSize: 14.5,
                                         fontWeight: FontWeight.w800,
                                         letterSpacing: -0.2,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // 2b. Shopee-Style Dispute / 3-Way Mediation Button
+                      if (_activeDispute != null ||
+                          (_status != 'cancelled' && _status != 'pending')) ...[
+                        Container(
+                          width: double.infinity,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: _activeDispute != null
+                                ? const Color(0xFFA855F7).withValues(alpha: isDark ? 0.16 : 0.10)
+                                : Colors.orangeAccent.withValues(alpha: isDark ? 0.12 : 0.08),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: (_activeDispute != null
+                                      ? const Color(0xFFA855F7)
+                                      : Colors.orangeAccent)
+                                  .withValues(alpha: 0.45),
+                              width: 1.2,
+                            ),
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(18),
+                              onTap: _handleDisputeAction,
+                              child: Center(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    HugeIcon(
+                                      icon: _activeDispute != null
+                                          ? HugeIcons.strokeRoundedMessage01
+                                          : HugeIcons.strokeRoundedShield01,
+                                      color: _activeDispute != null
+                                          ? const Color(0xFFC084FC)
+                                          : Colors.orangeAccent,
+                                      size: 19,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        _activeDispute != null
+                                            ? 'dispute.action_view_dispute'.tr(args: [_activeDispute!.caseNumber])
+                                            : 'dispute.action_open_dispute'.tr(),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: _activeDispute != null
+                                              ? (isDark ? const Color(0xFFE9D5FF) : const Color(0xFF6B21A8))
+                                              : (isDark ? Colors.orange.shade200 : Colors.orange.shade900),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w800,
+                                        ),
                                       ),
                                     ),
                                   ],

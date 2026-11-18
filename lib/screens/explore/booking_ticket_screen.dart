@@ -9,9 +9,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ngam/l10n/generated/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/chat_service.dart';
+import '../../services/dispute_service.dart';
 import '../../utils/glass_toast.dart';
 import '../shared/chat_screen.dart';
 import 'bookings_view.dart';
+import 'dispute_center_screen.dart';
 
 class BookingTicketScreen extends StatefulWidget {
   final String shopId; //  Add this
@@ -82,6 +84,7 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
   }
 
   String? _resolvedBookingDbId;
+  DisputeCase? _activeDispute;
 
   Future<void> _initRealtimeBookingStatusSync() async {
     _resolvedBookingDbId = widget.bookingDbId;
@@ -103,6 +106,14 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
       } catch (_) {}
     }
 
+    final disp = await DisputeService.fetchDisputeByBooking(
+      bookingId: _resolvedBookingDbId,
+      bookingRef: widget.bookingId,
+    );
+    if (mounted && disp != null) {
+      setState(() => _activeDispute = disp);
+    }
+
     if (!mounted || _resolvedBookingDbId == null || _resolvedBookingDbId!.isEmpty) return;
 
     _statusSubscription = Supabase.instance.client
@@ -119,6 +130,31 @@ class _BookingTicketScreenState extends State<BookingTicketScreen> {
         }
       }
     }, onError: (_) {});
+  }
+
+  Future<void> _openDisputeMediationRoom() async {
+    _activeDispute ??= await DisputeService.fetchDisputeByBooking(
+      bookingId: _resolvedBookingDbId ?? widget.bookingDbId,
+      bookingRef: widget.bookingId,
+    );
+    if (!mounted) return;
+    if (_activeDispute != null) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DisputeRoomScreen(initialDispute: _activeDispute!),
+        ),
+      );
+      final refreshed = await DisputeService.fetchDisputeByBooking(
+        bookingId: _resolvedBookingDbId ?? widget.bookingDbId,
+        bookingRef: widget.bookingId,
+      );
+      if (mounted && refreshed != null) {
+        setState(() => _activeDispute = refreshed);
+      }
+      return;
+    }
+    await _showDisputeModal();
   }
 
   @override
@@ -639,246 +675,43 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
     }
   }
 
-  void _showDisputeModal() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    String selectedDisputeType = 'no_show';
-    final notesCtrl = TextEditingController();
-    bool isSubmitting = false;
+  Future<void> _showDisputeModal() async {
+    if (_activeDispute != null || _currentStatus == 'disputed') {
+      await _openDisputeMediationRoom();
+      return;
+    }
 
-    final disputeTypes = [
-      {'key': 'no_show', 'label': 'Peniaga / Staf Tidak Muncul (No-show)'},
-      {'key': 'shop_closed', 'label': 'Kedai Tutup / Tidak Beroperasi'},
-      {'key': 'poor_service', 'label': 'Servis Sangat Lemah / Cuai'},
-      {'key': 'overcharged', 'label': 'Caj Tambahan Tanpa Persetujuan'},
-      {'key': 'other', 'label': 'Lain-lain Isu Servis'},
-    ];
+    final targetId = _resolvedBookingDbId ?? widget.bookingDbId;
+    final price = double.tryParse(widget.totalPrice.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
 
-    showModalBottomSheet(
+    final dispute = await showOpenDisputeSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) => Container(
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E242B) : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.shade700.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.amber.shade700, size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Laporkan Isu / Pertikaian',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : Colors.black87,
-                          ),
-                        ),
-                        Text(
-                          'Dana bayaran akan dibekukan serta-merta',
-                          style: TextStyle(fontSize: 12, color: Colors.amber.shade700, fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Pihak pengurusan Ngam akan menyiasat laporan anda. Sila nyatakan masalah yang berlaku secara telus:',
-                style: TextStyle(fontSize: 13, color: isDark ? Colors.white60 : Colors.black54),
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: selectedDisputeType,
-                dropdownColor: isDark ? const Color(0xFF252D37) : Colors.white,
-                decoration: InputDecoration(
-                  labelText: 'Kategori Masalah',
-                  labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 13),
-                  filled: true,
-                  fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                ),
-                items: disputeTypes.map((dt) {
-                  return DropdownMenuItem<String>(
-                    value: dt['key'],
-                    child: Text(dt['label']!, style: TextStyle(fontSize: 13, color: isDark ? Colors.white : Colors.black87)),
-                  );
-                }).toList(),
-                onChanged: (val) {
-                  if (val != null) setModalState(() => selectedDisputeType = val);
-                },
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: notesCtrl,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  labelText: 'Penerangan Masalah',
-                  hintText: 'Contoh: Saya sudah hadir di kedai tetapi tiada staf dan pintu kedai terkunci...',
-                  labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 13),
-                  hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.black38, fontSize: 12),
-                  filled: true,
-                  fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: isSubmitting ? null : () async {
-                    if (notesCtrl.text.trim().isEmpty) {
-                      showGlassToast(context, 'Sila masukkan penerangan masalah terlebih dahulu', isError: true);
-                      return;
-                    }
-                    setModalState(() => isSubmitting = true);
-                    await _executeDispute(selectedDisputeType, notesCtrl.text.trim());
-                    if (ctx.mounted) Navigator.pop(ctx);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.amber.shade700,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  ),
-                  child: isSubmitting
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : Text('booking.submit_dispute_freeze'.tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      targetType: 'booking',
+      bookingId: targetId,
+      bookingRef: widget.bookingId,
+      businessId: widget.shopId,
+      businessName: widget.shopName,
+      totalAmount: price,
+      itemSummary: '${widget.category} • ${widget.providerName}',
     );
-  }
 
-  Future<void> _executeDispute(String disputeType, String reason) async {
-    try {
-      final user = Supabase.instance.client.auth.currentUser;
-      final targetId = _resolvedBookingDbId ?? widget.bookingDbId;
-      double price = double.tryParse(widget.totalPrice.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
-
-      bool rpcSuccess = false;
-      if (targetId != null && targetId.isNotEmpty) {
-        try {
-          final res = await Supabase.instance.client.rpc('submit_booking_dispute', params: {
-            'p_booking_id': targetId,
-            'p_dispute_type': disputeType,
-            'p_dispute_reason': reason,
-            'p_refund_amount': price,
-          });
-          if (res != null && res['success'] == true) {
-            rpcSuccess = true;
-          }
-        } catch (rpcErr) {
-          debugPrint('RPC notice: $rpcErr');
-        }
-      }
-
-      if (!rpcSuccess) {
-        Map<String, dynamic> existingMeta = {};
-        try {
-          final row = (targetId != null && targetId.isNotEmpty)
-              ? await Supabase.instance.client
-                  .from('bookings')
-                  .select('booking_metadata')
-                  .eq('id', targetId)
-                  .maybeSingle()
-              : await Supabase.instance.client
-                  .from('bookings')
-                  .select('booking_metadata')
-                  .eq('booking_metadata->>booking_id', widget.bookingId)
-                  .maybeSingle();
-          if (row != null && row['booking_metadata'] is Map) {
-            existingMeta = Map<String, dynamic>.from(row['booking_metadata'] as Map);
-          }
-        } catch (_) {}
-
-        final mergedDisputeMeta = {
-          ...existingMeta,
-          'booking_id': existingMeta['booking_id'] ?? widget.bookingId,
-          'shop_name': existingMeta['shop_name'] ?? widget.shopName,
-          'provider_name': existingMeta['provider_name'] ?? widget.providerName,
-          'total_price': existingMeta['total_price'] ?? widget.totalPrice,
-          'is_disputed': true,
-          'dispute_type': disputeType,
-          'dispute_reason': reason,
-          'dispute_date': DateTime.now().toIso8601String(),
-        };
-
-        if (targetId != null && targetId.isNotEmpty) {
-          await Supabase.instance.client.from('bookings').update({
-            'status': 'disputed',
-            'booking_metadata': mergedDisputeMeta,
-          }).eq('id', targetId);
-        } else {
-          await Supabase.instance.client.from('bookings').update({
-            'status': 'disputed',
-            'booking_metadata': mergedDisputeMeta,
-          }).eq('booking_metadata->>booking_id', widget.bookingId);
-        }
-
-        try {
-          await Supabase.instance.client.from('booking_disputes').insert({
-            'booking_id': targetId ?? widget.bookingId,
-            'business_id': widget.shopId,
-            'customer_id': user?.id,
-            'customer_name': AuthProvider.userName ?? 'Pelanggan Ngam',
-            'service_name': widget.category,
-            'dispute_type': disputeType,
-            'dispute_reason': reason,
-            'refund_amount': price,
-            'status': 'open',
-          });
-        } catch (insertErr) {
-          debugPrint('booking_disputes insert notice: $insertErr');
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _currentStatus = 'disputed';
-        });
-        showGlassToast(
-          context,
-          'Aduan pertikaian telah dihantar. Bayaran dibekukan sehingga semakan selesai.',
-          type: GlassToastType.warning,
-          color: Colors.amber.shade700,
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        showGlassToast(context, 'Gagal menghantar pertikaian: $e', isError: true);
+    if (dispute != null && mounted) {
+      setState(() {
+        _activeDispute = dispute;
+        _currentStatus = 'disputed';
+      });
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DisputeRoomScreen(initialDispute: dispute),
+        ),
+      );
+      final refreshed = await DisputeService.fetchDisputeByBooking(
+        bookingId: targetId,
+        bookingRef: widget.bookingId,
+      );
+      if (mounted && refreshed != null) {
+        setState(() => _activeDispute = refreshed);
       }
     }
   }
@@ -1249,10 +1082,18 @@ Disahkan melalui aplikasi *Ngam*.
                             minimumSize: Size.zero,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
-                          icon: const HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.orangeAccent, size: 14),
-                          label: const Text(
-                            "Buka Pertikaian",
-                            style: TextStyle(color: Colors.orangeAccent, fontSize: 12, fontWeight: FontWeight.w600),
+                          icon: HugeIcon(
+                            icon: (_currentStatus == 'disputed' || _activeDispute != null)
+                                ? HugeIcons.strokeRoundedShield01
+                                : HugeIcons.strokeRoundedAlert02,
+                            color: Colors.orangeAccent,
+                            size: 14,
+                          ),
+                          label: Text(
+                            (_currentStatus == 'disputed' || _activeDispute != null)
+                                ? 'dispute.open_mediation_room'.tr()
+                                : 'booking.report_dispute'.tr(),
+                            style: const TextStyle(color: Colors.orangeAccent, fontSize: 12, fontWeight: FontWeight.w600),
                           ),
                         ),
                       ],
@@ -1486,14 +1327,25 @@ Disahkan melalui aplikasi *Ngam*.
                           ],
                         ),
                       ),
-                    if (_currentStatus != 'cancelled' && _currentStatus != 'disputed')
+                    if (_currentStatus != 'cancelled')
                       PopupMenuItem(
                         value: 'dispute',
                         child: Row(
                           children: [
-                            HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.orangeAccent, size: 18),
-                            SizedBox(width: 10),
-                            Text('booking.report_dispute'.tr(), style: TextStyle(fontWeight: FontWeight.w600)),
+                            HugeIcon(
+                              icon: (_currentStatus == 'disputed' || _activeDispute != null)
+                                  ? HugeIcons.strokeRoundedShield01
+                                  : HugeIcons.strokeRoundedAlert02,
+                              color: Colors.orangeAccent,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              (_currentStatus == 'disputed' || _activeDispute != null)
+                                  ? 'dispute.open_mediation_room'.tr()
+                                  : 'booking.report_dispute'.tr(),
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
                           ],
                         ),
                       ),
