@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/receipt_pdf_service.dart';
 import '../../services/chat_service.dart';
+import '../../utils/app_theme.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../../widgets/glass_toast.dart';
 import '../shared/chat_screen.dart';
@@ -397,88 +399,323 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
 
   Future<void> _showReviewDialog() async {
     int stars = 5;
+    bool submitting = false;
     final commentCtrl = TextEditingController();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final submitted = await showDialog<bool>(
       context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.65),
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModal) => AlertDialog(
-          backgroundColor: isDark ? const Color(0xFF161B22) : Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: Text(
-            'order_status.review_dialog_title'.tr(args: [_shopName]),
-            style: TextStyle(
-              color: isDark ? Colors.white : Colors.black87,
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (i) {
-                  return IconButton(
-                    onPressed: () => setModal(() => stars = i + 1),
-                    icon: Icon(
-                      i < stars ? Icons.star_rounded : Icons.star_outline_rounded,
-                      color: const Color(0xFFFFB300),
-                      size: 34,
+        builder: (ctx, setModal) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF111622).withValues(alpha: 0.92)
+                        : Colors.white.withValues(alpha: 0.96),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.14)
+                          : Colors.black.withValues(alpha: 0.08),
+                      width: 1.2,
                     ),
-                  );
-                }),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: commentCtrl,
-                maxLines: 3,
-                style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: 'order_status.review_placeholder'.tr(),
-                  hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.black38),
-                  filled: true,
-                  fillColor: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade100,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.14),
+                        blurRadius: 32,
+                        offset: const Offset(0, 14),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Top Header
+                      Row(
+                        children: [
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFB300).withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: const Color(0xFFFFB300).withValues(alpha: 0.35),
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.star_rounded,
+                              color: Color(0xFFFFB300),
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'order_status.review_dialog_title'.tr(args: [_shopName]),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                    fontSize: 16.5,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'order_status.review_subtitle'.tr(),
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: submitting ? null : () => Navigator.pop(ctx, false),
+                            style: IconButton.styleFrom(
+                              backgroundColor: isDark
+                                  ? Colors.white.withValues(alpha: 0.06)
+                                  : Colors.black.withValues(alpha: 0.05),
+                            ),
+                            icon: Icon(
+                              Icons.close_rounded,
+                              size: 18,
+                              color: isDark ? Colors.white60 : Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Interactive Star Selector Card
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.04)
+                              : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.black.withValues(alpha: 0.06),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(5, (i) {
+                                final active = i < stars;
+                                return GestureDetector(
+                                  onTap: submitting
+                                      ? null
+                                      : () => setModal(() => stars = i + 1),
+                                  behavior: HitTestBehavior.opaque,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                                    child: AnimatedScale(
+                                      scale: active ? 1.08 : 0.94,
+                                      duration: const Duration(milliseconds: 150),
+                                      child: Icon(
+                                        active
+                                            ? Icons.star_rounded
+                                            : Icons.star_outline_rounded,
+                                        color: active
+                                            ? const Color(0xFFFFB300)
+                                            : (isDark ? Colors.white24 : Colors.black26),
+                                        size: 36,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'order_status.rating_$stars'.tr(),
+                              style: const TextStyle(
+                                color: Color(0xFFFFB300),
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Comment Input
+                      TextField(
+                        controller: commentCtrl,
+                        maxLines: 3,
+                        enabled: !submitting,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          fontSize: 13.5,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'order_status.review_placeholder'.tr(),
+                          hintStyle: TextStyle(
+                            color: isDark ? Colors.white38 : Colors.black38,
+                            fontSize: 13,
+                          ),
+                          filled: true,
+                          fillColor: isDark
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : const Color(0xFFF1F5F9),
+                          contentPadding: const EdgeInsets.all(14),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(
+                              color: isDark ? Colors.white12 : Colors.black12,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(
+                              color: isDark ? Colors.white12 : Colors.black12,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(
+                              color: AppTheme.primary,
+                              width: 1.4,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Action Buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 46,
+                              child: OutlinedButton(
+                                onPressed: submitting
+                                    ? null
+                                    : () => Navigator.pop(ctx, false),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: isDark ? Colors.white70 : Colors.black54,
+                                  side: BorderSide(
+                                    color: isDark ? Colors.white12 : Colors.black12,
+                                  ),
+                                  padding: EdgeInsets.zero,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                child: Text(
+                                  'common.cancel'.tr(),
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 2,
+                            child: Container(
+                              height: 46,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [AppTheme.primary, AppTheme.primaryDark],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppTheme.primary.withValues(alpha: 0.30),
+                                    blurRadius: 14,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.zero,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                onPressed: submitting
+                                    ? null
+                                    : () async {
+                                        setModal(() => submitting = true);
+                                        final user =
+                                            Supabase.instance.client.auth.currentUser;
+                                        try {
+                                          if (_shopId != null && _shopId!.isNotEmpty) {
+                                            await Supabase.instance.client
+                                                .from('reviews')
+                                                .insert({
+                                              'business_id': _shopId,
+                                              'user_id': user?.id,
+                                              'rating': stars,
+                                              'comment': commentCtrl.text.trim(),
+                                            });
+                                          }
+                                        } catch (_) {}
+                                        if (ctx.mounted) Navigator.pop(ctx, true);
+                                      },
+                                child: submitting
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : Text(
+                                        'review.submit_review'.tr(),
+                                        style: const TextStyle(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text('common.cancel'.tr(), style: const TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2196F3),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: () async {
-                final user = Supabase.instance.client.auth.currentUser;
-                try {
-                  if (_shopId != null && _shopId!.isNotEmpty) {
-                    await Supabase.instance.client.from('reviews').insert({
-                      'business_id': _shopId,
-                      'user_id': user?.id,
-                      'rating': stars,
-                      'comment': commentCtrl.text.trim(),
-                    });
-                  }
-                } catch (_) {}
-                if (ctx.mounted) Navigator.pop(ctx, true);
-              },
-              child: Text('review.submit_review'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
         ),
       ),
     );
+    commentCtrl.dispose();
 
     if (submitted == true && mounted) {
       setState(() => _hasReviewed = true);
@@ -1552,23 +1789,25 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                         const SizedBox(height: 12),
                       ],
 
-                      // 2. Star Review Button (Completed only & not reviewed) - Warm Gold Glow Gradient Pill
+                      // 2. Star Review Button (Completed only & not reviewed) - Gold-Accented Glass Pill
                       if (_status == 'completed' && !_hasReviewed) ...[
                         Container(
                           width: double.infinity,
                           height: 52,
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
+                            color: isDark
+                                ? const Color(0xFFFFB300).withValues(alpha: 0.14)
+                                : const Color(0xFFFFFBEB),
                             borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: const Color(0xFFFFB300).withValues(alpha: isDark ? 0.45 : 0.55),
+                              width: 1.2,
+                            ),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFF59E0B).withValues(alpha: 0.30),
+                                color: const Color(0xFFFFB300).withValues(alpha: isDark ? 0.12 : 0.10),
                                 blurRadius: 16,
-                                offset: const Offset(0, 5),
+                                offset: const Offset(0, 4),
                               ),
                             ],
                           ),
@@ -1581,12 +1820,16 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const Icon(Icons.star_rounded, color: Colors.white, size: 22),
+                                    const Icon(
+                                      Icons.star_rounded,
+                                      color: Color(0xFFFFB300),
+                                      size: 22,
+                                    ),
                                     const SizedBox(width: 8),
                                     Text(
                                       'order_status.action_review_shop'.tr(),
-                                      style: const TextStyle(
-                                        color: Colors.white,
+                                      style: TextStyle(
+                                        color: isDark ? Colors.white : const Color(0xFF92400E),
                                         fontSize: 14.5,
                                         fontWeight: FontWeight.w800,
                                         letterSpacing: -0.2,
@@ -1601,22 +1844,22 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                         const SizedBox(height: 12),
                       ],
 
-                      // 3. Primary PDF Receipt Download Button - Signature Ngam Neon Glow Pill
+                      // 3. Primary PDF Receipt Download Button - Signature Ngam Electric Blue Pill
                       Container(
                         width: double.infinity,
                         height: 52,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFF00E5FF), Color(0xFF0284C7)],
+                            colors: [AppTheme.primary, AppTheme.primaryDark],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(18),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF00E5FF).withValues(alpha: 0.28),
+                              color: AppTheme.primary.withValues(alpha: 0.34),
                               blurRadius: 18,
-                              offset: const Offset(0, 5),
+                              offset: const Offset(0, 6),
                             ),
                           ],
                         ),
@@ -1635,14 +1878,14 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                                           height: 18,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 2.2,
-                                            color: Colors.black,
+                                            color: Colors.white,
                                           ),
                                         ),
                                         const SizedBox(width: 10),
                                         Text(
                                           'order_status.action_downloading_pdf'.tr(),
                                           style: const TextStyle(
-                                            color: Colors.black,
+                                            color: Colors.white,
                                             fontSize: 14.5,
                                             fontWeight: FontWeight.w800,
                                           ),
@@ -1654,16 +1897,16 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                                       children: [
                                         const HugeIcon(
                                           icon: HugeIcons.strokeRoundedInvoice01,
-                                          color: Colors.black,
+                                          color: Colors.white,
                                           size: 20,
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
                                           'order_status.action_download_pdf_receipt'.tr(),
                                           style: const TextStyle(
-                                            color: Colors.black,
+                                            color: Colors.white,
                                             fontSize: 14.5,
-                                            fontWeight: FontWeight.w900,
+                                            fontWeight: FontWeight.w800,
                                             letterSpacing: -0.2,
                                           ),
                                         ),

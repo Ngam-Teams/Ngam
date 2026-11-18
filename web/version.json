@@ -1,6 +1,6 @@
 {
-  "version": "1.0.55",
-  "build_number": 28,
-  "released_at": "2026-11-18T08:18:00Z",
-  "changelog": "Cache profil tempatan segera dan skeleton shimmer pada skrin Profil supaya tidak memaparkan placeholder Akaun Tetamu semasa pemuatan."
+  "version": "1.0.56",
+  "build_number": 29,
+  "released_at": "2026-11-18T08:25:00Z",
+  "changelog": "Penambahbaikan rekaan moden glassmorphism pada dialog Ulasan & Bintang serta butang Ulasan Kedai dan Muat Turun Resit PDF agar serasi dengan tema Ngam."
 }
