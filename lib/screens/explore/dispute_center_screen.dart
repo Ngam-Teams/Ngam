@@ -670,7 +670,7 @@ class _DisputeRoomScreenState extends State<DisputeRoomScreen> {
                     child: GlassBox(
                       borderRadius: 20,
                       blur: 14,
-                      opacity: isDark ? 0.08 : 0.72,
+                      color: Colors.white.withValues(alpha: isDark ? 0.08 : 0.72),
                       padding: const EdgeInsets.all(14),
                       border: Border.all(color: sColor.withValues(alpha: 0.35), width: 1.1),
                       child: Column(
