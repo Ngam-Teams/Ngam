@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
+import 'package:ngam/widgets/glass_box.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -1449,7 +1449,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           Row(
             children: [
               const HugeIcon(
-                icon: HugeIcons.strokeRoundedShieldCheck,
+                icon: HugeIcons.strokeRoundedShield01,
                 color: Color(0xFF10B981),
                 size: 16,
               ),
@@ -1961,7 +1961,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: _buildServiceHighlightItem(
-                  icon: HugeIcons.strokeRoundedCreditCardPos,
+                  icon: HugeIcons.strokeRoundedCreditCard,
                   color: const Color(0xFFEC4899),
                   title: 'product_detail.deposit_label'.tr(),
                   value: _product.depositAmount > 0
