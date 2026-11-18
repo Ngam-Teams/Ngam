@@ -1,6 +1,6 @@
 {
-  "version": "1.0.56",
-  "build_number": 29,
-  "released_at": "2026-11-18T08:25:00Z",
-  "changelog": "Penambahbaikan rekaan moden glassmorphism pada dialog Ulasan & Bintang serta butang Ulasan Kedai dan Muat Turun Resit PDF agar serasi dengan tema Ngam."
+  "version": "1.0.57",
+  "build_number": 30,
+  "released_at": "2026-11-18T12:06:00Z",
+  "changelog": "Reka bentuk semula bar bawah Product & Service Detail mengikut gaya glassmorphism Discover bottom sheet."
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -2694,161 +2695,237 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // ── Shopee-Style Sticky Bottom Action Bar ──────────────────────
-  // [Chat 1/4] [Add to Cart 1/4] [Buy Now / Book Now 1/2]
+  // ── Discover-Inspired Glassmorphic Sticky Bottom Bar ───────────
+  // Product: [Chat 1/4] [Cart 1/4] [Buy Now 1/2]
+  // Service: [Chat 1/3] [Book Now 2/3]
+
+  BoxDecoration _glassActionDecoration(bool isDark) {
+    return BoxDecoration(
+      borderRadius: BorderRadius.circular(16),
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: isDark
+            ? [
+                Colors.white.withValues(alpha: 0.12),
+                Colors.white.withValues(alpha: 0.05),
+              ]
+            : [
+                Colors.white.withValues(alpha: 0.80),
+                Colors.white.withValues(alpha: 0.55),
+              ],
+      ),
+      border: Border.all(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.22)
+            : Colors.black.withValues(alpha: 0.10),
+        width: 1.1,
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.05),
+          blurRadius: 10,
+          offset: const Offset(0, 3),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGlassSecondaryAction({
+    required bool isDark,
+    required dynamic icon,
+    required String label,
+    required Color accentColor,
+    required VoidCallback onTap,
+    bool horizontal = false,
+  }) {
+    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Ink(
+          height: 50,
+          decoration: _glassActionDecoration(isDark),
+          child: Center(
+            child: horizontal
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      HugeIcon(icon: icon, color: accentColor, size: 18),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      HugeIcon(icon: icon, color: accentColor, size: 18),
+                      const SizedBox(height: 2),
+                      Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildStickyBottomActionBar(bool isDark, Color textPrimary) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final bool isService = _product.isService;
 
-    return Container(
-      padding: EdgeInsets.fromLTRB(12, 10, 12, bottomPadding > 0 ? bottomPadding : 10),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF131322) : Colors.white,
-        border: Border(
-          top: BorderSide(
-            color: isDark ? Colors.white12 : Colors.black12,
-            width: 1.0,
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(
+            14,
+            12,
+            14,
+            bottomPadding > 0 ? bottomPadding + 4 : 12,
+          ),
+          decoration: BoxDecoration(
+            color: isDark
+                ? const Color(0xFF0F172A).withValues(alpha: 0.78)
+                : Colors.white.withValues(alpha: 0.84),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(
+              top: BorderSide(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.14)
+                    : Colors.black.withValues(alpha: 0.08),
+                width: 1.0,
+              ),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.08),
+                blurRadius: 18,
+                offset: const Offset(0, -4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // 1/4 (Product) or 1/3 (Service): Chat Kedai
+              Expanded(
+                flex: 2,
+                child: _buildGlassSecondaryAction(
+                  isDark: isDark,
+                  icon: HugeIcons.strokeRoundedChatting01,
+                  label: 'product_detail.bottom_chat'.tr(),
+                  accentColor: const Color(0xFF38BDF8),
+                  onTap: _openChat,
+                  horizontal: isService,
+                ),
+              ),
+
+              if (!isService) ...[
+                const SizedBox(width: 8),
+                // 1/4 (Product only): Add to Cart
+                Expanded(
+                  flex: 2,
+                  child: _buildGlassSecondaryAction(
+                    isDark: isDark,
+                    icon: HugeIcons.strokeRoundedShoppingCart02,
+                    label: 'product_detail.bottom_add_to_cart'.tr(),
+                    accentColor: const Color(0xFFF59E0B),
+                    onTap: _onAddToCartPressed,
+                  ),
+                ),
+              ],
+
+              const SizedBox(width: 10),
+
+              // 1/2 (Product) or 2/3 (Service): Buy Now / Book Now
+              Expanded(
+                flex: 4,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: _onBuyNowPressed,
+                    child: Ink(
+                      height: 50,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: isService
+                              ? const [Color(0xFF007AFF), Color(0xFF2563EB)]
+                              : const [Color(0xFF007AFF), Color(0xFF1D4ED8)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          width: 1.0,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF007AFF).withValues(alpha: 0.38),
+                            blurRadius: 14,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          HugeIcon(
+                            icon: isService
+                                ? HugeIcons.strokeRoundedCalendar03
+                                : HugeIcons.strokeRoundedFlash,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              isService
+                                  ? 'product_detail.bottom_book_now'.tr()
+                                  : 'product_detail.bottom_buy_now'.tr(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // 1/4: Chat Button
-          Expanded(
-            flex: 2,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(14),
-                onTap: _openChat,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const HugeIcon(
-                        icon: HugeIcons.strokeRoundedChatting01,
-                        color: Color(0xFF3B82F6),
-                        size: 20,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'product_detail.bottom_chat'.tr(),
-                        style: const TextStyle(
-                          color: Color(0xFF3B82F6),
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // 1/4: Add to Cart Button (Only for Product, or Service with direct order)
-          Expanded(
-            flex: 2,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(14),
-                onTap: _onAddToCartPressed,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const HugeIcon(
-                        icon: HugeIcons.strokeRoundedShoppingCart02,
-                        color: Color(0xFFF59E0B),
-                        size: 20,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'product_detail.bottom_add_to_cart'.tr(),
-                        style: const TextStyle(
-                          color: Color(0xFFF59E0B),
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          // 1/2: Buy Now (Gradient) or Book Now (if Service)
-          Expanded(
-            flex: 4,
-            child: GestureDetector(
-              onTap: _onBuyNowPressed,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: _product.isService
-                        ? const [Color(0xFF8B5CF6), Color(0xFF6D28D9)]
-                        : const [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: (_product.isService
-                              ? const Color(0xFF8B5CF6)
-                              : const Color(0xFF2563EB))
-                          .withValues(alpha: 0.4),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    HugeIcon(
-                      icon: _product.isService
-                          ? HugeIcons.strokeRoundedCalendar03
-                          : HugeIcons.strokeRoundedFlash,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        _product.isService
-                            ? 'product_detail.bottom_book_now'.tr()
-                            : 'product_detail.bottom_buy_now'.tr(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
