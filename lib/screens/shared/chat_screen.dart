@@ -47,11 +47,21 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   late Stream<List<ConversationModel>> _conversationsStream;
+  String? _initializedUserId;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
   String _searchQuery = '';
   List<String> _matchingConversationIds = [];
   Set<String> _onlineUserIds = {};
+
+  void _initStreamForUser(String userId) {
+    if (_initializedUserId == userId) return;
+    _initializedUserId = userId;
+    _conversationsStream = ChatService.getConversationsStream(userId, isRunner: false);
+    ChatService.trackPresence(userId);
+    ChatService.onlineUsers.removeListener(_onPresenceUpdate);
+    ChatService.onlineUsers.addListener(_onPresenceUpdate);
+  }
 
   void _onSearchChanged(String query) async {
     setState(() {
@@ -87,11 +97,10 @@ class _ChatScreenState extends State<ChatScreen> {
     _searchFocus.addListener(() {
       if (mounted) setState(() {});
     });
-    final currentUser = context.read<AuthProvider>().user;
-    if (currentUser != null) {
-      _conversationsStream = ChatService.getConversationsStream(currentUser.id, isRunner: false);
-      ChatService.trackPresence(currentUser.id);
-      ChatService.onlineUsers.addListener(_onPresenceUpdate);
+    final activeUserId = context.read<AuthProvider>().user?.id ??
+        Supabase.instance.client.auth.currentUser?.id;
+    if (activeUserId != null) {
+      _initStreamForUser(activeUserId);
     } else {
       _conversationsStream = const Stream.empty();
     }
@@ -117,8 +126,32 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final currentUser = context.read<AuthProvider>().user;
-    if (currentUser == null) {
+    final authProvider = context.watch<AuthProvider>();
+    final activeUserId = authProvider.user?.id ??
+        Supabase.instance.client.auth.currentUser?.id;
+
+    if (activeUserId != null && _initializedUserId != activeUserId) {
+      _initStreamForUser(activeUserId);
+    }
+
+    if (activeUserId == null && authProvider.isInitializing) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 680),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 24),
+                child: _buildChatShimmer(isDark),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (activeUserId == null) {
       return Scaffold(
         backgroundColor: Colors.transparent,
         body: Center(
@@ -378,7 +411,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           return UserGroupConversationCard(
                             otherUser: otherUser,
                             conversations: userConvs,
-                            currentUserId: currentUser.id,
+                            currentUserId: activeUserId,
                             isDark: isDark,
                             isOnline: isOnline,
                             onTap: (c, gigId) => _openChat(context, c, isDark, gigId),

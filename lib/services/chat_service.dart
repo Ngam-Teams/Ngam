@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/chat_model.dart';
 import '../models/user_model.dart';
@@ -77,11 +79,70 @@ class ChatService {
     }
   }
 
+  static const String _convCachePrefix = 'cached_conversations_v1_';
+
+  static Map<String, dynamic> _convToCacheMap(ConversationModel c) {
+    return {
+      'id': c.id,
+      'user1_id': c.user1Id,
+      'user2_id': c.user2Id,
+      if (c.gigId != null) 'gig_id': c.gigId,
+      if (c.lastMessage != null) 'last_message': c.lastMessage,
+      if (c.lastMessageSenderId != null) 'last_message_sender_id': c.lastMessageSenderId,
+      'last_message_is_read': c.lastMessageIsRead,
+      'updated_at': c.updatedAt.toUtc().toIso8601String(),
+      if (c.taskLastMessages != null) 'task_last_messages': c.taskLastMessages,
+      if (c.taskUnreadCounts != null) 'task_unread_counts': c.taskUnreadCounts,
+      'unread_count': c.unreadCount,
+      if (c.businessId != null) 'business_id': c.businessId,
+      if (c.businessName != null) 'business_name': c.businessName,
+      if (c.businessLogoUrl != null) 'business_logo_url': c.businessLogoUrl,
+      if (c.businessPhone != null) 'business_phone': c.businessPhone,
+      if (c.contextType != null) 'context_type': c.contextType,
+      if (c.contextId != null) 'context_id': c.contextId,
+      'customer_unread_count': c.customerUnreadCount,
+      'business_unread_count': c.businessUnreadCount,
+      if (c.otherUser != null) 'users': c.otherUser!.toJson(),
+    };
+  }
+
+  static Future<void> _saveConversationsPrefsCache(
+    String userId,
+    bool isRunner,
+    List<ConversationModel> conversations,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = '$_convCachePrefix${userId}_${isRunner ? 'r' : 'c'}';
+      final encoded = jsonEncode(conversations.map(_convToCacheMap).toList());
+      await prefs.setString(key, encoded);
+    } catch (_) {}
+  }
+
+  static Future<List<ConversationModel>> _loadConversationsPrefsCache(
+    String userId,
+    bool isRunner,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = '$_convCachePrefix${userId}_${isRunner ? 'r' : 'c'}';
+      final raw = prefs.getString(key);
+      if (raw == null || raw.isEmpty) return [];
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded
+          .whereType<Map<String, dynamic>>()
+          .map((m) => ConversationModel.fromJson(m, userId))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
   /// Fetch all conversations for the current user
   static Stream<List<ConversationModel>> getConversationsStream(String currentUserId, {required bool isRunner}) async* {
     final localDb = LocalDatabaseService.instance;
 
-    // Kasi keluar data local on-the-spot
+    // Kasi keluar data local on-the-spot (SQLite untuk mobile, SharedPreferences untuk Web/offline)
     final localConversations = await localDb.getConversations();
     if (localConversations.isNotEmpty) {
       // Untuk chat local, kita penuhkan terus dengan user yang dah di-cache
@@ -120,6 +181,11 @@ class ChatService {
         populatedLocal.add(conv.copyWith(otherUser: otherUser));
       }
       yield populatedLocal;
+    } else {
+      final prefsCached = await _loadConversationsPrefsCache(currentUserId, isRunner);
+      if (prefsCached.isNotEmpty) {
+        yield prefsCached;
+      }
     }
 
     // Tarik data network berterusan (Stream)
@@ -169,10 +235,12 @@ class ChatService {
              conversations.add(conv.copyWith(otherUser: otherUser));
           }
           
-          // Save dalam SQLite (Cache)
+          // Save dalam SQLite & SharedPreferences (Cache untuk offline/web)
           await localDb.insertConversations(conversations);
+          await _saveConversationsPrefsCache(currentUserId, isRunner, conversations);
           return conversations;
-        });
+        })
+        .handleError((_) {});
   }
 
   /// Prefetch recent chats and messages in the background

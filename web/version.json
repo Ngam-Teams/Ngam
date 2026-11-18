@@ -1,6 +1,6 @@
 {
-  "version": "1.0.57",
-  "build_number": 30,
-  "released_at": "2026-11-18T12:06:00Z",
-  "changelog": "Reka bentuk semula bar bawah Product & Service Detail mengikut gaya glassmorphism Discover bottom sheet."
+  "version": "1.0.58",
+  "build_number": 31,
+  "released_at": "2026-11-18T12:24:00Z",
+  "changelog": "Betulkan bug skrin Chat yang memaparkan gesaan log masuk walaupun sudah log masuk, tambah shimmer pemuatan dan cache luar talian/Web."
 }
