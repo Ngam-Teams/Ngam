@@ -50,7 +50,6 @@ class GlassNavPill extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Container(
           height: height,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(100),
             color: effectiveDark
@@ -90,17 +89,20 @@ class GlassNavPill extends StatelessWidget {
         (effectiveDark ? Colors.white.withValues(alpha: 0.90) : const Color(0xFF1E293B));
 
     Widget content = Center(
-      child: item.icon is IconData
-          ? Icon(
-              item.icon as IconData,
-              size: 20,
-              color: effectiveIconColor,
-            )
-          : HugeIcon(
-              icon: item.icon,
-              size: 20,
-              color: effectiveIconColor,
-            ),
+      child: item.icon is Widget
+          ? item.icon as Widget
+          : (item.icon is IconData
+              ? Icon(
+                  item.icon as IconData,
+                  size: 20,
+                  color: effectiveIconColor,
+                )
+              : HugeIcon(
+                  icon: item.icon,
+                  size: 20,
+                  strokeWidth: 2.0,
+                  color: effectiveIconColor,
+                )),
     );
 
     if (item.badge != null) {
@@ -110,8 +112,8 @@ class GlassNavPill extends StatelessWidget {
         children: [
           content,
           Positioned(
-            top: 2,
-            right: 2,
+            top: 4,
+            right: 4,
             child: item.badge!,
           ),
         ],
@@ -328,6 +330,7 @@ class GlassNavButton extends StatelessWidget {
             : HugeIcon(
                 icon: icon,
                 size: iconSize,
+                strokeWidth: 2.0,
                 color: effectiveIconColor,
               ));
 
@@ -338,8 +341,8 @@ class GlassNavButton extends StatelessWidget {
         children: [
           content,
           Positioned(
-            top: 2,
-            right: 2,
+            top: 4,
+            right: 4,
             child: badge!,
           ),
         ],

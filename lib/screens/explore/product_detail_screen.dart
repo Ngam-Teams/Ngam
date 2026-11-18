@@ -14,6 +14,7 @@ import '../../models/product_model.dart';
 import '../../services/chat_service.dart';
 import '../../services/r2_storage_service.dart';
 import '../../services/saved_service.dart';
+import '../../services/store_cart_service.dart';
 import '../../services/voucher_service.dart';
 import '../../utils/glass_toast.dart';
 import '../../widgets/glass_nav_button.dart';
@@ -467,25 +468,29 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       return;
     }
 
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      showGlassToast(context, 'auth.sign_in_required'.tr(), isError: true);
+      Navigator.pushNamed(context, '/login');
+      return;
+    }
+
     final extra = _selectedVariantExtraPrice + _selectedModifiersExtraPrice;
     final opt = _selectedOptionName;
     final note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
 
-    if (widget.onAddToCart != null) {
-      for (int i = 0; i < _quantity; i++) {
-        widget.onAddToCart!(
-          _product,
-          selectedOption: opt,
-          itemNote: note,
-          optionExtraPrice: extra,
-        );
-      }
-    } else {
-      showGlassToast(
-        context,
-        'product_detail.added_to_cart_toast'.tr(args: [_product.name]),
-      );
-    }
+    StoreCartService.addItem(
+      _shopId,
+      _product,
+      quantity: _quantity,
+      selectedOption: opt,
+      itemNote: note,
+      optionExtraPrice: extra,
+    );
+    showGlassToast(
+      context,
+      'product_detail.added_to_cart_toast'.tr(args: [_product.name]),
+    );
   }
 
   void _onBuyNowPressed() {
@@ -1211,43 +1216,86 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Widget _buildFloatingTopBar(bool isDark) {
     final topPadding = MediaQuery.of(context).padding.top;
-    return FloatingTopBar(
-      isDark: isDark,
-      top: topPadding + 12.0,
-      horizontal: 16.0,
-      onBack: () => Navigator.pop(context),
-      actionItems: [
-        GlassNavPillItem(
-          icon: HugeIcons.strokeRoundedShare01,
-          onTap: _shareProduct,
-        ),
-        GlassNavPillItem(
-          icon: HugeIcons.strokeRoundedFavourite,
-          iconColor: _isSaved ? const Color(0xFFEF4444) : null,
-          onTap: _toggleSave,
-        ),
-        GlassNavPillItem(
-          icon: HugeIcons.strokeRoundedShoppingCart02,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => StoreCartView(
-                  shop: {
-                    ...widget.shop,
-                    if (_shopDetails != null) ..._shopDetails!,
-                    'name': _shopName,
-                    'business_name': _shopName,
-                  },
-                  cartItems: const [],
-                  tableNumber: widget.tableNumber,
-                  promoCode: widget.promoCode,
-                ),
-              ),
-            );
-          },
-        ),
-      ],
+    return ValueListenableBuilder<List<CartItem>>(
+      valueListenable: StoreCartService.notifierForShop(_shopId),
+      builder: (context, cartItems, _) {
+        final int cartCount =
+            cartItems.fold(0, (sum, item) => sum + item.quantity);
+        return FloatingTopBar(
+          isDark: isDark,
+          top: topPadding + 12.0,
+          horizontal: 16.0,
+          onBack: () => Navigator.pop(context),
+          actionItems: [
+            GlassNavPillItem(
+              icon: HugeIcons.strokeRoundedShare01,
+              onTap: _shareProduct,
+            ),
+            GlassNavPillItem(
+              icon: HugeIcons.strokeRoundedFavourite,
+              iconColor: _isSaved ? const Color(0xFFEF4444) : null,
+              onTap: _toggleSave,
+            ),
+            GlassNavPillItem(
+              icon: HugeIcons.strokeRoundedShoppingCart02,
+              badge: cartCount > 0
+                  ? Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: Colors.blue,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        '$cartCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  : null,
+              onTap: () {
+                final user = Supabase.instance.client.auth.currentUser;
+                if (user == null) {
+                  showGlassToast(
+                    context,
+                    'auth.sign_in_required'.tr(),
+                    isError: true,
+                  );
+                  Navigator.pushNamed(context, '/login');
+                  return;
+                }
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => StoreCartView(
+                      shop: {
+                        ...widget.shop,
+                        if (_shopDetails != null) ..._shopDetails!,
+                        'name': _shopName,
+                        'business_name': _shopName,
+                      },
+                      cartItems: cartItems,
+                      tableNumber: widget.tableNumber,
+                      promoCode: widget.promoCode,
+                      onUpdateQuantity: (product, delta) =>
+                          StoreCartService.updateQuantity(
+                              _shopId, product, delta),
+                      onClearCart: () => StoreCartService.clearShop(_shopId),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 

@@ -11,6 +11,7 @@ import '../../models/product_model.dart';
 import '../../widgets/glass_toast.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../../services/saved_service.dart';
+import '../../services/store_cart_service.dart';
 import 'business_products_view.dart';
 import 'bookings_view.dart';
 import 'product_detail_screen.dart';
@@ -134,9 +135,16 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
 
-  final List<CartItem> _cart = [];
+  String get _shopId => (widget.shop['id'] ??
+          widget.shop['business_id'] ??
+          widget.shop['shopId'] ??
+          widget.shop['shop_id'] ??
+          '')
+      .toString();
 
-  int get _cartItemCount => _cart.fold(0, (sum, item) => sum + item.quantity);
+  List<CartItem> get _cart => StoreCartService.itemsForShop(_shopId);
+
+  int get _cartItemCount => StoreCartService.countForShop(_shopId);
 
   void _addToCart(
     ProductModel product, {
@@ -155,23 +163,14 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
       return;
     }
 
-    setState(() {
-      final index = _cart.indexWhere((c) =>
-          c.product.id == product.id &&
-          (c.selectedOption ?? '') == (selectedOption ?? '') &&
-          (c.itemNote ?? '') == (itemNote ?? ''));
-      if (index >= 0) {
-        _cart[index].quantity += 1;
-      } else {
-        _cart.add(CartItem(
-          product: product,
-          quantity: 1,
-          selectedOption: selectedOption,
-          itemNote: itemNote,
-          optionExtraPrice: optionExtraPrice,
-        ));
-      }
-    });
+    StoreCartService.addItem(
+      _shopId,
+      product,
+      quantity: 1,
+      selectedOption: selectedOption,
+      itemNote: itemNote,
+      optionExtraPrice: optionExtraPrice,
+    );
     showGlassToast(context, 'Ditambah "${product.name}" ke dalam troli!');
   }
 
@@ -189,9 +188,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
 
     final index = _cart.indexWhere((c) => c.product.id == product.id);
     if (index < 0) {
-      setState(() {
-        _cart.add(CartItem(product: product, quantity: 1));
-      });
+      StoreCartService.addItem(_shopId, product, quantity: 1);
     }
 
     Navigator.push(
@@ -211,16 +208,9 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
           isStoreOpen: _status == _StoreStatus.open || _status == _StoreStatus.closingSoon,
           storeStatusText: _statusText,
           isHoliday: _status == _StoreStatus.holiday,
-          onUpdateQuantity: (prod, delta) {
-            setState(() {
-              final idx = _cart.indexWhere((c) => c.product.id == prod.id);
-              if (idx >= 0) {
-                _cart[idx].quantity += delta;
-                if (_cart[idx].quantity <= 0) _cart.removeAt(idx);
-              }
-            });
-          },
-          onClearCart: () => setState(() => _cart.clear()),
+          onUpdateQuantity: (prod, delta) =>
+              StoreCartService.updateQuantity(_shopId, prod, delta),
+          onClearCart: () => StoreCartService.clearShop(_shopId),
         ),
       ),
     );
@@ -1864,113 +1854,97 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
   }
 
   Widget _buildFloatingTopBar(bool isDark) {
-    return Positioned(
-      top: 20,
-      left: 20,
-      right: 20,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          GestureDetector(
-            onTap: () => safeNavBack(context, fallbackRoute: '/customer-home'),
-            child: _liquidGlassBox(
+    return ValueListenableBuilder<List<CartItem>>(
+      valueListenable: StoreCartService.notifierForShop(_shopId),
+      builder: (context, cartItems, _) {
+        final int cartCount =
+            cartItems.fold(0, (sum, item) => sum + item.quantity);
+        return ValueListenableBuilder<List<Map<String, dynamic>>>(
+          valueListenable: SavedService.savedShopsNotifier,
+          builder: (context, _, __) {
+            final bool isSaved = SavedService.isShopSaved(_shopId);
+            return FloatingTopBar(
               isDark: isDark,
-              radius: 100,
-              child: SizedBox(
-                width: 44,
-                height: 44,
-                child: Center(
-                  child: HugeIcon(
-                    icon: HugeIcons.strokeRoundedArrowLeft01,
-                    color: isDark ? Colors.white : const Color(0xFF1C1C1E),
-                    size: 22,
-                    strokeWidth: 2.0,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          _liquidGlassBox(
-            isDark: isDark,
-            radius: 100,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Simpan (Bookmark) button
-                ValueListenableBuilder<List<Map<String, dynamic>>>(
-                  valueListenable: SavedService.savedShopsNotifier,
-                  builder: (context, _, __) {
-                    final String sId = (widget.shop['id'] ?? widget.shop['business_id'] ?? widget.shop['shopId'] ?? '').toString();
-                    final bool isSaved = SavedService.isShopSaved(sId);
-                    return GestureDetector(
-                      onTap: () async {
-                        final shopData = {
-                          'id': sId,
-                          'shopId': sId,
-                          'name': _shopName,
-                          'category': _shopCategory,
-                          'image': _logoUrl.isNotEmpty ? _logoUrl : _coverUrl,
-                          'rating': widget.shop['rating'] ?? 5.0,
-                          'location': widget.shop['address'] ?? widget.shop['location'] ?? '',
-                          ...widget.shop,
-                        };
-                        final nowSaved = await SavedService.toggleSaveShop(shopData);
-                        if (context.mounted) {
-                          showGlassToast(
-                            context,
-                            nowSaved
-                                ? 'Kedai disimpan ke koleksi anda'
-                                : 'Kedai dikeluarkan dari simpanan',
+              top: 12.0,
+              horizontal: 16.0,
+              fallbackRoute: '/customer-home',
+              actionItems: [
+                GlassNavPillItem(
+                  icon: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (child, anim) =>
+                        ScaleTransition(scale: anim, child: child),
+                    child: isSaved
+                        ? const Icon(
+                            Icons.bookmark_rounded,
+                            key: ValueKey(true),
+                            color: Color(0xFFFBBF24),
+                            size: 20,
+                          )
+                        : HugeIcon(
                             icon: HugeIcons.strokeRoundedBookmark02,
-                          );
-                        }
-                      },
-                      child: SizedBox(
-                        width: 44,
-                        height: 44,
-                        child: Center(
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 300),
-                            transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-                            child: isSaved
-                                ? const Icon(
-                                    Icons.bookmark_rounded,
-                                    key: ValueKey(true),
-                                    color: Color(0xFFFBBF24),
-                                    size: 22,
-                                  )
-                                : HugeIcon(
-                                    icon: HugeIcons.strokeRoundedBookmark02,
-                                    key: const ValueKey(false),
-                                    color: isDark ? Colors.white : const Color(0xFF1C1C1E),
-                                    size: 22,
-                                  ),
+                            key: const ValueKey(false),
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.90)
+                                : const Color(0xFF1E293B),
+                            size: 20,
+                            strokeWidth: 2.0,
                           ),
-                        ),
-                      ),
-                    );
+                  ),
+                  onTap: () async {
+                    final shopData = {
+                      'id': _shopId,
+                      'shopId': _shopId,
+                      'name': _shopName,
+                      'category': _shopCategory,
+                      'image': _logoUrl.isNotEmpty ? _logoUrl : _coverUrl,
+                      'rating': widget.shop['rating'] ?? 5.0,
+                      'location':
+                          widget.shop['address'] ?? widget.shop['location'] ?? '',
+                      ...widget.shop,
+                    };
+                    final nowSaved =
+                        await SavedService.toggleSaveShop(shopData);
+                    if (context.mounted) {
+                      showGlassToast(
+                        context,
+                        nowSaved
+                            ? 'Kedai disimpan ke koleksi anda'
+                            : 'Kedai dikeluarkan dari simpanan',
+                        icon: HugeIcons.strokeRoundedBookmark02,
+                      );
+                    }
                   },
                 ),
-                // Chat Kedai button (next to Saved)
-                GestureDetector(
+                GlassNavPillItem(
+                  icon: HugeIcons.strokeRoundedChatting01,
+                  tooltip: 'store.chat_shop'.tr(),
                   onTap: _openShopChat,
-                  child: Tooltip(
-                    message: 'store.chat_shop'.tr(),
-                    child: SizedBox(
-                      width: 44,
-                      height: 44,
-                      child: Center(
-                        child: HugeIcon(
-                          icon: HugeIcons.strokeRoundedChatting01,
-                          color: isDark ? Colors.white : const Color(0xFF1C1C1E),
-                          size: 21,
-                        ),
-                      ),
-                    ),
-                  ),
                 ),
-                // Cart button
-                GestureDetector(
+                GlassNavPillItem(
+                  icon: HugeIcons.strokeRoundedShoppingCart02,
+                  badge: cartCount > 0
+                      ? Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(
+                            color: Colors.blue,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            '$cartCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        )
+                      : null,
                   onTap: () {
                     final user = Supabase.instance.client.auth.currentUser;
                     if (user == null) {
@@ -1993,69 +1967,28 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                             if (_syncedOperatingHours != null)
                               'operating_hours': _syncedOperatingHours,
                           },
-                          cartItems: _cart,
+                          cartItems: cartItems,
                           tableNumber: widget.tableNumber,
                           promoCode: widget.promoCode,
-                          isStoreOpen: _status == _StoreStatus.open || _status == _StoreStatus.closingSoon,
+                          isStoreOpen: _status == _StoreStatus.open ||
+                              _status == _StoreStatus.closingSoon,
                           storeStatusText: _statusText,
                           isHoliday: _status == _StoreStatus.holiday,
-                          onUpdateQuantity: (product, delta) {
-                            setState(() {
-                              final idx = _cart.indexWhere((c) => c.product.id == product.id);
-                              if (idx >= 0) {
-                                _cart[idx].quantity += delta;
-                                if (_cart[idx].quantity <= 0) _cart.removeAt(idx);
-                              }
-                            });
-                          },
-                          onClearCart: () => setState(() => _cart.clear()),
+                          onUpdateQuantity: (product, delta) =>
+                              StoreCartService.updateQuantity(
+                                  _shopId, product, delta),
+                          onClearCart: () =>
+                              StoreCartService.clearShop(_shopId),
                         ),
                       ),
                     );
                   },
-                  child: SizedBox(
-                    width: 44,
-                    height: 44,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        HugeIcon(
-                          icon: HugeIcons.strokeRoundedShoppingCart02,
-                          color: isDark ? Colors.white : const Color(0xFF1C1C1E),
-                          size: 22,
-                          strokeWidth: 2.0,
-                        ),
-                        if (_cartItemCount > 0)
-                          Positioned(
-                            right: 6,
-                            top: 6,
-                            child: Container(
-                              padding: const EdgeInsets.all(3),
-                              decoration: const BoxDecoration(
-                                color: Colors.blue,
-                                shape: BoxShape.circle,
-                              ),
-                              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                              child: Text(
-                                '$_cartItemCount',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
