@@ -100,7 +100,6 @@ class GlassNavPill extends StatelessWidget {
               : HugeIcon(
                   icon: item.icon,
                   size: 20,
-                  strokeWidth: 2.0,
                   color: effectiveIconColor,
                 )),
     );
@@ -330,7 +329,6 @@ class GlassNavButton extends StatelessWidget {
             : HugeIcon(
                 icon: icon,
                 size: iconSize,
-                strokeWidth: 2.0,
                 color: effectiveIconColor,
               ));
 

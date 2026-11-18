@@ -1888,7 +1888,6 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                                 ? Colors.white.withValues(alpha: 0.90)
                                 : const Color(0xFF1E293B),
                             size: 20,
-                            strokeWidth: 2.0,
                           ),
                   ),
                   onTap: () async {
