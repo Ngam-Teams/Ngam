@@ -22,6 +22,7 @@ import 'screens/customer/review_screen.dart';
 import 'screens/shared/profile_screen.dart';
 import 'screens/shared/privacy_security_screen.dart';
 import 'screens/shared/support_screens.dart';
+import 'screens/shared/report_issue_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -258,6 +259,9 @@ Route<dynamic>? _generateRoute(RouteSettings settings) {
                   return MaterialPageRoute(settings: settings, builder: (_) => const HelpCenterScreen());
                 case '/contact':
                   return MaterialPageRoute(settings: settings, builder: (_) => const ContactUsScreen());
+                case '/report-issue':
+                case '/feedback':
+                  return MaterialPageRoute(settings: settings, builder: (_) => const ReportIssueScreen());
                 case '/my-receipts':
                 case '/receipts':
                   return MaterialPageRoute(settings: settings, builder: (_) => const MyReceiptsScreen());

@@ -8,6 +8,7 @@ import '../../utils/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'report_issue_screen.dart';
 
 // ============================================================
 // Ngam App — Skrin Support & Pusat Bantuan
@@ -653,6 +654,25 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                 color: isDark ? Colors.white54 : Colors.black54,
               ),
             ),
+            const SizedBox(height: 18),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ReportIssueScreen()),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.white, size: 17),
+              label: Text(
+                'support.report_bug_btn'.tr(),
+                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+              ),
+            ),
           ],
         ),
       ),
@@ -735,7 +755,48 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
+
+            // Primary In-App Report / Feedback Button
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ReportIssueScreen()),
+                );
+              },
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                width: double.infinity,
+                height: 44,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppTheme.primary, AppTheme.primaryDark],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const HugeIcon(
+                      icon: HugeIcons.strokeRoundedAlert02,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'support.report_bug_btn'.tr(),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
 
             // Action Buttons
             Row(
@@ -884,6 +945,20 @@ class ContactUsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 28),
 
+                  _contactCard(
+                    isDark: isDark,
+                    icon: HugeIcons.strokeRoundedAlert02,
+                    title: "support.report_feedback_title".tr(),
+                    subtitle: "support.report_feedback_subtitle".tr(),
+                    action: "support.report_bug_btn".tr(),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ReportIssueScreen()),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 14),
                   _contactCard(
                     isDark: isDark,
                     icon: HugeIcons.strokeRoundedBubbleChat,

@@ -220,6 +220,8 @@ class GlassNavButton extends StatelessWidget {
             '/help',
             '/support',
             '/contact',
+            '/report-issue',
+            '/feedback',
           }.contains(currentRouteName)) {
             resolvedFallback = '/tab/profile';
           } else {

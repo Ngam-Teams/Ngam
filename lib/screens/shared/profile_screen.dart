@@ -14,6 +14,7 @@ import '../../utils/glass_toast.dart';
 import '../../widgets/glass_dialog.dart';
 import 'account_details_screen.dart';
 import 'support_screens.dart';
+import 'report_issue_screen.dart';
 import 'about_screens.dart';
 import 'privacy_security_screen.dart';
 import 'wallet_screen.dart';
@@ -468,6 +469,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => const ContactUsScreen(),
+                                  ),
+                                ),
+                              ),
+                              _buildDivider(isDark),
+                              _buildSettingsTile(
+                                isDark,
+                                HugeIcons.strokeRoundedAlert02,
+                                'profile.report_issue'.tr(),
+                                trailing: _buildArrow(),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const ReportIssueScreen(),
                                   ),
                                 ),
                               ),
