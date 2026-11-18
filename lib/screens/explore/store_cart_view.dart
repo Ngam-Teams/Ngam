@@ -373,82 +373,128 @@ class _StoreCartViewState extends State<StoreCartView> {
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        height: 310,
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF141824) : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
-        ),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        _customSelectedDate = minDate;
-                        _selectedPickupDate = 'Hari Ini';
-                        _syncDefaultSlotForSelectedDate();
-                      });
-                      Navigator.pop(ctx);
-                    },
-                    child: Text(
-                      'cart.picker_today'.tr(),
-                      style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.w800),
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      elevation: 0,
+      builder: (ctx) => ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        child: SizedBox(
+          height: 330,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: GlassContainer(
+                  useOwnLayer: true,
+                  quality: GlassQuality.standard,
+                  shape: const LiquidRoundedSuperellipse(borderRadius: 32.0),
+                  settings: LiquidGlassSettings(
+                    thickness: 0.1,
+                    blur: 20.0,
+                    glassColor: Colors.transparent,
+                    lightAngle: 45.0,
+                    lightIntensity: 0.1,
+                    ambientStrength: 1.0,
+                    saturation: 1.0,
+                    chromaticAberration: 0.0,
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.black.withValues(alpha: 0.30)
+                          : Colors.white.withValues(alpha: 0.45),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                      border: Border(
+                        top: BorderSide(
+                          color: Colors.white.withValues(alpha: isDark ? 0.18 : 0.65),
+                          width: 1.0,
+                        ),
+                      ),
                     ),
                   ),
-                  Text(
-                    'cart.select_date_title'.tr(),
-                    style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+              ),
+              Column(
+                children: [
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 12, bottom: 4),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white24 : Colors.black26,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
                   ),
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        _customSelectedDate = tempDate;
-                        if (tempDate.year == minDate.year && tempDate.month == minDate.month && tempDate.day == minDate.day) {
-                          _selectedPickupDate = 'Hari Ini';
-                        } else {
-                          final tmr = minDate.add(const Duration(days: 1));
-                          if (tempDate.year == tmr.year && tempDate.month == tmr.month && tempDate.day == tmr.day) {
-                            _selectedPickupDate = 'Esok';
-                          } else {
-                            _selectedPickupDate = '${tempDate.day}/${tempDate.month}/${tempDate.year}';
-                          }
-                        }
-                        _syncDefaultSlotForSelectedDate();
-                      });
-                      Navigator.pop(ctx);
-                    },
-                    child: Text(
-                      'cart.picker_done'.tr(),
-                      style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.w800),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _customSelectedDate = minDate;
+                              _selectedPickupDate = 'Hari Ini';
+                              _syncDefaultSlotForSelectedDate();
+                            });
+                            Navigator.pop(ctx);
+                          },
+                          child: Text(
+                            'cart.picker_today'.tr(),
+                            style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        Text(
+                          'cart.select_date_title'.tr(),
+                          style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _customSelectedDate = tempDate;
+                              if (tempDate.year == minDate.year && tempDate.month == minDate.month && tempDate.day == minDate.day) {
+                                _selectedPickupDate = 'Hari Ini';
+                              } else {
+                                final tmr = minDate.add(const Duration(days: 1));
+                                if (tempDate.year == tmr.year && tempDate.month == tmr.month && tempDate.day == tmr.day) {
+                                  _selectedPickupDate = 'Esok';
+                                } else {
+                                  _selectedPickupDate = '${tempDate.day}/${tempDate.month}/${tempDate.year}';
+                                }
+                              }
+                              _syncDefaultSlotForSelectedDate();
+                            });
+                            Navigator.pop(ctx);
+                          },
+                          child: Text(
+                            'cart.picker_done'.tr(),
+                            style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: CupertinoTheme(
+                      data: CupertinoThemeData(
+                        brightness: isDark ? Brightness.dark : Brightness.light,
+                        textTheme: CupertinoTextThemeData(
+                          dateTimePickerTextStyle: TextStyle(color: textPrimary, fontSize: 18, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      child: CupertinoDatePicker(
+                        mode: CupertinoDatePickerMode.date,
+                        initialDateTime: tempDate,
+                        minimumDate: minDate,
+                        maximumDate: maxDate,
+                        onDateTimeChanged: (d) => tempDate = d,
+                      ),
                     ),
                   ),
                 ],
               ),
-            ),
-            Expanded(
-              child: CupertinoTheme(
-                data: CupertinoThemeData(
-                  brightness: isDark ? Brightness.dark : Brightness.light,
-                  textTheme: CupertinoTextThemeData(
-                    dateTimePickerTextStyle: TextStyle(color: textPrimary, fontSize: 18),
-                  ),
-                ),
-                child: CupertinoDatePicker(
-                  mode: CupertinoDatePickerMode.date,
-                  initialDateTime: tempDate,
-                  minimumDate: minDate,
-                  maximumDate: maxDate,
-                  onDateTimeChanged: (d) => tempDate = d,
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -468,109 +514,186 @@ class _StoreCartViewState extends State<StoreCartView> {
 
     final now = DateTime.now();
     final bool isToday = targetDate.year == now.year && targetDate.month == now.month && targetDate.day == now.day;
-    DateTime initialDT = DateTime(
-      targetDate.year,
-      targetDate.month,
-      targetDate.day,
-      _customSelectedTime?.hour ?? (isToday ? (now.hour + 1) % 24 : sched.openTime.hour),
-      _customSelectedTime?.minute ?? 0,
-    );
-    DateTime tempTime = initialDT;
+    final int openMins = sched.openTime.hour * 60 + sched.openTime.minute;
+    int closeMins = sched.closeTime.hour * 60 + sched.closeTime.minute;
+    if (closeMins <= openMins) closeMins += 24 * 60;
+
+    // Safe preparation period: minimum +15 minutes from now (rounded up to 5-min step)
+    const int safePrepBufferMins = 15;
+    int earliestMins = openMins + safePrepBufferMins;
+    if (isToday) {
+      final int nowWithBuffer = now.hour * 60 + now.minute + safePrepBufferMins;
+      final int roundedUp = ((nowWithBuffer + 4) ~/ 5) * 5;
+      if (roundedUp > earliestMins) {
+        earliestMins = roundedUp;
+      }
+    }
+    final int latestMins = closeMins - 10;
+
+    final List<TimeOfDay> validTimes = [];
+    for (int m = earliestMins; m <= latestMins; m += 5) {
+      final h = (m ~/ 60) % 24;
+      final min = m % 60;
+      validTimes.add(TimeOfDay(hour: h, minute: min));
+    }
+
     final hoursStr = '${_formatTimeOfDay(sched.openTime)} – ${_formatTimeOfDay(sched.closeTime)}';
+    if (validTimes.isEmpty) {
+      showGlassToast(
+        context,
+        'cart.invalid_time_outside_hours'.tr(args: [hoursStr]),
+        isError: true,
+      );
+      return;
+    }
+
+    int selectedIndex = 0;
+    if (_customSelectedTime != null) {
+      final idx = validTimes.indexWhere(
+        (t) => t.hour == _customSelectedTime!.hour && t.minute == _customSelectedTime!.minute,
+      );
+      if (idx != -1) selectedIndex = idx;
+    }
+
+    final scrollController = FixedExtentScrollController(initialItem: selectedIndex);
 
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        height: 320,
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF141824) : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
-        ),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const SizedBox(width: 60),
-                  Column(
-                    children: [
-                      Text(
-                        'cart.select_time_title'.tr(),
-                        style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 14),
-                      ),
-                      Text(
-                        hoursStr,
-                        style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11, fontWeight: FontWeight.w600),
-                      ),
-                    ],
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      elevation: 0,
+      builder: (ctx) => ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        child: SizedBox(
+          height: 330,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: GlassContainer(
+                  useOwnLayer: true,
+                  quality: GlassQuality.standard,
+                  shape: const LiquidRoundedSuperellipse(borderRadius: 32.0),
+                  settings: LiquidGlassSettings(
+                    thickness: 0.1,
+                    blur: 20.0,
+                    glassColor: Colors.transparent,
+                    lightAngle: 45.0,
+                    lightIntensity: 0.1,
+                    ambientStrength: 1.0,
+                    saturation: 1.0,
+                    chromaticAberration: 0.0,
                   ),
-                  TextButton(
-                    onPressed: () {
-                      final picked = TimeOfDay(hour: tempTime.hour, minute: tempTime.minute);
-                      final openMins = sched.openTime.hour * 60 + sched.openTime.minute;
-                      int closeMins = sched.closeTime.hour * 60 + sched.closeTime.minute;
-                      int pickedMins = picked.hour * 60 + picked.minute;
-                      if (closeMins <= openMins) {
-                        closeMins += 24 * 60;
-                        if (pickedMins < openMins) pickedMins += 24 * 60;
-                      }
-                      if (pickedMins < openMins || pickedMins > closeMins) {
-                        showGlassToast(
-                          context,
-                          'cart.invalid_time_outside_hours'.tr(args: [hoursStr]),
-                          isError: true,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.black.withValues(alpha: 0.30)
+                          : Colors.white.withValues(alpha: 0.45),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                      border: Border(
+                        top: BorderSide(
+                          color: Colors.white.withValues(alpha: isDark ? 0.18 : 0.65),
+                          width: 1.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Column(
+                children: [
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 12, bottom: 4),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white24 : Colors.black26,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const SizedBox(width: 64),
+                        Column(
+                          children: [
+                            Text(
+                              'cart.select_time_title'.tr(),
+                              style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              hoursStr,
+                              style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11.5, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            final picked = validTimes[selectedIndex];
+                            setState(() {
+                              _customSelectedTime = picked;
+                              _selectedPickupTime = _formatTimeOfDay(picked);
+                            });
+                            Navigator.pop(ctx);
+                          },
+                          child: Text(
+                            'cart.picker_done'.tr(),
+                            style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: CupertinoPicker(
+                      scrollController: scrollController,
+                      itemExtent: 42,
+                      magnification: 1.12,
+                      squeeze: 1.1,
+                      useMagnifier: true,
+                      selectionOverlay: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 24),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : Colors.black.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: const Color(0xFF38BDF8).withValues(alpha: 0.35),
+                            width: 1.0,
+                          ),
+                        ),
+                      ),
+                      onSelectedItemChanged: (idx) {
+                        selectedIndex = idx;
+                      },
+                      children: validTimes.map((t) {
+                        return Center(
+                          child: Text(
+                            _formatTimeOfDay(t),
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
                         );
-                        return;
-                      }
-                      if (isToday) {
-                        final nowMins = now.hour * 60 + now.minute;
-                        if (pickedMins < nowMins + 10) {
-                          showGlassToast(
-                            context,
-                            'cart.invalid_time_outside_hours'.tr(args: [hoursStr]),
-                            isError: true,
-                          );
-                          return;
-                        }
-                      }
-                      setState(() {
-                        _customSelectedTime = picked;
-                        _selectedPickupTime = _formatTimeOfDay(picked);
-                      });
-                      Navigator.pop(ctx);
-                    },
-                    child: Text(
-                      'cart.picker_done'.tr(),
-                      style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.w800),
+                      }).toList(),
                     ),
                   ),
                 ],
               ),
-            ),
-            Expanded(
-              child: CupertinoTheme(
-                data: CupertinoThemeData(
-                  brightness: isDark ? Brightness.dark : Brightness.light,
-                  textTheme: CupertinoTextThemeData(
-                    dateTimePickerTextStyle: TextStyle(color: textPrimary, fontSize: 18),
-                  ),
-                ),
-                child: CupertinoDatePicker(
-                  mode: CupertinoDatePickerMode.time,
-                  initialDateTime: initialDT,
-                  minuteInterval: 5,
-                  onDateTimeChanged: (d) => tempTime = d,
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+    scrollController.dispose();
   }
 
   @override

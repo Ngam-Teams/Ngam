@@ -1,6 +1,6 @@
 {
-  "version": "1.0.50",
-  "build_number": 23,
-  "released_at": "2026-11-17T23:55:00Z",
-  "changelog": "Aliran baharu QR Resit Digital & Tuntutan Poin Ngam (EreceiptScreen), arkib Resit Saya untuk semak semula resit lampau, serta halaman/popup Tuntutan Promo khusus tanpa terus redirect ke halaman kedai."
+  "version": "1.0.51",
+  "build_number": 24,
+  "released_at": "2026-11-18T03:05:00Z",
+  "changelog": "Pemilih tarikh & masa (store_cart_view) kini bergaya glassmorphism seperti Product Details, buang PG/PM, dan tapis masa lepas serta luar waktu operasi (+15 minit tempoh penyediaan)."
 }
