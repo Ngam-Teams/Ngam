@@ -1210,75 +1210,43 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Widget _buildFloatingTopBar(bool isDark) {
     final topPadding = MediaQuery.of(context).padding.top;
-    return Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
-      child: Container(
-        padding: EdgeInsets.fromLTRB(16, topPadding + 6, 16, 8),
-        child: Row(
-          children: [
-            // Back Button
-            GlassNavButton(
-              icon: HugeIcons.strokeRoundedArrowLeft01,
-              isDark: true,
-              size: 42,
-              iconSize: 20,
-              onTap: () => Navigator.pop(context),
-            ),
-            const Spacer(),
-
-            // Share Button
-            GlassNavButton(
-              icon: HugeIcons.strokeRoundedShare01,
-              isDark: true,
-              size: 42,
-              iconSize: 20,
-              onTap: _shareProduct,
-            ),
-            const SizedBox(width: 8),
-
-            // Save / Favourite Button
-            GlassNavButton(
-              icon: _isSaved
-                  ? HugeIcons.strokeRoundedFavourite
-                  : HugeIcons.strokeRoundedFavourite,
-              isDark: true,
-              iconColor: _isSaved ? const Color(0xFFEF4444) : Colors.white,
-              size: 42,
-              iconSize: 20,
-              onTap: _toggleSave,
-            ),
-            const SizedBox(width: 8),
-
-            // Cart Shortcut Button
-            GlassNavButton(
-              icon: HugeIcons.strokeRoundedShoppingCart02,
-              isDark: true,
-              size: 42,
-              iconSize: 20,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => StoreCartView(
-                      shop: {
-                        ...widget.shop,
-                        if (_shopDetails != null) ..._shopDetails!,
-                        'name': _shopName,
-                        'business_name': _shopName,
-                      },
-                      cartItems: const [],
-                      tableNumber: widget.tableNumber,
-                      promoCode: widget.promoCode,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
+    return FloatingTopBar(
+      isDark: isDark,
+      top: topPadding + 12.0,
+      horizontal: 16.0,
+      onBack: () => Navigator.pop(context),
+      actionItems: [
+        GlassNavPillItem(
+          icon: HugeIcons.strokeRoundedShare01,
+          onTap: _shareProduct,
         ),
-      ),
+        GlassNavPillItem(
+          icon: HugeIcons.strokeRoundedFavourite,
+          iconColor: _isSaved ? const Color(0xFFEF4444) : null,
+          onTap: _toggleSave,
+        ),
+        GlassNavPillItem(
+          icon: HugeIcons.strokeRoundedShoppingCart02,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => StoreCartView(
+                  shop: {
+                    ...widget.shop,
+                    if (_shopDetails != null) ..._shopDetails!,
+                    'name': _shopName,
+                    'business_name': _shopName,
+                  },
+                  cartItems: const [],
+                  tableNumber: widget.tableNumber,
+                  promoCode: widget.promoCode,
+                ),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 

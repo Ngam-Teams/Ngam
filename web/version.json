@@ -1,6 +1,6 @@
 {
-  "version": "1.0.53",
-  "build_number": 26,
-  "released_at": "2026-11-18T05:25:00Z",
-  "changelog": "Penambahan sistem Lapor Masalah, Bug & Maklum Balas berserta muat naik tangkap layar R2 dan penjejak status tiket langsung dalam Pusat Bantuan."
+  "version": "1.0.54",
+  "build_number": 27,
+  "released_at": "2026-11-18T08:10:00Z",
+  "changelog": "Penyeragaman header glassmorphism Product Detail Screen menggunakan FloatingTopBar dan GlassNavPill."
 }
