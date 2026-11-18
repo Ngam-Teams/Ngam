@@ -1,6 +1,6 @@
 {
-  "version": "1.0.51",
-  "build_number": 24,
-  "released_at": "2026-11-18T04:40:00Z",
-  "changelog": "Tukar semua ikon beg beli-belah kepada ikon troli (HugeIcons.strokeRoundedShoppingCart02) dan kemas kini pemilih masa & tarikh troli."
+  "version": "1.0.52",
+  "build_number": 25,
+  "released_at": "2026-11-18T05:00:00Z",
+  "changelog": "Halaman butiran produk & servis baharu (ProductDetailScreen) gaya Shopee serba lengkap: karusel gambar, rating & bilangan jualan, baucar kedai, pilihan variasi & add-on, maklumat servis, kad peniaga, ruangan komen/ulasan pelanggan berserta muat naik gambar, dan bar tindakan lekit di bawah [Chat 1/4] [Troli 1/4] [Beli Sekarang / Tempah 1/2]."
 }

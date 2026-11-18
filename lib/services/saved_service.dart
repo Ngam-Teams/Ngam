@@ -5,10 +5,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SavedService {
   static const String _shopsKey = 'ngam_saved_shops';
   static const String _postsKey = 'ngam_saved_posts';
+  static const String _productsKey = 'ngam_saved_products';
 
   static final ValueNotifier<List<Map<String, dynamic>>> savedShopsNotifier =
       ValueNotifier<List<Map<String, dynamic>>>([]);
   static final ValueNotifier<List<Map<String, dynamic>>> savedPostsNotifier =
+      ValueNotifier<List<Map<String, dynamic>>>([]);
+  static final ValueNotifier<List<Map<String, dynamic>>> savedProductsNotifier =
       ValueNotifier<List<Map<String, dynamic>>>([]);
 
   static bool _initialized = false;
@@ -30,6 +33,13 @@ class SavedService {
       if (postsRaw != null && postsRaw.isNotEmpty) {
         final List<dynamic> decoded = jsonDecode(postsRaw);
         savedPostsNotifier.value =
+            decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+
+      final productsRaw = prefs.getString(_productsKey);
+      if (productsRaw != null && productsRaw.isNotEmpty) {
+        final List<dynamic> decoded = jsonDecode(productsRaw);
+        savedProductsNotifier.value =
             decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
       }
 
@@ -203,6 +213,51 @@ class SavedService {
       await prefs.setString(_postsKey, jsonEncode(posts));
     } catch (e) {
       debugPrint('[SavedService] Gagal menyimpan senarai hantaran: $e');
+    }
+  }
+
+  // ─── PRODUK / SERVIS DISIMPAN ─────────────────────────────────
+
+  static bool isProductSaved(String? productId) {
+    if (productId == null || productId.isEmpty) return false;
+    return savedProductsNotifier.value.any(
+      (p) => p['id']?.toString() == productId,
+    );
+  }
+
+  static Future<bool> toggleSaveProduct(Map<String, dynamic> product) async {
+    await init();
+    final productId = (product['id'] ?? '').toString();
+    if (productId.isEmpty) return false;
+
+    final current = List<Map<String, dynamic>>.from(savedProductsNotifier.value);
+    final existingIndex = current.indexWhere(
+      (p) => p['id']?.toString() == productId,
+    );
+
+    bool nowSaved;
+    if (existingIndex >= 0) {
+      current.removeAt(existingIndex);
+      nowSaved = false;
+    } else {
+      current.insert(0, {
+        ...product,
+        'savedAt': DateTime.now().toIso8601String(),
+      });
+      nowSaved = true;
+    }
+
+    savedProductsNotifier.value = current;
+    await _persistProducts(current);
+    return nowSaved;
+  }
+
+  static Future<void> _persistProducts(List<Map<String, dynamic>> products) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_productsKey, jsonEncode(products));
+    } catch (e) {
+      debugPrint('[SavedService] Gagal menyimpan senarai produk: $e');
     }
   }
 }

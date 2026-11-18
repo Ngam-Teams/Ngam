@@ -533,8 +533,14 @@ class _ChatScreenState extends State<ChatScreen> {
 class ChatThreadScreen extends StatefulWidget {
   final ConversationModel conversation;
   final String? initialGigId;
+  final String? initialDraftMessage;
 
-  const ChatThreadScreen({super.key, required this.conversation, this.initialGigId});
+  const ChatThreadScreen({
+    super.key,
+    required this.conversation,
+    this.initialGigId,
+    this.initialDraftMessage,
+  });
 
   @override
   State<ChatThreadScreen> createState() => _ChatThreadScreenState();
@@ -732,6 +738,10 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     final draft = prefs.getString('draft_${widget.conversation.id}');
     if (draft != null && draft.isNotEmpty && mounted) {
       _controller.text = draft;
+    } else if (widget.initialDraftMessage != null &&
+        widget.initialDraftMessage!.trim().isNotEmpty &&
+        mounted) {
+      _controller.text = widget.initialDraftMessage!.trim();
     }
   }
 

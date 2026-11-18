@@ -35,6 +35,8 @@ class BookingsView extends StatefulWidget {
   final String shopName;
   final String category;
   final String shopImage;
+  final String? initialServiceId;
+  final String? initialServiceName;
 
   const BookingsView({
     super.key,
@@ -42,6 +44,8 @@ class BookingsView extends StatefulWidget {
     this.shopName = "Zul Barber Shop",
     this.category = "Barber",
     this.shopImage = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=400",
+    this.initialServiceId,
+    this.initialServiceName,
   });
 
   @override
@@ -1404,6 +1408,18 @@ class _BookingsViewState extends State<BookingsView> {
           _addonsList = [];
           _selectedAddons.clear();
           _selectedServices.removeWhere((i) => i >= _servicesList.length);
+          if (widget.initialServiceId != null || widget.initialServiceName != null) {
+            final targetId = widget.initialServiceId?.trim() ?? '';
+            final targetName = widget.initialServiceName?.trim().toLowerCase() ?? '';
+            final matchIdx = _servicesList.indexWhere((s) =>
+                (targetId.isNotEmpty && s['id'] == targetId) ||
+                (targetName.isNotEmpty && (s['name'] ?? '').toLowerCase() == targetName));
+            if (matchIdx >= 0) {
+              _selectedServices
+                ..clear()
+                ..add(matchIdx);
+            }
+          }
           if (_selectedServices.isEmpty && _servicesList.isNotEmpty) _selectedServices.add(0);
         }
       }
