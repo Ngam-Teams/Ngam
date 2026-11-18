@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:ngam/widgets/glass_box.dart';
 
 import '../../providers/auth_provider.dart';
@@ -74,12 +75,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Widget _buildProfileHeaderShimmer(bool isDark) {
+    final baseColor = isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06);
+    final highlightColor = isDark ? Colors.white.withValues(alpha: 0.16) : Colors.black.withValues(alpha: 0.12);
+
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      child: Column(
+        children: [
+          Container(
+            width: 108,
+            height: 108,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: 180,
+            height: 24,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: 96,
+            height: 20,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: 160,
+            height: 14,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
     final themeProvider = context.watch<ThemeProvider>();
     final user = authProvider.user;
     final isDark = themeProvider.isDarkMode;
+    final bool isProfileLoading = user == null && authProvider.isInitializing;
 
 
     return Scaffold(
@@ -98,7 +150,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         const SizedBox(height: 20),
 
-                        // ─── Header Profil (Tetamu atau Log Masuk) ───
+                        // ─── Header Profil (Shimmer / Tetamu / Log Masuk) ───
+                        if (isProfileLoading)
+                          _buildProfileHeaderShimmer(isDark)
+                        else
                         Center(
                           child: Column(
                             children: [

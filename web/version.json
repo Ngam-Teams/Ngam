@@ -1,6 +1,6 @@
 {
-  "version": "1.0.54",
-  "build_number": 27,
-  "released_at": "2026-11-18T08:10:00Z",
-  "changelog": "Penyeragaman header glassmorphism Product Detail Screen menggunakan FloatingTopBar dan GlassNavPill."
+  "version": "1.0.55",
+  "build_number": 28,
+  "released_at": "2026-11-18T08:18:00Z",
+  "changelog": "Cache profil tempatan segera dan skeleton shimmer pada skrin Profil supaya tidak memaparkan placeholder Akaun Tetamu semasa pemuatan."
 }

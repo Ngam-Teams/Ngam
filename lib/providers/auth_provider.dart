@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_data.dart';
 import '../models/user_model.dart';
@@ -103,6 +105,27 @@ class AuthProvider extends ChangeNotifier {
   bool get isCustomer => true;
   bool get isRunner => false;
 
+  static const String _cachedUserKeyPrefix = 'cached_user_profile_';
+
+  Future<void> _cacheUserProfile(UserModel? user) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (user != null) {
+        await prefs.setString(
+          '$_cachedUserKeyPrefix${user.id}',
+          jsonEncode(user.toJson()),
+        );
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _clearCachedUserProfile(String userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('$_cachedUserKeyPrefix$userId');
+    } catch (_) {}
+  }
+
   void _syncUserData() {
     if (_user != null) {
       final name = (_user!.userName ?? '').trim();
@@ -119,6 +142,7 @@ class AuthProvider extends ChangeNotifier {
       if ((_user!.userPhone ?? '').trim().isNotEmpty) {
         UserData.userPhone.value = _user!.userPhone!.trim();
       }
+      _cacheUserProfile(_user);
     } else {
       UserData.userName.value = '';
       UserData.userProfilePic.value = '';
@@ -130,16 +154,37 @@ class AuthProvider extends ChangeNotifier {
     _isInitializing = true;
     notifyListeners();
 
+    final sessionUser = Supabase.instance.client.auth.currentUser;
+    if (sessionUser != null) {
+      // 1. Hydrate immediately from local cache so profile never flashes Guest UI
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cachedJson = prefs.getString('$_cachedUserKeyPrefix${sessionUser.id}');
+        if (cachedJson != null && cachedJson.isNotEmpty) {
+          _user = UserModel.fromJson(jsonDecode(cachedJson) as Map<String, dynamic>);
+          _syncUserData();
+          notifyListeners();
+        }
+      } catch (_) {}
+    }
+
+    // 2. Refresh latest profile from Supabase in background
     try {
-      _user = await AuthService.getCurrentUser();
-      _syncUserData();
+      final freshUser = await AuthService.getCurrentUser();
+      if (freshUser != null || Supabase.instance.client.auth.currentUser == null) {
+        _user = freshUser;
+        _syncUserData();
+      }
       if (_user != null) {
-        await PushService.saveTokenToSupabase(_user!.id);
-        ChatService.prefetchChats(_user!.id); // Auto-fetch chats background
+        // Non-blocking background tasks so UI never stalls
+        PushService.saveTokenToSupabase(_user!.id).catchError((_) {});
+        ChatService.prefetchChats(_user!.id);
       }
     } catch (e) {
-      _user = null;
-      _syncUserData();
+      if (Supabase.instance.client.auth.currentUser == null) {
+        _user = null;
+        _syncUserData();
+      }
     }
 
     _isInitializing = false;
@@ -269,8 +314,10 @@ class AuthProvider extends ChangeNotifier {
 
   /// Sign out
   Future<void> signOut() async {
-    if (_user != null) {
-      await PushService.clearTokenFromSupabase(_user!.id);
+    final userId = _user?.id;
+    if (userId != null) {
+      await PushService.clearTokenFromSupabase(userId);
+      await _clearCachedUserProfile(userId);
     }
     await AuthService.signOut();
     _user = null;
