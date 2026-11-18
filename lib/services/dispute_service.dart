@@ -312,22 +312,8 @@ class DisputeService {
   static Future<void> withdrawDispute(String disputeId, String senderName) async {
     final uid = _supabase.auth.currentUser?.id;
     if (uid == null) throw Exception('Not authenticated');
-    await _supabase
-        .from('disputes')
-        .update({
-          'status': 'withdrawn',
-          'resolution_type': 'customer_withdrawn',
-          'resolved_at': DateTime.now().toUtc().toIso8601String(),
-        })
-        .eq('id', disputeId)
-        .eq('customer_id', uid);
-
-    await _supabase.from('dispute_messages').insert({
-      'dispute_id': disputeId,
-      'sender_id': null,
-      'sender_role': 'system',
-      'sender_name': 'Ngam Dispute Center',
-      'message': '$senderName telah menarik balik pertikaian dan menandakan isu selesai.',
+    await _supabase.rpc('withdraw_dispute_case', params: {
+      'p_dispute_id': disputeId,
     });
   }
 }

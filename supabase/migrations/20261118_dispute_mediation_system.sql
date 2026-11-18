@@ -152,6 +152,7 @@ CREATE POLICY "Disputes participant & admin select"
   USING (
     customer_id = auth.uid()
     OR public.is_active_staff_of(business_id)
+    OR EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = business_id AND b.owner_user_id = auth.uid())
     OR public.is_super_admin()
   );
 
@@ -168,8 +169,14 @@ CREATE POLICY "Customer withdraw own dispute"
 
 CREATE POLICY "Business staff update dispute"
   ON public.disputes FOR UPDATE TO authenticated
-  USING (public.is_active_staff_of(business_id))
-  WITH CHECK (public.is_active_staff_of(business_id));
+  USING (
+    public.is_active_staff_of(business_id)
+    OR EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = business_id AND b.owner_user_id = auth.uid())
+  )
+  WITH CHECK (
+    public.is_active_staff_of(business_id)
+    OR EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = business_id AND b.owner_user_id = auth.uid())
+  );
 
 CREATE POLICY "Super admin manage all disputes"
   ON public.disputes FOR ALL TO authenticated
@@ -185,6 +192,7 @@ CREATE POLICY "Dispute messages participant & admin select"
         AND (
           d.customer_id = auth.uid()
           OR public.is_active_staff_of(d.business_id)
+          OR EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = d.business_id AND b.owner_user_id = auth.uid())
           OR public.is_super_admin()
         )
     )
@@ -199,7 +207,7 @@ CREATE POLICY "Dispute messages participant insert"
       WHERE d.id = dispute_messages.dispute_id
         AND (
           (d.customer_id = auth.uid() AND sender_role = 'customer')
-          OR (public.is_active_staff_of(d.business_id) AND sender_role = 'business')
+          OR ((public.is_active_staff_of(d.business_id) OR EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = d.business_id AND b.owner_user_id = auth.uid())) AND sender_role = 'business')
           OR (public.is_super_admin() AND sender_role IN ('moderator', 'system'))
         )
     )
@@ -343,21 +351,23 @@ BEGIN
     GREATEST(v_total_amt, COALESCE(p_requested_refund_amount, 0))
   );
 
-  -- Link or create Customer <-> Business conversation so Admin Mediator can inspect original chat logs
-  SELECT id INTO v_conv_id
-  FROM public.conversations
-  WHERE user1_id = v_customer_id AND business_id = v_business_id
+  -- Link Customer <-> Business conversation (using real user1_id / user2_id columns) so Admin Mediator can inspect original chat logs
+  SELECT c.id INTO v_conv_id
+  FROM public.conversations c
+  WHERE (
+    (c.user1_id = v_customer_id AND (c.user2_id = v_owner_id OR EXISTS (SELECT 1 FROM public.team_members tm WHERE tm.business_id = v_business_id AND tm.user_id = c.user2_id)))
+    OR
+    (c.user2_id = v_customer_id AND (c.user1_id = v_owner_id OR EXISTS (SELECT 1 FROM public.team_members tm WHERE tm.business_id = v_business_id AND tm.user_id = c.user1_id)))
+  )
+  ORDER BY c.updated_at DESC
   LIMIT 1;
 
-  IF v_conv_id IS NULL AND v_owner_id IS NOT NULL THEN
+  IF v_conv_id IS NULL AND v_owner_id IS NOT NULL AND v_owner_id <> v_customer_id THEN
     INSERT INTO public.conversations (
-      user1_id, user2_id, business_id, context_type, context_id, updated_at
+      user1_id, user2_id, updated_at
     ) VALUES (
       v_customer_id,
       v_owner_id,
-      v_business_id,
-      p_target_type,
-      COALESCE(p_order_id, v_booking.id),
       NOW()
     )
     ON CONFLICT DO NOTHING
@@ -366,7 +376,9 @@ BEGIN
     IF v_conv_id IS NULL THEN
       SELECT id INTO v_conv_id
       FROM public.conversations
-      WHERE user1_id = v_customer_id AND business_id = v_business_id
+      WHERE (user1_id = v_customer_id AND user2_id = v_owner_id)
+         OR (user1_id = v_owner_id AND user2_id = v_customer_id)
+      ORDER BY updated_at DESC
       LIMIT 1;
     END IF;
   END IF;
@@ -470,7 +482,9 @@ BEGIN
     RAISE EXCEPTION 'Kes pertikaian tidak ditemui.';
   END IF;
 
-  IF NOT public.is_active_staff_of(v_dispute.business_id) AND NOT public.is_super_admin() THEN
+  IF NOT public.is_active_staff_of(v_dispute.business_id)
+     AND NOT EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = v_dispute.business_id AND b.owner_user_id = v_uid)
+     AND NOT public.is_super_admin() THEN
     RAISE EXCEPTION 'Akses ditolak: Hanya pemilik atau staf kedai boleh membalas kes ini.';
   END IF;
 
@@ -626,7 +640,8 @@ BEGIN
 
   IF v_dispute.customer_id = v_uid THEN
     v_actor := COALESCE(v_dispute.customer_name, 'Pelanggan');
-  ELSIF public.is_active_staff_of(v_dispute.business_id) THEN
+  ELSIF public.is_active_staff_of(v_dispute.business_id)
+     OR EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = v_dispute.business_id AND b.owner_user_id = v_uid) THEN
     v_actor := COALESCE(v_dispute.business_name, 'Pihak Kedai');
   ELSIF public.is_super_admin() THEN
     v_actor := 'Admin Ngam';
@@ -651,6 +666,77 @@ BEGIN
     p_dispute_id, NULL, 'system', 'Ngam Dispute Center',
     v_actor || ' telah melibatkan Mediator Admin Ngam untuk semakan & keputusan rasmi.' ||
     CASE WHEN TRIM(COALESCE(p_note, '')) <> '' THEN E'\nNota: ' || TRIM(p_note) ELSE '' END
+  );
+
+  RETURN v_dispute;
+END;
+$$;
+
+-- 7.5 RPC: Customer Withdraws Dispute Atomically (`withdraw_dispute_case`)
+CREATE OR REPLACE FUNCTION public.withdraw_dispute_case(
+  p_dispute_id UUID
+)
+RETURNS public.disputes
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_uid     UUID := auth.uid();
+  v_dispute public.disputes;
+  v_actor   TEXT;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  SELECT * INTO v_dispute FROM public.disputes WHERE id = p_dispute_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Kes pertikaian tidak ditemui.';
+  END IF;
+
+  IF v_dispute.customer_id IS DISTINCT FROM v_uid AND NOT public.is_super_admin() THEN
+    RAISE EXCEPTION 'Akses ditolak: Hanya pelanggan yang memfailkan kes boleh menarik balik pertikaian ini.';
+  END IF;
+
+  IF v_dispute.status NOT IN ('open', 'business_responded', 'escalated', 'under_review') THEN
+    RAISE EXCEPTION 'Kes ini telah pun ditutup.';
+  END IF;
+
+  v_actor := COALESCE(NULLIF(TRIM(v_dispute.customer_name), ''), 'Pelanggan');
+
+  IF v_dispute.order_id IS NOT NULL THEN
+    UPDATE public.orders
+    SET status = CASE WHEN status = 'disputed' THEN 'completed' ELSE status END
+    WHERE id = v_dispute.order_id;
+  END IF;
+
+  IF v_dispute.booking_id IS NOT NULL THEN
+    UPDATE public.bookings
+    SET status = CASE WHEN status = 'disputed' THEN 'completed' ELSE status END,
+        booking_metadata = COALESCE(booking_metadata, '{}'::jsonb) || jsonb_build_object(
+          'is_disputed', false,
+          'dispute_resolution', 'customer_withdrawn',
+          'resolved_at', NOW()
+        )
+    WHERE id = v_dispute.booking_id;
+  END IF;
+
+  UPDATE public.disputes
+  SET status = 'withdrawn',
+      resolution_type = 'customer_withdrawn',
+      resolved_at = NOW()
+  WHERE id = p_dispute_id
+  RETURNING * INTO v_dispute;
+
+  INSERT INTO public.dispute_messages (
+    dispute_id, sender_id, sender_role, sender_name, message
+  ) VALUES (
+    p_dispute_id,
+    NULL,
+    'system',
+    'Ngam Dispute Center',
+    v_actor || ' telah menarik balik pertikaian dan menandakan isu selesai.'
   );
 
   RETURN v_dispute;
@@ -831,6 +917,9 @@ GRANT EXECUTE ON FUNCTION public.respond_dispute_case(UUID, TEXT, TEXT, JSONB) T
 
 REVOKE ALL ON FUNCTION public.escalate_dispute_case(UUID, TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.escalate_dispute_case(UUID, TEXT) TO authenticated;
+
+REVOKE ALL ON FUNCTION public.withdraw_dispute_case(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.withdraw_dispute_case(UUID) TO authenticated;
 
 REVOKE ALL ON FUNCTION public.resolve_dispute_case(UUID, TEXT, NUMERIC, TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.resolve_dispute_case(UUID, TEXT, NUMERIC, TEXT) TO authenticated;
