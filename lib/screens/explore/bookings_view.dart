@@ -1229,7 +1229,9 @@ class _BookingsViewState extends State<BookingsView> {
   }
 
   String _shopName = '';
+  String _shopCategory = '';
   String _selectedTime = '';
+  DateTime _displayedMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
 
   String get _resolvedShopName {
     final s = _shopName.trim();
@@ -1240,6 +1242,17 @@ class _BookingsViewState extends State<BookingsView> {
       return s;
     }
     return widget.shopName;
+  }
+
+  String get _resolvedCategoryLabel {
+    final raw = (_shopCategory.trim().isNotEmpty ? _shopCategory : widget.category).trim();
+    if (raw.isEmpty) return 'Servis';
+    if (raw.toLowerCase() == 'fnb' || raw.toLowerCase() == 'f&b') return 'F&B';
+    return raw
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .map((w) => '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}')
+        .join(' ');
   }
 
   //  Restored Auto-Save Functions (Scoped by shopId to prevent cross-shop draft contamination)
@@ -1299,6 +1312,7 @@ class _BookingsViewState extends State<BookingsView> {
             _selectedTimeIndex = -1;
             _selectedTime = '';
             _selectedCalendarDate = DateTime.parse(_dates[d]['fullDate']!);
+            _displayedMonth = DateTime(_selectedCalendarDate.year, _selectedCalendarDate.month, 1);
           });
           return;
         }
@@ -1321,6 +1335,9 @@ class _BookingsViewState extends State<BookingsView> {
           final realName = biz['business_name']?.toString() ?? widget.shopName;
           if (realName.trim().isNotEmpty) {
             _shopName = realName.trim();
+          }
+          if (realIndustry.trim().isNotEmpty) {
+            _shopCategory = realIndustry.trim();
           }
           final detected = _detectBookingType(realIndustry, realName);
           if (detected != _bookingType) {
@@ -1569,14 +1586,18 @@ class _BookingsViewState extends State<BookingsView> {
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    bool isFocused = _currentStep > 0 || _isSubmitted;
-
-    List<int> orderedIndices = List.generate(_staffs.length, (i) => i);
-    orderedIndices.sort((a, b) {
-      int relA = (a - _frontCardIndex + _staffs.length) % _staffs.length;
-      int relB = (b - _frontCardIndex + _staffs.length) % _staffs.length;
-      return relB.compareTo(relA);
-    });
+    final int safeIdx =
+        _staffs.isEmpty ? 0 : _frontCardIndex.clamp(0, _staffs.length - 1);
+    final Map<String, String> activeStaff = _staffs.isNotEmpty
+        ? _staffs[safeIdx]
+        : {
+            "id": "any",
+            "name": "Mana-mana Staf",
+            "specialty": "",
+            "rating": "5.0",
+            "image":
+                "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=400",
+          };
 
     return PopScope(
       canPop: false,
@@ -1585,10 +1606,12 @@ class _BookingsViewState extends State<BookingsView> {
         _handleBack();
       },
       child: Scaffold(
-        backgroundColor: isDark ? const Color(0xFF13171B) : const Color(0xFFE5ECF1),
+        backgroundColor:
+            isDark ? const Color(0xFF0B0F17) : const Color(0xFFEEF3F9),
         body: SizedBox.expand(
           child: Stack(
             children: [
+              // Ambient luminous gradient backdrop
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
@@ -1596,136 +1619,140 @@ class _BookingsViewState extends State<BookingsView> {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: isDark
-                          ? [const Color(0xFF1E242B), const Color(0xFF13171B)]
-                          : [const Color(0xFFE5ECF1), const Color(0xFFD4DEE5)],
+                          ? const [
+                              Color(0xFF0E1525),
+                              Color(0xFF0B0F17),
+                              Color(0xFF101827),
+                            ]
+                          : const [
+                              Color(0xFFF0F6FF),
+                              Color(0xFFE9EFF8),
+                              Color(0xFFF6F9FC),
+                            ],
                     ),
                   ),
                 ),
               ),
               Positioned(
-                top: -100, left: -100,
-                child: Container(width: 300, height: 300, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.blue.withValues(alpha: isDark ? 0.2 : 0.35))),
+                top: -90,
+                left: -80,
+                child: Container(
+                  width: 300,
+                  height: 300,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF3B82F6)
+                        .withValues(alpha: isDark ? 0.20 : 0.24),
+                  ),
+                ),
               ),
               Positioned(
-                bottom: 100, right: -50,
-                child: Container(width: 250, height: 250, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.indigo.withValues(alpha: isDark ? 0.15 : 0.25))),
+                top: 180,
+                right: -90,
+                child: Container(
+                  width: 240,
+                  height: 240,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF6366F1)
+                        .withValues(alpha: isDark ? 0.14 : 0.18),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 60,
+                left: -60,
+                child: Container(
+                  width: 220,
+                  height: 220,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF0EA5E9)
+                        .withValues(alpha: isDark ? 0.12 : 0.16),
+                  ),
+                ),
               ),
               Positioned.fill(
-                child: BackdropFilter(filter: ui.ImageFilter.blur(sigmaX: 60, sigmaY: 60), child: const SizedBox()), //  FIXED
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 70, sigmaY: 70),
+                  child: const SizedBox.expand(),
+                ),
               ),
 
               SafeArea(
                 bottom: false,
                 child: Stack(
                   children: [
-                    SingleChildScrollView(
-                      //  RESTORED: Left and Right padding! The cards are no longer infinite width.
-                      padding: const EdgeInsets.only(left: 20, right: 20, top: 76, bottom: 40),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        child: Text(
-                            _pageTitle,
-                            key: ValueKey<String>(_pageTitle),
-                            style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, height: 1.1, letterSpacing: -0.5, color: isDark ? Colors.white : const Color(0xFF2C2C2C))
+                    Positioned.fill(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: EdgeInsets.fromLTRB(
+                          16,
+                          72,
+                          16,
+                          _isSubmitted ? 40 : 120,
                         ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      //  RESTORED: THE CLASSIC VERTICAL 3D STACK
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onVerticalDragEnd: (DragEndDetails details) {
-                          if (isFocused) return; // Locks swipe when they start checkout
-                          if (details.primaryVelocity == null) return;
-
-                          if (details.primaryVelocity! > 300) {
-                            setState(() => _frontCardIndex = (_frontCardIndex + 1) % _staffs.length);
-                          } else if (details.primaryVelocity! < -300) {
-                            setState(() => _frontCardIndex = (_frontCardIndex - 1 + _staffs.length) % _staffs.length);
-                          }
-                        },
-                        child: SizedBox(
-                          //  THE MASTER HEIGHT: Dictates the total space available for the deck.
-                          height: MediaQuery.of(context).size.height * 0.74,
-                          child: Stack(
-                            alignment: Alignment.topCenter,
-                            clipBehavior: Clip.none,
-                            children: orderedIndices.map((index) {
-                              int relativePosition = (index - _frontCardIndex + _staffs.length) % _staffs.length;
-
-                              double top; double scale; double opacity;
-
-                              //  RESTORED: The exact original math that creates the beautiful top stack!
-                              if (relativePosition == 0) {
-                                top = isFocused ? 10 : 100;
-                                scale = 1.0; opacity = 1.0;
-                              } else if (relativePosition == 1) {
-                                top = isFocused ? 10 : 45;
-                                scale = isFocused ? 0.8 : 0.9;
-                                opacity = isFocused ? 0.0 : 0.9;
-                              } else if (relativePosition == 2) {
-                                top = isFocused ? 10 : 5;
-                                scale = 0.8;
-                                opacity = isFocused ? 0.0 : 0.6;
-                              } else {
-                                top = 5; scale = 0.8; opacity = 0.0;
-                              }
-
-                              return AnimatedPositioned(
-                                key: ValueKey(index),
-                                duration: const Duration(milliseconds: 600),
-                                curve: Curves.easeOutQuint,
-                                top: top,
-                                left: 0,
-                                right: 0,
-                                //  THE MAGIC FIX:
-                                // - If it is the Active Card (0), its bottom is ALWAYS locked to 0.
-                                // - If it is an inactive card in the back, it uses the old math so the scale looks right.
-                                bottom: relativePosition == 0 ? 0 : (isFocused ? 0 : -top),
-                                child: AnimatedScale(
-                                  duration: const Duration(milliseconds: 600),
-                                  curve: Curves.easeOutQuint,
-                                  scale: scale,
-                                  alignment: Alignment.topCenter,
-                                  child: AnimatedOpacity(
-                                    duration: const Duration(milliseconds: 400),
-                                    opacity: opacity,
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        // Brings card to front when tapped
-                                        if (relativePosition != 0 && !isFocused) {
-                                          setState(() => _frontCardIndex = index);
-                                        }
-                                      },
-                                      child: AbsorbPointer(
-                                        absorbing: relativePosition != 0, // Blocks accidental button clicks on back cards
-                                        child: _buildExpandedGlassCard(
-                                            _staffs[index],
-                                            isDark,
-                                            relativePosition == 0 // Only true for active card
-                                        ),
+                        child: _isSubmitted
+                            ? _buildSuccessState(isDark)
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildModernStepper(isDark),
+                                  const SizedBox(height: 16),
+                                  if (widget.initialServiceName != null &&
+                                      widget.initialServiceName!
+                                          .trim()
+                                          .isNotEmpty) ...[
+                                    _buildPreselectedServicePill(isDark),
+                                    const SizedBox(height: 14),
+                                  ],
+                                  AnimatedSwitcher(
+                                    duration:
+                                        const Duration(milliseconds: 280),
+                                    switchInCurve: Curves.easeOutCubic,
+                                    switchOutCurve: Curves.easeInCubic,
+                                    child: Text(
+                                      _pageTitle,
+                                      key: ValueKey<String>(_pageTitle),
+                                      style: TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: -0.4,
+                                        color: isDark
+                                            ? Colors.white
+                                            : const Color(0xFF0F172A),
                                       ),
                                     ),
                                   ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
+                                  const SizedBox(height: 14),
+                                  AnimatedSwitcher(
+                                    duration:
+                                        const Duration(milliseconds: 300),
+                                    switchInCurve: Curves.easeOutCubic,
+                                    switchOutCurve: Curves.easeInCubic,
+                                    child: _buildCurrentStep(isDark, activeStaff),
+                                  ),
+                                ],
+                              ),
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+
+                    // Sticky Frosted Bottom Action Bar
+                    if (!_isSubmitted)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: _buildStickyBottomBar(isDark, activeStaff),
+                      ),
+
+                    // Top Floating Glass Bar (standardized with Discover & Business)
                     FloatingTopBar(
                       isDark: isDark,
                       fallbackRoute: '/customer-home',
                       onBack: _handleBack,
-                      title: widget.shopName,
-                      subtitle: widget.category,
+                      title: _resolvedShopName,
+                      subtitle: _resolvedCategoryLabel,
                       actions: [
                         GlassNavPill(
                           isDark: isDark,
@@ -1738,7 +1765,7 @@ class _BookingsViewState extends State<BookingsView> {
                             ),
                             GlassNavPillItem(
                               icon: HugeIcons.strokeRoundedTicket01,
-                              tooltip: 'Baucar & Ganjaran',
+                              tooltip: 'booking.vouchers_tooltip'.tr(),
                               onTap: () => _openBookingVoucherPicker(),
                             ),
                           ],
@@ -1755,19 +1782,45 @@ class _BookingsViewState extends State<BookingsView> {
     );
   }
 
-  Widget _buildGlassBox({required Widget child, required bool isDark, double radius = 24, double opacity = 1.0, EdgeInsets? padding, double? height, double? width}) {
+  Widget _buildGlassBox({
+    required Widget child,
+    required bool isDark,
+    double radius = 22,
+    double opacity = 1.0,
+    EdgeInsets? padding,
+    double? height,
+    double? width,
+    Color? borderColor,
+    Color? fillColor,
+  }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 20 * opacity, sigmaY: 20 * opacity), //  FIXED
+        filter: ui.ImageFilter.blur(sigmaX: 14 * opacity, sigmaY: 14 * opacity),
         child: Container(
           height: height,
           width: width,
           padding: padding,
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withValues(alpha: 0.08 * opacity) : Colors.white.withValues(alpha: 0.5 * opacity),
+            color: fillColor ??
+                (isDark
+                    ? Colors.white.withValues(alpha: 0.07 * opacity)
+                    : Colors.white.withValues(alpha: 0.68 * opacity)),
             borderRadius: BorderRadius.circular(radius),
-            border: Border.all(color: Colors.white.withValues(alpha: isDark ? 0.1 : 0.4), width: 1.5),
+            border: Border.all(
+              color: borderColor ??
+                  (isDark
+                      ? Colors.white.withValues(alpha: 0.14)
+                      : Colors.white.withValues(alpha: 0.85)),
+              width: 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.05),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
           child: child,
         ),
@@ -1775,166 +1828,486 @@ class _BookingsViewState extends State<BookingsView> {
     );
   }
 
-
-
-
-
-  //  Changed 'isFocused' to 'isActiveCard'
-  Widget _buildExpandedGlassCard(Map<String, String> staff, bool isDark, bool isActiveCard) {
-    Widget contentSwitcher = AnimatedSwitcher(
-      duration: const Duration(milliseconds: 600),
-      switchInCurve: Curves.easeOutBack,
-      switchOutCurve: Curves.easeIn,
-      layoutBuilder: (currentChild, previousChildren) {
-        return Stack(
-          alignment: Alignment.topCenter,
-          children: <Widget>[...previousChildren, if (currentChild != null) currentChild],
-        );
-      },
-      child: _isSubmitted ? _buildSuccessState(isDark) : _buildBookingFlow(isDark, staff, isActiveCard),
-    );
+  Widget _buildModernStepper(bool isDark) {
+    final steps = [
+      (label: 'booking.step_slot'.tr(), icon: HugeIcons.strokeRoundedCalendar03),
+      (label: 'booking.step_service'.tr(), icon: HugeIcons.strokeRoundedLayers01),
+      (label: 'booking.step_confirm'.tr(), icon: HugeIcons.strokeRoundedCheckmarkCircle02),
+    ];
 
     return _buildGlassBox(
       isDark: isDark,
-      radius: 28,
-      padding: const EdgeInsets.all(20),
-      height: null,
+      radius: 18,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+      child: Row(
+        children: List.generate(steps.length, (i) {
+          final bool isActive = _currentStep == i;
+          final bool isDone = _currentStep > i;
+          final bool canTapBack = i < _currentStep;
 
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.max,
-        children: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 400),
-            transitionBuilder: (child, animation) => SizeTransition(
-                sizeFactor: animation,
-                child: FadeTransition(opacity: animation, child: child)
-            ),
-            child: _currentStep == 0 && !_isSubmitted
-                ? Padding(
-              padding: const EdgeInsets.only(bottom: 20),
-              child: Row(
-                children: [
-                  Container(
-                      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10)]),
-                      child: CircleAvatar(backgroundImage: NetworkImage(staff["image"]!), radius: 24)
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(staff["name"]!, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
-                        Text(staff["specialty"]!, style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.grey[700])),
-                      ],
+          return Expanded(
+            child: GestureDetector(
+              onTap: canTapBack
+                  ? () async {
+                      if (_currentStep == 1 && _holdingRecordId != null) {
+                        await _releaseHold();
+                      }
+                      if (mounted) setState(() => _currentStep = i);
+                    }
+                  : null,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 240),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+                decoration: BoxDecoration(
+                  gradient: isActive
+                      ? const LinearGradient(
+                          colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                        )
+                      : null,
+                  color: !isActive && isDone
+                      ? const Color(0xFF10B981).withValues(alpha: isDark ? 0.16 : 0.12)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(13),
+                  boxShadow: isActive
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFF2563EB).withValues(alpha: 0.32),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    HugeIcon(
+                      icon: isDone
+                          ? HugeIcons.strokeRoundedCheckmarkCircle02
+                          : steps[i].icon,
+                      size: 14,
+                      color: isActive
+                          ? Colors.white
+                          : (isDone
+                              ? const Color(0xFF10B981)
+                              : (isDark ? Colors.white54 : const Color(0xFF64748B))),
                     ),
-                  ),
-                  const HugeIcon(icon: HugeIcons.strokeRoundedStar, color: Colors.amber, size: 16),
-                  const SizedBox(width: 4),
-                  Text(staff["rating"]!, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: isDark ? Colors.white : Colors.blue)),
-                ],
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        steps[i].label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: isActive || isDone ? FontWeight.w700 : FontWeight.w600,
+                          color: isActive
+                              ? Colors.white
+                              : (isDone
+                                  ? const Color(0xFF10B981)
+                                  : (isDark ? Colors.white60 : const Color(0xFF475569))),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            )
-                : const SizedBox.shrink(),
-          ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
 
-          // Always wrap in Expanded so it fills the bottom of the card perfectly
-          Expanded(child: contentSwitcher),
+  Widget _buildPreselectedServicePill(bool isDark) {
+    final serviceName = widget.initialServiceName!.trim();
+    return _buildGlassBox(
+      isDark: isDark,
+      radius: 16,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      fillColor: const Color(0xFF3B82F6).withValues(alpha: isDark ? 0.14 : 0.10),
+      borderColor: const Color(0xFF3B82F6).withValues(alpha: 0.35),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF3B82F6).withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const HugeIcon(
+              icon: HugeIcons.strokeRoundedSparkles,
+              size: 14,
+              color: Color(0xFF3B82F6),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'booking.selected_service_label'.tr(),
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white60 : const Color(0xFF475569),
+                  ),
+                ),
+                Text(
+                  serviceName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_subtotal > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF3B82F6).withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'RM$_totalPriceLabel',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF3B82F6),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildBookingFlow(bool isDark, Map<String, String> staff, bool isFocused) {
-    Widget stepSwitcher = AnimatedSwitcher(
-      duration: const Duration(milliseconds: 400),
-      switchInCurve: Curves.easeOutQuint,
-      switchOutCurve: Curves.easeInQuint,
-      layoutBuilder: (currentChild, previousChildren) {
-        return Stack(
-          alignment: Alignment.topCenter,
-          children: <Widget>[...previousChildren, if (currentChild != null) currentChild],
-        );
-      },
-      child: _buildCurrentStep(isDark, staff),
-    );
+  Widget _buildStaffSelector(bool isDark) {
+    if (_staffs.isEmpty) return const SizedBox.shrink();
+    return SizedBox(
+      height: 118,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        clipBehavior: Clip.none,
+        itemCount: _staffs.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          final staff = _staffs[index];
+          final bool isSelected = index == _frontCardIndex;
+          final String name = staff['name'] ?? '';
+          final String specialty = staff['specialty'] ?? '';
+          final String rating = staff['rating'] ?? '5.0';
+          final String imageUrl = staff['image'] ?? '';
 
-    return Column(
-      key: const ValueKey("booking_flow"),
-      //  FIX 1: Always take maximum available height from parent
-      mainAxisSize: MainAxisSize.max,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(3, (index) {
-            return Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                height: 4, width: _currentStep == index ? 20 : 6,
-                decoration: BoxDecoration(color: _currentStep == index ? Colors.blue : Colors.grey.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(10)),
-              ),
-            );
-          }),
-        ),
-        const SizedBox(height: 16),
-
-        //  FIX 2: ALWAYS wrap the content in Expanded!
-        // This forces the Step contents to respect the card's boundaries and prevents the pixel overflow.
-        Expanded(child: stepSwitcher),
-
-        const SizedBox(height: 20),
-
-        Row(
-          children: [
-            if (_currentStep > 0) ...[
-              _AnimatedPressable(
-                onTap: () async {
-                  //  IF they back out of the checkout, RELEASE THE SLOT so others can book it!
-                  if (_currentStep == 1 && _holdingRecordId != null) {
-                    await _releaseHold();
+          return GestureDetector(
+            onTap: () {
+              if (_frontCardIndex != index) {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  _frontCardIndex = index;
+                  if (_selectedTimeIndex >= 0 &&
+                      _selectedTimeIndex < _times.length &&
+                      !_isTimeValid(_times[_selectedTimeIndex], _selectedDateIndex)) {
+                    _selectedTimeIndex = -1;
+                    _selectedTime = '';
                   }
-                  if (mounted) setState(() => _currentStep--);
-                },
-                child: Container(
-                  height: 50, width: 50,
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Center(child: HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, color: isDark ? Colors.white : Colors.black87, size: 18)),
-                ),
-              ),
-              const SizedBox(width: 10),
-            ],
-            Expanded(
-              child: _AnimatedPressable(
-                onTap: () => _onPrimaryTap(staff),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [Color(0xFF42A5F5), Color(0xFF1976D2)]),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [BoxShadow(color: Colors.blue.withValues(alpha: 0.4), blurRadius: 15, offset: const Offset(0, 6), spreadRadius: 1)],
-                  ),
-                  child: Center(
-                      child: Text(
-                          _currentStep < 2
-                              ? "Continue"
-                              : (_busy
-                                  ? "Menghantar..."
-                                  : (_totalPrice == 0
-                                      ? "Hantar Tempahan (Percuma)"
-                                      : "Hantar Tempahan · RM$_totalPriceLabel")),
-                          style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)
-                      )
-                  ),
+                });
+              }
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              width: 228,
+              child: _buildGlassBox(
+                isDark: isDark,
+                radius: 20,
+                padding: const EdgeInsets.all(12),
+                fillColor: isSelected
+                    ? const Color(0xFF2563EB).withValues(alpha: isDark ? 0.22 : 0.14)
+                    : null,
+                borderColor: isSelected
+                    ? const Color(0xFF3B82F6)
+                    : null,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFF3B82F6)
+                                  : Colors.white.withValues(alpha: 0.35),
+                              width: 1.8,
+                            ),
+                          ),
+                          child: CircleAvatar(
+                            radius: 19,
+                            backgroundColor: isDark
+                                ? Colors.white10
+                                : Colors.black.withValues(alpha: 0.06),
+                            backgroundImage: imageUrl.isNotEmpty
+                                ? NetworkImage(imageUrl)
+                                : null,
+                            child: imageUrl.isEmpty
+                                ? HugeIcon(
+                                    icon: _providerSummaryIcon,
+                                    size: 18,
+                                    color: isDark ? Colors.white70 : Colors.black54,
+                                  )
+                                : null,
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.black.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.star_rounded,
+                                color: Color(0xFFFBBF24),
+                                size: 13,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                rating,
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF0F172A),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (isSelected) ...[
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.check_circle_rounded,
+                            color: Color(0xFF3B82F6),
+                            size: 18,
+                          ),
+                        ],
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF0F172A),
+                          ),
+                        ),
+                        if (specialty.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            specialty,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark
+                                  ? Colors.white60
+                                  : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildStickyBottomBar(bool isDark, Map<String, String> staff) {
+    final double bottomPad = MediaQuery.of(context).padding.bottom;
+    final String summaryText = _selectedTimeIndex >= 0 &&
+            _selectedTimeIndex < _times.length &&
+            _selectedDateIndex >= 0 &&
+            _selectedDateIndex < _dates.length
+        ? '${_dates[_selectedDateIndex]['date']} ${_dates[_selectedDateIndex]['month']} • ${_times[_selectedTimeIndex]}'
+        : 'booking.select_slot_hint'.tr();
+
+    final String buttonLabel = _currentStep == 0
+        ? 'booking.continue_btn'.tr()
+        : (_currentStep == 1
+            ? 'booking.review_btn'.tr()
+            : (_busy
+                ? 'booking.submitting'.tr()
+                : (_totalPrice == 0
+                    ? 'booking.submit_free'.tr()
+                    : 'booking.submit_paid'.tr(args: [_totalPriceLabel]))));
+
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            12,
+            16,
+            bottomPad > 0 ? bottomPad + 6 : 14,
+          ),
+          decoration: BoxDecoration(
+            color: isDark
+                ? const Color(0xFF0F172A).withValues(alpha: 0.78)
+                : Colors.white.withValues(alpha: 0.82),
+            border: Border(
+              top: BorderSide(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.10)
+                    : Colors.black.withValues(alpha: 0.06),
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              if (_currentStep > 0) ...[
+                _AnimatedPressable(
+                  onTap: _handleBack,
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.12)
+                            : Colors.black.withValues(alpha: 0.06),
+                      ),
+                    ),
+                    child: Center(
+                      child: HugeIcon(
+                        icon: HugeIcons.strokeRoundedArrowLeft01,
+                        size: 20,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ] else ...[
+                Expanded(
+                  flex: 4,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        summaryText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: isDark
+                              ? Colors.white70
+                              : const Color(0xFF475569),
+                        ),
+                      ),
+                      if (_subtotal > 0)
+                        Text(
+                          'RM$_totalPriceLabel • ~${_totalTime}m',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF0F172A),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Expanded(
+                flex: 6,
+                child: _AnimatedPressable(
+                  onTap: () => _onPrimaryTap(staff),
+                  child: Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF2563EB).withValues(alpha: 0.35),
+                          blurRadius: 14,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: _busy
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Text(
+                              buttonLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ],
+      ),
     );
   }
 
@@ -2447,14 +2820,26 @@ class _BookingsViewState extends State<BookingsView> {
       children: [
         Text(
           label.toUpperCase(),
-          style: const TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+          style: TextStyle(
+            color: isDark ? Colors.white60 : const Color(0xFF64748B),
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.9,
+          ),
         ),
         const SizedBox(height: 6),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.white.withValues(alpha: 0.65),
             borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.10)
+                  : Colors.black.withValues(alpha: 0.06),
+            ),
           ),
           child: TextFormField(
             controller: controller,
@@ -2462,15 +2847,28 @@ class _BookingsViewState extends State<BookingsView> {
             inputFormatters: formatters,
             validator: validator,
             textCapitalization: textCapitalization ?? TextCapitalization.none,
-            style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.w600, fontSize: 14),
+            style: TextStyle(
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: TextStyle(color: isDark ? Colors.white30 : Colors.black26, fontWeight: FontWeight.normal, fontSize: 13),
-              prefixIcon: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14.0),
-                child: HugeIcon(icon: icon, color: Colors.grey, size: 16),
+              hintStyle: TextStyle(
+                color: isDark ? Colors.white30 : Colors.black26,
+                fontWeight: FontWeight.normal,
+                fontSize: 13,
               ),
-              prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              prefixIcon: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                child: HugeIcon(
+                  icon: icon,
+                  color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                  size: 16,
+                ),
+              ),
+              prefixIconConstraints:
+                  const BoxConstraints(minWidth: 34, minHeight: 36),
               border: InputBorder.none,
             ),
           ),
@@ -2484,404 +2882,659 @@ class _BookingsViewState extends State<BookingsView> {
     final now = DateTime.now();
     final maxDate = now.add(const Duration(days: 89));
 
-    // Extracts the currently selected date strings for the bright header
-    String selDay = _dates[_selectedDateIndex]['day']!;
-    String selDate = _dates[_selectedDateIndex]['date']!;
-    String selMonth = _dates[_selectedDateIndex]['month']!;
+    final String selDay = _dates.isNotEmpty
+        ? _dates[_selectedDateIndex]['day']!
+        : '';
+    final String selDate = _dates.isNotEmpty
+        ? _dates[_selectedDateIndex]['date']!
+        : '';
+    final String selMonth = _dates.isNotEmpty
+        ? _dates[_selectedDateIndex]['month']!
+        : '';
 
-    // Initialize displayed month to match the selected calendar date
-    DateTime displayedMonth = DateTime(_selectedCalendarDate.year, _selectedCalendarDate.month, 1);
-    final List<String> monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    final List<String> shortDays = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+    const List<String> monthNames = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    ];
+    const List<String> shortDays = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 
-    return SingleChildScrollView(
+    final int daysInMonth =
+        DateUtils.getDaysInMonth(_displayedMonth.year, _displayedMonth.month);
+    final int firstWeekday =
+        DateTime(_displayedMonth.year, _displayedMonth.month, 1).weekday;
+
+    final bool hasAnyValidSlot = List.generate(_times.length, (i) => i)
+        .any((i) => _isTimeValid(_times[i], _selectedDateIndex));
+
+    return Column(
       key: const ValueKey(0),
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 20),
-      child: StatefulBuilder(
-          builder: (context, setLocalState) {
-            int daysInMonth = DateUtils.getDaysInMonth(displayedMonth.year, displayedMonth.month);
-            int firstWeekday = DateTime(displayedMonth.year, displayedMonth.month, 1).weekday; // 1 = Monday
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. Horizontal Glass Staff / Station / Suite Selector
+        _buildStaffSelector(isDark),
+        const SizedBox(height: 20),
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                //  DUAL CONFIRMATION HEADER
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(l10n.bkApptDate, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
-                    Text(
-                        "$selDay, $selDate $selMonth",
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.blueAccent)
-                    ),
-                  ],
+        // 2. Date Header + Glowing Date Badge
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              l10n.bkApptDate,
+              style: TextStyle(
+                fontSize: 15.5,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF3B82F6).withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: const Color(0xFF3B82F6).withValues(alpha: 0.35),
                 ),
-                const SizedBox(height: 12),
-
-                //  FULLY CUSTOM PREMIUM GLASS CALENDAR
-                _buildGlassBox(
-                  isDark: isDark,
-                  radius: 20,
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      // --- MONTH NAVIGATION HEADER ---
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              DateTime prev = DateTime(displayedMonth.year, displayedMonth.month - 1, 1);
-                              if (prev.isAfter(DateTime(now.year, now.month - 1, 28))) {
-                                setLocalState(() => displayedMonth = prev);
-                              }
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05), shape: BoxShape.circle),
-                              child: HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, color: isDark ? Colors.white : Colors.black87, size: 20),
-                            ),
-                          ),
-                          Text(
-                            "${monthNames[displayedMonth.month - 1]} ${displayedMonth.year}",
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
-                          ),
-                          GestureDetector(
-                            onTap: () {
-                              DateTime next = DateTime(displayedMonth.year, displayedMonth.month + 1, 1);
-                              if (next.isBefore(maxDate.add(const Duration(days: 30)))) {
-                                setLocalState(() => displayedMonth = next);
-                              }
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05), shape: BoxShape.circle),
-                              child: HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, color: isDark ? Colors.white : Colors.black87, size: 20),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      // --- DAYS OF THE WEEK ---
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: shortDays.map((day) => Expanded(
-                          child: Center(child: Text(day, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.white54 : Colors.black54))),
-                        )).toList(),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // --- THE CUSTOM DATE GRID ---
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: daysInMonth + firstWeekday - 1,
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 7,
-                          mainAxisSpacing: 8,
-                          crossAxisSpacing: 8,
-                          childAspectRatio: 1.0,
-                        ),
-                        itemBuilder: (context, index) {
-                          if (index < firstWeekday - 1) return const SizedBox.shrink(); // Empty day slot before the 1st
-
-                          int day = index - (firstWeekday - 1) + 1;
-                          DateTime thisDate = DateTime(displayedMonth.year, displayedMonth.month, day);
-
-                          DateTime pureThisDate = DateTime(thisDate.year, thisDate.month, thisDate.day);
-                          DateTime pureNow = DateTime(now.year, now.month, now.day);
-                          DateTime pureSelected = DateTime(_selectedCalendarDate.year, _selectedCalendarDate.month, _selectedCalendarDate.day);
-
-                          bool isSelected = pureSelected == pureThisDate;
-                          bool isPast = pureThisDate.isBefore(pureNow) || pureThisDate.isAfter(maxDate);
-
-                          return GestureDetector(
-                            onTap: isPast ? null : () {
-                              setState(() {
-                                _selectedCalendarDate = thisDate;
-
-                                final targetString = thisDate.toIso8601String().substring(0, 10);
-                                _selectedDateIndex = _dates.indexWhere((d) => d['fullDate']!.substring(0, 10) == targetString);
-                                if (_selectedDateIndex == -1) _selectedDateIndex = 0;
-
-                                //  FIX 2: Completely clear the time selection when a new date is tapped!
-                                // (Removed the for-loop that used to auto-select a time here)
-                                _selectedTimeIndex = -1;
-                                _selectedTime = '';
-                              });
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              decoration: BoxDecoration(
-                                color: isSelected ? Colors.blueAccent : Colors.transparent,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  //  THE FIX: Transparent border for inactive dates! Only the active one gets the blue ring.
-                                    color: isSelected ? Colors.blueAccent : Colors.transparent,
-                                    width: 1.5
-                                ),
-                                boxShadow: isSelected ? [BoxShadow(color: Colors.blueAccent.withValues(alpha: 0.6), blurRadius: 12, spreadRadius: 1)] : [],
-                              ),
-                              child: Center(
-                                child: Text(
-                                  day.toString(),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                                    color: isSelected ? Colors.white : (isPast ? (isDark ? Colors.white30 : Colors.black26) : (isDark ? Colors.white : Colors.black87)),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
+              ),
+              child: Text(
+                "$selDay, $selDate $selMonth",
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF3B82F6),
                 ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
 
-                const SizedBox(height: 28),
-                Text(l10n.bkAvailTime, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
-                const SizedBox(height: 12),
-
-                //  HORIZONTAL TIME SCROLL
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  clipBehavior: Clip.none,
-                  child: Row(
-                    children: List.generate(_times.length, (i) {
-                      bool isValid = _isTimeValid(_times[i], _selectedDateIndex);
-
-                      if (!isValid) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 10),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                            decoration: BoxDecoration(
-                              color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.02),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
-                            ),
-                            child: Center(
-                                child: Text(_times[i], style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: isDark ? Colors.white24 : Colors.black26))
-                            ),
-                          ),
-                        );
+        // 3. Clean Modern Glass Calendar (always shows full month cleanly)
+        _buildGlassBox(
+          isDark: isDark,
+          radius: 22,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      final DateTime prev = DateTime(
+                          _displayedMonth.year, _displayedMonth.month - 1, 1);
+                      final DateTime minMonth =
+                          DateTime(now.year, now.month, 1);
+                      if (!prev.isBefore(minMonth)) {
+                        setState(() => _displayedMonth = prev);
                       }
-
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 10),
-                        child: _buildScrollTimeChip(_times[i], i == _selectedTimeIndex, isDark, i),
-                      );
-                    }),
-                  ),
-                ),
-                if (_bookingType == BookingType.hospitality ||
-                    _bookingType == BookingType.dining ||
-                    _bookingType == BookingType.facility) ...[
-                  const SizedBox(height: 22),
-                  _buildGlassBox(
-                    isDark: isDark,
-                    radius: 18,
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _bookingType == BookingType.hospitality
-                                      ? 'Bilangan Tetamu (Dewasa/Kanak-kanak)'
-                                      : (_bookingType == BookingType.dining
-                                          ? 'Bilangan Tetamu Meja (Pax)'
-                                          : 'Bilangan Pemain (Pax)'),
-                                  style: TextStyle(
-                                    fontSize: 13.5,
-                                    fontWeight: FontWeight.bold,
-                                    color: isDark ? Colors.white : Colors.black87,
-                                  ),
-                                ),
-                                Text(
-                                  'Sila tetapkan jumlah kehadiran',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: isDark ? Colors.white54 : Colors.black54,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                GestureDetector(
-                                  onTap: () {
-                                    if (_paxCount > 1) setState(() => _paxCount--);
-                                  },
-                                  child: Container(
-                                    width: 32,
-                                    height: 32,
-                                    decoration: BoxDecoration(
-                                      color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(Icons.remove, size: 16, color: isDark ? Colors.white : Colors.black87),
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                                  child: Text(
-                                    '$_paxCount Pax',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w900,
-                                      color: isDark ? Colors.white : Colors.black87,
-                                    ),
-                                  ),
-                                ),
-                                GestureDetector(
-                                  onTap: () {
-                                    if (_paxCount < 30) setState(() => _paxCount++);
-                                  },
-                                  child: Container(
-                                    width: 32,
-                                    height: 32,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.blue,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(Icons.add, size: 16, color: Colors.white),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                    },
+                    child: Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.05),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedArrowLeft01,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          size: 18,
                         ),
-                        if (_bookingType == BookingType.hospitality) ...[
-                          const Divider(height: 24),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Tempoh Penginapan (Malam)',
-                                    style: TextStyle(
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.bold,
-                                      color: isDark ? Colors.white : Colors.black87,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Check-out: ${_selectedCalendarDate.add(Duration(days: _nightsCount)).day}/${_selectedCalendarDate.add(Duration(days: _nightsCount)).month}/${_selectedCalendarDate.add(Duration(days: _nightsCount)).year}',
-                                    style: const TextStyle(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.blueAccent,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Row(
-                                children: [
-                                  GestureDetector(
-                                    onTap: () {
-                                      if (_nightsCount > 1) {
-                                        setState(() => _nightsCount--);
-                                        _refreshBookingVoucher();
-                                      }
-                                    },
-                                    child: Container(
-                                      width: 32,
-                                      height: 32,
-                                      decoration: BoxDecoration(
-                                        color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(Icons.remove, size: 16, color: isDark ? Colors.white : Colors.black87),
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    child: Text(
-                                      '$_nightsCount Malam',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w900,
-                                        color: isDark ? Colors.white : Colors.black87,
-                                      ),
-                                    ),
-                                  ),
-                                  GestureDetector(
-                                    onTap: () {
-                                      if (_nightsCount < 30) {
-                                        setState(() => _nightsCount++);
-                                        _refreshBookingVoucher();
-                                      }
-                                    },
-                                    child: Container(
-                                      width: 32,
-                                      height: 32,
-                                      decoration: const BoxDecoration(
-                                        color: Colors.blue,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(Icons.add, size: 16, color: Colors.white),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
+                      ),
+                    ),
+                  ),
+                  Text(
+                    "${monthNames[_displayedMonth.month - 1]} ${_displayedMonth.year}",
+                    style: TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      final DateTime next = DateTime(
+                          _displayedMonth.year, _displayedMonth.month + 1, 1);
+                      final DateTime maxMonth =
+                          DateTime(maxDate.year, maxDate.month, 1);
+                      if (!next.isAfter(maxMonth)) {
+                        setState(() => _displayedMonth = next);
+                      }
+                    },
+                    child: Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.05),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedArrowRight01,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          size: 18,
+                        ),
+                      ),
                     ),
                   ),
                 ],
-                const SizedBox(height: 10),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: shortDays
+                    .map(
+                      (day) => Expanded(
+                        child: Center(
+                          child: Text(
+                            day,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: isDark
+                                  ? Colors.white54
+                                  : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+              const SizedBox(height: 10),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: daysInMonth + firstWeekday - 1,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 7,
+                  mainAxisSpacing: 6,
+                  crossAxisSpacing: 6,
+                  childAspectRatio: 1.05,
+                ),
+                itemBuilder: (context, index) {
+                  if (index < firstWeekday - 1) return const SizedBox.shrink();
+
+                  final int day = index - (firstWeekday - 1) + 1;
+                  final DateTime thisDate = DateTime(
+                      _displayedMonth.year, _displayedMonth.month, day);
+
+                  final DateTime pureThis =
+                      DateTime(thisDate.year, thisDate.month, thisDate.day);
+                  final DateTime pureNow =
+                      DateTime(now.year, now.month, now.day);
+                  final DateTime pureSelected = DateTime(
+                      _selectedCalendarDate.year,
+                      _selectedCalendarDate.month,
+                      _selectedCalendarDate.day);
+
+                  final bool isSelected = pureSelected == pureThis;
+                  final bool isToday = pureNow == pureThis;
+                  final bool isPast =
+                      pureThis.isBefore(pureNow) || pureThis.isAfter(maxDate);
+
+                  return GestureDetector(
+                    onTap: isPast
+                        ? null
+                        : () {
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              _selectedCalendarDate = thisDate;
+                              final targetString =
+                                  thisDate.toIso8601String().substring(0, 10);
+                              _selectedDateIndex = _dates.indexWhere((d) =>
+                                  d['fullDate']!.substring(0, 10) ==
+                                  targetString);
+                              if (_selectedDateIndex == -1) {
+                                _selectedDateIndex = 0;
+                              }
+                              _selectedTimeIndex = -1;
+                              _selectedTime = '';
+                            });
+                          },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      decoration: BoxDecoration(
+                        gradient: isSelected
+                            ? const LinearGradient(
+                                colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                              )
+                            : null,
+                        color: !isSelected && isToday
+                            ? const Color(0xFF3B82F6).withValues(alpha: 0.12)
+                            : Colors.transparent,
+                        shape: BoxShape.circle,
+                        border: !isSelected && isToday
+                            ? Border.all(
+                                color: const Color(0xFF3B82F6)
+                                    .withValues(alpha: 0.45),
+                                width: 1.2,
+                              )
+                            : null,
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: const Color(0xFF2563EB)
+                                      .withValues(alpha: 0.45),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Center(
+                        child: Text(
+                          day.toString(),
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: isSelected || isToday
+                                ? FontWeight.w800
+                                : FontWeight.w600,
+                            color: isSelected
+                                ? Colors.white
+                                : (isPast
+                                    ? (isDark
+                                        ? Colors.white24
+                                        : Colors.black26)
+                                    : (isToday
+                                        ? const Color(0xFF3B82F6)
+                                        : (isDark
+                                            ? Colors.white
+                                            : const Color(0xFF0F172A)))),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // 4. Time Slots Section
+        Text(
+          l10n.bkAvailTime,
+          style: TextStyle(
+            fontSize: 15.5,
+            fontWeight: FontWeight.w700,
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        if (!hasAnyValidSlot)
+          _buildGlassBox(
+            isDark: isDark,
+            radius: 16,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                HugeIcon(
+                  icon: HugeIcons.strokeRoundedClock01,
+                  size: 18,
+                  color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'booking.no_slots_today'.tr(),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color:
+                          isDark ? Colors.white60 : const Color(0xFF64748B),
+                    ),
+                  ),
+                ),
               ],
-            );
-          }
-      ),
+            ),
+          )
+        else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const double spacing = 8;
+              final int cols = constraints.maxWidth > 520 ? 5 : 4;
+              final double itemWidth =
+                  (constraints.maxWidth - (spacing * (cols - 1))) / cols;
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: List.generate(_times.length, (i) {
+                  final bool isValid = _isTimeValid(_times[i], _selectedDateIndex);
+                  final bool isSelected = i == _selectedTimeIndex;
+                  return SizedBox(
+                    width: itemWidth,
+                    child: _buildModernTimeChip(
+                      _times[i],
+                      isSelected: isSelected,
+                      isValid: isValid,
+                      isDark: isDark,
+                      index: i,
+                    ),
+                  );
+                }),
+              );
+            },
+          ),
+
+        // 5. Pax / Nights section for Hospitality, Dining & Facility
+        if (_bookingType == BookingType.hospitality ||
+            _bookingType == BookingType.dining ||
+            _bookingType == BookingType.facility) ...[
+          const SizedBox(height: 20),
+          _buildGlassBox(
+            isDark: isDark,
+            radius: 20,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _bookingType == BookingType.hospitality
+                                ? 'booking.guests_hospitality'.tr()
+                                : (_bookingType == BookingType.dining
+                                    ? 'booking.guests_dining'.tr()
+                                    : 'booking.guests_facility'.tr()),
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'booking.guests_sub'.tr(),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark
+                                  ? Colors.white54
+                                  : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            if (_paxCount > 1) setState(() => _paxCount--);
+                          },
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white10
+                                  : Colors.black.withValues(alpha: 0.06),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.remove,
+                              size: 16,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            '$_paxCount Pax',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF0F172A),
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            if (_paxCount < 30) setState(() => _paxCount++);
+                          },
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF3B82F6),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.add,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                if (_bookingType == BookingType.hospitality) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Divider(
+                      height: 1,
+                      color: isDark
+                          ? Colors.white12
+                          : Colors.black.withValues(alpha: 0.06),
+                    ),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'booking.nights_title'.tr(),
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF0F172A),
+                            ),
+                          ),
+                          Text(
+                            'Check-out: ${_selectedCalendarDate.add(Duration(days: _nightsCount)).day}/${_selectedCalendarDate.add(Duration(days: _nightsCount)).month}/${_selectedCalendarDate.add(Duration(days: _nightsCount)).year}',
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF3B82F6),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              if (_nightsCount > 1) {
+                                setState(() => _nightsCount--);
+                                _refreshBookingVoucher();
+                              }
+                            },
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.white10
+                                    : Colors.black.withValues(alpha: 0.06),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.remove,
+                                size: 16,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              'booking.nights_unit'
+                                  .tr(args: [_nightsCount.toString()]),
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF0F172A),
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              if (_nightsCount < 30) {
+                                setState(() => _nightsCount++);
+                                _refreshBookingVoucher();
+                              }
+                            },
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF3B82F6),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.add,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 
+  Widget _buildModernTimeChip(
+    String time, {
+    required bool isSelected,
+    required bool isValid,
+    required bool isDark,
+    required int index,
+  }) {
+    if (!isValid) {
+      return Container(
+        height: 42,
+        decoration: BoxDecoration(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.025)
+              : Colors.black.withValues(alpha: 0.03),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.04),
+          ),
+        ),
+        child: Center(
+          child: Text(
+            time,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              decoration: TextDecoration.lineThrough,
+              color: isDark ? Colors.white24 : Colors.black26,
+            ),
+          ),
+        ),
+      );
+    }
 
-  //  NEW HELPER: Designed for the Horizontal Scroll layout
-  Widget _buildScrollTimeChip(String time, bool isSelected, bool isDark, int index) {
     return GestureDetector(
       onTap: () {
+        HapticFeedback.selectionClick();
         setState(() {
           _selectedTimeIndex = index;
           _selectedTime = time;
-          _shopName = widget.shopName;
+          _shopName = _resolvedShopName;
         });
         _saveDraftToPreventLoss(_shopName, _selectedTime);
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        //  Padding gives the chip its shape in a Row!
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        height: 42,
         decoration: BoxDecoration(
-          color: isSelected ? Colors.blue : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.4)),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isSelected ? Colors.blueAccent : Colors.white.withValues(alpha: isDark ? 0.1 : 0.6), width: 1.5),
-          boxShadow: isSelected ? [BoxShadow(color: Colors.blue.withValues(alpha: 0.4), blurRadius: 10, spreadRadius: 0)] : [],
+          gradient: isSelected
+              ? const LinearGradient(
+                  colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                )
+              : null,
+          color: isSelected
+              ? null
+              : (isDark
+                  ? Colors.white.withValues(alpha: 0.07)
+                  : Colors.white.withValues(alpha: 0.72)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF60A5FA)
+                : (isDark
+                    ? Colors.white.withValues(alpha: 0.14)
+                    : Colors.white.withValues(alpha: 0.9)),
+            width: 1.0,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF2563EB).withValues(alpha: 0.38),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
         ),
         child: Center(
           child: Text(
-              time,
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87)
-              )
+            time,
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+              color: isSelected
+                  ? Colors.white
+                  : (isDark ? Colors.white : const Color(0xFF0F172A)),
+            ),
           ),
         ),
       ),
@@ -2889,238 +3542,376 @@ class _BookingsViewState extends State<BookingsView> {
   }
 
   Widget _buildStepTwoServicesAndAddons(bool isDark) {
-    return SingleChildScrollView(
+    return Column(
       key: const ValueKey(1),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(_mainServiceTitle, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
-          const SizedBox(height: 12),
-          Column(children: List.generate(_servicesList.length, (index) => _buildSelectionTile(_servicesList[index], index, isDark, _selectedServices, false))),
-
-          if (_addonsList.isNotEmpty) ...[
-          const SizedBox(height: 24),
-
-          Text(_addonsTitle, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
-          const SizedBox(height: 12),
-          Column(children: List.generate(_addonsList.length, (index) => _buildSelectionTile(_addonsList[index], index, isDark, _selectedAddons, true))),
-          ],
-
-          const SizedBox(height: 24),
-          Text("booking.requirements_safety".tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _mainServiceTitle,
+          style: TextStyle(
+            fontSize: 15.5,
+            fontWeight: FontWeight.w700,
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+          ),
+        ),
+        const SizedBox(height: 10),
+        ...List.generate(
+          _servicesList.length,
+          (index) => _buildSelectionTile(
+            _servicesList[index],
+            index,
+            isDark,
+            _selectedServices,
+            false,
+          ),
+        ),
+        if (_addonsList.isNotEmpty) ...[
+          const SizedBox(height: 18),
+          Text(
+            _addonsTitle,
+            style: TextStyle(
+              fontSize: 15.5,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...List.generate(
+            _addonsList.length,
+            (index) => _buildSelectionTile(
+              _addonsList[index],
+              index,
+              isDark,
+              _selectedAddons,
+              true,
+            ),
+          ),
+        ],
+        const SizedBox(height: 18),
+        Text(
+          "booking.requirements_safety".tr(),
+          style: TextStyle(
+            fontSize: 15.5,
+            fontWeight: FontWeight.w700,
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+          ),
+        ),
+        const SizedBox(height: 10),
+        _buildGlassBox(
+          isDark: isDark,
+          radius: 18,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_healthToggleTitle, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white70 : Colors.black87)),
-                    const SizedBox(height: 2),
-                    Text(_healthToggleSubtitle, style: TextStyle(fontSize: 11, color: isDark ? Colors.white38 : Colors.grey[600])),
+                    Text(
+                      _healthToggleTitle,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _healthToggleSubtitle,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color:
+                            isDark ? Colors.white54 : const Color(0xFF64748B),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: _hasAllergies,
-                  activeColor: Colors.blue,
-                  activeTrackColor: Colors.blue.withValues(alpha: 0.3),
-                  inactiveThumbColor: isDark ? Colors.grey[400] : Colors.grey[300],
-                  inactiveTrackColor: isDark ? Colors.white10 : Colors.black12,
-                  onChanged: (val) => setState(() => _hasAllergies = val),
-                ),
+              const SizedBox(width: 8),
+              Switch.adaptive(
+                value: _hasAllergies,
+                activeTrackColor: const Color(0xFF3B82F6),
+                onChanged: (val) => setState(() => _hasAllergies = val),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildStepThreeCheckout(bool isDark, Map<String, String> staff) {
-    return SingleChildScrollView(
+    return Column(
       key: const ValueKey(2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("booking.summary".tr(), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black87)),
-          const SizedBox(height: 16),
-
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.02),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withValues(alpha: isDark ? 0.05 : 0.2)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ..._selectedServices.map((i) {
-                  final int mult = _bookingType == BookingType.hospitality ? _nightsCount : 1;
-                  final double unitPrice = _parseMoney(_servicesList[i]["price"]!);
-                  final String title = mult > 1
-                      ? '${_servicesList[i]["name"]!} (x$mult Malam)'
-                      : _servicesList[i]["name"]!;
-                  final String priceStr = mult > 1
-                      ? 'RM${_fmtMoney(unitPrice * mult)}'
-                      : _servicesList[i]["price"]!;
-                  return _buildReceiptRow(title, priceStr, isDark);
-                }),
-                ..._selectedAddons.map((i) => _buildReceiptRow(_addonsList[i]["name"]!, _addonsList[i]["price"]!.replaceAll('+', ''), isDark)),
-
-                Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Divider(height: 1, color: Colors.grey.withValues(alpha: 0.2))
-                ),
-
-                _buildSummaryRow("Location", widget.shopName, HugeIcons.strokeRoundedStore01, isDark),
-                const SizedBox(height: 12),
-                _buildSummaryRow(_providerSummaryLabel, staff["name"]!, _providerSummaryIcon, isDark),
-                const SizedBox(height: 12),
-                _buildSummaryRow("Date", "${_dates[_selectedDateIndex]['day']}, ${_dates[_selectedDateIndex]['date']} ${_dates[_selectedDateIndex]['month']}", HugeIcons.strokeRoundedCalendar03, isDark),                const SizedBox(height: 12),
-                _buildSummaryRow("Time", _times[_selectedTimeIndex], HugeIcons.strokeRoundedClock01, isDark),
-
-                Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Divider(height: 1, color: Colors.grey.withValues(alpha: 0.2))
-                ),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text("booking.estimated_duration".tr(), style: TextStyle(fontSize: 14, color: isDark ? Colors.white70 : Colors.black54)),
-                    Text("~$_totalTime mins", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
-                  ],
-                ),
-              ],
-            ),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "booking.summary".tr(),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
           ),
+        ),
+        const SizedBox(height: 10),
 
-          const SizedBox(height: 20),
-
-          Text("booking.customer_info_notes".tr(), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black87)),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.02),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withValues(alpha: isDark ? 0.08 : 0.3)),
-            ),
-            child: Column(
-              children: [
-                _buildPremiumInput(
-                  isDark: isDark,
-                  label: "Nama Anda",
-                  hint: "Masukkan nama penuh / panggilan",
-                  icon: HugeIcons.strokeRoundedUser,
-                  controller: _customerNameCtrl,
-                  keyboardType: TextInputType.name,
+        _buildGlassBox(
+          isDark: isDark,
+          radius: 22,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ..._selectedServices.map((i) {
+                final int mult =
+                    _bookingType == BookingType.hospitality ? _nightsCount : 1;
+                final double unitPrice =
+                    _parseMoney(_servicesList[i]["price"]!);
+                final String title = mult > 1
+                    ? '${_servicesList[i]["name"]!} (x$mult)'
+                    : _servicesList[i]["name"]!;
+                final String priceStr = mult > 1
+                    ? 'RM${_fmtMoney(unitPrice * mult)}'
+                    : _servicesList[i]["price"]!;
+                return _buildReceiptRow(title, priceStr, isDark);
+              }),
+              ..._selectedAddons.map(
+                (i) => _buildReceiptRow(
+                  _addonsList[i]["name"]!,
+                  _addonsList[i]["price"]!.replaceAll('+', ''),
+                  isDark,
                 ),
-                const SizedBox(height: 10),
-                _buildPremiumInput(
-                  isDark: isDark,
-                  label: "No. Telefon (WhatsApp)",
-                  hint: "Cth: 012-345 6789",
-                  icon: HugeIcons.strokeRoundedCall02,
-                  controller: _customerPhoneCtrl,
-                  keyboardType: TextInputType.phone,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Divider(
+                  height: 1,
+                  color: isDark
+                      ? Colors.white12
+                      : Colors.black.withValues(alpha: 0.06),
                 ),
-                if (_bookingType == BookingType.automotive || _bookingType == BookingType.service) ...[
-                  const SizedBox(height: 10),
-                  _buildPremiumInput(
-                    isDark: isDark,
-                    label: _bookingType == BookingType.automotive
-                        ? "No. Plat & Model Kenderaan"
-                        : "Alamat Rumah / Lokasi Servis",
-                    hint: _bookingType == BookingType.automotive
-                        ? "Cth: VAB 1234 (Honda City)"
-                        : "Masukkan alamat penuh jika servis ke rumah",
-                    icon: _bookingType == BookingType.automotive
-                        ? HugeIcons.strokeRoundedCar01
-                        : HugeIcons.strokeRoundedLocation01,
-                    controller: _industryDetailCtrl,
-                    keyboardType: TextInputType.text,
+              ),
+              _buildSummaryRow(
+                "booking.location_label".tr(),
+                _resolvedShopName,
+                HugeIcons.strokeRoundedStore01,
+                isDark,
+              ),
+              const SizedBox(height: 10),
+              _buildSummaryRow(
+                _providerSummaryLabel,
+                staff["name"]!,
+                _providerSummaryIcon,
+                isDark,
+              ),
+              const SizedBox(height: 10),
+              _buildSummaryRow(
+                "booking.date_label".tr(),
+                "${_dates[_selectedDateIndex]['day']}, ${_dates[_selectedDateIndex]['date']} ${_dates[_selectedDateIndex]['month']}",
+                HugeIcons.strokeRoundedCalendar03,
+                isDark,
+              ),
+              const SizedBox(height: 10),
+              _buildSummaryRow(
+                "booking.time_label".tr(),
+                _times[_selectedTimeIndex],
+                HugeIcons.strokeRoundedClock01,
+                isDark,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Divider(
+                  height: 1,
+                  color: isDark
+                      ? Colors.white12
+                      : Colors.black.withValues(alpha: 0.06),
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "booking.estimated_duration".tr(),
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      color: isDark ? Colors.white70 : const Color(0xFF475569),
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3B82F6).withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      "~$_totalTime mins",
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF3B82F6),
+                      ),
+                    ),
                   ),
                 ],
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        Text(
+          "booking.customer_info_notes".tr(),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+          ),
+        ),
+        const SizedBox(height: 10),
+        _buildGlassBox(
+          isDark: isDark,
+          radius: 22,
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            children: [
+              _buildPremiumInput(
+                isDark: isDark,
+                label: "booking.customer_name_label".tr(),
+                hint: "booking.customer_name_hint".tr(),
+                icon: HugeIcons.strokeRoundedUser,
+                controller: _customerNameCtrl,
+                keyboardType: TextInputType.name,
+              ),
+              const SizedBox(height: 10),
+              _buildPremiumInput(
+                isDark: isDark,
+                label: "booking.phone_label".tr(),
+                hint: "booking.phone_hint".tr(),
+                icon: HugeIcons.strokeRoundedCall02,
+                controller: _customerPhoneCtrl,
+                keyboardType: TextInputType.phone,
+              ),
+              if (_bookingType == BookingType.automotive ||
+                  _bookingType == BookingType.service) ...[
                 const SizedBox(height: 10),
                 _buildPremiumInput(
                   isDark: isDark,
-                  label: "Nota Khas / Permintaan (Pilihan)",
-                  hint: _notesHintText,
-                  icon: HugeIcons.strokeRoundedNote01,
-                  controller: _bookingNotesCtrl,
+                  label: _bookingType == BookingType.automotive
+                      ? "booking.vehicle_label".tr()
+                      : "booking.address_label".tr(),
+                  hint: _bookingType == BookingType.automotive
+                      ? "booking.vehicle_hint".tr()
+                      : "booking.address_hint".tr(),
+                  icon: _bookingType == BookingType.automotive
+                      ? HugeIcons.strokeRoundedCar01
+                      : HugeIcons.strokeRoundedLocation01,
+                  controller: _industryDetailCtrl,
                   keyboardType: TextInputType.text,
                 ),
               ],
-            ),
+              const SizedBox(height: 10),
+              _buildPremiumInput(
+                isDark: isDark,
+                label: "booking.notes_label".tr(),
+                hint: _notesHintText,
+                icon: HugeIcons.strokeRoundedNote01,
+                controller: _bookingNotesCtrl,
+                keyboardType: TextInputType.text,
+              ),
+            ],
           ),
+        ),
 
-          const SizedBox(height: 20),
+        const SizedBox(height: 18),
+        _buildBookingVoucherSection(isDark),
+        const SizedBox(height: 8),
 
-          // --- VOUCHER SELECTION SECTION ---
-          _buildBookingVoucherSection(isDark),
+        Text(
+          "booking.payment_method".tr(),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+          ),
+        ),
+        const SizedBox(height: 10),
 
-          const SizedBox(height: 12),
+        Column(
+          children: List.generate(_paymentMethods.length, (i) {
+            final String pType = (_paymentMethods[i]["type"] ?? '').toString();
+            final bool isFpx = pType == "fpx_card";
+            final bool isFpxDisabled = isFpx && _totalPrice < 10.0;
+            final bool isSel = _selectedPaymentIndex == i && !isFpxDisabled;
 
-          Text("booking.payment_method".tr(), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black87)),
-          const SizedBox(height: 16),
+            final String? badge = isFpxDisabled
+                ? 'booking.fpx_min_spend_badge'.tr()
+                : (_paymentMethods[i]["badge"] as String?);
+            final Color badgeColor = isFpxDisabled
+                ? Colors.amber.shade800
+                : const Color(0xFFED0058);
+            final String subtitle = isFpxDisabled
+                ? 'booking.fpx_min_spend_subtitle'.tr()
+                : ((_paymentMethods[i]["subtitle"] ?? '') as String);
 
-          //  CLASSIC 3-METHOD LAYOUT (FIXED OVERFLOW & MIN RM10 FPX)
-          Column(
-            children: List.generate(_paymentMethods.length, (i) {
-              final String pType = (_paymentMethods[i]["type"] ?? '').toString();
-              final bool isFpx = pType == "fpx_card";
-              final bool isFpxDisabled = isFpx && _totalPrice < 10.0;
-              bool isSel = _selectedPaymentIndex == i && !isFpxDisabled;
-
-              final String? badge = isFpxDisabled
-                  ? 'booking.fpx_min_spend_badge'.tr()
-                  : (_paymentMethods[i]["badge"] as String?);
-              final Color badgeColor = isFpxDisabled
-                  ? Colors.amber.shade800
-                  : const Color(0xFFED0058);
-              final String subtitle = isFpxDisabled
-                  ? 'booking.fpx_min_spend_subtitle'.tr()
-                  : ((_paymentMethods[i]["subtitle"] ?? '') as String);
-
-              return AnimatedOpacity(
-                duration: const Duration(milliseconds: 200),
-                opacity: isFpxDisabled ? 0.45 : 1.0,
-                child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeInOut,
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: isSel ? Colors.blue.withValues(alpha: 0.08) : (isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white.withValues(alpha: 0.5)),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: isSel ? Colors.blue : Colors.white.withValues(alpha: isDark ? 0.08 : 0.6), width: 1.5),
-                ),
+            return AnimatedOpacity(
+              duration: const Duration(milliseconds: 200),
+              opacity: isFpxDisabled ? 0.45 : 1.0,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 10),
                 child: GestureDetector(
                   onTap: () {
                     if (isFpxDisabled) {
                       HapticFeedback.heavyImpact();
-                      showGlassToast(context, 'booking.fpx_min_spend_error'.tr(), isError: true);
+                      showGlassToast(
+                        context,
+                        'booking.fpx_min_spend_error'.tr(),
+                        isError: true,
+                      );
                       return;
                     }
                     setState(() => _selectedPaymentIndex = i);
                   },
                   behavior: HitTestBehavior.opaque,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: _buildGlassBox(
+                    isDark: isDark,
+                    radius: 18,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 14,
+                    ),
+                    fillColor: isSel
+                        ? const Color(0xFF2563EB)
+                            .withValues(alpha: isDark ? 0.20 : 0.12)
+                        : null,
+                    borderColor: isSel ? const Color(0xFF3B82F6) : null,
                     child: Row(
                       children: [
-                        HugeIcon(
-                          icon: _paymentMethods[i]["icon"],
-                          color: isFpxDisabled
-                              ? Colors.grey
-                              : (isSel ? Colors.blue : (isDark ? Colors.white60 : Colors.black54)),
-                          size: 22,
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: isSel
+                                ? const Color(0xFF3B82F6).withValues(alpha: 0.16)
+                                : (isDark
+                                    ? Colors.white.withValues(alpha: 0.06)
+                                    : Colors.black.withValues(alpha: 0.04)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Center(
+                            child: HugeIcon(
+                              icon: _paymentMethods[i]["icon"],
+                              color: isFpxDisabled
+                                  ? Colors.grey
+                                  : (isSel
+                                      ? const Color(0xFF3B82F6)
+                                      : (isDark
+                                          ? Colors.white70
+                                          : const Color(0xFF475569))),
+                              size: 20,
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -3133,11 +3924,19 @@ class _BookingsViewState extends State<BookingsView> {
                                     child: Text(
                                       _paymentMethods[i]["name"],
                                       style: TextStyle(
-                                        fontSize: 14.5,
-                                        fontWeight: isSel ? FontWeight.bold : FontWeight.w600,
+                                        fontSize: 14,
+                                        fontWeight: isSel
+                                            ? FontWeight.w800
+                                            : FontWeight.w700,
                                         color: isFpxDisabled
-                                            ? (isDark ? Colors.white38 : Colors.black38)
-                                            : (isSel ? Colors.blue : (isDark ? Colors.white : Colors.black87)),
+                                            ? (isDark
+                                                ? Colors.white38
+                                                : Colors.black38)
+                                            : (isSel
+                                                ? const Color(0xFF3B82F6)
+                                                : (isDark
+                                                    ? Colors.white
+                                                    : const Color(0xFF0F172A))),
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -3146,15 +3945,26 @@ class _BookingsViewState extends State<BookingsView> {
                                   if (badge != null) ...[
                                     const SizedBox(width: 6),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: badgeColor.withValues(alpha: 0.15),
+                                        color:
+                                            badgeColor.withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
+                                        border: Border.all(
+                                          color: badgeColor.withValues(
+                                              alpha: 0.4),
+                                        ),
                                       ),
                                       child: Text(
                                         badge,
-                                        style: TextStyle(color: badgeColor, fontSize: 9, fontWeight: FontWeight.w900),
+                                        style: TextStyle(
+                                          color: badgeColor,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w900,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -3164,7 +3974,12 @@ class _BookingsViewState extends State<BookingsView> {
                                 const SizedBox(height: 3),
                                 Text(
                                   subtitle,
-                                  style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white54 : Colors.black54),
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: isDark
+                                        ? Colors.white54
+                                        : const Color(0xFF64748B),
+                                  ),
                                 ),
                               ],
                             ],
@@ -3172,10 +3987,14 @@ class _BookingsViewState extends State<BookingsView> {
                         ),
                         const SizedBox(width: 8),
                         HugeIcon(
-                          icon: isSel ? HugeIcons.strokeRoundedCheckmarkCircle02 : HugeIcons.strokeRoundedCircle,
+                          icon: isSel
+                              ? HugeIcons.strokeRoundedCheckmarkCircle02
+                              : HugeIcons.strokeRoundedCircle,
                           color: isFpxDisabled
                               ? Colors.transparent
-                              : (isSel ? Colors.blue : (isDark ? Colors.white30 : Colors.black26)),
+                              : (isSel
+                                  ? const Color(0xFF3B82F6)
+                                  : (isDark ? Colors.white30 : Colors.black26)),
                           size: 20,
                         ),
                       ],
@@ -3183,71 +4002,115 @@ class _BookingsViewState extends State<BookingsView> {
                   ),
                 ),
               ),
-              );
-            }),
-          ),
+            );
+          }),
+        ),
 
-          const SizedBox(height: 24),
+        const SizedBox(height: 12),
 
-          // Summary Breakdown with Voucher
-          if (_voucherDiscount > 0) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("booking.service_subtotal".tr(), style: TextStyle(fontSize: 14, color: isDark ? Colors.white60 : Colors.black54)),
-                Text("RM${_fmtMoney(_subtotal)}", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white70 : Colors.black87)),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
+        _buildGlassBox(
+          isDark: isDark,
+          radius: 20,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              if (_voucherDiscount > 0) ...[
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const HugeIcon(icon: HugeIcons.strokeRoundedTicket01, color: Color(0xFF10B981), size: 14),
-                    const SizedBox(width: 6),
                     Text(
-                      "Diskaun Baucar ${_selectedVoucher != null ? '(${_selectedVoucher!['code']})' : ''}",
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                      "booking.service_subtotal".tr(),
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        color:
+                            isDark ? Colors.white60 : const Color(0xFF64748B),
+                      ),
+                    ),
+                    Text(
+                      "RM${_fmtMoney(_subtotal)}",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color:
+                            isDark ? Colors.white70 : const Color(0xFF0F172A),
+                      ),
                     ),
                   ],
                 ),
-                Text("-RM${_fmtMoney(_voucherDiscount)}", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const HugeIcon(
+                          icon: HugeIcons.strokeRoundedTicket01,
+                          color: Color(0xFF10B981),
+                          size: 14,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          "${'booking.voucher_discount_label'.tr()} ${_selectedVoucher != null ? '(${_selectedVoucher!['code']})' : ''}",
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF10B981),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      "-RM${_fmtMoney(_voucherDiscount)}",
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF10B981),
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 20),
               ],
-            ),
-            const SizedBox(height: 12),
-          ],
-
-          // Grand Total
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text("booking.grand_total".tr(), style: TextStyle(fontSize: 16, color: isDark ? Colors.white70 : Colors.black54)),
-              Text("RM$_totalPriceLabel", style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, height: 1.0, color: isDark ? Colors.white : Colors.black)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    "booking.grand_total".tr(),
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white70 : const Color(0xFF475569),
+                    ),
+                  ),
+                  Text(
+                    "RM$_totalPriceLabel",
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      height: 1.0,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
-          const SizedBox(height: 10),
-        ],
-      ),
+        ),
+      ],
     );
   }
-
 
   Widget _buildBookingVoucherSection(bool isDark) {
     if (_selectedVoucher != null && _voucherDiscount > 0) {
       final code = (_selectedVoucher!['code'] ?? '').toString().toUpperCase();
-      return Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF10B981).withValues(alpha: isDark ? 0.12 : 0.08),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0xFF10B981).withValues(alpha: 0.4),
-            width: 1.2,
-          ),
-        ),
+      return _buildGlassBox(
+        isDark: isDark,
+        radius: 18,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        fillColor:
+            const Color(0xFF10B981).withValues(alpha: isDark ? 0.14 : 0.08),
+        borderColor: const Color(0xFF10B981).withValues(alpha: 0.4),
         child: Row(
           children: [
             Container(
@@ -3280,23 +4143,30 @@ class _BookingsViewState extends State<BookingsView> {
                       ),
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 1.5),
                         decoration: BoxDecoration(
                           color: const Color(0xFF10B981),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Text(
-                          'Digunakan',
-                          style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                        child: Text(
+                          'booking.voucher_applied_badge'.tr(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Jimat RM ${_fmtMoney(_voucherDiscount)} untuk tempahan ini',
+                    'booking.voucher_save_text'
+                        .tr(args: [_fmtMoney(_voucherDiscount)]),
                     style: TextStyle(
-                      color: isDark ? Colors.white70 : const Color(0xFF334155),
+                      color:
+                          isDark ? Colors.white70 : const Color(0xFF334155),
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
@@ -3306,13 +4176,18 @@ class _BookingsViewState extends State<BookingsView> {
             ),
             TextButton(
               style: TextButton.styleFrom(
-                foregroundColor: Colors.blue,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                foregroundColor: const Color(0xFF3B82F6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               onPressed: _openBookingVoucherPicker,
-              child: Text('common.change'.tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              child: Text(
+                'common.change'.tr(),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              ),
             ),
             const SizedBox(width: 4),
             GestureDetector(
@@ -3322,15 +4197,21 @@ class _BookingsViewState extends State<BookingsView> {
                   _voucherDiscount = 0.0;
                   _userDismissedVoucher = true;
                 });
-                showGlassToast(context, 'Baucar dibatalkan');
+                showGlassToast(context, 'booking.voucher_cancelled'.tr());
               },
               child: Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
+                  color: isDark
+                      ? Colors.white12
+                      : Colors.black.withValues(alpha: 0.06),
                   shape: BoxShape.circle,
                 ),
-                child: const HugeIcon(icon: HugeIcons.strokeRoundedCancel01, size: 14, color: Colors.grey),
+                child: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedCancel01,
+                  size: 14,
+                  color: Colors.grey,
+                ),
               ),
             ),
           ],
@@ -3340,27 +4221,21 @@ class _BookingsViewState extends State<BookingsView> {
 
     return GestureDetector(
       onTap: _openBookingVoucherPicker,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
-          ),
-        ),
+      child: _buildGlassBox(
+        isDark: isDark,
+        radius: 18,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.12),
+                color: const Color(0xFF3B82F6).withValues(alpha: 0.14),
                 shape: BoxShape.circle,
               ),
               child: const HugeIcon(
                 icon: HugeIcons.strokeRoundedDiscount01,
-                color: Colors.blue,
+                color: Color(0xFF3B82F6),
                 size: 18,
               ),
             ),
@@ -3370,18 +4245,19 @@ class _BookingsViewState extends State<BookingsView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Baucar & Diskaun Tempahan',
+                    'booking.voucher_section_title'.tr(),
                     style: TextStyle(
-                      color: isDark ? Colors.white : Colors.black87,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
                       fontSize: 13.5,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 1),
                   Text(
-                    'Pilih baucar atau masukkan kod promo',
+                    'booking.voucher_section_sub'.tr(),
                     style: TextStyle(
-                      color: isDark ? Colors.white60 : Colors.black54,
+                      color:
+                          isDark ? Colors.white60 : const Color(0xFF64748B),
                       fontSize: 11.5,
                     ),
                   ),
@@ -3389,24 +4265,28 @@ class _BookingsViewState extends State<BookingsView> {
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.1),
+                color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Pilih Baucar',
-                    style: TextStyle(
-                      color: Colors.blue,
+                    'booking.voucher_choose_btn'.tr(),
+                    style: const TextStyle(
+                      color: Color(0xFF3B82F6),
                       fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  SizedBox(width: 4),
-                  HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, color: Colors.blue, size: 12),
+                  const SizedBox(width: 4),
+                  const HugeIcon(
+                    icon: HugeIcons.strokeRoundedArrowRight01,
+                    color: Color(0xFF3B82F6),
+                    size: 12,
+                  ),
                 ],
               ),
             ),
@@ -3422,8 +4302,25 @@ class _BookingsViewState extends State<BookingsView> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: TextStyle(fontSize: 14, color: isDark ? Colors.white70 : Colors.black87)),
-          Text(price, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black)),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white70 : const Color(0xFF334155),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            price,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+            ),
+          ),
         ],
       ),
     );
@@ -3433,16 +4330,29 @@ class _BookingsViewState extends State<BookingsView> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        HugeIcon(icon: icon, size: 16, color: isDark ? Colors.white54 : Colors.black54),
+        HugeIcon(
+          icon: icon,
+          size: 16,
+          color: isDark ? Colors.white54 : const Color(0xFF64748B),
+        ),
         const SizedBox(width: 8),
-        Text(label, style: TextStyle(fontSize: 14, color: isDark ? Colors.white60 : Colors.black54)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13.5,
+            color: isDark ? Colors.white60 : const Color(0xFF64748B),
+          ),
+        ),
         const SizedBox(width: 16),
-        //  FIXED: Wrapped in Expanded to allow long shop names to drop to the next line safely
         Expanded(
           child: Text(
             val,
             textAlign: TextAlign.right,
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87),
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+            ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -3451,56 +4361,124 @@ class _BookingsViewState extends State<BookingsView> {
     );
   }
 
-  //  FIXED: The success screen now shows the proper "View Order" button
   Widget _buildSuccessState(bool isDark) {
-    return Center(
-      key: const ValueKey("success_state"),
-      child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(begin: 0.0, end: 1.0),
-        duration: const Duration(milliseconds: 800),
-        curve: Curves.elasticOut,
-        builder: (context, scale, child) {
-          return Transform.scale(
-            scale: scale,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  height: 100, width: 100,
-                  decoration: BoxDecoration(
-                    color: Colors.greenAccent.withValues(alpha: 0.2), shape: BoxShape.circle,
-                    border: Border.all(color: Colors.greenAccent, width: 3),
-                    boxShadow: [BoxShadow(color: Colors.greenAccent.withValues(alpha: 0.4), blurRadius: 20, spreadRadius: 5)],
-                  ),
-                  child: const Center(child: HugeIcon(icon: HugeIcons.strokeRoundedCheckmarkCircle02, color: Colors.greenAccent, size: 50)),
-                ),
-                const SizedBox(height: 32),
-                Text("booking.submitted_title".tr(), style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
-                const SizedBox(height: 8),
-                Text("booking.submitted_desc".tr(), style: TextStyle(fontSize: 15, color: isDark ? Colors.white60 : Colors.black54)),
-                const SizedBox(height: 40),
+    final int safeIdx =
+        _staffs.isEmpty ? 0 : _frontCardIndex.clamp(0, _staffs.length - 1);
+    final String providerName =
+        _staffs.isNotEmpty ? (_staffs[safeIdx]["name"] ?? '') : '';
 
-                // Button to open the ticket immediately after booking
-                _AnimatedPressable(
+    return Padding(
+      key: const ValueKey("success_state"),
+      padding: const EdgeInsets.only(top: 28),
+      child: _buildGlassBox(
+        isDark: isDark,
+        radius: 28,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 34),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0.75, end: 1.0),
+          duration: const Duration(milliseconds: 550),
+          curve: Curves.easeOutBack,
+          builder: (context, scale, child) {
+            return Transform.scale(
+              scale: scale,
+              child: child,
+            );
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                height: 88,
+                width: 88,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.16),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFF10B981),
+                    width: 2.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+                    color: Color(0xFF10B981),
+                    size: 44,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 22),
+              Text(
+                "booking.submitted_title".tr(),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "booking.submitted_desc".tr(),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                ),
+              ),
+              if (_generatedBookingId.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3B82F6).withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Text(
+                    '#$_generatedBookingId',
+                    style: const TextStyle(
+                      color: Color(0xFF3B82F6),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 28),
+              SizedBox(
+                width: double.infinity,
+                child: _AnimatedPressable(
                   onTap: () {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
                         builder: (context) => BookingTicketScreen(
                           shopId: widget.shopId,
-                          shopName: widget.shopName,
+                          shopName: _resolvedShopName,
                           category: _fullServiceSummary,
                           shopImage: widget.shopImage,
-                          providerName: _staffs[_frontCardIndex]["name"]!,
-                          date: "${_dates[_selectedDateIndex]['day']}, ${_dates[_selectedDateIndex]['date']} ${_dates[_selectedDateIndex]['month']}",
+                          providerName: providerName,
+                          date:
+                              "${_dates[_selectedDateIndex]['day']}, ${_dates[_selectedDateIndex]['date']} ${_dates[_selectedDateIndex]['month']}",
                           time: _times[_selectedTimeIndex],
                           totalPrice: "RM$_totalPriceLabel",
                           bookingId: _generatedBookingId,
                           status: 'pending',
                           paymentMethod: _lastPaymentMethod,
                           paymentStatus: _lastPaymentStatus,
-                          bookingDbId: (_holdingRecordId != null && !_holdingRecordId!.startsWith('local_'))
+                          bookingDbId: (_holdingRecordId != null &&
+                                  !_holdingRecordId!.startsWith('local_'))
                               ? _holdingRecordId
                               : null,
                         ),
@@ -3508,67 +4486,156 @@ class _BookingsViewState extends State<BookingsView> {
                     );
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 48),
-                    decoration: BoxDecoration(color: isDark ? Colors.white : Colors.black87, borderRadius: BorderRadius.circular(20)),
-                    child: Text("booking.view_order".tr(), style: TextStyle(color: isDark ? Colors.black : Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+                      ),
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF2563EB).withValues(alpha: 0.35),
+                          blurRadius: 14,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        "booking.view_order".tr(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-
-                const SizedBox(height: 16),
-
-                // Simple text button to go back
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Text("booking.back_to_home".tr(), style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontWeight: FontWeight.w600)),
-                )
-              ],
-            ),
-          );
-        },
+              ),
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Text(
+                  "booking.back_to_home".tr(),
+                  style: TextStyle(
+                    color: isDark ? Colors.white60 : const Color(0xFF475569),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-
-  Widget _buildSelectionTile(Map<String, String> item, int index, bool isDark, Set<int> stateSet, bool isMultiSelect) {
-    bool isSelected = stateSet.contains(index);
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          if (isMultiSelect) {
-            if (isSelected) {
-              stateSet.remove(index);
+  Widget _buildSelectionTile(
+    Map<String, String> item,
+    int index,
+    bool isDark,
+    Set<int> stateSet,
+    bool isMultiSelect,
+  ) {
+    final bool isSelected = stateSet.contains(index);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          setState(() {
+            if (isMultiSelect) {
+              if (isSelected) {
+                stateSet.remove(index);
+              } else {
+                stateSet.add(index);
+              }
             } else {
+              stateSet.clear();
               stateSet.add(index);
             }
-          } else {
-            stateSet.clear(); stateSet.add(index);
-          }
-        });
-        _refreshBookingVoucher();
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.blue.withValues(alpha: 0.1) : (isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white.withValues(alpha: 0.2)),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: isSelected ? Colors.blue : Colors.white.withValues(alpha: isDark ? 0.05 : 0.4), width: 1.5),
-        ),
-        child: Row(
-          children: [
-            HugeIcon(
-              icon: isSelected
-                  ? (isMultiSelect ? HugeIcons.strokeRoundedCheckmarkSquare02 : HugeIcons.strokeRoundedCheckmarkCircle02)
-                  : (isMultiSelect ? HugeIcons.strokeRoundedSquare : HugeIcons.strokeRoundedCircle),
-              color: isSelected ? Colors.blue : (isDark ? Colors.white54 : Colors.black54),
-              size: 20,
-            ),
-            const SizedBox(width: 10),
-            Expanded(child: Text(item["name"]!, style: TextStyle(fontSize: 14, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, color: isDark ? Colors.white : Colors.black87))),
-            Text("${item["time"]} • ${item["price"]}", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isSelected ? Colors.blue : (isDark ? Colors.white60 : Colors.black54))),
-          ],
+          });
+          _refreshBookingVoucher();
+        },
+        child: _buildGlassBox(
+          isDark: isDark,
+          radius: 18,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          fillColor: isSelected
+              ? const Color(0xFF2563EB).withValues(alpha: isDark ? 0.20 : 0.12)
+              : null,
+          borderColor: isSelected ? const Color(0xFF3B82F6) : null,
+          child: Row(
+            children: [
+              HugeIcon(
+                icon: isSelected
+                    ? (isMultiSelect
+                        ? HugeIcons.strokeRoundedCheckmarkSquare02
+                        : HugeIcons.strokeRoundedCheckmarkCircle02)
+                    : (isMultiSelect
+                        ? HugeIcons.strokeRoundedSquare
+                        : HugeIcons.strokeRoundedCircle),
+                color: isSelected
+                    ? const Color(0xFF3B82F6)
+                    : (isDark ? Colors.white54 : const Color(0xFF64748B)),
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item["name"]!,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w600,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    if ((item["time"] ?? '').isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        item["time"]!,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: isDark
+                              ? Colors.white54
+                              : const Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(0xFF3B82F6).withValues(alpha: 0.18)
+                      : (isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.05)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  item["price"]!,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                    color: isSelected
+                        ? const Color(0xFF3B82F6)
+                        : (isDark ? Colors.white : const Color(0xFF0F172A)),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -541,6 +541,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
+  String get _shopCategory {
+    final c = (_shopDetails?['business_industry'] ??
+            _shopDetails?['category'] ??
+            widget.shop['business_industry'] ??
+            widget.shop['category'])
+        ?.toString()
+        .trim();
+    if (c != null && c.isNotEmpty) return c;
+    return _product.category.isNotEmpty ? _product.category : 'Servis';
+  }
+
   void _openBookingFlow() {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
@@ -555,10 +566,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         builder: (_) => BookingsView(
           shopId: _shopId,
           shopName: _shopName,
-          category: _product.category.isNotEmpty ? _product.category : 'Servis',
-          shopImage: _product.imageUrl.isNotEmpty
-              ? _product.imageUrl
-              : (_shopCover.isNotEmpty ? _shopCover : _shopLogo),
+          category: _shopCategory,
+          shopImage: _shopCover.isNotEmpty
+              ? _shopCover
+              : (_shopLogo.isNotEmpty ? _shopLogo : _product.imageUrl),
           initialServiceId: _product.id,
           initialServiceName: _product.name,
         ),

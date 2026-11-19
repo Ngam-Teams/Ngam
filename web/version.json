@@ -1,6 +1,6 @@
 {
-  "version": "1.0.61",
-  "build_number": 34,
-  "released_at": "2026-11-18T18:05:00Z",
-  "changelog": "Pusat Mediasi Pertikaian 3-Hala Shopee-style (Pelanggan, Peniaga & Admin Ngam Mediator), muat naik bukti foto R2 & pembekuan escrow."
+  "version": "1.0.62",
+  "build_number": 35,
+  "released_at": "2026-11-18T17:43:00Z",
+  "changelog": "Reka bentuk baharu aliran tempahan dengan gaya glassmorphism moden serta penyeragaman kategori kedai pada header atas."
 }
