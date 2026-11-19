@@ -83,6 +83,7 @@ class _OpenDisputeModalState extends State<_OpenDisputeModal> {
   final List<String> _evidenceUrls = [];
   bool _isUploading = false;
   bool _isSubmitting = false;
+  String? _inlineError;
 
   @override
   void initState() {
@@ -122,7 +123,10 @@ class _OpenDisputeModalState extends State<_OpenDisputeModal> {
         imageQuality: 82,
       );
       if (picked == null) return;
-      setState(() => _isUploading = true);
+      setState(() {
+        _isUploading = true;
+        _inlineError = null;
+      });
       final bytes = await picked.readAsBytes();
       final url = await DisputeService.uploadEvidenceImage(bytes, picked.name);
       if (mounted) {
@@ -130,6 +134,7 @@ class _OpenDisputeModalState extends State<_OpenDisputeModal> {
       }
     } catch (_) {
       if (mounted) {
+        setState(() => _inlineError = 'dispute.attach_photo_failed'.tr());
         showGlassToast(context, 'dispute.attach_photo_failed'.tr(), type: GlassToastType.error);
       }
     } finally {
@@ -140,16 +145,23 @@ class _OpenDisputeModalState extends State<_OpenDisputeModal> {
   Future<void> _submit() async {
     final reasonText = _detailsCtrl.text.trim();
     if (reasonText.isEmpty) {
-      showGlassToast(context, 'dispute.details_required'.tr(), type: GlassToastType.warning);
+      final msg = 'dispute.details_required'.tr();
+      setState(() => _inlineError = msg);
+      showGlassToast(context, msg, type: GlassToastType.warning);
       return;
     }
     final reqAmount = double.tryParse(_amountCtrl.text.trim());
     if (reqAmount == null || reqAmount < 0) {
-      showGlassToast(context, 'dispute.invalid_amount'.tr(), type: GlassToastType.warning);
+      final msg = 'dispute.invalid_amount'.tr();
+      setState(() => _inlineError = msg);
+      showGlassToast(context, msg, type: GlassToastType.warning);
       return;
     }
 
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+      _inlineError = null;
+    });
     try {
       final dispute = await DisputeService.openDispute(
         targetType: widget.targetType,
@@ -169,12 +181,12 @@ class _OpenDisputeModalState extends State<_OpenDisputeModal> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isSubmitting = false);
-        showGlassToast(
-          context,
-          'dispute.submit_error'.tr(args: [e.toString().replaceAll('Exception: ', '')]),
-          type: GlassToastType.error,
-        );
+        final msg = 'dispute.submit_error'.tr(args: [e.toString().replaceAll('Exception: ', '')]);
+        setState(() {
+          _isSubmitting = false;
+          _inlineError = msg;
+        });
+        showGlassToast(context, msg, type: GlassToastType.error);
       }
     }
   }
@@ -309,6 +321,9 @@ class _OpenDisputeModalState extends State<_OpenDisputeModal> {
               const SizedBox(height: 8),
               TextField(
                 controller: _amountCtrl,
+                onChanged: (_) {
+                  if (_inlineError != null) setState(() => _inlineError = null);
+                },
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 style: TextStyle(color: textPrimary, fontWeight: FontWeight.w800, fontSize: 16),
                 decoration: InputDecoration(
@@ -325,6 +340,9 @@ class _OpenDisputeModalState extends State<_OpenDisputeModal> {
               const SizedBox(height: 8),
               TextField(
                 controller: _detailsCtrl,
+                onChanged: (_) {
+                  if (_inlineError != null) setState(() => _inlineError = null);
+                },
                 maxLines: 4,
                 style: TextStyle(color: textPrimary, fontSize: 13.5),
                 decoration: InputDecoration(
@@ -332,7 +350,16 @@ class _OpenDisputeModalState extends State<_OpenDisputeModal> {
                   hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 13),
                   filled: true,
                   fillColor: fieldFill,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: _inlineError != null && _detailsCtrl.text.trim().isEmpty
+                        ? const BorderSide(color: Colors.redAccent, width: 1.4)
+                        : BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Colors.orangeAccent, width: 1.4),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -400,6 +427,34 @@ class _OpenDisputeModalState extends State<_OpenDisputeModal> {
                     ),
                 ],
               ),
+              if (_inlineError != null) ...[
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.redAccent.withValues(alpha: 0.45)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _inlineError!,
+                          style: TextStyle(
+                            color: isDark ? Colors.red.shade200 : Colors.red.shade900,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 22),
 
               SizedBox(
