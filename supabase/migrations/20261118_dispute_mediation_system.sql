@@ -248,6 +248,8 @@ DECLARE
   v_business_id   UUID := p_business_id;
   v_order         RECORD;
   v_booking       RECORD;
+  v_booking_id    UUID := NULL;
+  v_booking_ref   TEXT := p_booking_ref;
   v_existing      public.disputes;
   v_conv_id       UUID;
   v_total_amt     NUMERIC(12, 2) := 0.00;
@@ -305,12 +307,14 @@ BEGIN
       SELECT * INTO v_booking FROM public.bookings WHERE booking_metadata->>'booking_id' = p_booking_ref FOR UPDATE;
     END IF;
 
-    IF v_booking.id IS NOT NULL THEN
+    IF FOUND THEN
       IF v_booking.customer_id IS DISTINCT FROM v_customer_id
          AND NULLIF(v_booking.booking_metadata->>'customer_auth_id', '') IS DISTINCT FROM v_customer_id::TEXT
          AND NOT public.is_super_admin() THEN
         RAISE EXCEPTION 'Akses ditolak: Ini bukan tempahan anda.';
       END IF;
+      v_booking_id := v_booking.id;
+      v_booking_ref := COALESCE(p_booking_ref, v_booking.booking_metadata->>'booking_id');
       SELECT * INTO v_existing FROM public.disputes
       WHERE booking_id = v_booking.id
         AND status IN ('open', 'business_responded', 'escalated', 'under_review')
@@ -412,8 +416,8 @@ BEGIN
     v_case_no,
     p_target_type,
     p_order_id,
-    v_booking.id,
-    COALESCE(p_booking_ref, v_booking.booking_metadata->>'booking_id'),
+    v_booking_id,
+    v_booking_ref,
     v_business_id,
     v_customer_id,
     v_conv_id,
