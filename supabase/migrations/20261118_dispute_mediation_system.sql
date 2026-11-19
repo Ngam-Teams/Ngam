@@ -280,7 +280,9 @@ BEGIN
     IF NOT FOUND THEN
       RAISE EXCEPTION 'Pesanan tidak ditemui.';
     END IF;
-    IF v_order.customer_id IS DISTINCT FROM v_customer_id AND NOT public.is_super_admin() THEN
+    IF NULLIF(to_jsonb(v_order)->>'owner_user_id', '') IS DISTINCT FROM v_customer_id::TEXT
+       AND NULLIF(to_jsonb(v_order)->>'customer_id', '') IS DISTINCT FROM v_customer_id::TEXT
+       AND NOT public.is_super_admin() THEN
       RAISE EXCEPTION 'Akses ditolak: Ini bukan pesanan anda.';
     END IF;
     SELECT * INTO v_existing FROM public.disputes
@@ -304,7 +306,9 @@ BEGIN
     END IF;
 
     IF v_booking.id IS NOT NULL THEN
-      IF v_booking.customer_id IS DISTINCT FROM v_customer_id AND NOT public.is_super_admin() THEN
+      IF v_booking.customer_id IS DISTINCT FROM v_customer_id
+         AND NULLIF(v_booking.booking_metadata->>'customer_auth_id', '') IS DISTINCT FROM v_customer_id::TEXT
+         AND NOT public.is_super_admin() THEN
         RAISE EXCEPTION 'Akses ditolak: Ini bukan tempahan anda.';
       END IF;
       SELECT * INTO v_existing FROM public.disputes
