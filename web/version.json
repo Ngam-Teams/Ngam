@@ -1,6 +1,6 @@
 {
-  "version": "1.0.63",
-  "build_number": 36,
-  "released_at": "2026-11-18T22:04:00Z",
-  "changelog": "Papar amaran dan ralat secara terus (inline) di dalam borang tuntutan refund supaya tidak terlindung di belakang modal."
+  "version": "1.0.64",
+  "build_number": 37,
+  "released_at": "2026-11-20T02:00:00Z",
+  "changelog": "Susunan baharu skrin Profil dengan kad grid pantas 4x2 (8 ikon) dan senarai tetapan yang lebih kompak."
 }

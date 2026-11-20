@@ -392,7 +392,16 @@
     "member_badge": "Ngam Member",
     "login_now": "Sign In Now",
     "guest_login_tooltip": "Guest Sign In",
-    "my_receipts": "My Receipts"
+    "my_receipts": "My Receipts",
+    "grid_bookings": "Bookings",
+    "grid_receipts": "Receipts",
+    "grid_queue": "Live Queue",
+    "grid_wallet": "Wallet",
+    "grid_saved": "Saved",
+    "grid_stamps": "Stamps",
+    "grid_vouchers": "Vouchers",
+    "grid_account": "Account",
+    "grid_pts": "{} pts"
   },
   "wallet": {
     "title": "Wallet & Payments",

@@ -145,10 +145,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 600),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Column(
                       children: [
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 16),
 
                         // ─── Header Profil (Shimmer / Tetamu / Log Masuk) ───
                         if (isProfileLoading)
@@ -264,11 +264,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ),
                                 ),
                               ],
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 8),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 20),
 
                         // ─── Bahagian Stat / Statistik (Hanya jika Log Masuk) ───
                         if (user != null) ...[
@@ -281,14 +281,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 value: '$_tasksPosted',
                                 icon: HugeIcons.strokeRoundedUpload01,
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 10),
                               _StatCardGlass(
                                 isDark: isDark,
                                 label: 'profile.completed'.tr(),
                                 value: '$_tasksCompleted',
                                 icon: HugeIcons.strokeRoundedTick01,
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 10),
                               _StatCardGlass(
                                 isDark: isDark,
                                 label: 'profile.rating'.tr(),
@@ -299,149 +299,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 18),
 
-                          // ─── Akaun ───────────────────────────────────────────
+                          // ─── Akaun (Kad Pantas 4x2 = 8 Ikon) ───────────────
                           _buildSectionHeader("profile.account".tr()),
                           _buildGlassSection(
                             isDark,
-                            Column(
-                              children: [
-                                _buildSettingsTile(
-                                  isDark,
-                                  HugeIcons.strokeRoundedUserEdit01,
-                                  "profile.account_details".tr(),
-                                  trailing: _buildArrow(),
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const AccountDetailsScreen(),
-                                    ),
-                                  ),
-                                ),
-                                _buildDivider(isDark),
-                                _buildSettingsTile(
-                                  isDark,
-                                  HugeIcons.strokeRoundedCalendar03,
-                                  "profile.my_bookings".tr(),
-                                  trailing: _buildArrow(),
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const MyBookingsView(),
-                                    ),
-                                  ),
-                                ),
-                                _buildDivider(isDark),
-                                _buildSettingsTile(
-                                  isDark,
-                                  HugeIcons.strokeRoundedInvoice01,
-                                  "profile.my_receipts".tr(),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      ValueListenableBuilder<int>(
-                                        valueListenable: EreceiptService.totalPointsNotifier,
-                                        builder: (context, pts, _) {
-                                          if (pts <= 0) return const SizedBox.shrink();
-                                          return Container(
-                                            margin: const EdgeInsets.only(right: 8),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 3,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFF10B981).withValues(alpha: 0.16),
-                                              borderRadius: BorderRadius.circular(10),
-                                            ),
-                                            child: Text(
-                                              'ereceipt.balance_pill'.tr(args: [pts.toString()]),
-                                              style: const TextStyle(
-                                                color: Color(0xFF10B981),
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w800,
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                      _buildArrow(),
-                                    ],
-                                  ),
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const MyReceiptsScreen(),
-                                    ),
-                                  ),
-                                ),
-                                _buildDivider(isDark),
-                                _buildSettingsTile(
-                                  isDark,
-                                  HugeIcons.strokeRoundedTicket01,
-                                  "profile.live_queue".tr(),
-                                  trailing: _buildArrow(),
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const MyQueueTicketScreen(),
-                                    ),
-                                  ),
-                                ),
-                                _buildDivider(isDark),
-                                _buildSettingsTile(
-                                  isDark,
-                                  HugeIcons.strokeRoundedCreditCard,
-                                  "wallet.title".tr(),
-                                  trailing: _buildArrow(),
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const WalletScreen(),
-                                    ),
-                                  ),
-                                ),
-                                _buildDivider(isDark),
-                                _buildSettingsTile(
-                                  isDark,
-                                  HugeIcons.strokeRoundedBookmark02,
-                                  "profile.saved".tr(),
-                                  trailing: _buildArrow(),
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const SavedScreen(),
-                                    ),
-                                  ),
-                                ),
-                                _buildDivider(isDark),
-                                _buildSettingsTile(
-                                  isDark,
-                                  HugeIcons.strokeRoundedLoyaltyCard,
-                                  "profile.stamp_cards".tr(),
-                                  trailing: _buildArrow(),
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const MyStampCardsScreen(),
-                                    ),
-                                  ),
-                                ),
-                                _buildDivider(isDark),
-                                _buildSettingsTile(
-                                  isDark,
-                                  HugeIcons.strokeRoundedDiscount01,
-                                  "profile.vouchers".tr(),
-                                  trailing: _buildArrow(),
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const VoucherScreen(),
-                                    ),
-                                  ),
-                                ),
-                                _buildDivider(isDark),
+                            _buildQuickAccountGrid(isDark),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        // ─── Pilihan & Keselamatan (Senarai Kompak) ───────────
+                        _buildSectionHeader("profile.preferences".tr()),
+                        _buildGlassSection(
+                          isDark,
+                          Column(
+                            children: [
+                              if (user != null) ...[
                                 _buildSettingsTile(
                                   isDark,
                                   HugeIcons.strokeRoundedShield01,
@@ -455,18 +330,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ),
                                   ),
                                 ),
+                                _buildDivider(isDark),
                               ],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                        ],
-
-                        // ─── Pilihan ──────────────────────────────────────────
-                        _buildSectionHeader("profile.preferences".tr()),
-                        _buildGlassSection(
-                          isDark,
-                          Column(
-                            children: [
                               _buildThemeToggleTile(isDark, themeProvider),
                               _buildDivider(isDark),
                               _buildSettingsTile(
@@ -482,10 +347,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           : 'English',
                                       style: const TextStyle(
                                         color: Colors.grey,
-                                        fontSize: 14,
+                                        fontSize: 13.5,
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: 6),
                                     _buildArrow(),
                                   ],
                                 ),
@@ -494,7 +359,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
 
                         // ─── Sokongan (Bantuan) ──────────────────────────────
                         _buildSectionHeader("profile.support".tr()),
@@ -543,7 +408,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
 
                         // ─── Tentang Kita ────────────────────────────────────
                         _buildSectionHeader("profile.about".tr()),
@@ -837,15 +702,248 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildQuickAccountGrid(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 14, 10, 12),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _buildQuickGridItem(
+                  isDark: isDark,
+                  icon: HugeIcons.strokeRoundedCalendar03,
+                  label: 'profile.grid_bookings'.tr(),
+                  accent: const Color(0xFF38BDF8),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MyBookingsView()),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ValueListenableBuilder<int>(
+                  valueListenable: EreceiptService.totalPointsNotifier,
+                  builder: (context, pts, _) {
+                    return _buildQuickGridItem(
+                      isDark: isDark,
+                      icon: HugeIcons.strokeRoundedInvoice01,
+                      label: 'profile.grid_receipts'.tr(),
+                      accent: const Color(0xFF10B981),
+                      badgeText: pts > 0 ? '$pts' : null,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MyReceiptsScreen(),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Expanded(
+                child: _buildQuickGridItem(
+                  isDark: isDark,
+                  icon: HugeIcons.strokeRoundedTicket01,
+                  label: 'profile.grid_queue'.tr(),
+                  accent: const Color(0xFFF59E0B),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const MyQueueTicketScreen(),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: _buildQuickGridItem(
+                  isDark: isDark,
+                  icon: HugeIcons.strokeRoundedCreditCard,
+                  label: 'profile.grid_wallet'.tr(),
+                  accent: AppTheme.primary,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const WalletScreen()),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Divider(
+            height: 1,
+            indent: 8,
+            endIndent: 8,
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.05),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _buildQuickGridItem(
+                  isDark: isDark,
+                  icon: HugeIcons.strokeRoundedBookmark02,
+                  label: 'profile.grid_saved'.tr(),
+                  accent: const Color(0xFF8B5CF6),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SavedScreen()),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: _buildQuickGridItem(
+                  isDark: isDark,
+                  icon: HugeIcons.strokeRoundedLoyaltyCard,
+                  label: 'profile.grid_stamps'.tr(),
+                  accent: const Color(0xFFEC4899),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const MyStampCardsScreen(),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: _buildQuickGridItem(
+                  isDark: isDark,
+                  icon: HugeIcons.strokeRoundedDiscount01,
+                  label: 'profile.grid_vouchers'.tr(),
+                  accent: const Color(0xFFF97316),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const VoucherScreen()),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: _buildQuickGridItem(
+                  isDark: isDark,
+                  icon: HugeIcons.strokeRoundedUserEdit01,
+                  label: 'profile.grid_account'.tr(),
+                  accent: const Color(0xFF6366F1),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const AccountDetailsScreen(),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickGridItem({
+    required bool isDark,
+    required dynamic icon,
+    required String label,
+    required Color accent,
+    required VoidCallback onTap,
+    String? badgeText,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: isDark ? 0.14 : 0.11),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: accent.withValues(alpha: isDark ? 0.25 : 0.22),
+                        width: 1,
+                      ),
+                    ),
+                    child: Center(
+                      child: HugeIcon(
+                        icon: icon,
+                        color: isDark ? Colors.white : accent,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  if (badgeText != null)
+                    Positioned(
+                      top: -5,
+                      right: -8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981),
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.25),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          badgeText,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            height: 1.1,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  height: 1.18,
+                  color: isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSectionHeader(String title) => Padding(
-    padding: const EdgeInsets.only(left: 8, bottom: 12),
+    padding: const EdgeInsets.only(left: 8, bottom: 8),
     child: Align(
       alignment: Alignment.centerLeft,
       child: Text(
         title,
         style: const TextStyle(
           color: Colors.grey,
-          fontSize: 12,
+          fontSize: 11.5,
           fontWeight: FontWeight.bold,
           letterSpacing: 1.2,
         ),
@@ -945,50 +1043,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Widget? trailing,
     VoidCallback? onTap,
   }) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
     child: InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: isDark
                     ? Colors.white.withValues(alpha: 0.05)
                     : Colors.black.withValues(alpha: 0.04),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: icon is IconData
                   ? Icon(
                       icon,
                       color: isDark ? Colors.white : Colors.black87,
-                      size: 20,
+                      size: 18,
                     )
                   : HugeIcon(
                       icon: icon,
                       color: isDark ? Colors.white : Colors.black87,
-                      size: 20,
+                      size: 18,
                     ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 14.5,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-            if (trailing != null) ...[trailing, const SizedBox(width: 8)],
+            if (trailing != null) ...[trailing, const SizedBox(width: 4)],
             if (trailing == null)
               const HugeIcon(
                 icon: HugeIcons.strokeRoundedArrowRight01,
                 color: Colors.grey,
-                size: 20,
+                size: 17,
               ),
           ],
         ),
@@ -998,40 +1096,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildThemeToggleTile(bool isDark, ThemeProvider themeProvider) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: isDark
                   ? Colors.white.withValues(alpha: 0.05)
                   : Colors.black.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: HugeIcon(
               icon: isDark
                   ? HugeIcons.strokeRoundedMoon02
                   : HugeIcons.strokeRoundedSun01,
               color: AppTheme.primary,
-              size: 20,
+              size: 18,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               'profile.dark_mode'.tr(),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
             ),
           ),
-          Switch.adaptive(
-            value: isDark,
-            activeColor: AppTheme.primary,
-            inactiveThumbColor: Colors.white,
-            inactiveTrackColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-            trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
-            thumbIcon: WidgetStateProperty.resolveWith<Icon?>((states) => null),
-            onChanged: (_) => themeProvider.toggleTheme(),
+          SizedBox(
+            height: 28,
+            child: Switch.adaptive(
+              value: isDark,
+              activeColor: AppTheme.primary,
+              inactiveThumbColor: Colors.white,
+              inactiveTrackColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+              trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+              thumbIcon: WidgetStateProperty.resolveWith<Icon?>((states) => null),
+              onChanged: (_) => themeProvider.toggleTheme(),
+            ),
           ),
         ],
       ),
@@ -1039,11 +1140,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildDivider(bool isDark) => Padding(
-    padding: const EdgeInsets.only(left: 60, right: 16),
+    padding: const EdgeInsets.only(left: 50, right: 14),
     child: Divider(
       height: 1,
       color: isDark
-          ? Colors.white.withValues(alpha: 0.1)
+          ? Colors.white.withValues(alpha: 0.08)
           : Colors.black.withValues(alpha: 0.05),
     ),
   );
@@ -1051,7 +1152,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildArrow() => const HugeIcon(
     icon: HugeIcons.strokeRoundedArrowRight01,
     color: Colors.grey,
-    size: 20,
+    size: 17,
   );
 }
 

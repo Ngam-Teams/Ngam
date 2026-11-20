@@ -392,7 +392,16 @@
     "member_badge": "Ahli Ngam",
     "login_now": "Log Masuk Segera",
     "guest_login_tooltip": "Log Masuk Tetamu",
-    "my_receipts": "Resit Saya"
+    "my_receipts": "Resit Saya",
+    "grid_bookings": "Tempahan",
+    "grid_receipts": "Resit",
+    "grid_queue": "Giliran",
+    "grid_wallet": "Dompet",
+    "grid_saved": "Disimpan",
+    "grid_stamps": "Kad Cop",
+    "grid_vouchers": "Baucar",
+    "grid_account": "Akaun",
+    "grid_pts": "{} mata"
   },
   "wallet": {
     "title": "Dompet & Pembayaran",
