@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:shimmer/shimmer.dart';
 
 import 'notifications_sheet.dart';
 import '../../models/notification_data.dart';
@@ -57,9 +58,14 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
   bool _isFetchingLocation = false;
   bool _offlineDialogShown = false;
   int _selectedDiscoveryTab = 0; // 0: All, 1: Services, 2: Products, 3: Under RM15
+  int _discoveryPageLimit = 10;
+  bool _isLoadingMoreDiscovery = false;
   double? _userLat;
   double? _userLng;
 
+  final ScrollController _scrollController = ScrollController();
+  Timer? _shopsRetryTimer;
+  Timer? _discoveryBatchTimer;
   StreamSubscription? _shopsSubscription;
   StreamSubscription<AuthState>? _authSubscription;
 
@@ -161,8 +167,9 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
   void initState() {
     super.initState();
     VoucherService.init();
+    _scrollController.addListener(_onHomeScroll);
     _loadUserInfoAndLocation();
-    _loadCachedShops();
+    _loadCachedHomeData();
     _fetchShops();
     _fetchHomeDiscoveryData();
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((_) {
@@ -176,9 +183,43 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
 
   @override
   void dispose() {
+    _shopsRetryTimer?.cancel();
+    _discoveryBatchTimer?.cancel();
     _shopsSubscription?.cancel();
     _authSubscription?.cancel();
+    _scrollController.removeListener(_onHomeScroll);
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  List<ProductModel> get _filteredDiscoveryProducts {
+    return _discoveryProducts.where((p) {
+      if (_selectedDiscoveryTab == 1) return p.isService;
+      if (_selectedDiscoveryTab == 2) return p.isProduct;
+      if (_selectedDiscoveryTab == 3) return p.price > 0 && p.price <= 15.0;
+      return true;
+    }).toList();
+  }
+
+  void _onHomeScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    if (pos.pixels < pos.maxScrollExtent - 340) return;
+
+    final int total = _filteredDiscoveryProducts.length;
+    if (_discoveryPageLimit >= total || _isLoadingMoreDiscovery) return;
+
+    setState(() {
+      _isLoadingMoreDiscovery = true;
+    });
+    _discoveryBatchTimer?.cancel();
+    _discoveryBatchTimer = Timer(const Duration(milliseconds: 160), () {
+      if (!mounted) return;
+      setState(() {
+        _discoveryPageLimit = min(total, _discoveryPageLimit + 10);
+        _isLoadingMoreDiscovery = false;
+      });
+    });
   }
 
   Future<void> _loadUserInfoAndLocation() async {
@@ -425,25 +466,67 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
     return null;
   }
 
-  Future<void> _loadCachedShops() async {
+  Future<void> _loadCachedHomeData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final jsonStr = prefs.getString('cached_nearby_shops_v1');
-      if (jsonStr != null && jsonStr.trim().isNotEmpty) {
-        final List decoded = jsonDecode(jsonStr);
-        final List<Map<String, dynamic>> cached =
-            decoded.map((e) => Map<String, dynamic>.from(e)).toList();
-        if (cached.isNotEmpty && mounted) {
-          _updateDistancesForList(cached);
-          setState(() {
-            _nearbyShops = cached;
-            _isLoadingShops = false;
-            _isUsingCachedData = true;
-          });
+
+      List<Map<String, dynamic>>? cachedShops;
+      final shopsJson = prefs.getString('cached_nearby_shops_v1');
+      if (shopsJson != null && shopsJson.trim().isNotEmpty) {
+        final List decoded = jsonDecode(shopsJson);
+        final list = decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+        if (list.isNotEmpty) {
+          _updateDistancesForList(list);
+          cachedShops = list;
         }
       }
+
+      List<ProductModel>? cachedProducts;
+      final productsJson = prefs.getString('cached_discovery_products_v1');
+      if (productsJson != null && productsJson.trim().isNotEmpty) {
+        final List decoded = jsonDecode(productsJson);
+        final list = decoded
+            .whereType<Map>()
+            .map((e) => ProductModel.fromJson(Map<String, dynamic>.from(e)))
+            .where((p) => p.name.trim().isNotEmpty && !p.isOutOfStock)
+            .toList();
+        if (list.isNotEmpty) {
+          cachedProducts = list;
+        }
+      }
+
+      List<Map<String, dynamic>>? cachedVouchers;
+      final vouchersJson = prefs.getString('cached_live_vouchers_v1');
+      if (vouchersJson != null && vouchersJson.trim().isNotEmpty) {
+        final List decoded = jsonDecode(vouchersJson);
+        final list = decoded
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+        if (list.isNotEmpty) {
+          cachedVouchers = list;
+        }
+      }
+
+      if (!mounted) return;
+      if (cachedShops != null || cachedProducts != null || cachedVouchers != null) {
+        setState(() {
+          if (cachedShops != null) {
+            _nearbyShops = cachedShops;
+            _isLoadingShops = false;
+            _isUsingCachedData = true;
+          }
+          if (cachedProducts != null) {
+            _discoveryProducts = cachedProducts;
+            _isLoadingDiscovery = false;
+          }
+          if (cachedVouchers != null) {
+            _liveVouchers = cachedVouchers;
+          }
+        });
+      }
     } catch (e) {
-      debugPrint('Error loading cached shops: $e');
+      debugPrint('Error loading cached home data: $e');
     }
   }
 
@@ -469,6 +552,30 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
       await prefs.setString('cached_nearby_shops_v1', jsonEncode(serializable));
     } catch (e) {
       debugPrint('Error caching shops: $e');
+    }
+  }
+
+  Future<void> _saveDiscoveryCache(
+    List<ProductModel> products,
+    List<Map<String, dynamic>> vouchers,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (products.isNotEmpty) {
+        final serializedProducts = products.take(30).map((p) => p.toJson()).toList();
+        await prefs.setString(
+          'cached_discovery_products_v1',
+          jsonEncode(serializedProducts),
+        );
+      }
+      if (vouchers.isNotEmpty) {
+        await prefs.setString(
+          'cached_live_vouchers_v1',
+          jsonEncode(vouchers.take(12).toList()),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error caching discovery feed: $e');
     }
   }
 
@@ -507,7 +614,46 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
     }).length;
   }
 
-  void _fetchShops() {
+  void _applyLoadedShops(List<dynamic> data) {
+    if (!mounted) return;
+    _offlineDialogShown = false;
+    _shopsRetryTimer?.cancel();
+
+    if (data.isNotEmpty) {
+      final List<Map<String, dynamic>> loaded = [];
+      for (var row in data) {
+        if (row is! Map) continue;
+        final map = Map<String, dynamic>.from(row);
+        map['name'] = map['business_name'] ?? map['trading_name'] ?? map['name'] ?? 'Kedai Pilihan';
+        map['category'] = map['business_industry'] ?? map['category'] ?? 'Service';
+        if (_userLat != null && _userLng != null && map['latitude'] != null && map['longitude'] != null) {
+          final dLat = double.tryParse(map['latitude'].toString()) ?? 0.0;
+          final dLng = double.tryParse(map['longitude'].toString()) ?? 0.0;
+          map['distanceKm'] = _calculateDistance(_userLat!, _userLng!, dLat, dLng);
+        } else {
+          map['distanceKm'] = 0.8;
+        }
+        loaded.add(map);
+      }
+      loaded.sort((a, b) => ((a['distanceKm'] ?? 999.0) as double).compareTo((b['distanceKm'] ?? 999.0) as double));
+      _saveShopsToCache(loaded);
+      setState(() {
+        _nearbyShops = loaded;
+        _isLoadingShops = false;
+        _hasFetchError = false;
+        _isUsingCachedData = false;
+      });
+    } else {
+      setState(() {
+        _nearbyShops = [];
+        _isLoadingShops = false;
+        _hasFetchError = false;
+        _isUsingCachedData = false;
+      });
+    }
+  }
+
+  void _startShopsRealtimeStream() {
     try {
       _shopsSubscription?.cancel();
       _shopsSubscription = Supabase.instance.client
@@ -516,63 +662,57 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
           .eq('status', 'active')
           .listen(
             (data) {
-              if (!mounted) return;
-              _offlineDialogShown = false;
-              if (data.isNotEmpty) {
-                final List<Map<String, dynamic>> loaded = [];
-                for (var row in data) {
-                  final map = Map<String, dynamic>.from(row);
-                  map['name'] = map['business_name'] ?? map['trading_name'] ?? map['name'] ?? 'Kedai Pilihan';
-                  map['category'] = map['business_industry'] ?? map['category'] ?? 'Service';
-                  if (_userLat != null && _userLng != null && map['latitude'] != null && map['longitude'] != null) {
-                    final dLat = double.tryParse(map['latitude'].toString()) ?? 0.0;
-                    final dLng = double.tryParse(map['longitude'].toString()) ?? 0.0;
-                    map['distanceKm'] = _calculateDistance(_userLat!, _userLng!, dLat, dLng);
-                  } else {
-                    map['distanceKm'] = 0.8;
-                  }
-                  loaded.add(map);
-                }
-                loaded.sort((a, b) => ((a['distanceKm'] ?? 999.0) as double).compareTo((b['distanceKm'] ?? 999.0) as double));
-                _saveShopsToCache(loaded);
-                setState(() {
-                  _nearbyShops = loaded;
-                  _isLoadingShops = false;
-                  _hasFetchError = false;
-                  _isUsingCachedData = false;
-                });
-              } else {
-                setState(() {
-                  _nearbyShops = [];
-                  _isLoadingShops = false;
-                  _hasFetchError = false;
-                  _isUsingCachedData = false;
-                });
-              }
+              _applyLoadedShops(data);
             },
             onError: (err) {
-              debugPrint('Supabase stream error in Home: $err');
-              if (!mounted) return;
-              setState(() {
-                _isLoadingShops = false;
-                _hasFetchError = true;
-              });
-              _showOfflinePopupIfNeeded();
+              // Abaikan ralat WebSocket sementara — data cache/REST kekal dipaparkan seperti Shopee
+              debugPrint('Supabase realtime stream transient error (ignored): $err');
             },
           );
     } catch (e) {
-      debugPrint('Error setting up shops stream: $e');
-      if (mounted) {
-        setState(() {
-          _isLoadingShops = false;
-          _hasFetchError = true;
+      debugPrint('Error setting up shops realtime stream: $e');
+    }
+  }
+
+  Future<void> _fetchShops({bool isRetry = false}) async {
+    try {
+      final data = await Supabase.instance.client
+          .from('businesses')
+          .select()
+          .eq('status', 'active')
+          .timeout(const Duration(seconds: 6));
+
+      if (!mounted) return;
+      _applyLoadedShops(data as List<dynamic>);
+      _startShopsRealtimeStream();
+    } catch (e) {
+      debugPrint('REST fetch shops error (retry=$isRetry): $e');
+      if (!mounted) return;
+
+      if (!isRetry) {
+        // Shopee-style: kekalkan cache & cuba reload senyap selepas 3 saat dahulu sebelum anggap offline
+        _shopsRetryTimer?.cancel();
+        _shopsRetryTimer = Timer(const Duration(seconds: 3), () {
+          if (mounted) {
+            _fetchShops(isRetry: true);
+          }
         });
+        return;
+      }
+
+      setState(() {
+        _isLoadingShops = false;
+        _hasFetchError = true;
+      });
+
+      // Hanya papar popup offline jika tiada langsung data cache untuk ditunjukkan kepada pengguna
+      if (_nearbyShops.isEmpty && _discoveryProducts.isEmpty) {
         _showOfflinePopupIfNeeded();
       }
     }
   }
 
-  Future<void> _fetchHomeDiscoveryData() async {
+  Future<void> _fetchHomeDiscoveryData({bool isRetry = false}) async {
     try {
       final client = Supabase.instance.client;
       final results = await Future.wait([
@@ -582,8 +722,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
             .eq('is_active', true)
             .order('is_featured', ascending: false)
             .order('created_at', ascending: false)
-            .limit(30)
-            .catchError((_) => <dynamic>[]),
+            .limit(30),
         client
             .from('vouchers')
             .select()
@@ -591,7 +730,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
             .order('created_at', ascending: false)
             .limit(12)
             .catchError((_) => <dynamic>[]),
-      ]);
+      ]).timeout(const Duration(seconds: 7));
 
       final rawProducts = results[0] as List;
       final rawVouchers = results[1] as List;
@@ -616,27 +755,40 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
           })
           .toList();
 
+      _saveDiscoveryCache(parsedProducts, activeVouchers);
+
       if (!mounted) return;
       setState(() {
         _discoveryProducts = parsedProducts;
         _liveVouchers = activeVouchers;
         _isLoadingDiscovery = false;
+        _discoveryPageLimit = min(max(_discoveryPageLimit, 10), max(parsedProducts.length, 10));
       });
     } catch (e) {
-      debugPrint('Error fetching home discovery data: $e');
-      if (mounted) {
-        setState(() => _isLoadingDiscovery = false);
+      debugPrint('Error fetching home discovery data (retry=$isRetry): $e');
+      if (!mounted) return;
+      if (!isRetry) {
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) {
+            _fetchHomeDiscoveryData(isRetry: true);
+          }
+        });
+        return;
       }
+      setState(() => _isLoadingDiscovery = false);
     }
   }
 
   Future<void> _handleRefresh() async {
     _offlineDialogShown = false;
+    _shopsRetryTimer?.cancel();
     setState(() {
       _hasFetchError = false;
     });
-    _fetchShops();
-    await _fetchHomeDiscoveryData();
+    await Future.wait([
+      _fetchShops(),
+      _fetchHomeDiscoveryData(),
+    ]);
   }
 
   void _showOfflinePopupIfNeeded() {
@@ -864,6 +1016,8 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                         color: const Color(0xFF3B82F6),
                         edgeOffset: 68,
                         child: CustomScrollView(
+                          controller: _scrollController,
+                          cacheExtent: 260,
                           physics: const BouncingScrollPhysics(
                             parent: AlwaysScrollableScrollPhysics(),
                           ),
@@ -1005,9 +1159,11 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                             SliverToBoxAdapter(
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                                child: _buildDiscoveryFeedSection(isDark, isDesktop),
+                                child: _buildDiscoveryFeedHeader(isDark),
                               ),
                             ),
+                            const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                            ..._buildDiscoveryFeedSlivers(isDark, isDesktop),
 
                             // Bottom Spacer
                             SliverToBoxAdapter(child: SizedBox(height: isDesktop ? 40 : 120)),
@@ -2330,25 +2486,13 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
   }
 
   // --- WIDGET 8: TIKTOK SHOP / SHOPEE-STYLE 2-COLUMN DISCOVERY FEED ---
-  Widget _buildDiscoveryFeedSection(bool isDark, bool isDesktop) {
+  Widget _buildDiscoveryFeedHeader(bool isDark) {
     final List<String> tabLabels = [
       'customer.feed_tab_all'.tr(),
       'customer.feed_tab_services'.tr(),
       'customer.feed_tab_products'.tr(),
       'customer.feed_tab_budget'.tr(),
     ];
-
-    final List<ProductModel> filtered = _discoveryProducts.where((p) {
-      if (_selectedDiscoveryTab == 1) return p.isService;
-      if (_selectedDiscoveryTab == 2) return p.isProduct;
-      if (_selectedDiscoveryTab == 3) return p.price > 0 && p.price <= 15.0;
-      return true;
-    }).toList();
-
-    final Map<String, Map<String, dynamic>> shopById = {
-      for (final s in _nearbyShops)
-        if (s['id'] != null) s['id'].toString(): s,
-    };
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2405,7 +2549,10 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
             itemBuilder: (context, idx) {
               final bool isSel = _selectedDiscoveryTab == idx;
               return GestureDetector(
-                onTap: () => setState(() => _selectedDiscoveryTab = idx),
+                onTap: () => setState(() {
+                  _selectedDiscoveryTab = idx;
+                  _discoveryPageLimit = 10;
+                }),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -2444,70 +2591,186 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
             },
           ),
         ),
-        const SizedBox(height: 12),
+      ],
+    );
+  }
 
-        if (_isLoadingDiscovery && _discoveryProducts.isEmpty)
-          MasonryGridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
+  List<Widget> _buildDiscoveryFeedSlivers(bool isDark, bool isDesktop) {
+    final List<ProductModel> filtered = _filteredDiscoveryProducts;
+
+    if (_isLoadingDiscovery && _discoveryProducts.isEmpty) {
+      return [
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          sliver: SliverMasonryGrid.count(
             crossAxisCount: isDesktop ? 3 : 2,
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            itemCount: 4,
-            itemBuilder: (_, idx) => Container(
-              height: idx.isEven ? 210 : 250,
+            childCount: 6,
+            itemBuilder: (_, idx) => _buildDiscoveryShimmerCard(isDark, idx),
+          ),
+        ),
+      ];
+    }
+
+    if (filtered.isEmpty) {
+      return [
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          sliver: SliverToBoxAdapter(
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 26, horizontal: 16),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(20),
                 color: isDark
-                    ? Colors.white.withValues(alpha: 0.05)
-                    : Colors.black.withValues(alpha: 0.04),
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : Colors.white.withValues(alpha: 0.75),
+                border: Border.all(
+                  color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                ),
               ),
-            ),
-          )
-        else if (filtered.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 26, horizontal: 16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.04)
-                  : Colors.white.withValues(alpha: 0.75),
-              border: Border.all(
-                color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
-              ),
-            ),
-            child: Center(
-              child: Text(
-                'customer.discovery_empty'.tr(),
-                style: TextStyle(
-                  color: isDark ? Colors.white54 : const Color(0xFF64748B),
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
+              child: Center(
+                child: Text(
+                  'customer.discovery_empty'.tr(),
+                  style: TextStyle(
+                    color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
-          )
-        else
-          MasonryGridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: isDesktop ? 3 : 2,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            itemCount: filtered.length,
-            itemBuilder: (context, index) {
-              final product = filtered[index];
-              final shop = shopById[product.shopId] ??
-                  {
-                    'id': product.shopId,
-                    'name': 'Ngam Partner',
-                    'category': product.category.isNotEmpty ? product.category : 'Service',
-                  };
-              return _buildDiscoveryProductCard(product, shop, isDark);
-            },
           ),
-      ],
+        ),
+      ];
+    }
+
+    final Map<String, Map<String, dynamic>> shopById = {
+      for (final s in _nearbyShops)
+        if (s['id'] != null) s['id'].toString(): s,
+    };
+
+    final int visibleCount = min(_discoveryPageLimit, filtered.length);
+    final bool hasMore = visibleCount < filtered.length;
+
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        sliver: SliverMasonryGrid.count(
+          crossAxisCount: isDesktop ? 3 : 2,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childCount: visibleCount + (hasMore ? 2 : 0),
+          itemBuilder: (context, index) {
+            if (index >= visibleCount) {
+              return _buildDiscoveryShimmerCard(isDark, index);
+            }
+            final product = filtered[index];
+            final shop = shopById[product.shopId] ??
+                {
+                  'id': product.shopId,
+                  'name': 'Ngam Partner',
+                  'category': product.category.isNotEmpty ? product.category : 'Service',
+                };
+            return _buildDiscoveryProductCard(product, shop, isDark);
+          },
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildImageShimmer(bool isDark, double height) {
+    final Color baseColor =
+        isDark ? const Color(0xFF1A2033) : const Color(0xFFE2E8F0);
+    final Color highlightColor =
+        isDark ? const Color(0xFF28324E) : const Color(0xFFF8FAFC);
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      period: const Duration(milliseconds: 1150),
+      child: Container(
+        height: height,
+        width: double.infinity,
+        color: baseColor,
+      ),
+    );
+  }
+
+  Widget _buildDiscoveryShimmerCard(bool isDark, int index) {
+    final Color baseColor =
+        isDark ? const Color(0xFF1A2033) : const Color(0xFFE2E8F0);
+    final Color highlightColor =
+        isDark ? const Color(0xFF28324E) : const Color(0xFFF8FAFC);
+    final double imgHeight = index.isEven ? 148 : 178;
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        color: isDark
+            ? const Color(0xFF141926).withValues(alpha: 0.85)
+            : Colors.white.withValues(alpha: 0.88),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: isDark ? 0.10 : 0.70),
+          width: 1.0,
+        ),
+      ),
+      padding: const EdgeInsets.all(10),
+      child: Shimmer.fromColors(
+        baseColor: baseColor,
+        highlightColor: highlightColor,
+        period: const Duration(milliseconds: 1150),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              height: imgHeight,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: baseColor,
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              height: 13,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: baseColor,
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              height: 12,
+              width: 96,
+              decoration: BoxDecoration(
+                color: baseColor,
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              height: 14,
+              width: 72,
+              decoration: BoxDecoration(
+                color: baseColor,
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              height: 10,
+              width: 110,
+              decoration: BoxDecoration(
+                color: baseColor,
+                borderRadius: BorderRadius.circular(5),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -2550,49 +2813,36 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
           ),
         );
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ProductDetailScreen(
-                product: product,
-                shop: shop,
+    return KeyedSubtree(
+      key: ValueKey('discovery_${product.id}'),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProductDetailScreen(
+                  product: product,
+                  shop: shop,
+                ),
               ),
-            ),
-          );
-        },
-        child: GlassContainer(
-          useOwnLayer: true,
-          quality: GlassQuality.standard,
-          shape: const LiquidRoundedSuperellipse(borderRadius: 24),
-          settings: LiquidGlassSettings(
-            thickness: 0.1,
-            blur: 14.0,
-            refractiveIndex: 1.0,
-            glassColor: Colors.transparent,
-            lightAngle: 45.0,
-            lightIntensity: isDark ? 0.1 : 0.2,
-            ambientStrength: 1.0,
-            saturation: 1.0,
-            chromaticAberration: 0.0,
-          ),
+            );
+          },
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
               color: isDark
-                  ? Colors.white.withValues(alpha: 0.04)
-                  : Colors.white.withValues(alpha: 0.72),
+                  ? const Color(0xFF141926).withValues(alpha: 0.86)
+                  : Colors.white.withValues(alpha: 0.88),
               border: Border.all(
-                color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.7),
+                color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.75),
                 width: 1.0,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.16 : 0.06),
-                  blurRadius: 18,
+                  color: Colors.black.withValues(alpha: isDark ? 0.16 : 0.055),
+                  blurRadius: 16,
                   offset: const Offset(0, 6),
                 ),
               ],
@@ -2603,38 +2853,56 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Pinterest-Safe Masonry Image Container (matches BusinessStoreView)
+                  // Fixed-ratio Masonry Image Container with Shopee-style Shimmer
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final width = constraints.maxWidth;
-                        final minH = width * 0.75;
-                        final maxH = width * 1.5;
+                        final minH = width * 0.78;
+                        final maxH = width * 1.32;
+                        final double heightFactor = switch (product.id.hashCode.abs() % 3) {
+                          0 => 1.0,
+                          1 => 1.18,
+                          _ => 0.90,
+                        };
+                        final double imgHeight =
+                            (width * heightFactor).clamp(minH, maxH);
 
-                        return ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minHeight: minH,
-                            maxHeight: maxH,
-                          ),
+                        return SizedBox(
+                          width: double.infinity,
+                          height: imgHeight,
                           child: Stack(
+                            fit: StackFit.expand,
                             children: [
-                              SizedBox(
-                                width: double.infinity,
-                                child: product.imageUrl.isNotEmpty
-                                    ? CachedNetworkImage(
-                                        imageUrl: product.imageUrl,
-                                        fit: BoxFit.cover,
-                                        placeholder: (_, __) => Container(
-                                          height: minH,
-                                          color: isDark
-                                              ? const Color(0xFF151929)
-                                              : const Color(0xFFE2E8F0),
-                                        ),
-                                        errorWidget: (_, __, ___) => imageFallback(minH),
-                                      )
-                                    : imageFallback(minH),
-                              ),
+                              if (product.imageUrl.isEmpty)
+                                imageFallback(imgHeight)
+                              else if (kIsWeb)
+                                Image.network(
+                                  product.imageUrl,
+                                  width: double.infinity,
+                                  height: imgHeight,
+                                  fit: BoxFit.cover,
+                                  gaplessPlayback: true,
+                                  frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                                    if (wasSynchronouslyLoaded || frame != null) {
+                                      return child;
+                                    }
+                                    return _buildImageShimmer(isDark, imgHeight);
+                                  },
+                                  errorBuilder: (_, __, ___) => imageFallback(imgHeight),
+                                )
+                              else
+                                CachedNetworkImage(
+                                  imageUrl: product.imageUrl,
+                                  width: double.infinity,
+                                  height: imgHeight,
+                                  fit: BoxFit.cover,
+                                  fadeInDuration: const Duration(milliseconds: 180),
+                                  memCacheWidth: 500,
+                                  placeholder: (_, __) => _buildImageShimmer(isDark, imgHeight),
+                                  errorWidget: (_, __, ___) => imageFallback(imgHeight),
+                                ),
                               Positioned(
                                 top: 7,
                                 left: 7,
@@ -2834,6 +3102,19 @@ class _NearbyRadarCardItemState extends State<_NearbyRadarCardItem>
     );
   }
 
+  Widget _buildRadarImageShimmer(bool isDark) {
+    final Color baseColor =
+        isDark ? const Color(0xFF1A2033) : const Color(0xFFE2E8F0);
+    final Color highlightColor =
+        isDark ? const Color(0xFF28324E) : const Color(0xFFF8FAFC);
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      period: const Duration(milliseconds: 1150),
+      child: Container(color: baseColor),
+    );
+  }
+
   Widget _buildCardImage(String imgUrl, String name, bool isDark) {
     if (imgUrl.isEmpty) {
       return _buildFallbackBanner(name, isDark);
@@ -2845,9 +3126,9 @@ class _NearbyRadarCardItemState extends State<_NearbyRadarCardItem>
         fit: BoxFit.cover,
         gaplessPlayback: true,
         errorBuilder: (_, __, ___) => _buildFallbackBanner(name, isDark),
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return _buildFallbackBanner(name, isDark);
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (wasSynchronouslyLoaded || frame != null) return child;
+          return _buildRadarImageShimmer(isDark);
         },
       );
     }
@@ -2856,7 +3137,8 @@ class _NearbyRadarCardItemState extends State<_NearbyRadarCardItem>
       imageUrl: imgUrl,
       fit: BoxFit.cover,
       useOldImageOnUrlChange: true,
-      placeholder: (_, __) => _buildFallbackBanner(name, isDark),
+      memCacheWidth: 600,
+      placeholder: (_, __) => _buildRadarImageShimmer(isDark),
       errorWidget: (_, __, ___) => _buildFallbackBanner(name, isDark),
     );
   }

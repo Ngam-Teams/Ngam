@@ -1,6 +1,6 @@
 {
-  "version": "1.0.68",
-  "build_number": 41,
-  "released_at": "2026-11-19T23:55:00Z",
-  "changelog": "Gantikan statistik lama pada halaman Profil pelanggan kepada statistik sebenar Pesanan, Tempahan dan Mata Ngam."
+  "version": "1.0.69",
+  "build_number": 42,
+  "released_at": "2026-11-20T13:05:00Z",
+  "changelog": "Optimumkan cache-first & pemuatan senyap di Home serta naik taraf suapan produk ke SliverMasonryGrid dengan Shimmer berturutan."
 }
