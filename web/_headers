@@ -10,3 +10,7 @@
   Cache-Control: no-cache, no-store, must-revalidate
 /main.dart.js
   Cache-Control: no-cache, no-store, must-revalidate
+/assets/AssetManifest.bin.json
+  Cache-Control: no-cache, must-revalidate
+/assets/translations/*
+  Cache-Control: no-cache, must-revalidate

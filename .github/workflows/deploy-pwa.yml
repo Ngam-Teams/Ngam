@@ -49,6 +49,7 @@ jobs:
 
       - name: Copy Cloudflare Redirects & Well-Known Assets
         run: |
+          cp web/_headers build/web/_headers || true
           cp web/_redirects build/web/_redirects || true
           cp -r web/privacypolicy build/web/ || true
           cp -r web/privacy_policy build/web/ || true
@@ -57,6 +58,9 @@ jobs:
           cp web/version.json build/web/version.json || true
           mkdir -p build/web/.well-known || true
           cp -r web/.well-known/* build/web/.well-known/ || true
+          APP_VER=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d'+' -f1 | tr -d '[:space:]')
+          sed -i "s|flutter_bootstrap\.js?v=[^\"]*|flutter_bootstrap.js?v=${APP_VER}-${{ github.run_id }}|g" build/web/index.html
+          sed -i "s|<meta name=\"app-version\" content=\"[^\"]*\">|<meta name=\"app-version\" content=\"${APP_VER}\">|g" build/web/index.html
         shell: bash
 
       - name: Deploy to Cloudflare Pages via Wrangler
