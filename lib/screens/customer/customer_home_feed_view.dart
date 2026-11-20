@@ -22,6 +22,7 @@ import '../../models/notification_data.dart';
 import '../../models/product_model.dart';
 import '../../services/voucher_service.dart';
 import '../../widgets/glass_toast.dart';
+import '../../widgets/natural_aspect_image.dart';
 import '../explore/business_store_view.dart';
 import '../explore/explore_view.dart';
 import '../explore/my_bookings_view.dart';
@@ -2875,101 +2876,62 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Fixed-ratio Masonry Image Container with Shopee-style Shimmer
+                  // Natural-height Masonry Image Container (follows true photo aspect ratio)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final width = constraints.maxWidth;
-                        final minH = width * 0.78;
-                        final maxH = width * 1.32;
-                        final double heightFactor = switch (product.id.hashCode.abs() % 3) {
-                          0 => 1.0,
-                          1 => 1.18,
-                          _ => 0.90,
-                        };
-                        final double imgHeight =
-                            (width * heightFactor).clamp(minH, maxH);
-
-                        return SizedBox(
-                          width: double.infinity,
-                          height: imgHeight,
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              if (product.imageUrl.isEmpty)
-                                imageFallback(imgHeight)
-                              else if (kIsWeb)
-                                Image.network(
-                                  product.imageUrl,
-                                  width: double.infinity,
-                                  height: imgHeight,
-                                  fit: BoxFit.cover,
-                                  gaplessPlayback: true,
-                                  frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                                    if (wasSynchronouslyLoaded || frame != null) {
-                                      return child;
-                                    }
-                                    return _buildImageShimmer(isDark, imgHeight);
-                                  },
-                                  errorBuilder: (_, __, ___) => imageFallback(imgHeight),
-                                )
-                              else
-                                CachedNetworkImage(
-                                  imageUrl: product.imageUrl,
-                                  width: double.infinity,
-                                  height: imgHeight,
-                                  fit: BoxFit.cover,
-                                  fadeInDuration: const Duration(milliseconds: 180),
-                                  memCacheWidth: 500,
-                                  placeholder: (_, __) => _buildImageShimmer(isDark, imgHeight),
-                                  errorWidget: (_, __, ___) => imageFallback(imgHeight),
-                                ),
-                              Positioned(
-                                top: 7,
-                                left: 7,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: typeColor.withValues(alpha: 0.90),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    isService
-                                        ? 'customer.badge_service'.tr()
-                                        : 'customer.badge_product'.tr(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 9.5,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
+                    child: NaturalAspectNetworkImage(
+                      imageUrl: product.imageUrl,
+                      defaultAspectRatio: 1.0,
+                      minAspectRatio: 0.45,
+                      maxAspectRatio: 2.2,
+                      placeholderBuilder: (_, height) =>
+                          _buildImageShimmer(isDark, height),
+                      errorBuilder: (_, height) => imageFallback(height),
+                      overlayChildren: [
+                        Positioned(
+                          top: 7,
+                          left: 7,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: typeColor.withValues(alpha: 0.90),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              isService
+                                  ? 'customer.badge_service'.tr()
+                                  : 'customer.badge_product'.tr(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (product.hasDiscount)
+                          Positioned(
+                            top: 7,
+                            right: 7,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF4444),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '-${product.discountPercent}%',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w900,
                                 ),
                               ),
-                              if (product.hasDiscount)
-                                Positioned(
-                                  top: 7,
-                                  right: 7,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFEF4444),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      '-${product.discountPercent}%',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 9.5,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
+                            ),
                           ),
-                        );
-                      },
+                      ],
                     ),
                   ),
                   const SizedBox(height: 10),

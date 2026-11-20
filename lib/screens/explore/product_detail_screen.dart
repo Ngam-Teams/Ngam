@@ -19,6 +19,7 @@ import '../../services/store_cart_service.dart';
 import '../../services/voucher_service.dart';
 import '../../utils/glass_toast.dart';
 import '../../widgets/glass_nav_button.dart';
+import '../../widgets/natural_aspect_image.dart';
 import '../shared/chat_screen.dart';
 import 'bookings_view.dart';
 import 'business_store_view.dart';
@@ -72,6 +73,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   bool _heroVideoMuted = true;
   bool _heroVideoError = false;
 
+  // Natural aspect ratio cache per gallery image URL (width / height)
+  final Map<String, double> _slideAspectRatios = {};
+
   // Selections
   int _selectedVariantIndex = 0;
   final Set<int> _selectedModifierIndices = {};
@@ -98,8 +102,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     _isSaved = SavedService.isProductSaved(_product.id);
     _shopDetails = Map<String, dynamic>.from(widget.shop);
 
+    _resolveGalleryAspectRatios();
     _initHeroVideo();
     _initAsyncData();
+  }
+
+  void _resolveGalleryAspectRatios() {
+    for (final url in _product.galleryImages) {
+      final cached = NaturalImageAspectCache.get(url);
+      if (cached != null) {
+        _slideAspectRatios[url] = cached;
+        continue;
+      }
+      NaturalImageAspectCache.resolve(url).then((ratio) {
+        if (!mounted || ratio == null) return;
+        if (_slideAspectRatios[url] != ratio) {
+          setState(() => _slideAspectRatios[url] = ratio);
+        }
+      });
+    }
   }
 
   Future<void> _initHeroVideo() async {
@@ -1161,16 +1182,44 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   // ── Hero Gallery Slider ────────────────────────────────────────
 
+  double _activeHeroAspectRatio(List<String> images, bool hasVideo) {
+    if (hasVideo && _currentImageIndex == 0) {
+      final ctrl = _heroVideoCtrl;
+      if (_heroVideoReady && ctrl != null && ctrl.value.aspectRatio > 0) {
+        return ctrl.value.aspectRatio;
+      }
+      return 1.0;
+    }
+    if (images.isNotEmpty) {
+      final imgIdx =
+          (hasVideo ? _currentImageIndex - 1 : _currentImageIndex)
+              .clamp(0, images.length - 1);
+      final url = images[imgIdx];
+      return _slideAspectRatios[url] ??
+          NaturalImageAspectCache.get(url) ??
+          1.0;
+    }
+    return 1.0;
+  }
+
   Widget _buildHeroImageSlider(bool isDark) {
     final images = _product.galleryImages;
     final hasVideo = _product.videoUrl.isNotEmpty;
     final totalSlides = (hasVideo ? 1 : 0) + images.length;
-    final screenH = MediaQuery.of(context).size.height;
-    final sliderH = (screenH * 0.42).clamp(280.0, 460.0);
+    final mediaSize = MediaQuery.of(context).size;
+    final screenW = mediaSize.width;
+    final screenH = mediaSize.height;
+    final double activeRatio =
+        _activeHeroAspectRatio(images, hasVideo).clamp(0.42, 2.4);
+    final double maxHeroH = (screenH * 0.85).clamp(420.0, 920.0);
+    final double sliderH = (screenW / activeRatio).clamp(220.0, maxHeroH);
 
-    return SizedBox(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
       height: sliderH,
       width: double.infinity,
+      color: isDark ? const Color(0xFF0F0F1A) : const Color(0xFFF3F4F6),
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -1198,7 +1247,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 final imgIdx = hasVideo ? idx - 1 : idx;
                 return Image.network(
                   images[imgIdx],
-                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  fit: BoxFit.contain,
+                  gaplessPlayback: true,
                   errorBuilder: (_, __, ___) => _buildFallbackHero(isDark),
                   loadingBuilder: (context, child, progress) {
                     if (progress == null) return child;
@@ -1406,7 +1458,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             if (_heroVideoReady && ctrl != null)
               SizedBox.expand(
                 child: FittedBox(
-                  fit: BoxFit.cover,
+                  fit: BoxFit.contain,
                   child: SizedBox(
                     width: ctrl.value.size.width > 0
                         ? ctrl.value.size.width
