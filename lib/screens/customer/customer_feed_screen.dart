@@ -590,10 +590,10 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
             'mediaItems': mediaItems,
             'cover': isVideo
                 ? (row['thumbnail_url'] ?? row['cover_url'] ?? '').toString().trim()
-                : ((biz['business_cover_url'] as String?)?.trim() ?? ''),
+                : primaryUrl,
             'thumbnail': isVideo
                 ? (row['thumbnail_url'] ?? row['cover_url'] ?? '').toString().trim()
-                : ((biz['business_cover_url'] as String?)?.trim() ?? ''),
+                : primaryUrl,
             'mediaType': primaryType,
             'title': row['title'] ?? '',
             'caption': row['caption'] ?? '',

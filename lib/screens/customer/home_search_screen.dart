@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'dart:ui' as ui;
 
@@ -13,6 +14,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/product_model.dart';
+import '../../widgets/tiktok_video_cover_preview.dart';
 import '../explore/business_store_view.dart';
 import '../explore/product_detail_screen.dart';
 import 'post_route_loader.dart';
@@ -57,6 +59,8 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
 
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  final GridVideoAutoplayCoordinator _videoAutoplayCoordinator =
+      GridVideoAutoplayCoordinator(maxConcurrent: 2);
 
   Timer? _debounceTimer;
   List<String> _recentSearches = [];
@@ -113,6 +117,7 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
   @override
   void dispose() {
     _debounceTimer?.cancel();
+    _videoAutoplayCoordinator.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -241,6 +246,14 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
     }
   }
 
+  bool _looksLikeVideoUrl(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('.mp4') ||
+        lower.contains('.mov') ||
+        lower.contains('.webm') ||
+        lower.contains('.m3u8');
+  }
+
   Map<String, dynamic> _normalizeSingleFeedPost(Map<String, dynamic> row) {
     final biz = row['businesses'] is Map
         ? Map<String, dynamic>.from(row['businesses'] as Map)
@@ -249,20 +262,65 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
     final String id = (row['id'] ?? '').toString();
     final String shopName = (row['shopName'] ?? biz['business_name'] ?? 'Ngam').toString();
     final String shopAvatar = (row['shopAvatar'] ?? biz['business_logo_url'] ?? '').toString().trim();
-    final String mediaType = (row['mediaType'] ?? row['media_type'] ?? 'image').toString().toLowerCase();
-    final bool isVideo = mediaType.contains('video');
 
-    String thumb = (row['thumbnail'] ?? row['cover'] ?? '').toString().trim();
-    if (thumb.isEmpty) {
-      final rawMedia = (row['image'] ?? row['media_url'] ?? '').toString().trim();
-      final bool mediaLooksVideo = isVideo ||
-          rawMedia.toLowerCase().endsWith('.mp4') ||
-          rawMedia.toLowerCase().endsWith('.mov') ||
-          rawMedia.toLowerCase().endsWith('.webm');
-      if (!mediaLooksVideo && rawMedia.startsWith('http')) {
-        thumb = rawMedia;
+    // Extract primary media URL & type (handles both mediaItems list and JSON-encoded media_url)
+    String primaryUrl = (row['image'] ?? row['media_url'] ?? '').toString().trim();
+    String mediaType = (row['mediaType'] ?? row['media_type'] ?? 'image').toString().toLowerCase();
+
+    if (row['mediaItems'] is List && (row['mediaItems'] as List).isNotEmpty) {
+      final first = (row['mediaItems'] as List).first;
+      if (first is Map) {
+        final u = (first['url'] ?? '').toString().trim();
+        final t = (first['type'] ?? '').toString().toLowerCase().trim();
+        if (u.isNotEmpty) primaryUrl = u;
+        if (t.isNotEmpty) mediaType = t;
+      }
+    } else if (primaryUrl.startsWith('[')) {
+      try {
+        final decoded = jsonDecode(primaryUrl);
+        if (decoded is List && decoded.isNotEmpty) {
+          final first = decoded.first;
+          if (first is Map) {
+            final u = (first['url'] ?? '').toString().trim();
+            final t = (first['type'] ?? '').toString().toLowerCase().trim();
+            if (u.isNotEmpty) primaryUrl = u;
+            if (t.isNotEmpty) mediaType = t;
+          } else if (first is String && first.trim().isNotEmpty) {
+            primaryUrl = first.trim();
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (primaryUrl.contains('mixkit.co')) {
+      primaryUrl =
+          'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
+    }
+
+    final bool isVideo = mediaType.contains('video') || _looksLikeVideoUrl(primaryUrl);
+    final String videoUrl =
+        isVideo && primaryUrl.startsWith('http') ? primaryUrl : '';
+
+    String thumb = '';
+    if (!isVideo && primaryUrl.startsWith('http')) {
+      // Image post: always use the actual post photo first!
+      thumb = primaryUrl;
+    } else {
+      final explicitThumb = (row['thumbnail_url'] ??
+              row['cover_url'] ??
+              row['thumbnail'] ??
+              row['cover'] ??
+              '')
+          .toString()
+          .trim();
+      if (explicitThumb.startsWith('http') && !_looksLikeVideoUrl(explicitThumb)) {
+        thumb = explicitThumb;
       } else {
-        thumb = (biz['business_cover_url'] ?? biz['business_logo_url'] ?? shopAvatar).toString().trim();
+        thumb = (biz['business_cover_url'] ??
+                biz['business_logo_url'] ??
+                shopAvatar)
+            .toString()
+            .trim();
       }
     }
 
@@ -276,6 +334,7 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
       'shopHandle': (row['shopHandle'] ?? biz['business_handle'] ?? '').toString().trim(),
       'shopAvatar': shopAvatar,
       'thumbnail': thumb,
+      'videoUrl': videoUrl,
       'isVideo': isVideo,
       'likes': (row['likes'] ?? row['likes_count'] ?? 0) is num
           ? ((row['likes'] ?? row['likes_count'] ?? 0) as num).toInt()
@@ -935,20 +994,30 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
 
                       // Body: either Pre-search discovery OR Live filtered results
                       Expanded(
-                        child: _isSearchMode
-                            ? _buildSearchResultsScroll(
-                                isDark: isDark,
-                                isDesktop: isDesktop,
-                                matchedShops: matchedShops,
-                                matchedProducts: matchedProducts,
-                                matchedVideos: matchedVideos,
-                                shopById: shopById,
-                              )
-                            : _buildPreSearchDiscovery(
-                                isDark: isDark,
-                                isDesktop: isDesktop,
-                                shopById: shopById,
-                              ),
+                        child: NotificationListener<ScrollNotification>(
+                          onNotification: (notification) {
+                            if (notification is ScrollUpdateNotification ||
+                                notification is ScrollEndNotification ||
+                                notification is ScrollMetricsNotification) {
+                              _videoAutoplayCoordinator.scheduleUpdate();
+                            }
+                            return false;
+                          },
+                          child: _isSearchMode
+                              ? _buildSearchResultsScroll(
+                                  isDark: isDark,
+                                  isDesktop: isDesktop,
+                                  matchedShops: matchedShops,
+                                  matchedProducts: matchedProducts,
+                                  matchedVideos: matchedVideos,
+                                  shopById: shopById,
+                                )
+                              : _buildPreSearchDiscovery(
+                                  isDark: isDark,
+                                  isDesktop: isDesktop,
+                                  shopById: shopById,
+                                ),
+                        ),
                       ),
                     ],
                   ),
@@ -1397,7 +1466,7 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
               ),
               delegate: SliverChildBuilderDelegate(
                 (context, idx) => _buildVideoResultCard(_allFeedPosts[idx], isDark),
-                childCount: min(_allFeedPosts.length, 8),
+                childCount: min(_allFeedPosts.length, 20),
               ),
             ),
           )
@@ -1767,19 +1836,24 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
         : (caption.isNotEmpty ? caption : (post['shopName'] ?? 'Ngam').toString());
     final String shopName = (post['shopName'] ?? 'Ngam').toString();
     final String thumb = (post['thumbnail'] ?? '').toString().trim();
+    final String videoUrl = (post['videoUrl'] ?? '').toString().trim();
     final bool isVideo = post['isVideo'] == true;
     final int likes = (post['likes'] as int?) ?? 0;
 
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         if (_query.isNotEmpty) {
           _saveRecentSearch(_query);
         }
         if (postId.isEmpty) return;
-        Navigator.push(
+        _videoAutoplayCoordinator.pauseAll();
+        await Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => PostRouteLoader(postId: postId)),
         );
+        if (mounted) {
+          _videoAutoplayCoordinator.scheduleUpdate();
+        }
       },
       child: Container(
         decoration: BoxDecoration(
@@ -1803,7 +1877,17 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              if (thumb.isNotEmpty)
+              if (isVideo && videoUrl.isNotEmpty)
+                TikTokVideoCoverPreview(
+                  key: ValueKey('tiktok_grid_vid_$postId'),
+                  videoId: postId.isNotEmpty ? postId : videoUrl,
+                  videoUrl: videoUrl,
+                  fallbackThumbnailUrl: thumb,
+                  coordinator: _videoAutoplayCoordinator,
+                  fallbackWidget: _buildVideoFallbackPoster(true),
+                  isDark: isDark,
+                )
+              else if (thumb.isNotEmpty)
                 (kIsWeb
                     ? Image.network(
                         thumb,

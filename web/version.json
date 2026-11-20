@@ -1,6 +1,6 @@
 {
-  "version": "1.0.73",
-  "build_number": 46,
-  "released_at": "2026-11-20T17:10:00Z",
-  "changelog": "Gambar produk/servis pada skrin Butiran Produk dan grid masonry Laman Utama kini mengikut saiz & ketinggian asal gambar tanpa terpotong."
+  "version": "1.0.74",
+  "build_number": 47,
+  "released_at": "2026-11-20T18:25:00Z",
+  "changelog": "Kad Video & Post di Carian / Trending Videos kini memaparkan bingkai cover sebenar video/gambar serta sokongan autoplay senyap gaya TikTok ketika scroll."
 }
