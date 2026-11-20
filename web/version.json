@@ -1,6 +1,6 @@
 {
-  "version": "1.0.67",
-  "build_number": 40,
-  "released_at": "2026-11-19T21:06:00Z",
-  "changelog": "Tukar grid suapan Untuk Anda Berdekatan pada Laman Utama kepada Masonry Grid glassmorphism selaras dengan halaman kedai."
+  "version": "1.0.68",
+  "build_number": 41,
+  "released_at": "2026-11-19T23:55:00Z",
+  "changelog": "Gantikan statistik lama pada halaman Profil pelanggan kepada statistik sebenar Pesanan, Tempahan dan Mata Ngam."
 }

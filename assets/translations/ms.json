@@ -421,7 +421,10 @@
     "grid_stamps": "Kad Cop",
     "grid_vouchers": "Baucar",
     "grid_account": "Akaun",
-    "grid_pts": "{} mata"
+    "grid_pts": "{} mata",
+    "stat_orders": "Pesanan",
+    "stat_bookings": "Tempahan",
+    "stat_points": "Mata Ngam"
   },
   "wallet": {
     "title": "Dompet & Pembayaran",

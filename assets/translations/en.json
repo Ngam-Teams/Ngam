@@ -421,7 +421,10 @@
     "grid_stamps": "Stamps",
     "grid_vouchers": "Vouchers",
     "grid_account": "Account",
-    "grid_pts": "{} pts"
+    "grid_pts": "{} pts",
+    "stat_orders": "Orders",
+    "stat_bookings": "Bookings",
+    "stat_points": "Ngam Pts"
   },
   "wallet": {
     "title": "Wallet & Payments",

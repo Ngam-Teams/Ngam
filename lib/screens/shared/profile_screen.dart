@@ -4,11 +4,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ngam/widgets/glass_box.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
-import '../../services/review_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/glass_toast.dart';
@@ -30,8 +30,8 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../services/ereceipt_service.dart';
 import '../receipt/my_receipts_screen.dart';
 // ============================================================
-// Ngam App — Skrin Profil (Customer & Runner)
-// User profile with role toggle, stats, and settings (Glassmorphic)
+// Ngam App — Skrin Profil (Customer)
+// User profile with live activity stats, quick account grid & settings
 // ============================================================
 
 class ProfileScreen extends StatefulWidget {
@@ -42,9 +42,8 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  int _tasksPosted = 0;
-  int _tasksCompleted = 0;
-  double _rating = 0.0;
+  int _ordersCount = 0;
+  int _bookingsCount = 0;
   bool _isCheckingUpdate = false;
 
   @override
@@ -59,20 +58,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (user == null) return;
 
     try {
-      final posted = 0;
-      final completed = 0;
-      final rating = await ReviewService.getAverageRating(user.id);
+      final client = Supabase.instance.client;
+      final results = await Future.wait([
+        client
+            .from('orders')
+            .select('id')
+            .eq('owner_user_id', user.id)
+            .catchError((_) => <dynamic>[]),
+        client
+            .from('bookings')
+            .select('id')
+            .eq('customer_id', user.id)
+            .neq('status', 'holding')
+            .catchError((_) => <dynamic>[]),
+      ]);
+
+      final ordersList = results[0] as List;
+      final bookingsList = results[1] as List;
 
       if (mounted) {
         setState(() {
-          _tasksPosted = posted;
-          _tasksCompleted = completed;
-          _rating = rating;
+          _ordersCount = ordersList.length;
+          _bookingsCount = bookingsList.length;
         });
       }
-    } catch (e) {
-      // Kalau error kita ignore je diam-diam
-    }
+    } catch (_) {}
   }
 
   Widget _buildProfileHeaderShimmer(bool isDark) {
@@ -273,31 +283,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         // ─── Bahagian Stat / Statistik (Hanya jika Log Masuk) ───
                         if (user != null) ...[
                           _buildSectionHeader('profile.statistics'.tr()),
-                          Row(
-                            children: [
-                              _StatCardGlass(
-                                isDark: isDark,
-                                label: 'profile.tasks_posted'.tr(),
-                                value: '$_tasksPosted',
-                                icon: HugeIcons.strokeRoundedUpload01,
-                              ),
-                              const SizedBox(width: 10),
-                              _StatCardGlass(
-                                isDark: isDark,
-                                label: 'profile.completed'.tr(),
-                                value: '$_tasksCompleted',
-                                icon: HugeIcons.strokeRoundedTick01,
-                              ),
-                              const SizedBox(width: 10),
-                              _StatCardGlass(
-                                isDark: isDark,
-                                label: 'profile.rating'.tr(),
-                                value: _rating > 0
-                                    ? _rating.toStringAsFixed(1)
-                                    : 'profile.new_rating'.tr(),
-                                icon: HugeIcons.strokeRoundedStar,
-                              ),
-                            ],
+                          ValueListenableBuilder<int>(
+                            valueListenable: EreceiptService.totalPointsNotifier,
+                            builder: (context, pts, _) {
+                              return Row(
+                                children: [
+                                  _StatCardGlass(
+                                    isDark: isDark,
+                                    label: 'profile.stat_orders'.tr(),
+                                    value: '$_ordersCount',
+                                    icon: HugeIcons.strokeRoundedInvoice01,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  _StatCardGlass(
+                                    isDark: isDark,
+                                    label: 'profile.stat_bookings'.tr(),
+                                    value: '$_bookingsCount',
+                                    icon: HugeIcons.strokeRoundedCalendar03,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  _StatCardGlass(
+                                    isDark: isDark,
+                                    label: 'profile.stat_points'.tr(),
+                                    value: '$pts',
+                                    icon: HugeIcons.strokeRoundedStar,
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                           const SizedBox(height: 18),
 
