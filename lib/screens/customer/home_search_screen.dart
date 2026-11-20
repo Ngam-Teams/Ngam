@@ -15,10 +15,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/product_model.dart';
 import '../explore/business_store_view.dart';
 import '../explore/product_detail_screen.dart';
+import 'post_route_loader.dart';
 
 // =============================================================================
-// HomeSearchScreen — Halaman Carian Khas Ngam (Kedai, Servis & Produk)
-// Gaya Liquid Glass Ngam × Carian Pantas Shopee
+// HomeSearchScreen — Halaman Carian Khas Ngam (Kedai, Servis, Produk & Video)
+// Gaya Liquid Glass Ngam × Super-Search (Shopee × TikTok)
 // =============================================================================
 
 enum _SearchTypeFilter { all, services, products }
@@ -28,17 +29,23 @@ enum _SearchSortMode { relevance, nearest, priceLow, priceHigh }
 class HomeSearchScreen extends StatefulWidget {
   final List<Map<String, dynamic>> initialShops;
   final List<ProductModel> initialProducts;
+  final List<Map<String, dynamic>> initialFeedPosts;
   final double? userLat;
   final double? userLng;
   final bool openFiltersOnStart;
+  final int initialResultTab; // 0: All, 1: Stores, 2: Products & Services, 3: Videos
+  final bool isVideoFocused;
 
   const HomeSearchScreen({
     super.key,
     this.initialShops = const [],
     this.initialProducts = const [],
+    this.initialFeedPosts = const [],
     this.userLat,
     this.userLng,
     this.openFiltersOnStart = false,
+    this.initialResultTab = 0,
+    this.isVideoFocused = false,
   });
 
   @override
@@ -56,11 +63,13 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
 
   List<Map<String, dynamic>> _allShops = [];
   List<ProductModel> _allProducts = [];
+  List<Map<String, dynamic>> _allFeedPosts = [];
   List<Map<String, dynamic>> _remoteShops = [];
   List<ProductModel> _remoteProducts = [];
+  List<Map<String, dynamic>> _remoteFeedPosts = [];
 
   bool _isSearchingRemote = false;
-  int _selectedResultTab = 0; // 0: All, 1: Stores, 2: Products & Services
+  int _selectedResultTab = 0; // 0: All, 1: Stores, 2: Products & Services, 3: Videos
   _SearchTypeFilter _typeFilter = _SearchTypeFilter.all;
   _SearchSortMode _sortMode = _SearchSortMode.relevance;
   double? _maxBudget;
@@ -79,11 +88,15 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedResultTab = widget.initialResultTab.clamp(0, 3);
     _allShops = List<Map<String, dynamic>>.from(widget.initialShops);
     _allProducts = List<ProductModel>.from(widget.initialProducts);
+    _allFeedPosts = widget.initialFeedPosts
+        .map((e) => _normalizeSingleFeedPost(Map<String, dynamic>.from(e)))
+        .toList();
     _loadRecentSearches();
 
-    if (_allShops.isEmpty || _allProducts.isEmpty) {
+    if (_allShops.isEmpty || _allProducts.isEmpty || _allFeedPosts.isEmpty) {
       _warmFallbackCatalog();
     }
 
@@ -145,6 +158,28 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
     }
   }
 
+  static const String _feedPostSelect = '''
+    id,
+    business_id,
+    title,
+    caption,
+    media_url,
+    media_type,
+    category,
+    service_tag,
+    likes_count,
+    views_count,
+    created_at,
+    businesses (
+      id,
+      business_name,
+      business_handle,
+      business_logo_url,
+      business_cover_url,
+      business_industry
+    )
+  ''';
+
   Future<void> _warmFallbackCatalog() async {
     try {
       final client = Supabase.instance.client;
@@ -168,11 +203,23 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
               .catchError((_) => <dynamic>[])
         else
           Future.value(<dynamic>[]),
+        if (_allFeedPosts.isEmpty)
+          client
+              .from('feed_posts')
+              .select(_feedPostSelect)
+              .eq('status', 'published')
+              .order('is_pinned', ascending: false)
+              .order('created_at', ascending: false)
+              .limit(24)
+              .catchError((_) => <dynamic>[])
+        else
+          Future.value(<dynamic>[]),
       ]).timeout(const Duration(seconds: 6));
 
       if (!mounted) return;
       final rawShops = futures[0] as List;
       final rawProducts = futures[1] as List;
+      final rawPosts = futures[2] as List;
 
       setState(() {
         if (rawShops.isNotEmpty && _allShops.isEmpty) {
@@ -185,10 +232,99 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
               .where((p) => p.name.trim().isNotEmpty && !p.isOutOfStock)
               .toList();
         }
+        if (rawPosts.isNotEmpty && _allFeedPosts.isEmpty) {
+          _allFeedPosts = _normalizeFeedPosts(rawPosts);
+        }
       });
     } catch (e) {
       debugPrint('Search catalog warm error: $e');
     }
+  }
+
+  Map<String, dynamic> _normalizeSingleFeedPost(Map<String, dynamic> row) {
+    final biz = row['businesses'] is Map
+        ? Map<String, dynamic>.from(row['businesses'] as Map)
+        : <String, dynamic>{};
+
+    final String id = (row['id'] ?? '').toString();
+    final String shopName = (row['shopName'] ?? biz['business_name'] ?? 'Ngam').toString();
+    final String shopAvatar = (row['shopAvatar'] ?? biz['business_logo_url'] ?? '').toString().trim();
+    final String mediaType = (row['mediaType'] ?? row['media_type'] ?? 'image').toString().toLowerCase();
+    final bool isVideo = mediaType.contains('video');
+
+    String thumb = (row['thumbnail'] ?? row['cover'] ?? '').toString().trim();
+    if (thumb.isEmpty) {
+      final rawMedia = (row['image'] ?? row['media_url'] ?? '').toString().trim();
+      final bool mediaLooksVideo = isVideo ||
+          rawMedia.toLowerCase().endsWith('.mp4') ||
+          rawMedia.toLowerCase().endsWith('.mov') ||
+          rawMedia.toLowerCase().endsWith('.webm');
+      if (!mediaLooksVideo && rawMedia.startsWith('http')) {
+        thumb = rawMedia;
+      } else {
+        thumb = (biz['business_cover_url'] ?? biz['business_logo_url'] ?? shopAvatar).toString().trim();
+      }
+    }
+
+    return {
+      'id': id,
+      'title': (row['title'] ?? '').toString().trim(),
+      'caption': (row['caption'] ?? '').toString().trim(),
+      'category': (row['category'] ?? biz['business_industry'] ?? '').toString().trim(),
+      'serviceTag': (row['serviceTag'] ?? row['service_tag'] ?? '').toString().trim(),
+      'shopName': shopName,
+      'shopHandle': (row['shopHandle'] ?? biz['business_handle'] ?? '').toString().trim(),
+      'shopAvatar': shopAvatar,
+      'thumbnail': thumb,
+      'isVideo': isVideo,
+      'likes': (row['likes'] ?? row['likes_count'] ?? 0) is num
+          ? ((row['likes'] ?? row['likes_count'] ?? 0) as num).toInt()
+          : 0,
+      'views': (row['views'] ?? row['views_count'] ?? 0) is num
+          ? ((row['views'] ?? row['views_count'] ?? 0) as num).toInt()
+          : 0,
+    };
+  }
+
+  List<Map<String, dynamic>> _normalizeFeedPosts(List<dynamic> raw) {
+    return raw
+        .whereType<Map>()
+        .map((r) => _normalizeSingleFeedPost(Map<String, dynamic>.from(r)))
+        .where((p) => (p['id']?.toString().isNotEmpty ?? false))
+        .toList();
+  }
+
+  List<Map<String, dynamic>> get _filteredFeedPosts {
+    final q = _query.toLowerCase();
+    final byId = <String, Map<String, dynamic>>{};
+    for (final p in _allFeedPosts) {
+      final id = p['id']?.toString() ?? '';
+      if (id.isNotEmpty) byId[id] = p;
+    }
+    for (final p in _remoteFeedPosts) {
+      final id = p['id']?.toString() ?? '';
+      if (id.isNotEmpty) byId[id] = p;
+    }
+
+    final list = byId.values.where((p) {
+      final title = (p['title'] ?? '').toString();
+      final caption = (p['caption'] ?? '').toString();
+      final cat = (p['category'] ?? '').toString();
+      final tag = (p['serviceTag'] ?? '').toString();
+      final shopName = (p['shopName'] ?? '').toString();
+      final handle = (p['shopHandle'] ?? '').toString();
+
+      if (_selectedCategoryFilter != null &&
+          !_matchesCategoryKey('$cat $title $caption $tag', _selectedCategoryFilter!)) {
+        return false;
+      }
+      if (q.isEmpty) return true;
+      final hay = '$title $caption $cat $tag $shopName $handle'.toLowerCase();
+      return hay.contains(q);
+    }).toList();
+
+    list.sort((a, b) => ((b['likes'] as int?) ?? 0).compareTo((a['likes'] as int?) ?? 0));
+    return list;
   }
 
   List<Map<String, dynamic>> _normalizeShops(List<dynamic> raw) {
@@ -229,6 +365,7 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
       setState(() {
         _remoteShops = [];
         _remoteProducts = [];
+        _remoteFeedPosts = [];
         _isSearchingRemote = false;
       });
       return;
@@ -291,6 +428,19 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
             .order('is_featured', ascending: false)
             .limit(40)
             .catchError((_) => <dynamic>[]),
+        client
+            .from('feed_posts')
+            .select(_feedPostSelect)
+            .eq('status', 'published')
+            .or(
+              'title.ilike.$safePattern,'
+              'caption.ilike.$safePattern,'
+              'category.ilike.$safePattern,'
+              'service_tag.ilike.$safePattern',
+            )
+            .order('created_at', ascending: false)
+            .limit(24)
+            .catchError((_) => <dynamic>[]),
       ]).timeout(const Duration(seconds: 6));
 
       if (!mounted || _query.toLowerCase() != clean.toLowerCase()) return;
@@ -301,10 +451,12 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
           .map((r) => ProductModel.fromJson(Map<String, dynamic>.from(r)))
           .where((p) => p.name.trim().isNotEmpty && !p.isOutOfStock)
           .toList();
+      final feedPosts = _normalizeFeedPosts(results[2] as List);
 
       setState(() {
         _remoteShops = shops;
         _remoteProducts = products;
+        _remoteFeedPosts = feedPosts;
         _isSearchingRemote = false;
       });
     } catch (e) {
@@ -721,6 +873,7 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
 
     final matchedShops = _filteredShops;
     final matchedProducts = _filteredProducts;
+    final matchedVideos = _filteredFeedPosts;
     final shopById = _mergedShopById;
 
     return Scaffold(
@@ -788,6 +941,7 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
                                 isDesktop: isDesktop,
                                 matchedShops: matchedShops,
                                 matchedProducts: matchedProducts,
+                                matchedVideos: matchedVideos,
                                 shopById: shopById,
                               )
                             : _buildPreSearchDiscovery(
@@ -884,7 +1038,9 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
                 fontWeight: FontWeight.w600,
               ),
               decoration: InputDecoration(
-                hintText: 'search.hint'.tr(),
+                hintText: widget.isVideoFocused
+                    ? 'search.hint_videos'.tr()
+                    : 'search.hint'.tr(),
                 hintStyle: TextStyle(
                   color: isDark ? Colors.white54 : Colors.grey.shade600,
                   fontSize: 13.5,
@@ -1202,7 +1358,18 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
                   ),
                 ),
 
-                if (suggestedProducts.isNotEmpty) ...[
+                if (widget.isVideoFocused && _allFeedPosts.isNotEmpty) ...[
+                  const SizedBox(height: 22),
+                  Text(
+                    'search.suggested_videos_title'.tr(),
+                    style: TextStyle(
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ] else if (suggestedProducts.isNotEmpty) ...[
                   const SizedBox(height: 22),
                   Text(
                     'search.suggested_title'.tr(),
@@ -1218,7 +1385,23 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
             ),
           ),
         ),
-        if (suggestedProducts.isNotEmpty)
+        if (widget.isVideoFocused && _allFeedPosts.isNotEmpty)
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: isDesktop ? 3 : 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 0.70,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, idx) => _buildVideoResultCard(_allFeedPosts[idx], isDark),
+                childCount: min(_allFeedPosts.length, 8),
+              ),
+            ),
+          )
+        else if (suggestedProducts.isNotEmpty)
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverMasonryGrid.count(
@@ -1248,18 +1431,22 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
     required bool isDesktop,
     required List<Map<String, dynamic>> matchedShops,
     required List<ProductModel> matchedProducts,
+    required List<Map<String, dynamic>> matchedVideos,
     required Map<String, Map<String, dynamic>> shopById,
   }) {
     final bool showStores = _selectedResultTab == 0 || _selectedResultTab == 1;
     final bool showItems = _selectedResultTab == 0 || _selectedResultTab == 2;
+    final bool showVideos = _selectedResultTab == 0 || _selectedResultTab == 3;
     final bool nothingFound = (!showStores || matchedShops.isEmpty) &&
         (!showItems || matchedProducts.isEmpty) &&
+        (!showVideos || matchedVideos.isEmpty) &&
         !_isSearchingRemote;
 
     final tabs = [
       'search.tab_all'.tr(),
       'search.tab_stores'.tr(),
       'search.tab_items'.tr(),
+      'search.tab_videos'.tr(),
     ];
 
     return Column(
@@ -1473,6 +1660,58 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
                       const SliverToBoxAdapter(child: SizedBox(height: 16)),
                     ],
 
+                    if (showVideos && matchedVideos.isNotEmpty) ...[
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                          child: Text(
+                            'search.videos_section'.tr(
+                              args: [matchedVideos.length.toString()],
+                            ),
+                            style: TextStyle(
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (_selectedResultTab == 0)
+                        SliverToBoxAdapter(
+                          child: SizedBox(
+                            height: 224,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              physics: const BouncingScrollPhysics(),
+                              itemCount: min(matchedVideos.length, 10),
+                              separatorBuilder: (_, __) => const SizedBox(width: 10),
+                              itemBuilder: (_, idx) => SizedBox(
+                                width: 152,
+                                child: _buildVideoResultCard(matchedVideos[idx], isDark),
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        SliverPadding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          sliver: SliverGrid(
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: isDesktop ? 3 : 2,
+                              mainAxisSpacing: 12,
+                              crossAxisSpacing: 12,
+                              childAspectRatio: 0.70,
+                            ),
+                            delegate: SliverChildBuilderDelegate(
+                              (_, idx) => _buildVideoResultCard(matchedVideos[idx], isDark),
+                              childCount: matchedVideos.length,
+                            ),
+                          ),
+                        ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    ],
+
                     if (showItems && matchedProducts.isNotEmpty) ...[
                       SliverToBoxAdapter(
                         child: Padding(
@@ -1516,6 +1755,206 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
                 ),
         ),
       ],
+    );
+  }
+
+  Widget _buildVideoResultCard(Map<String, dynamic> post, bool isDark) {
+    final String postId = (post['id'] ?? '').toString();
+    final String title = (post['title'] ?? '').toString();
+    final String caption = (post['caption'] ?? '').toString();
+    final String displayTitle = title.isNotEmpty
+        ? title
+        : (caption.isNotEmpty ? caption : (post['shopName'] ?? 'Ngam').toString());
+    final String shopName = (post['shopName'] ?? 'Ngam').toString();
+    final String thumb = (post['thumbnail'] ?? '').toString().trim();
+    final bool isVideo = post['isVideo'] == true;
+    final int likes = (post['likes'] as int?) ?? 0;
+
+    return GestureDetector(
+      onTap: () {
+        if (_query.isNotEmpty) {
+          _saveRecentSearch(_query);
+        }
+        if (postId.isEmpty) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => PostRouteLoader(postId: postId)),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: isDark
+              ? const Color(0xFF141926).withValues(alpha: 0.90)
+              : Colors.white.withValues(alpha: 0.92),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.75),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.06),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (thumb.isNotEmpty)
+                (kIsWeb
+                    ? Image.network(
+                        thumb,
+                        fit: BoxFit.cover,
+                        gaplessPlayback: true,
+                        frameBuilder: (_, child, frame, sync) {
+                          if (sync || frame != null) return child;
+                          return _buildImageShimmer(isDark, 220);
+                        },
+                        errorBuilder: (_, __, ___) => _buildVideoFallbackPoster(isVideo),
+                      )
+                    : CachedNetworkImage(
+                        imageUrl: thumb,
+                        fit: BoxFit.cover,
+                        memCacheWidth: 420,
+                        placeholder: (_, __) => _buildImageShimmer(isDark, 220),
+                        errorWidget: (_, __, ___) => _buildVideoFallbackPoster(isVideo),
+                      ))
+              else
+                _buildVideoFallbackPoster(isVideo),
+
+              // Gradient overlay for legibility
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.20),
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.82),
+                    ],
+                    stops: const [0.0, 0.42, 1.0],
+                  ),
+                ),
+              ),
+
+              // Top badge (VIDEO / POST)
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      HugeIcon(
+                        icon: isVideo
+                            ? HugeIcons.strokeRoundedPlay
+                            : HugeIcons.strokeRoundedImage01,
+                        color: const Color(0xFF38BDF8),
+                        size: 11,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isVideo ? 'search.video_badge'.tr() : 'search.post_badge'.tr(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Bottom caption, creator & likes
+              Positioned(
+                left: 10,
+                right: 10,
+                bottom: 10,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      displayTitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            shopName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.78),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const HugeIcon(
+                          icon: HugeIcons.strokeRoundedFavourite,
+                          color: Color(0xFFF43F5E),
+                          size: 11,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          likes.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVideoFallbackPoster(bool isVideo) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1E3A8A), Color(0xFF0F172A)],
+        ),
+      ),
+      child: Center(
+        child: HugeIcon(
+          icon: isVideo ? HugeIcons.strokeRoundedPlayCircle : HugeIcons.strokeRoundedImage01,
+          color: Colors.white.withValues(alpha: 0.45),
+          size: 38,
+        ),
+      ),
     );
   }
 

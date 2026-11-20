@@ -1,6 +1,6 @@
 {
-  "version": "1.0.71",
-  "build_number": 44,
-  "released_at": "2026-11-20T13:22:00Z",
-  "changelog": "Bina halaman carian khas (HomeSearchScreen) dengan carian terkini, penapis bajet/jenis/susunan, serta hasil kedai dan produk secara langsung."
+  "version": "1.0.72",
+  "build_number": 45,
+  "released_at": "2026-11-20T13:52:00Z",
+  "changelog": "Naik taraf Carian Utama kepada Super-Search (Kedai, Produk/Servis & Video Feed) serta sambungkan carian Feed terus ke mod carian Video gaya TikTok."
 }

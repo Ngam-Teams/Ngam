@@ -1657,6 +1657,12 @@
     "kw_carwash": "Cuci Kereta",
     "kw_workshop": "Bengkel Servis",
     "kw_salon": "Salun & Spa",
-    "kw_budget": "Promosi Bawah RM15"
+    "kw_budget": "Promosi Bawah RM15",
+    "hint_videos": "Cari video, kreator, hashtag...",
+    "tab_videos": "Video",
+    "videos_section": "Video & Pos Sepadan ({})",
+    "suggested_videos_title": "Video Trending",
+    "video_badge": "VIDEO",
+    "post_badge": "POS"
   }
 }

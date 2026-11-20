@@ -1657,6 +1657,12 @@
     "kw_carwash": "Car Wash",
     "kw_workshop": "Workshop",
     "kw_salon": "Beauty & Salon",
-    "kw_budget": "Deals Under RM15"
+    "kw_budget": "Deals Under RM15",
+    "hint_videos": "Search videos, creators, hashtags...",
+    "tab_videos": "Videos",
+    "videos_section": "Matching Videos & Posts ({})",
+    "suggested_videos_title": "Trending Videos",
+    "video_badge": "VIDEO",
+    "post_badge": "POST"
   }
 }

@@ -25,6 +25,7 @@ import '../../widgets/customer_desktop_sidebar.dart';
 import '../../services/saved_service.dart';
 import '../../widgets/glass_share_sheet.dart';
 import '../explore/business_store_view.dart';
+import 'home_search_screen.dart';
 
 // ---------------------------------------------------------------------------
 // FeedVideoPreloadManager — Pengurus Pemuatan Awal Video (TikTok-Style Preloading)
@@ -1395,19 +1396,31 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
                         ),
                       ),
 
-                      // Search / Discover shortcut on the far right
+                      // TikTok-style Video Search shortcut on the far right
                       Align(
                         alignment: Alignment.centerRight,
                         child: GlassNavButton(
                           icon: HugeIcons.strokeRoundedSearch01,
-                          tooltip: 'Teroka',
+                          tooltip: 'search.tab_videos'.tr(),
                           isDark: !(isDesktopLandscape && !isDark),
                           size: 38,
                           iconSize: 18,
                           onTap: () {
-                            if (widget.onSwitchTab != null) {
-                              widget.onSwitchTab!(1); // Go to Discover Tab
-                            }
+                            Navigator.push(
+                              context,
+                              PageRouteBuilder<void>(
+                                transitionDuration: const Duration(milliseconds: 220),
+                                reverseTransitionDuration: const Duration(milliseconds: 180),
+                                pageBuilder: (_, __, ___) => HomeSearchScreen(
+                                  initialFeedPosts: _posts,
+                                  initialResultTab: 3,
+                                  isVideoFocused: true,
+                                ),
+                                transitionsBuilder: (_, animation, __, child) {
+                                  return FadeTransition(opacity: animation, child: child);
+                                },
+                              ),
+                            );
                           },
                         ),
                       ),
