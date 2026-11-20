@@ -1,6 +1,6 @@
 {
-  "version": "1.0.66",
-  "build_number": 39,
-  "released_at": "2026-11-20T02:26:00Z",
-  "changelog": "Pembaikan muat semula kemas kini PWA (cache-busting automatik flutter_bootstrap.js, pengosongan cache tepat & pembaikan pengekalan _headers)."
+  "version": "1.0.67",
+  "build_number": 40,
+  "released_at": "2026-11-19T21:06:00Z",
+  "changelog": "Tukar grid suapan Untuk Anda Berdekatan pada Laman Utama kepada Masonry Grid glassmorphism selaras dengan halaman kedai."
 }

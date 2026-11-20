@@ -13,6 +13,7 @@ import '../../widgets/liquid_glass_compat.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 import 'notifications_sheet.dart';
 import '../../models/notification_data.dart';
@@ -2446,19 +2447,17 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
         const SizedBox(height: 12),
 
         if (_isLoadingDiscovery && _discoveryProducts.isEmpty)
-          GridView.builder(
+          MasonryGridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: isDesktop ? 3 : 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
             itemCount: 4,
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: isDesktop ? 3 : 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 0.76,
-            ),
-            itemBuilder: (_, __) => Container(
+            itemBuilder: (_, idx) => Container(
+              height: idx.isEven ? 210 : 250,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(24),
                 color: isDark
                     ? Colors.white.withValues(alpha: 0.05)
                     : Colors.black.withValues(alpha: 0.04),
@@ -2470,7 +2469,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 26, horizontal: 16),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(20),
               color: isDark
                   ? Colors.white.withValues(alpha: 0.04)
                   : Colors.white.withValues(alpha: 0.75),
@@ -2490,16 +2489,13 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
             ),
           )
         else
-          GridView.builder(
+          MasonryGridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: isDesktop ? 3 : 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
             itemCount: filtered.length,
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: isDesktop ? 3 : 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 0.74,
-            ),
             itemBuilder: (context, index) {
               final product = filtered[index];
               final shop = shopById[product.shopId] ??
@@ -2530,6 +2526,30 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
       distLabel = d < 1.0 ? '${(d * 1000).round()}m' : '${d.toStringAsFixed(1)}km';
     }
 
+    Widget imageFallback(double height) => Container(
+          height: height,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                typeColor.withValues(alpha: 0.22),
+                typeColor.withValues(alpha: 0.06),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Center(
+            child: HugeIcon(
+              icon: isService
+                  ? HugeIcons.strokeRoundedSparkles
+                  : HugeIcons.strokeRoundedStore01,
+              color: typeColor.withValues(alpha: 0.7),
+              size: 28,
+            ),
+          ),
+        );
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
@@ -2544,226 +2564,203 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
             ),
           );
         },
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.055)
-                : Colors.white.withValues(alpha: 0.90),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.10)
-                  : Colors.black.withValues(alpha: 0.06),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+        child: GlassContainer(
+          useOwnLayer: true,
+          quality: GlassQuality.standard,
+          shape: const LiquidRoundedSuperellipse(borderRadius: 24),
+          settings: LiquidGlassSettings(
+            thickness: 0.1,
+            blur: 14.0,
+            refractiveIndex: 1.0,
+            glassColor: Colors.transparent,
+            lightAngle: 45.0,
+            lightIntensity: isDark ? 0.1 : 0.2,
+            ambientStrength: 1.0,
+            saturation: 1.0,
+            chromaticAberration: 0.0,
           ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Image Header
-              Expanded(
-                flex: 56,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (product.imageUrl.isNotEmpty)
-                      CachedNetworkImage(
-                        imageUrl: product.imageUrl,
-                        fit: BoxFit.cover,
-                        placeholder: (_, __) => Container(
-                          color: isDark ? const Color(0xFF151929) : const Color(0xFFE2E8F0),
-                        ),
-                        errorWidget: (_, __, ___) => Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                typeColor.withValues(alpha: 0.22),
-                                typeColor.withValues(alpha: 0.06),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                          ),
-                          child: Center(
-                            child: HugeIcon(
-                              icon: isService
-                                  ? HugeIcons.strokeRoundedSparkles
-                                  : HugeIcons.strokeRoundedStore01,
-                              color: typeColor.withValues(alpha: 0.7),
-                              size: 28,
-                            ),
-                          ),
-                        ),
-                      )
-                    else
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              typeColor.withValues(alpha: 0.22),
-                              typeColor.withValues(alpha: 0.06),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                        child: Center(
-                          child: HugeIcon(
-                            icon: isService
-                                ? HugeIcons.strokeRoundedSparkles
-                                : HugeIcons.strokeRoundedStore01,
-                            color: typeColor.withValues(alpha: 0.7),
-                            size: 28,
-                          ),
-                        ),
-                      ),
-                    // Top-left Type Badge
-                    Positioned(
-                      top: 7,
-                      left: 7,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: typeColor.withValues(alpha: 0.90),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          isService
-                              ? 'customer.badge_service'.tr()
-                              : 'customer.badge_product'.tr(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Top-right Discount Badge
-                    if (product.hasDiscount)
-                      Positioned(
-                        top: 7,
-                        right: 7,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEF4444),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '-${product.discountPercent}%',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.04)
+                  : Colors.white.withValues(alpha: 0.72),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.7),
+                width: 1.0,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.16 : 0.06),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Pinterest-Safe Masonry Image Container (matches BusinessStoreView)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final width = constraints.maxWidth;
+                        final minH = width * 0.75;
+                        final maxH = width * 1.5;
 
-              // Product Info Body
-              Expanded(
-                flex: 44,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        product.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          height: 1.22,
-                        ),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.baseline,
-                            textBaseline: TextBaseline.alphabetic,
+                        return ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: minH,
+                            maxHeight: maxH,
+                          ),
+                          child: Stack(
                             children: [
-                              Text(
-                                'RM${product.price.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  color: Color(0xFF3B82F6),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w900,
-                                ),
+                              SizedBox(
+                                width: double.infinity,
+                                child: product.imageUrl.isNotEmpty
+                                    ? CachedNetworkImage(
+                                        imageUrl: product.imageUrl,
+                                        fit: BoxFit.cover,
+                                        placeholder: (_, __) => Container(
+                                          height: minH,
+                                          color: isDark
+                                              ? const Color(0xFF151929)
+                                              : const Color(0xFFE2E8F0),
+                                        ),
+                                        errorWidget: (_, __, ___) => imageFallback(minH),
+                                      )
+                                    : imageFallback(minH),
                               ),
-                              if (product.hasDiscount) ...[
-                                const SizedBox(width: 4),
-                                Flexible(
+                              Positioned(
+                                top: 7,
+                                left: 7,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: typeColor.withValues(alpha: 0.90),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
                                   child: Text(
-                                    'RM${product.compareAtPrice!.toStringAsFixed(0)}',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: isDark ? Colors.white38 : Colors.black38,
-                                      fontSize: 10,
-                                      decoration: TextDecoration.lineThrough,
+                                    isService
+                                        ? 'customer.badge_service'.tr()
+                                        : 'customer.badge_product'.tr(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w800,
                                     ),
                                   ),
                                 ),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 3),
-                          Row(
-                            children: [
-                              HugeIcon(
-                                icon: HugeIcons.strokeRoundedStore01,
-                                color: isDark ? Colors.white38 : Colors.black38,
-                                size: 11,
                               ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  shopName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: isDark ? Colors.white54 : const Color(0xFF64748B),
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w600,
+                              if (product.hasDiscount)
+                                Positioned(
+                                  top: 7,
+                                  right: 7,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEF4444),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '-${product.discountPercent}%',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                              if (distLabel.isNotEmpty) ...[
-                                const SizedBox(width: 4),
-                                Text(
-                                  distLabel,
-                                  style: TextStyle(
-                                    color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
                             ],
                           ),
-                        ],
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    product.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      height: 1.25,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        'RM${product.price.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          color: Color(0xFF3B82F6),
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
+                      if (product.hasDiscount) ...[
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            'RM${product.compareAtPrice!.toStringAsFixed(0)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: isDark ? Colors.white38 : Colors.black38,
+                              fontSize: 10.5,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
-                ),
+                  const SizedBox(height: 5),
+                  Row(
+                    children: [
+                      HugeIcon(
+                        icon: HugeIcons.strokeRoundedStore01,
+                        color: isDark ? Colors.white38 : Colors.black38,
+                        size: 11,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          shopName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (distLabel.isNotEmpty) ...[
+                        const SizedBox(width: 4),
+                        Text(
+                          distLabel,
+                          style: TextStyle(
+                            color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
