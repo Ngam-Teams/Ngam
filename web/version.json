@@ -1,6 +1,6 @@
 {
-  "version": "1.0.70",
-  "build_number": 43,
-  "released_at": "2026-11-20T13:16:00Z",
-  "changelog": "Sokongan galeri gambar berbilang serta pemain video produk/servis gaya Shopee pada skrin Butiran Produk."
+  "version": "1.0.71",
+  "build_number": 44,
+  "released_at": "2026-11-20T13:22:00Z",
+  "changelog": "Bina halaman carian khas (HomeSearchScreen) dengan carian terkini, penapis bajet/jenis/susunan, serta hasil kedai dan produk secara langsung."
 }

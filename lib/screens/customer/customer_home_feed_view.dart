@@ -16,6 +16,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:shimmer/shimmer.dart';
 
+import 'home_search_screen.dart';
 import 'notifications_sheet.dart';
 import '../../models/notification_data.dart';
 import '../../models/product_model.dart';
@@ -1468,13 +1469,30 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
     );
   }
 
+  void _openSearchPage({bool openFilters = false}) {
+    Navigator.push(
+      context,
+      PageRouteBuilder<void>(
+        transitionDuration: const Duration(milliseconds: 220),
+        reverseTransitionDuration: const Duration(milliseconds: 180),
+        pageBuilder: (_, __, ___) => HomeSearchScreen(
+          initialShops: _nearbyShops,
+          initialProducts: _discoveryProducts,
+          userLat: _userLat,
+          userLng: _userLng,
+          openFiltersOnStart: openFilters,
+        ),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
   // --- WIDGET 2: SEARCH BAR ---
   Widget _buildSearchBar(bool isDark) {
     return GestureDetector(
-      onTap: () {
-        ExploreView.pendingSearch.value = const ExploreSearchRequest(focusSearch: true);
-        widget.onSwitchTab?.call(1);
-      },
+      onTap: () => _openSearchPage(),
       child: GlassContainer(
         useOwnLayer: true,
         quality: GlassQuality.standard,
@@ -1513,7 +1531,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  AppLocalizations.of(context)?.homeSearchPlaceholder ?? 'Cari servis, kedai, barangan...',
+                  'search.hint'.tr(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -1523,21 +1541,25 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                   ),
                 ),
               ),
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: isDark ? 0.10 : 0.4),
+              GestureDetector(
+                onTap: () => _openSearchPage(openFilters: true),
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: isDark ? 0.10 : 0.4),
+                    ),
                   ),
-                ),
-                child: Center(
-                  child: HugeIcon(
-                    icon: HugeIcons.strokeRoundedSlidersHorizontal,
-                    color: isDark ? Colors.white70 : Colors.black54,
-                    size: 15,
+                  child: Center(
+                    child: HugeIcon(
+                      icon: HugeIcons.strokeRoundedSlidersHorizontal,
+                      color: isDark ? Colors.white70 : Colors.black54,
+                      size: 15,
+                    ),
                   ),
                 ),
               ),
