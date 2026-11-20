@@ -1,0 +1,70 @@
+name: Cleanup Old Cloudflare Pages Project
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_name:
+        description: 'Cloudflare Pages project name to delete'
+        required: true
+        default: 'ngam-old'
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete all deployments and remove Pages project
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PROJECT_NAME: ${{ inputs.project_name }}
+        run: |
+          python3 - <<'PY'
+          import json, os, time, urllib.request, urllib.error
+
+          token = os.environ['CF_TOKEN']
+          acc = os.environ['CF_ACCOUNT']
+          proj = os.environ['PROJECT_NAME']
+          base = f"https://api.cloudflare.com/client/v4/accounts/{acc}/pages/projects/{proj}"
+
+          def cf(method, url):
+              req = urllib.request.Request(
+                  url,
+                  method=method,
+                  headers={
+                      'Authorization': f'Bearer {token}',
+                      'Content-Type': 'application/json',
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as r:
+                      return r.status, json.loads(r.read().decode())
+              except urllib.error.HTTPError as e:
+                  return e.code, json.loads(e.read().decode() or '{}')
+
+          total_deleted = 0
+          while True:
+              code, data = cf('GET', f'{base}/deployments?per_page=25')
+              if code == 404:
+                  print(f"Project {proj} already does not exist.")
+                  raise SystemExit(0)
+              if code != 200 or not data.get('success'):
+                  print("List error:", code, data)
+                  raise SystemExit(1)
+              deps = data.get('result') or []
+              if not deps:
+                  break
+              for d in deps:
+                  did = d['id']
+                  dc, dd = cf('DELETE', f'{base}/deployments/{did}?force=true')
+                  if dc in (200, 202, 404):
+                      total_deleted += 1
+                  else:
+                      print(f"Delete deployment {did} failed:", dc, dd)
+              print(f"Deleted {total_deleted} deployments so far...")
+              time.sleep(0.3)
+
+          pc, pd = cf('DELETE', base)
+          print(f"Delete project {proj} -> status={pc}, body={pd}")
+          if pc not in (200, 202, 404):
+              raise SystemExit(1)
+          PY
