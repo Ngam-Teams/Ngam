@@ -1467,6 +1467,8 @@
     "opening_promo_toast": "Opening Promo Voucher..."
   },
   "product_detail": {
+    "video_tab": "Video",
+    "photos_tab": "Photos",
     "service_badge": "SERVICE",
     "product_badge": "PRODUCT",
     "featured_badge": "TOP PICK",

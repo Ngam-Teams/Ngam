@@ -9,6 +9,7 @@ class ProductModel {
   final double? compareAtPrice;
   final String imageUrl;
   final List<String> imageUrls;
+  final String videoUrl;
   final int stock;
   final bool trackInventory;
   final int lowStockThreshold;
@@ -46,6 +47,7 @@ class ProductModel {
     this.compareAtPrice,
     this.imageUrl = '',
     this.imageUrls = const [],
+    this.videoUrl = '',
     this.stock = 0,
     this.trackInventory = true,
     this.lowStockThreshold = 5,
@@ -131,6 +133,7 @@ class ProductModel {
       compareAtPrice: (json['compare_at_price'] as num?)?.toDouble(),
       imageUrl: imgs.isNotEmpty ? imgs.first : '',
       imageUrls: imgs,
+      videoUrl: (json['video_url'] ?? '').toString().trim(),
       stock: (json['stock'] as num?)?.toInt() ?? 0,
       trackInventory: json['track_inventory'] as bool? ?? true,
       lowStockThreshold: (json['low_stock_threshold'] as num?)?.toInt() ?? 5,
@@ -167,6 +170,7 @@ class ProductModel {
       if (compareAtPrice != null) 'compare_at_price': compareAtPrice,
       'image_url': imageUrl,
       'image_urls': imageUrls,
+      if (videoUrl.isNotEmpty) 'video_url': videoUrl,
       'stock': stock,
       'track_inventory': trackInventory,
       'low_stock_threshold': lowStockThreshold,

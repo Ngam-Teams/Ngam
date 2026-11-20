@@ -1467,6 +1467,8 @@
     "opening_promo_toast": "Membuka Baucar Promosi..."
   },
   "product_detail": {
+    "video_tab": "Video",
+    "photos_tab": "Foto",
     "service_badge": "SERVIS",
     "product_badge": "PRODUK",
     "featured_badge": "PILIHAN",

@@ -1,6 +1,6 @@
 {
-  "version": "1.0.69",
-  "build_number": 42,
-  "released_at": "2026-11-20T13:05:00Z",
-  "changelog": "Optimumkan cache-first & pemuatan senyap di Home serta naik taraf suapan produk ke SliverMasonryGrid dengan Shimmer berturutan."
+  "version": "1.0.70",
+  "build_number": 43,
+  "released_at": "2026-11-20T13:16:00Z",
+  "changelog": "Sokongan galeri gambar berbilang serta pemain video produk/servis gaya Shopee pada skrin Butiran Produk."
 }

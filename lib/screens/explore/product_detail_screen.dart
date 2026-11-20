@@ -9,6 +9,7 @@ import 'package:ngam/widgets/glass_box.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../models/product_model.dart';
 import '../../services/chat_service.dart';
@@ -64,6 +65,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   final ScrollController _scrollCtrl = ScrollController();
   int _currentImageIndex = 0;
 
+  // Hero Video Showcase (Slide 0 when available)
+  VideoPlayerController? _heroVideoCtrl;
+  bool _heroVideoReady = false;
+  bool _heroVideoPlaying = false;
+  bool _heroVideoMuted = true;
+  bool _heroVideoError = false;
+
   // Selections
   int _selectedVariantIndex = 0;
   final Set<int> _selectedModifierIndices = {};
@@ -90,11 +98,44 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     _isSaved = SavedService.isProductSaved(_product.id);
     _shopDetails = Map<String, dynamic>.from(widget.shop);
 
+    _initHeroVideo();
     _initAsyncData();
+  }
+
+  Future<void> _initHeroVideo() async {
+    final url = _product.videoUrl.trim();
+    if (url.isEmpty) return;
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      if (mounted) setState(() => _heroVideoError = true);
+      return;
+    }
+    try {
+      final ctrl = VideoPlayerController.networkUrl(
+        uri,
+        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+      );
+      _heroVideoCtrl = ctrl;
+      await ctrl.initialize();
+      await ctrl.setLooping(true);
+      await ctrl.setVolume(0.0);
+      if (_currentImageIndex == 0) {
+        await ctrl.play();
+      }
+      if (mounted) {
+        setState(() {
+          _heroVideoReady = true;
+          _heroVideoPlaying = _currentImageIndex == 0;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _heroVideoError = true);
+    }
   }
 
   @override
   void dispose() {
+    _heroVideoCtrl?.dispose();
     _imagePageCtrl.dispose();
     _scrollCtrl.dispose();
     _noteCtrl.dispose();
@@ -1122,6 +1163,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Widget _buildHeroImageSlider(bool isDark) {
     final images = _product.galleryImages;
+    final hasVideo = _product.videoUrl.isNotEmpty;
+    final totalSlides = (hasVideo ? 1 : 0) + images.length;
     final screenH = MediaQuery.of(context).size.height;
     final sliderH = (screenH * 0.42).clamp(280.0, 460.0);
 
@@ -1131,21 +1174,38 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Carousel
-          if (images.isNotEmpty)
+          // Carousel (Video Slide 0 + Photo Slides)
+          if (totalSlides > 0)
             PageView.builder(
               controller: _imagePageCtrl,
-              itemCount: images.length,
-              onPageChanged: (i) => setState(() => _currentImageIndex = i),
+              itemCount: totalSlides,
+              onPageChanged: (i) {
+                setState(() => _currentImageIndex = i);
+                if (hasVideo && _heroVideoCtrl != null && _heroVideoReady) {
+                  if (i == 0) {
+                    _heroVideoCtrl!.play();
+                    setState(() => _heroVideoPlaying = true);
+                  } else {
+                    _heroVideoCtrl!.pause();
+                    setState(() => _heroVideoPlaying = false);
+                  }
+                }
+              },
               itemBuilder: (context, idx) {
+                if (hasVideo && idx == 0) {
+                  return _buildHeroVideoSlide(isDark);
+                }
+                final imgIdx = hasVideo ? idx - 1 : idx;
                 return Image.network(
-                  images[idx],
+                  images[imgIdx],
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => _buildFallbackHero(isDark),
                   loadingBuilder: (context, child, progress) {
                     if (progress == null) return child;
                     return Container(
-                      color: isDark ? const Color(0xFF141424) : const Color(0xFFE5E7EB),
+                      color: isDark
+                          ? const Color(0xFF141424)
+                          : const Color(0xFFE5E7EB),
                       child: const Center(
                         child: SizedBox(
                           width: 24,
@@ -1167,43 +1227,220 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             right: 0,
             bottom: 0,
             height: 80,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.5),
-                  ],
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.5),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
 
-          // Slide indicator pill: "1 / 4"
-          if (images.length > 1)
+          // Shopee-style [ Video | Photos ] Switcher at Bottom-Left
+          if (hasVideo && images.isNotEmpty)
             Positioned(
-              right: 16,
+              left: 16,
               bottom: 16,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.55),
-                  borderRadius: BorderRadius.circular(14),
+                  color: Colors.black.withValues(alpha: 0.58),
+                  borderRadius: BorderRadius.circular(18),
                   border: Border.all(color: Colors.white24, width: 0.8),
                 ),
-                child: Text(
-                  '${_currentImageIndex + 1} / ${images.length}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildMediaModeChip(
+                      icon: Icons.play_arrow_rounded,
+                      label: 'product_detail.video_tab'.tr(),
+                      selected: _currentImageIndex == 0,
+                      onTap: () => _imagePageCtrl.animateToPage(
+                        0,
+                        duration: const Duration(milliseconds: 260),
+                        curve: Curves.easeOutCubic,
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    _buildMediaModeChip(
+                      icon: Icons.photo_library_outlined,
+                      label: 'product_detail.photos_tab'.tr(),
+                      selected: _currentImageIndex > 0,
+                      onTap: () => _imagePageCtrl.animateToPage(
+                        1,
+                        duration: const Duration(milliseconds: 260),
+                        curve: Curves.easeOutCubic,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
+
+          // Slide indicator pill: "1 / 4" + Mute toggle when on Video
+          if (totalSlides > 1 || hasVideo)
+            Positioned(
+              right: 16,
+              bottom: 16,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (hasVideo && _currentImageIndex == 0 && _heroVideoReady) ...[
+                    GestureDetector(
+                      onTap: () {
+                        final ctrl = _heroVideoCtrl;
+                        if (ctrl == null) return;
+                        final nextMute = !_heroVideoMuted;
+                        ctrl.setVolume(nextMute ? 0.0 : 1.0);
+                        setState(() => _heroVideoMuted = nextMute);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.55),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white24, width: 0.8),
+                        ),
+                        child: Icon(
+                          _heroVideoMuted
+                              ? Icons.volume_off_rounded
+                              : Icons.volume_up_rounded,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                    if (totalSlides > 1) const SizedBox(width: 8),
+                  ],
+                  if (totalSlides > 1)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.55),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.white24, width: 0.8),
+                      ),
+                      child: Text(
+                        '${_currentImageIndex + 1} / $totalSlides',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMediaModeChip({
+    required IconData icon,
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: selected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 13,
+              color: selected ? Colors.black87 : Colors.white70,
+            ),
+            const SizedBox(width: 3),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? Colors.black87 : Colors.white70,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeroVideoSlide(bool isDark) {
+    final ctrl = _heroVideoCtrl;
+    return GestureDetector(
+      onTap: () {
+        if (ctrl == null || !_heroVideoReady) return;
+        setState(() {
+          if (ctrl.value.isPlaying) {
+            ctrl.pause();
+            _heroVideoPlaying = false;
+          } else {
+            ctrl.play();
+            _heroVideoPlaying = true;
+          }
+        });
+      },
+      child: Container(
+        color: Colors.black,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            if (_heroVideoReady && ctrl != null)
+              SizedBox.expand(
+                child: FittedBox(
+                  fit: BoxFit.cover,
+                  child: SizedBox(
+                    width: ctrl.value.size.width > 0
+                        ? ctrl.value.size.width
+                        : 720,
+                    height: ctrl.value.size.height > 0
+                        ? ctrl.value.size.height
+                        : 720,
+                    child: VideoPlayer(ctrl),
+                  ),
+                ),
+              )
+            else if (_heroVideoError)
+              _buildFallbackHero(isDark)
+            else
+              const Center(
+                child: CircularProgressIndicator(
+                    color: Colors.white70, strokeWidth: 2.2),
+              ),
+            if (_heroVideoReady && !_heroVideoPlaying)
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white30),
+                ),
+                child: const Icon(
+                  Icons.play_arrow_rounded,
+                  color: Colors.white,
+                  size: 36,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
