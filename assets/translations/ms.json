@@ -170,7 +170,27 @@
     "story_promo_badge": "Hari Ini",
     "story_spa_title": "Spa & Relaks",
     "story_spa_subtitle": "Slot Petang",
-    "story_spa_badge": "Hot"
+    "story_spa_badge": "Hot",
+    "utility_vouchers": "Baucar",
+    "utility_orders": "Pesanan",
+    "utility_scan": "Imbas QR",
+    "cat_fnb": "Makan & Minum",
+    "cat_more": "Teroka",
+    "live_vouchers_title": "Baucar Hangat",
+    "voucher_claim": "Tuntut",
+    "voucher_claimed": "Dituntut",
+    "voucher_min_spend": "Min. RM{}",
+    "voucher_no_min": "Tiada min. belian",
+    "voucher_claimed_toast": "Baucar {} disimpan!",
+    "discovery_title": "Untuk Anda Berdekatan",
+    "discovery_subtitle": "Servis & produk popular sekitar anda",
+    "feed_tab_all": "Semua",
+    "feed_tab_services": "Servis",
+    "feed_tab_products": "Produk",
+    "feed_tab_budget": "Bawah RM15",
+    "badge_service": "Servis",
+    "badge_product": "Produk",
+    "discovery_empty": "Tiada item sepadan buat masa ini."
   },
   "post_task": {
     "title_runner": "Tawar Servis",
@@ -881,7 +901,9 @@
     "community": "Komuniti",
     "offline_title": "Tiada Sambungan Internet",
     "offline_desc": "Gagal berhubung ke pelayan. Sila semak sambungan internet anda dan cuba lagi.",
-    "offline_cached_banner": "Mod Luar Talian • Memaparkan kedai tersimpan"
+    "offline_cached_banner": "Mod Luar Talian • Memaparkan kedai tersimpan",
+    "offline_popup_desc": "Sambungan internet terputus buat sementara. Memaparkan lokasi tersimpan dahulu — cuba semula untuk data langsung.",
+    "dismiss": "Tutup"
   },
   "task_detail": {
     "navigate": "Navigasi ke Lokasi",

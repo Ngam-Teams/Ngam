@@ -170,7 +170,27 @@
     "story_promo_badge": "Today",
     "story_spa_title": "Spa & Relax",
     "story_spa_subtitle": "Afternoon Slot",
-    "story_spa_badge": "Hot"
+    "story_spa_badge": "Hot",
+    "utility_vouchers": "Vouchers",
+    "utility_orders": "Orders",
+    "utility_scan": "Scan QR",
+    "cat_fnb": "Food & Drink",
+    "cat_more": "Explore",
+    "live_vouchers_title": "Hot Vouchers",
+    "voucher_claim": "Claim",
+    "voucher_claimed": "Claimed",
+    "voucher_min_spend": "Min. RM{}",
+    "voucher_no_min": "No min. spend",
+    "voucher_claimed_toast": "Voucher {} saved!",
+    "discovery_title": "For You Near You",
+    "discovery_subtitle": "Popular services & items around you",
+    "feed_tab_all": "All",
+    "feed_tab_services": "Services",
+    "feed_tab_products": "Products",
+    "feed_tab_budget": "Under RM15",
+    "badge_service": "Service",
+    "badge_product": "Product",
+    "discovery_empty": "No items match this filter yet."
   },
   "post_task": {
     "title_runner": "Post a Service",
@@ -881,7 +901,9 @@
     "community": "Community",
     "offline_title": "No Internet Connection",
     "offline_desc": "Unable to connect to the server. Please check your network and try again.",
-    "offline_cached_banner": "Offline Mode • Showing saved places"
+    "offline_cached_banner": "Offline Mode • Showing saved places",
+    "offline_popup_desc": "You appear to be offline. Showing saved nearby places for now — reconnect to see live queues and deals.",
+    "dismiss": "Dismiss"
   },
   "task_detail": {
     "navigate": "Navigate to Location",

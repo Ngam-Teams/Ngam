@@ -1,6 +1,6 @@
 {
-  "version": "1.0.64",
-  "build_number": 37,
-  "released_at": "2026-11-20T02:00:00Z",
-  "changelog": "Susunan baharu skrin Profil dengan kad grid pantas 4x2 (8 ikon) dan senarai tetapan yang lebih kompak."
+  "version": "1.0.65",
+  "build_number": 38,
+  "released_at": "2026-11-19T18:04:00Z",
+  "changelog": "Reka bentuk baharu Laman Utama Ngam gaya kompak moden (jalur pantas, kategori 4-lajur, baucar langsung, suapan produk/servis 2-lajur) serta popup mod luar talian."
 }
