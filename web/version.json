@@ -1,6 +1,6 @@
 {
-  "version": "1.0.77",
-  "build_number": 50,
-  "released_at": "2026-11-23T10:21:00Z",
+  "version": "1.0.78",
+  "build_number": 51,
+  "released_at": "2026-11-23T11:29:49Z",
   "changelog": "Betulkan isu pembayaran berganda (double payment) CHIP Asia dengan kunci checkout, pembatalan sesi CHIP & idempotensi pelayan; baiki resit & penjejak pesanan memaparkan RM 0.00 / Kedai Ngam / 0 item (kolum address_line) serta betulkan pertindihan teks PDF Jumlah Keseluruhan."
 }
