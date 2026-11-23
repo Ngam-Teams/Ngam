@@ -412,7 +412,34 @@ serve(async (req: Request) => {
       }
 
       const orderTitle = payload.order_title || `Pesanan ${calcData.business_name || "Ngam"}`;
-      const clientEmail = payload.client_email || "pelanggan@ngam.dev";
+      let clientEmail = (payload.client_email || "").toString().trim();
+      if (!clientEmail || clientEmail === "pelanggan@ngam.dev" || clientEmail === "customer@ngam.dev") {
+        try {
+          let ownerUid: string | null = null;
+          if (calcData.target_type === "booking" && calcData.booking_id) {
+            const { data: bRow } = await supabase
+              .from("bookings")
+              .select("user_id")
+              .eq("id", calcData.booking_id)
+              .maybeSingle();
+            ownerUid = bRow?.user_id || null;
+          } else if (orderId) {
+            const { data: oRow } = await supabase
+              .from("orders")
+              .select("owner_user_id")
+              .eq("id", orderId)
+              .maybeSingle();
+            ownerUid = oRow?.owner_user_id || null;
+          }
+          if (ownerUid) {
+            const { data: uRes } = await supabase.auth.admin.getUserById(ownerUid);
+            if (uRes?.user?.email) {
+              clientEmail = uRes.user.email.trim();
+            }
+          }
+        } catch (_) {}
+      }
+      if (!clientEmail) clientEmail = "pelanggan@ngam.dev";
       const clientName = payload.client_name || "Pelanggan Ngam";
       const clientPhone = payload.client_phone || "+601115892468";
 

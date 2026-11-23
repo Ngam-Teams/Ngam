@@ -11,6 +11,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'glass_box.dart';
 import '../services/chip_payment_service.dart';
@@ -34,6 +35,7 @@ class CustomerPaymentModal extends StatefulWidget {
   final String orderId;
   final List<Map<String, dynamic>> items;
   final String? customerName;
+  final String? customerEmail;
   final String? customerPhone;
   final String? voucherCode;
   final double? discountAmount;
@@ -48,6 +50,7 @@ class CustomerPaymentModal extends StatefulWidget {
     required this.orderId,
     this.items = const [],
     this.customerName,
+    this.customerEmail,
     this.customerPhone,
     this.voucherCode,
     this.discountAmount,
@@ -65,6 +68,7 @@ class CustomerPaymentModal extends StatefulWidget {
     required String orderId,
     List<Map<String, dynamic>> items = const [],
     String? customerName,
+    String? customerEmail,
     String? customerPhone,
     String? voucherCode,
     double? discountAmount,
@@ -85,6 +89,7 @@ class CustomerPaymentModal extends StatefulWidget {
           orderId: orderId,
           items: items,
           customerName: customerName,
+          customerEmail: customerEmail,
           customerPhone: customerPhone,
           voucherCode: voucherCode,
           discountAmount: discountAmount,
@@ -366,11 +371,17 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal>
     });
 
     try {
+      final resolvedEmail =
+          (widget.customerEmail != null && widget.customerEmail!.trim().isNotEmpty)
+              ? widget.customerEmail!.trim()
+              : Supabase.instance.client.auth.currentUser?.email;
+
       final res = await ChipPaymentService.instance.createPurchase(
         amount: widget.amount,
         orderTitle: widget.orderTitle,
         reference: widget.orderId,
         clientName: widget.customerName,
+        clientEmail: resolvedEmail,
         clientPhone: widget.customerPhone,
         paymentMethodWhitelist: _selectedMethod == 'duitnow' ? const ['duitnow_qr'] : null,
       );

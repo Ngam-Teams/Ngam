@@ -1,6 +1,6 @@
 {
-  "version": "1.0.79",
-  "build_number": 52,
-  "released_at": "2026-11-23T11:41:27Z",
-  "changelog": "Gaya pembayaran Shopee & TikTok Shop: buka CHIP Asia dalam In-App Browser pada Android/iOS, Same-Tab Redirect (_self) pada Web tanpa tab kedua, tambah butang Simpan/Muat Turun Gambar DuitNow QR, serta pulihkan troli automatik jika bayaran dibatalkan."
+  "version": "1.0.80",
+  "build_number": 53,
+  "released_at": "2026-11-23T11:51:00Z",
+  "changelog": "Pembayaran CHIP Asia kini menghantar alamat e-mel sebenar akaun pelanggan yang didaftarkan (bukan lagi e-mel placeholder pelanggan@ngam.dev)."
 }

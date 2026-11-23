@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ChipPurchaseResult {
   final String id;
@@ -69,6 +70,28 @@ class ChipPaymentService {
     }
 
     try {
+      final authUser = Supabase.instance.client.auth.currentUser;
+      final String resolvedEmail =
+          (clientEmail != null && clientEmail.trim().isNotEmpty)
+              ? clientEmail.trim()
+              : ((authUser?.email != null && authUser!.email!.trim().isNotEmpty)
+                  ? authUser.email!.trim()
+                  : 'pelanggan@ngam.dev');
+      final String resolvedName =
+          (clientName != null && clientName.trim().isNotEmpty)
+              ? clientName.trim()
+              : ((authUser?.userMetadata?['full_name'] ??
+                          authUser?.userMetadata?['name'])
+                      ?.toString()
+                      .trim() ??
+                  'Pelanggan Ngam');
+      final String resolvedPhone =
+          (clientPhone != null && clientPhone.trim().isNotEmpty)
+              ? clientPhone.trim()
+              : ((authUser?.phone != null && authUser!.phone!.trim().isNotEmpty)
+                  ? authUser.phone!.trim()
+                  : '+601115892468');
+
       final edgeRes = await http.post(
         Uri.parse(_edgeFunctionUrl),
         headers: {'Content-Type': 'application/json'},
@@ -80,9 +103,9 @@ class ChipPaymentService {
           'payment_channel': (paymentMethodWhitelist != null && paymentMethodWhitelist.contains('duitnow_qr'))
               ? 'duitnow_qr'
               : 'fpx',
-          'client_name': (clientName != null && clientName.isNotEmpty) ? clientName : 'Pelanggan Ngam',
-          'client_email': (clientEmail != null && clientEmail.isNotEmpty) ? clientEmail : 'pelanggan@ngam.dev',
-          'client_phone': (clientPhone != null && clientPhone.isNotEmpty) ? clientPhone : '+601115892468',
+          'client_name': resolvedName.isNotEmpty ? resolvedName : 'Pelanggan Ngam',
+          'client_email': resolvedEmail,
+          'client_phone': resolvedPhone,
           'success_redirect': (reference != null && reference.isNotEmpty)
               ? 'https://ngam.dev/receipt/success?order_id=$reference'
               : 'https://ngam.dev/receipt/success',

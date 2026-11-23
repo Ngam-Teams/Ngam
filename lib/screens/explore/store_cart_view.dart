@@ -1255,6 +1255,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                   })
               .toList(),
           customerName: customerName,
+          customerEmail: user.email,
           customerPhone: customerPhone,
           voucherCode: (_voucherApplied && _voucher != null) ? _voucher!['code']?.toString() : null,
           discountAmount: (_voucherApplied && _discountAmount > 0) ? _discountAmount : null,

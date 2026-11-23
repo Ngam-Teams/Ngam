@@ -2682,6 +2682,7 @@ class _BookingsViewState extends State<BookingsView> {
         shopName: _resolvedShopName,
         orderId: shortBookingId,
         customerName: finalCustomerName,
+        customerEmail: Supabase.instance.client.auth.currentUser?.email,
         customerPhone: finalCustomerPhone,
         initialMethod: chosenPaymentType,
         voucherCode: _selectedVoucher != null ? _selectedVoucher!['code']?.toString() : null,
