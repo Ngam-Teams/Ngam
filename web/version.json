@@ -1,6 +1,6 @@
 {
-  "version": "1.0.75",
-  "build_number": 48,
-  "released_at": "2026-11-23T07:05:07Z",
-  "changelog": "Reka bentuk baharu Laman Utama gaya kompak Shopee × TikTok Shop dengan baris boleh tatal & Bento Liquid Glass, pilihan pengambilan Troli serasi semua jenis perniagaan, sokongan URL pendek QR e-Resit serta git hook auto-naik versi."
+  "version": "1.0.76",
+  "build_number": 49,
+  "released_at": "2026-11-23T10:15:40Z",
+  "changelog": "Kemas kini metadata Google Search Site Name (WebSite JSON-LD, og:site_name & application-name) supaya hasil carian memaparkan 'Ngam'."
 }
