@@ -75,6 +75,60 @@ async function verifyChipSignature(
   }
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Pendekkan UUID panjang pesanan (cth: cb488583-837d-...) kepada rujukan resit kemas (cth: NGAM-CB488583)
+ * untuk tajuk & resit e-mel CHIP Collect. Tempahan `RZRV-...` dikekalkan.
+ */
+function formatChipDisplayReference(orderId: string): string {
+  const clean = String(orderId || "").trim();
+  if (UUID_REGEX.test(clean)) {
+    return `NGAM-${clean.slice(0, 8).toUpperCase()}`;
+  }
+  return clean;
+}
+
+/**
+ * Tukarkan rujukan pendek CHIP (`NGAM-XXXXXXXX`) kembali kepada UUID penuh `orders.id` / `bookings.id`
+ * sebelum dipanggil ke RPC `process_verified_chip_webhook`.
+ */
+async function resolveCanonicalReferenceId(
+  rawRef: string,
+  chipPurchaseId: string,
+  fallbackOrderId = ""
+): Promise<string> {
+  const candidates = [String(fallbackOrderId || "").trim(), String(rawRef || "").trim()];
+  for (const cand of candidates) {
+    if (cand && (UUID_REGEX.test(cand) || cand.startsWith("RZRV-"))) {
+      return cand;
+    }
+  }
+
+  const cleanPurchaseId = String(chipPurchaseId || "").trim();
+  if (cleanPurchaseId) {
+    try {
+      const { data: ord } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("chip_purchase_id", cleanPurchaseId)
+        .maybeSingle();
+      if (ord?.id) return String(ord.id);
+
+      const { data: bk } = await supabase
+        .from("bookings")
+        .select("id")
+        .filter("booking_metadata->>chip_purchase_id", "eq", cleanPurchaseId)
+        .maybeSingle();
+      if (bk?.id) return String(bk.id);
+    } catch (lookupErr) {
+      console.warn("[payment-webhook] Canonical reference lookup warning:", lookupErr);
+    }
+  }
+
+  return String(rawRef || fallbackOrderId || "").trim();
+}
+
 serve(async (req: Request) => {
   // Handle CORS preflight for Flutter Web
   if (req.method === "OPTIONS") {
@@ -366,7 +420,11 @@ serve(async (req: Request) => {
             const existingTotal = Number(existingChip.purchase?.total || 0);
 
             if (existingStatus === "paid") {
-              const refId = String(existingChip.reference || orderId).trim();
+              const refId = await resolveCanonicalReferenceId(
+                String(existingChip.reference || ""),
+                String(existingChip.id || existingPurchaseId),
+                orderId
+              );
               const payMethod =
                 existingChip.transaction_data?.payment_method ||
                 existingChip.payment?.payment_type ||
@@ -443,7 +501,8 @@ serve(async (req: Request) => {
       const clientName = payload.client_name || "Pelanggan Ngam";
       const clientPhone = payload.client_phone || "+601115892468";
 
-      const webhookCallbackUrl = `${supabaseUrl}/functions/v1/payment-webhook`;
+      const chipDisplayRef = formatChipDisplayReference(orderId);
+      const webhookCallbackUrl = `${supabaseUrl}/functions/v1/payment-webhook?order_id=${encodeURIComponent(orderId)}`;
 
       // Bina senarai item terperinci untuk resit e-mel percuma CHIP Asia (jumlah mesti tepat = verifiedCents)
       let chipProducts: Array<{ name: string; price: number; quantity: number; discount?: number }> = [
@@ -518,7 +577,7 @@ serve(async (req: Request) => {
 
       const chipPayload: Record<string, unknown> = {
         brand_id: chipBrandId,
-        reference: orderId,
+        reference: chipDisplayRef,
         send_receipt: true,
         client: {
           email: clientEmail,
@@ -527,7 +586,7 @@ serve(async (req: Request) => {
         },
         purchase: {
           currency: "MYR",
-          notes: `${calcData.business_name || "Ngam"} • Ref #${orderId.slice(0, 8).toUpperCase()}`,
+          notes: `${calcData.business_name || "Ngam"} • ${chipDisplayRef}`,
           products: chipProducts,
         },
         success_callback: webhookCallbackUrl,
@@ -602,7 +661,11 @@ serve(async (req: Request) => {
 
       // Jika CHIP mengesahkan status === 'paid', terus kemas kini pesanan/tempahan secara idempoten di pelayan!
       if (chipRes.ok && String(chipData.status || "").toLowerCase() === "paid") {
-        const refId = String(chipData.reference || payload.order_id || "").trim();
+        const refId = await resolveCanonicalReferenceId(
+          String(chipData.reference || ""),
+          String(chipData.id || purchaseId),
+          String(payload.order_id || "")
+        );
         const paidCents =
           typeof chipData.purchase?.total === "number"
             ? Math.round(chipData.purchase.total)
@@ -680,7 +743,11 @@ serve(async (req: Request) => {
       const currentStatus = String(statusData?.status || "").toLowerCase();
 
       if (currentStatus === "paid") {
-        const refId = String(statusData?.reference || orderId).trim();
+        const refId = await resolveCanonicalReferenceId(
+          String(statusData?.reference || ""),
+          String(statusData?.id || purchaseId),
+          orderId
+        );
         const paidCents =
           typeof statusData?.purchase?.total === "number"
             ? Math.round(statusData.purchase.total)
@@ -745,13 +812,25 @@ serve(async (req: Request) => {
     }
 
     const chipPurchaseId: string = String(payload.id || "").trim();
-    const targetId: string = String(
+    const reqQueryOrderId: string = (() => {
+      try {
+        return new URL(req.url).searchParams.get("order_id") || "";
+      } catch (_) {
+        return "";
+      }
+    })();
+    const rawTargetId: string = String(
       payload.reference ||
       payload.order_id ||
       payload.booking_id ||
       payload.metadata?.order_id ||
       ""
     ).trim();
+    const targetId: string = await resolveCanonicalReferenceId(
+      rawTargetId,
+      chipPurchaseId,
+      reqQueryOrderId
+    );
     const statusRaw: string = String(payload.status || payload.payment_status || "").toLowerCase();
     const eventType: string = String(payload.event_type || `purchase.${statusRaw}`);
     const paidCents: number =
