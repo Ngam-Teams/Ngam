@@ -1,5 +1,9 @@
 /privacy-policy      /privacypolicy    301
 /privacypolicy.html  /privacypolicy    301
 /privacy_policy.html /privacy_policy   301
-/version.json         /version.json     200
+/refund-policy       /refundpolicy     301
+/refundpolicy.html   /refundpolicy     301
+/shipping-policy     /shippingpolicy   301
+/shippingpolicy.html /shippingpolicy   301
+/version.json        /version.json     200
 /*                   /index.html       200
