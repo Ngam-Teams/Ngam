@@ -1059,124 +1059,333 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final textPrimary = isDark ? Colors.white : const Color(0xFF1C1C1E);
     final textSecondary = isDark ? Colors.white70 : const Color(0xFF6B7280);
     final bgColor = isDark ? const Color(0xFF0F0F1A) : const Color(0xFFF3F4F6);
+    final screenW = MediaQuery.of(context).size.width;
+    final bool isDesktop = screenW >= 900;
 
     return Scaffold(
       backgroundColor: bgColor,
       body: Stack(
         children: [
           // ── Scrollable Body ──
-          CustomScrollView(
-            controller: _scrollCtrl,
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              // 1. Hero Image Gallery Slider
-              SliverToBoxAdapter(
-                child: _buildHeroImageSlider(isDark),
-              ),
-
-              // 2. Main Content Card: Price, Name, Badges, Rating & Sold Count
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  child: _buildPriceAndHeaderCard(isDark, textPrimary, textSecondary),
-                ),
-              ),
-
-              // 3. Shop Vouchers Row (if available)
-              if (_vouchers.isNotEmpty)
+          if (isDesktop)
+            _buildDesktopShopeeBody(
+              isDark: isDark,
+              textPrimary: textPrimary,
+              textSecondary: textSecondary,
+            )
+          else
+            CustomScrollView(
+              controller: _scrollCtrl,
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                // 1. Hero Image Gallery Slider
                 SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: _buildVouchersRow(isDark, textPrimary, textSecondary),
-                  ),
+                  child: _buildHeroImageSlider(isDark),
                 ),
 
-              // 4. Variations / Options Picker (if product has variants or modifiers)
-              if (_product.variants.isNotEmpty || _product.modifiers.isNotEmpty)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: _buildVariationsCard(isDark, textPrimary, textSecondary),
-                  ),
-                ),
-
-              // 5. Quantity & Note Selector (for physical products / multi-order)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: _buildQuantityAndNoteCard(isDark, textPrimary, textSecondary),
-                ),
-              ),
-
-              // 6. Service Highlights Card (if item is a service)
-              if (_product.isService)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: _buildServiceInfoCard(isDark, textPrimary, textSecondary),
-                  ),
-                ),
-
-              // 7. Merchant / Shop Profile Card
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: _buildShopProfileCard(isDark, textPrimary, textSecondary),
-                ),
-              ),
-
-              // 8. Specifications & Item Details Card
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: _buildSpecCard(isDark, textPrimary, textSecondary),
-                ),
-              ),
-
-              // 9. Full Description Card
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: _buildDescriptionCard(isDark, textPrimary, textSecondary),
-                ),
-              ),
-
-              // 10. Customer Comments & Reviews Section
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: _buildReviewsSection(isDark, textPrimary, textSecondary),
-                ),
-              ),
-
-              // 11. "More From This Shop" Carousel / Grid
-              if (_moreProducts.isNotEmpty)
+                // 2. Main Content Card: Price, Name, Badges, Rating & Sold Count
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                    child: _buildMoreProductsSection(isDark, textPrimary, textSecondary),
+                    child: _buildPriceAndHeaderCard(isDark, textPrimary, textSecondary),
                   ),
                 ),
 
-              // Bottom safe spacer so content is never covered by the sticky bar
-              const SliverToBoxAdapter(
-                child: SizedBox(height: 110),
-              ),
-            ],
-          ),
+                // 3. Shop Vouchers Row (if available)
+                if (_vouchers.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: _buildVouchersRow(isDark, textPrimary, textSecondary),
+                    ),
+                  ),
+
+                // 4. Variations / Options Picker (if product has variants or modifiers)
+                if (_product.variants.isNotEmpty || _product.modifiers.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: _buildVariationsCard(isDark, textPrimary, textSecondary),
+                    ),
+                  ),
+
+                // 5. Quantity & Note Selector (for physical products / multi-order)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: _buildQuantityAndNoteCard(isDark, textPrimary, textSecondary),
+                  ),
+                ),
+
+                // 6. Service Highlights Card (if item is a service)
+                if (_product.isService)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: _buildServiceInfoCard(isDark, textPrimary, textSecondary),
+                    ),
+                  ),
+
+                // 7. Merchant / Shop Profile Card
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: _buildShopProfileCard(isDark, textPrimary, textSecondary),
+                  ),
+                ),
+
+                // 8. Specifications & Item Details Card
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: _buildSpecCard(isDark, textPrimary, textSecondary),
+                  ),
+                ),
+
+                // 9. Full Description Card
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: _buildDescriptionCard(isDark, textPrimary, textSecondary),
+                  ),
+                ),
+
+                // 10. Customer Comments & Reviews Section
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: _buildReviewsSection(isDark, textPrimary, textSecondary),
+                  ),
+                ),
+
+                // 11. "More From This Shop" Carousel / Grid
+                if (_moreProducts.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      child: _buildMoreProductsSection(isDark, textPrimary, textSecondary),
+                    ),
+                  ),
+
+                // Bottom safe spacer so content is never covered by the sticky bar
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: 110),
+                ),
+              ],
+            ),
 
           // ── Sticky Top Floating Bar (Back, Title, Share, Cart) ──
           _buildFloatingTopBar(isDark),
 
-          // ── Shopee-Style Sticky Bottom Bar ──
+          // ── Shopee-Style Sticky Bottom Bar (Mobile only; Desktop uses inline action bar) ──
           // [Chat 1/4] [Cart 1/4] [Buy Now 1/2]
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _buildStickyBottomActionBar(isDark, textPrimary),
-          ),
+          if (!isDesktop)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _buildStickyBottomActionBar(isDark, textPrimary),
+            ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopShopeeBody({
+    required bool isDark,
+    required Color textPrimary,
+    required Color textSecondary,
+  }) {
+    final topInset = MediaQuery.of(context).padding.top + 68.0;
+    final images = _product.galleryImages;
+    final hasVideo = _product.videoUrl.isNotEmpty;
+    final totalSlides = (hasVideo ? 1 : 0) + images.length;
+
+    return SingleChildScrollView(
+      controller: _scrollCtrl,
+      physics: const BouncingScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(24, topInset, 24, 48),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1280),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ── Top 2-Column Shopee Desktop Split: Left Full Gallery | Right Details & Buy ──
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // LEFT COLUMN: Full-bleed Product Image / Video Gallery + Thumbnails
+                  Expanded(
+                    flex: 5,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        LayoutBuilder(
+                          builder: (ctx, constraints) {
+                            return Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.7),
+                                  width: 1.0,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.08),
+                                    blurRadius: 24,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(23),
+                                child: _buildHeroImageSlider(
+                                  isDark,
+                                  availableWidth: constraints.maxWidth,
+                                  isDesktopLayout: true,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        if (totalSlides > 1) ...[
+                          const SizedBox(height: 12),
+                          _buildDesktopThumbnailStrip(isDark, images, hasVideo),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(width: 24),
+
+                  // RIGHT COLUMN: Price, Vouchers, Variations, Quantity, Service Info & Action Buttons
+                  Expanded(
+                    flex: 6,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildPriceAndHeaderCard(isDark, textPrimary, textSecondary),
+                        if (_vouchers.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          _buildVouchersRow(isDark, textPrimary, textSecondary),
+                        ],
+                        if (_product.variants.isNotEmpty || _product.modifiers.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          _buildVariationsCard(isDark, textPrimary, textSecondary),
+                        ],
+                        const SizedBox(height: 12),
+                        _buildQuantityAndNoteCard(isDark, textPrimary, textSecondary),
+                        if (_product.isService) ...[
+                          const SizedBox(height: 12),
+                          _buildServiceInfoCard(isDark, textPrimary, textSecondary),
+                        ],
+                        const SizedBox(height: 16),
+                        _buildStickyBottomActionBar(
+                          isDark,
+                          textPrimary,
+                          isInlineDesktop: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              // ── Lower Full-Width Sections ──
+              const SizedBox(height: 20),
+              _buildShopProfileCard(isDark, textPrimary, textSecondary),
+              const SizedBox(height: 14),
+              _buildSpecCard(isDark, textPrimary, textSecondary),
+              const SizedBox(height: 14),
+              _buildDescriptionCard(isDark, textPrimary, textSecondary),
+              const SizedBox(height: 14),
+              _buildReviewsSection(isDark, textPrimary, textSecondary),
+              if (_moreProducts.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                _buildMoreProductsSection(isDark, textPrimary, textSecondary),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopThumbnailStrip(
+    bool isDark,
+    List<String> images,
+    bool hasVideo,
+  ) {
+    final totalSlides = (hasVideo ? 1 : 0) + images.length;
+    return SizedBox(
+      height: 74,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: totalSlides,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, idx) {
+          final bool isSelected = _currentImageIndex == idx;
+          final bool isVideoThumb = hasVideo && idx == 0;
+          final String thumbUrl = isVideoThumb
+              ? (images.isNotEmpty ? images.first : '')
+              : images[hasVideo ? idx - 1 : idx];
+
+          return MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () {
+                _imagePageCtrl.animateToPage(
+                  idx,
+                  duration: const Duration(milliseconds: 240),
+                  curve: Curves.easeOutCubic,
+                );
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                width: 74,
+                height: 74,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isSelected
+                        ? const Color(0xFF38BDF8)
+                        : Colors.white.withValues(alpha: isDark ? 0.14 : 0.65),
+                    width: isSelected ? 2.2 : 1.0,
+                  ),
+                  color: isDark ? const Color(0xFF141926) : Colors.white,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (thumbUrl.isNotEmpty)
+                        Image.network(
+                          thumbUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _buildFallbackHero(isDark),
+                        )
+                      else
+                        Container(color: Colors.black87),
+                      if (isVideoThumb)
+                        Container(
+                          color: Colors.black.withValues(alpha: 0.42),
+                          child: const Center(
+                            child: Icon(
+                              Icons.play_circle_filled_rounded,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -1203,17 +1412,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     return 1.0;
   }
 
-  Widget _buildHeroImageSlider(bool isDark) {
+  Widget _buildHeroImageSlider(
+    bool isDark, {
+    double? availableWidth,
+    bool isDesktopLayout = false,
+  }) {
     final images = _product.galleryImages;
     final hasVideo = _product.videoUrl.isNotEmpty;
     final totalSlides = (hasVideo ? 1 : 0) + images.length;
     final mediaSize = MediaQuery.of(context).size;
-    final screenW = mediaSize.width;
+    final screenW = availableWidth ?? mediaSize.width;
     final screenH = mediaSize.height;
     final double activeRatio =
         _activeHeroAspectRatio(images, hasVideo).clamp(0.42, 2.4);
-    final double maxHeroH = (screenH * 0.85).clamp(420.0, 920.0);
-    final double sliderH = (screenW / activeRatio).clamp(220.0, maxHeroH);
+    final double maxHeroH = isDesktopLayout
+        ? (screenH * 0.72).clamp(440.0, 720.0)
+        : (screenH * 0.85).clamp(420.0, 920.0);
+    final double minHeroH = isDesktopLayout ? 340.0 : 220.0;
+    final double sliderH = (screenW / activeRatio).clamp(minHeroH, maxHeroH);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
@@ -3149,12 +3365,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  Widget _buildStickyBottomActionBar(bool isDark, Color textPrimary) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
+  Widget _buildStickyBottomActionBar(
+    bool isDark,
+    Color textPrimary, {
+    bool isInlineDesktop = false,
+  }) {
+    final bottomPadding = isInlineDesktop ? 0.0 : MediaQuery.of(context).padding.bottom;
     final bool isService = _product.isService;
+    final BorderRadius barRadius = isInlineDesktop
+        ? BorderRadius.circular(22)
+        : const BorderRadius.vertical(top: Radius.circular(24));
 
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      borderRadius: barRadius,
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
         child: Container(
@@ -3168,20 +3391,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             color: isDark
                 ? const Color(0xFF0F172A).withValues(alpha: 0.78)
                 : Colors.white.withValues(alpha: 0.84),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            border: Border(
-              top: BorderSide(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.14)
-                    : Colors.black.withValues(alpha: 0.08),
-                width: 1.0,
-              ),
-            ),
+            borderRadius: barRadius,
+            border: isInlineDesktop
+                ? Border.all(
+                    color: Colors.white.withValues(alpha: isDark ? 0.14 : 0.72),
+                    width: 1.0,
+                  )
+                : Border(
+                    top: BorderSide(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.14)
+                          : Colors.black.withValues(alpha: 0.08),
+                      width: 1.0,
+                    ),
+                  ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.08),
                 blurRadius: 18,
-                offset: const Offset(0, -4),
+                offset: isInlineDesktop ? const Offset(0, 6) : const Offset(0, -4),
               ),
             ],
           ),
