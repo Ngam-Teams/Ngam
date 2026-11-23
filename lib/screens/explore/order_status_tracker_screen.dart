@@ -145,17 +145,56 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
   }
 
   void _loadOrderData() async {
-    try {
-      final res = await Supabase.instance.client
-          .from('orders')
-          .select('*, businesses(id, business_name, business_phone, business_address)')
-          .eq('id', widget.orderId)
-          .maybeSingle();
+    final db = Supabase.instance.client;
+    Map<String, dynamic>? res;
+    List<dynamic> itemsRes = [];
 
-      final itemsRes = await Supabase.instance.client
-          .from('order_items')
-          .select()
-          .eq('order_id', widget.orderId);
+    try {
+      try {
+        res = await db
+            .from('orders')
+            .select('*, businesses(id, business_name, business_phone, address_line)')
+            .eq('id', widget.orderId)
+            .maybeSingle();
+      } catch (joinErr) {
+        debugPrint('[OrderStatusTracker] Orders join query warning: $joinErr');
+        try {
+          res = await db
+              .from('orders')
+              .select('*')
+              .eq('id', widget.orderId)
+              .maybeSingle();
+        } catch (plainErr) {
+          debugPrint('[OrderStatusTracker] Orders plain query warning: $plainErr');
+        }
+      }
+
+      // Fetch business info separately if join was omitted or returned null
+      Map<String, dynamic>? separateBiz;
+      if (res != null && res['businesses'] is! Map && res['business_id'] != null) {
+        try {
+          separateBiz = await db
+              .from('businesses')
+              .select('id, business_name, business_phone, address_line')
+              .eq('id', res['business_id'].toString())
+              .maybeSingle();
+        } catch (bizErr) {
+          debugPrint('[OrderStatusTracker] Separate business fetch warning: $bizErr');
+        }
+      }
+
+      // Always fetch order_items independently so items never vanish on a join error
+      if (res != null) {
+        try {
+          final fetchedItems = await db
+              .from('order_items')
+              .select()
+              .eq('order_id', widget.orderId);
+          itemsRes = fetchedItems as List<dynamic>;
+        } catch (itemErr) {
+          debugPrint('[OrderStatusTracker] Order items fetch warning: $itemErr');
+        }
+      }
 
       if (mounted) {
         setState(() {
@@ -167,6 +206,13 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
               _paymentMethod = dbMethod;
             }
             _totalAmount = (res['total'] as num?)?.toDouble() ?? _totalAmount;
+            final discountCents = (res['discount_cents'] as num?)?.toDouble();
+            final discountRm = (res['discount'] as num?)?.toDouble();
+            if (discountCents != null && discountCents > 0) {
+              _discount = discountCents / 100.0;
+            } else if (discountRm != null && discountRm > 0) {
+              _discount = discountRm;
+            }
             _notes = res['notes']?.toString();
             _shopId = res['business_id']?.toString() ?? _shopId;
             _customerName = res['customer_name']?.toString();
@@ -181,12 +227,12 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
               _orderPaidAt = _orderCreatedAt ?? DateTime.now();
             }
 
-            final biz = res['businesses'];
+            final biz = res['businesses'] is Map ? res['businesses'] : separateBiz;
             if (biz is Map) {
               final bName = biz['business_name']?.toString() ?? '';
               if (bName.isNotEmpty) _shopName = bName;
               _shopPhone = biz['business_phone']?.toString();
-              _shopAddress = biz['business_address']?.toString();
+              _shopAddress = (biz['address_line'] ?? biz['business_address'])?.toString();
             }
 
             if ((_fulfillmentLabel == null || _fulfillmentLabel!.isEmpty) && _notes != null) {
@@ -197,7 +243,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
             }
           }
 
-          if ((itemsRes as List).isNotEmpty) {
+          if (itemsRes.isNotEmpty) {
             _loadedItems = itemsRes.map<Map<String, dynamic>>((row) {
               return _normalizeItem(Map<String, dynamic>.from(row as Map));
             }).toList();
@@ -270,17 +316,52 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
   }
 
   void _loadBookingFallback() async {
+    final db = Supabase.instance.client;
     try {
-      final bRes = await Supabase.instance.client
-          .from('bookings')
-          .select('*, businesses(id, business_name, business_phone, business_address)')
-          .eq('id', widget.orderId)
-          .maybeSingle();
+      Map<String, dynamic>? bRes;
+      try {
+        bRes = await db
+            .from('bookings')
+            .select('*, businesses(id, business_name, business_phone, address_line)')
+            .eq('id', widget.orderId)
+            .maybeSingle();
+      } catch (_) {
+        try {
+          bRes = await db
+              .from('bookings')
+              .select('*')
+              .eq('id', widget.orderId)
+              .maybeSingle();
+        } catch (_) {}
+      }
+
+      // Support short_ref booking IDs (e.g. RZRV-261123-XXXXX)
+      if (bRes == null) {
+        try {
+          bRes = await db
+              .from('bookings')
+              .select('*, businesses(id, business_name, business_phone, address_line)')
+              .eq('booking_metadata->>short_ref', widget.orderId)
+              .maybeSingle();
+        } catch (_) {}
+      }
+
+      Map<String, dynamic>? separateBiz;
+      if (bRes != null && bRes['businesses'] is! Map && bRes['business_id'] != null) {
+        try {
+          separateBiz = await db
+              .from('businesses')
+              .select('id, business_name, business_phone, address_line')
+              .eq('id', bRes['business_id'].toString())
+              .maybeSingle();
+        } catch (_) {}
+      }
 
       if (bRes != null && mounted) {
         setState(() {
-          _status = bRes['status']?.toString().toLowerCase() ?? _status;
+          _status = bRes!['status']?.toString().toLowerCase() ?? _status;
           _totalAmount = (bRes['total_price'] as num?)?.toDouble() ?? _totalAmount;
+          _shopId = bRes['business_id']?.toString() ?? _shopId;
           _customerName = bRes['customer_name']?.toString() ?? _customerName;
           _serviceName = bRes['service_name']?.toString();
           _bookingDate = bRes['booking_date']?.toString();
@@ -304,14 +385,18 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
           if (meta['provider_name'] != null) {
             _providerName = meta['provider_name'].toString();
           }
+          final metaDiscount = (meta['discount_amount'] as num?)?.toDouble();
+          if (metaDiscount != null && metaDiscount > 0) {
+            _discount = metaDiscount;
+          }
           _fulfillmentLabel = meta['category']?.toString() ?? 'Tempahan Perkhidmatan';
 
-          final biz = bRes['businesses'];
+          final biz = bRes['businesses'] is Map ? bRes['businesses'] : separateBiz;
           if (biz is Map) {
             final bName = biz['business_name']?.toString() ?? '';
             if (bName.isNotEmpty) _shopName = bName;
             _shopPhone = biz['business_phone']?.toString() ?? _shopPhone;
-            _shopAddress = biz['business_address']?.toString() ?? _shopAddress;
+            _shopAddress = (biz['address_line'] ?? biz['business_address'])?.toString() ?? _shopAddress;
           }
 
           if (_loadedItems.isEmpty && _serviceName != null) {
@@ -339,6 +424,9 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
     }
     if (_subtotal == 0.0) {
       _subtotal = _totalAmount;
+    }
+    if (_discount <= 0.0 && _subtotal > 0.0 && _totalAmount > 0.0 && (_subtotal - _totalAmount) > 0.009) {
+      _discount = double.parse((_subtotal - _totalAmount).toStringAsFixed(2));
     }
   }
 
@@ -1599,7 +1687,9 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                             _divider(isDark),
                             _detailRow(
                               'order_status.fulfillment_option'.tr(),
-                              _fulfillmentLabel ?? 'Bungkus / Takeaway',
+                              (_fulfillmentLabel != null && _fulfillmentLabel!.trim().isNotEmpty)
+                                  ? _fulfillmentLabel!
+                                  : 'order_status.fulfillment_default'.tr(),
                               isDark,
                             ),
 

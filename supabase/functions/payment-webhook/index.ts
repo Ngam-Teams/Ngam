@@ -160,6 +160,22 @@ serve(async (req: Request) => {
             .maybeSingle();
 
           if (ordRow) {
+            if (String(ordRow.payment_status || "").toLowerCase() === "paid") {
+              return new Response(
+                JSON.stringify({
+                  error: "Pesanan ini telah pun dibayar.",
+                  already_paid: true,
+                  status: "paid",
+                }),
+                { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+            if (String(ordRow.status || "").toLowerCase() === "cancelled") {
+              return new Response(
+                JSON.stringify({ error: "Pesanan ini telah dibatalkan." }),
+                { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
             const { data: itemsRows } = await supabase
               .from("order_items")
               .select("quantity, unit_price, subtotal")
@@ -208,6 +224,19 @@ serve(async (req: Request) => {
 
           const { data: bkRow } = await bookingQuery;
           if (bkRow) {
+            const prevMeta = (bkRow.booking_metadata && typeof bkRow.booking_metadata === "object")
+              ? bkRow.booking_metadata as Record<string, unknown>
+              : {};
+            if (String(prevMeta.payment_status || "").toLowerCase() === "paid") {
+              return new Response(
+                JSON.stringify({
+                  error: "Tempahan ini telah pun dibayar.",
+                  already_paid: true,
+                  status: "paid",
+                }),
+                { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
             const totalCents = Math.round(Number(bkRow.total_price || 0) * 100);
             const { data: bizRow } = await supabase
               .from("businesses")
@@ -215,9 +244,6 @@ serve(async (req: Request) => {
               .eq("id", bkRow.business_id)
               .maybeSingle();
 
-            const prevMeta = (bkRow.booking_metadata && typeof bkRow.booking_metadata === "object")
-              ? bkRow.booking_metadata as Record<string, unknown>
-              : {};
             await supabase
               .from("bookings")
               .update({
@@ -241,9 +267,14 @@ serve(async (req: Request) => {
       }
 
       if (!calcData) {
+        const errMsg = calcErr?.message || "Gagal mengira jumlah pesanan di pelayan.";
+        const alreadyPaid = errMsg.toLowerCase().includes("telah pun dibayar");
         return new Response(
-          JSON.stringify({ error: calcErr?.message || "Gagal mengira jumlah pesanan di pelayan." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({
+            error: errMsg,
+            ...(alreadyPaid ? { already_paid: true, status: "paid" } : {}),
+          }),
+          { status: alreadyPaid ? 409 : 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -261,6 +292,123 @@ serve(async (req: Request) => {
           JSON.stringify({ error: "Perbankan dalam talian FPX memerlukan pesanan minima RM 10.00. Sila gunakan DuitNow QR atau Tunai." }),
           { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
+      }
+
+      // 2. ANTI-DOUBLE-PAYMENT IDEMPOTENCY:
+      // Semak sama ada pesanan/tempahan ini sudah mempunyai chip_purchase_id aktif di CHIP Asia.
+      // Jika sudah 'paid' -> terus sahkan & pulangkan status 'paid'.
+      // Jika masih aktif ('created'/'viewed'/'pending') dengan jumlah sama -> guna semula purchase sedia ada!
+      let existingPurchaseId = "";
+      let existingBookingMeta: Record<string, unknown> | null = null;
+      const resolvedBookingUuid = String(calcData.booking_uuid || calcData.booking_id || "").trim();
+
+      if (calcData.target_type === "order" && calcData.order_id) {
+        const { data: existingOrd } = await supabase
+          .from("orders")
+          .select("chip_purchase_id, status, payment_status")
+          .eq("id", calcData.order_id)
+          .maybeSingle();
+        if (existingOrd) {
+          if (String(existingOrd.payment_status || "").toLowerCase() === "paid") {
+            return new Response(
+              JSON.stringify({
+                id: existingOrd.chip_purchase_id || "",
+                status: "paid",
+                already_paid: true,
+                purchase: { total: verifiedCents },
+              }),
+              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          if (String(existingOrd.status || "").toLowerCase() === "cancelled") {
+            return new Response(
+              JSON.stringify({ error: "Pesanan ini telah dibatalkan." }),
+              { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          existingPurchaseId = String(existingOrd.chip_purchase_id || "").trim();
+        }
+      } else if (calcData.target_type === "booking" && resolvedBookingUuid) {
+        const { data: existingBk } = await supabase
+          .from("bookings")
+          .select("booking_metadata")
+          .eq("id", resolvedBookingUuid)
+          .maybeSingle();
+        if (existingBk?.booking_metadata && typeof existingBk.booking_metadata === "object") {
+          existingBookingMeta = existingBk.booking_metadata as Record<string, unknown>;
+          if (String(existingBookingMeta.payment_status || "").toLowerCase() === "paid") {
+            return new Response(
+              JSON.stringify({
+                id: String(existingBookingMeta.chip_purchase_id || ""),
+                status: "paid",
+                already_paid: true,
+                purchase: { total: verifiedCents },
+              }),
+              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          existingPurchaseId = String(existingBookingMeta.chip_purchase_id || "").trim();
+        }
+      }
+
+      if (existingPurchaseId) {
+        try {
+          const checkRes = await fetch(`${CHIP_BASE_URL}/purchases/${existingPurchaseId}/`, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${chipApiKey}`,
+              "Content-Type": "application/json",
+            },
+          });
+          if (checkRes.ok) {
+            const existingChip = await checkRes.json();
+            const existingStatus = String(existingChip.status || "").toLowerCase();
+            const existingTotal = Number(existingChip.purchase?.total || 0);
+
+            if (existingStatus === "paid") {
+              const refId = String(existingChip.reference || orderId).trim();
+              const payMethod =
+                existingChip.transaction_data?.payment_method ||
+                existingChip.payment?.payment_type ||
+                "chip_online";
+              if (refId && existingTotal > 0) {
+                const { data: settleData } = await supabase.rpc("process_verified_chip_webhook", {
+                  p_chip_purchase_id: String(existingChip.id || existingPurchaseId),
+                  p_event_type: "purchase.paid",
+                  p_reference_id: refId,
+                  p_paid_cents: Math.round(existingTotal),
+                  p_payment_method: payMethod,
+                  p_raw_payload: existingChip,
+                });
+                if (settleData?.target_type === "booking" && settleData?.booking_id) {
+                  await supabase
+                    .from("bookings")
+                    .update({ status: "pending" })
+                    .eq("id", settleData.booking_id)
+                    .eq("status", "holding");
+                }
+              }
+              return new Response(
+                JSON.stringify({ ...existingChip, status: "paid", already_paid: true }),
+                { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+
+            // Reuse active unpaid CHIP purchase with identical total so we never spawn a duplicate checkout link!
+            if (
+              ["created", "viewed", "pending", "pending_execute"].includes(existingStatus) &&
+              existingTotal === verifiedCents &&
+              existingChip.checkout_url
+            ) {
+              return new Response(
+                JSON.stringify({ ...existingChip, reused: true }),
+                { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+          }
+        } catch (reuseErr) {
+          console.warn("[payment-webhook] Existing purchase check warning:", reuseErr);
+        }
       }
 
       const orderTitle = payload.order_title || `Pesanan ${calcData.business_name || "Ngam"}`;
@@ -311,11 +459,23 @@ serve(async (req: Request) => {
 
       const chipData = await chipRes.json();
 
-      if (chipRes.ok && chipData.id && calcData.target_type === "order") {
-        await supabase
-          .from("orders")
-          .update({ chip_purchase_id: String(chipData.id) })
-          .eq("id", calcData.order_id);
+      if (chipRes.ok && chipData.id) {
+        if (calcData.target_type === "order" && calcData.order_id) {
+          await supabase
+            .from("orders")
+            .update({ chip_purchase_id: String(chipData.id) })
+            .eq("id", calcData.order_id);
+        } else if (calcData.target_type === "booking" && resolvedBookingUuid) {
+          await supabase
+            .from("bookings")
+            .update({
+              booking_metadata: {
+                ...(existingBookingMeta || {}),
+                chip_purchase_id: String(chipData.id),
+              },
+            })
+            .eq("id", resolvedBookingUuid);
+        }
       }
 
       return new Response(JSON.stringify(chipData), {
@@ -386,6 +546,97 @@ serve(async (req: Request) => {
         status: chipRes.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // =========================================================================
+    // MOD 2B: CANCEL CHIP PURCHASE SAFELY (Elakkan pembayaran berganda dari tab lama)
+    // =========================================================================
+    if (payload.action === "cancel_purchase") {
+      let purchaseId = String(payload.purchase_id || "").trim();
+      const orderId = String(payload.order_id || "").trim();
+
+      if (!purchaseId && orderId) {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId);
+        if (isUuid) {
+          const { data: ord } = await supabase
+            .from("orders")
+            .select("chip_purchase_id")
+            .eq("id", orderId)
+            .maybeSingle();
+          purchaseId = String(ord?.chip_purchase_id || "").trim();
+        }
+      }
+
+      if (!purchaseId || !chipApiKey) {
+        return new Response(JSON.stringify({ status: "cancelled", cancelled: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // 1. Semak status terkini di CHIP dahulu — JANGAN batalkan jika pelanggan sudah membayar!
+      const statusRes = await fetch(`${CHIP_BASE_URL}/purchases/${purchaseId}/`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${chipApiKey}`,
+          "Content-Type": "application/json",
+        },
+      });
+      const statusData = statusRes.ok ? await statusRes.json() : null;
+      const currentStatus = String(statusData?.status || "").toLowerCase();
+
+      if (currentStatus === "paid") {
+        const refId = String(statusData?.reference || orderId).trim();
+        const paidCents =
+          typeof statusData?.purchase?.total === "number"
+            ? Math.round(statusData.purchase.total)
+            : 0;
+        const payMethod =
+          statusData?.transaction_data?.payment_method ||
+          statusData?.payment?.payment_type ||
+          "chip_online";
+
+        if (refId && paidCents > 0) {
+          const { data: settleData } = await supabase.rpc("process_verified_chip_webhook", {
+            p_chip_purchase_id: String(statusData.id || purchaseId),
+            p_event_type: "purchase.paid",
+            p_reference_id: refId,
+            p_paid_cents: paidCents,
+            p_payment_method: payMethod,
+            p_raw_payload: statusData,
+          });
+          if (settleData?.target_type === "booking" && settleData?.booking_id) {
+            await supabase
+              .from("bookings")
+              .update({ status: "pending" })
+              .eq("id", settleData.booking_id)
+              .eq("status", "holding");
+          }
+        }
+
+        return new Response(
+          JSON.stringify({ status: "paid", already_paid: true, cancelled: false, id: purchaseId }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // 2. Batalkan sesi CHIP supaya pautan/QR tab lama tidak lagi sah untuk dibayar!
+      try {
+        await fetch(`${CHIP_BASE_URL}/purchases/${purchaseId}/cancel/`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${chipApiKey}`,
+            "Content-Type": "application/json",
+          },
+        });
+      } catch (cancelErr) {
+        console.warn("[payment-webhook] CHIP cancel API warning:", cancelErr);
+      }
+
+      return new Response(
+        JSON.stringify({ status: "cancelled", cancelled: true, id: purchaseId }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // =========================================================================

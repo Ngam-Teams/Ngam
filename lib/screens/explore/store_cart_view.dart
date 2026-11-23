@@ -98,6 +98,9 @@ class _StoreCartViewState extends State<StoreCartView> {
   double _discountAmount = 0.0;
   Map<String, dynamic>? _voucher;
   bool _isProcessing = false;
+  bool _checkoutInFlight = false;
+  String? _activeDraftOrderId;
+  String? _activeDraftSignature;
   bool _isPreOrder = false;
   String _selectedPaymentMethod = 'duitnow'; // 'duitnow', 'fpx_card', 'cash'
   String? _syncedShopName;
@@ -994,49 +997,58 @@ class _StoreCartViewState extends State<StoreCartView> {
     );
   }
 
+  String _buildCartSignature(String finalNotes) {
+    final itemSig = _items
+        .map((i) => '${i.product.id}:${i.quantity}:${i.unitPriceWithOption.toStringAsFixed(2)}:${i.formattedProductName}')
+        .join('|');
+    return '${widget.shop['id']}|${_total.toStringAsFixed(2)}|$_selectedPaymentMethod|$_fulfillmentMode|$finalNotes|$itemSig';
+  }
+
   void _handleCheckout() async {
-    if (_items.isEmpty) return;
+    if (_items.isEmpty || _checkoutInFlight || _isProcessing) return;
 
-    var user = Supabase.instance.client.auth.currentUser;
-    if (user == null) {
-      // Try anonymous sign-in for seamless table dine-in ordering
-      try {
-        final authRes = await Supabase.instance.client.auth.signInAnonymously();
-        user = authRes.user;
-      } catch (anonErr) {
-        debugPrint('Anonymous sign-in unavailable: $anonErr');
-      }
-    }
-
-    if (user == null) {
-      if (!mounted) return;
-      showGlassToast(context, 'Sila log masuk untuk menghantar pesanan.', isError: true);
-      Navigator.pushNamed(context, '/login');
-      return;
-    }
-
-    if (!widget.isStoreOpen && !_isPreOrder) {
-      if (!mounted) return;
-      showGlassToast(context, 'Kedai sedang tutup. Sila aktifkan pilihan Pesanan Awal (Pre-Order) untuk teruskan.', isError: true);
-      return;
-    }
-
-    if (_fulfillmentMode == 3 && _deliveryAddressController.text.trim().isEmpty) {
-      if (!mounted) return;
-      showGlassToast(context, 'cart.delivery_address_required'.tr(), isError: true);
-      return;
-    }
-
-    if (_selectedPaymentMethod == 'fpx_card' && _total < 10.0) {
-      if (!mounted) return;
-      setState(() => _selectedPaymentMethod = 'duitnow');
-      showGlassToast(context, 'cart.fpx_min_spend_error'.tr(), isError: true);
-      return;
-    }
-
+    // Kunci segerak (synchronous) sebelum sebarang operasi async supaya klik berganda tidak boleh cipta 2 pesanan
+    _checkoutInFlight = true;
     setState(() => _isProcessing = true);
 
     try {
+      var user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        // Try anonymous sign-in for seamless table dine-in ordering
+        try {
+          final authRes = await Supabase.instance.client.auth.signInAnonymously();
+          user = authRes.user;
+        } catch (anonErr) {
+          debugPrint('Anonymous sign-in unavailable: $anonErr');
+        }
+      }
+
+      if (user == null) {
+        if (!mounted) return;
+        showGlassToast(context, 'Sila log masuk untuk menghantar pesanan.', isError: true);
+        Navigator.pushNamed(context, '/login');
+        return;
+      }
+
+      if (!widget.isStoreOpen && !_isPreOrder) {
+        if (!mounted) return;
+        showGlassToast(context, 'Kedai sedang tutup. Sila aktifkan pilihan Pesanan Awal (Pre-Order) untuk teruskan.', isError: true);
+        return;
+      }
+
+      if (_fulfillmentMode == 3 && _deliveryAddressController.text.trim().isEmpty) {
+        if (!mounted) return;
+        showGlassToast(context, 'cart.delivery_address_required'.tr(), isError: true);
+        return;
+      }
+
+      if (_selectedPaymentMethod == 'fpx_card' && _total < 10.0) {
+        if (!mounted) return;
+        setState(() => _selectedPaymentMethod = 'duitnow');
+        showGlassToast(context, 'cart.fpx_min_spend_error'.tr(), isError: true);
+        return;
+      }
+
       final String rawName = (user.userMetadata?['full_name'] as String?) ??
           (user.userMetadata?['name'] as String?) ??
           (user.email?.split('@').first) ??
@@ -1084,91 +1096,152 @@ class _StoreCartViewState extends State<StoreCartView> {
               (user.userMetadata?['phone_number'] as String?) ??
               '');
 
-      final baseOrderData = {
-        'business_id': widget.shop['id'],
-        'owner_user_id': user.id,
-        'customer_name': customerName,
-        if (customerPhone.isNotEmpty) 'customer_phone': customerPhone,
-        'total': _total,
-        'status': 'pending',
-        'source': source,
-        'notes': finalNotes,
-        'payment_method': _selectedPaymentMethod,
-        'payment_status': _selectedPaymentMethod == 'cash' ? 'unpaid' : 'pending',
-      };
+      final String cartSig = _buildCartSignature(finalNotes);
+      String? reusedOrderId;
 
-      Map<String, dynamic> orderRes;
-      try {
-        orderRes = await Supabase.instance.client
-            .from('orders')
-            .insert(baseOrderData)
-            .select('id')
-            .single();
-      } catch (insertErr) {
-        debugPrint('[StoreCartView] Insert failed ($insertErr), attempting fallback...');
+      // ANTI-DOUBLE-PAYMENT: Semak draf pesanan terdahulu sebelum cipta pesanan baharu
+      if (_activeDraftOrderId != null) {
         try {
-          // If check constraint on source or payment fails, fallback gracefully
+          final prevRow = await Supabase.instance.client
+              .from('orders')
+              .select('id, status, payment_status')
+              .eq('id', _activeDraftOrderId!)
+              .maybeSingle();
+          if (prevRow != null) {
+            final prevPayStatus = prevRow['payment_status']?.toString().toLowerCase() ?? '';
+            final prevStatus = prevRow['status']?.toString().toLowerCase() ?? '';
+            if (prevPayStatus == 'paid') {
+              // Pesanan draf sudah pun dibayar (contohnya melalui tab CHIP berlainan)!
+              // Jangan cipta pesanan kedua — terus bersihkan troli dan buka penjejak pesanan.
+              final paidId = _activeDraftOrderId!;
+              _activeDraftOrderId = null;
+              _activeDraftSignature = null;
+              widget.onClearCart?.call();
+              if (!mounted) return;
+              showGlassToast(context, 'payment_modal.already_paid_detected'.tr());
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => OrderStatusTrackerScreen(
+                    orderId: paidId,
+                    shopName: _shopName,
+                    totalAmount: _total,
+                    pickupTime: (_fulfillmentMode == 2 || _fulfillmentMode == 3)
+                        ? '$_selectedPickupDate, $_selectedPickupTime'
+                        : (_fulfillmentMode == 1
+                            ? 'cart.dine_in_pickup_label'.tr()
+                            : (_bungkusChooseTime ? 'Hari Ini, $_selectedPickupTime' : _selectedPickupTime)),
+                    fulfillmentType: fulfillmentLabel,
+                    items: _items.map((i) => {'name': i.formattedProductName, 'qty': i.quantity, 'price': i.totalPrice}).toList(),
+                  ),
+                ),
+              );
+              return;
+            }
+            if (prevStatus == 'pending' && _activeDraftSignature == cartSig) {
+              reusedOrderId = _activeDraftOrderId;
+            }
+          }
+        } catch (_) {}
+      }
+
+      late final String orderId;
+      if (reusedOrderId != null) {
+        orderId = reusedOrderId;
+      } else {
+        final int discountCents = (_discountAmount * 100).round().clamp(0, 99999999);
+        final baseOrderData = {
+          'business_id': widget.shop['id'],
+          'owner_user_id': user.id,
+          'customer_name': customerName,
+          if (customerPhone.isNotEmpty) 'customer_phone': customerPhone,
+          'total': _total,
+          if (discountCents > 0) 'discount_cents': discountCents,
+          'status': 'pending',
+          'source': source,
+          'notes': finalNotes,
+          'payment_method': _selectedPaymentMethod,
+          'payment_status': _selectedPaymentMethod == 'cash' ? 'unpaid' : 'pending',
+        };
+
+        Map<String, dynamic> orderRes;
+        try {
           orderRes = await Supabase.instance.client
               .from('orders')
-              .insert({
-                ...baseOrderData,
-                'source': 'online',
-              })
+              .insert(baseOrderData)
               .select('id')
               .single();
-        } catch (sourceErr) {
-          debugPrint('[StoreCartView] Fallback without payment_status: $sourceErr');
-          orderRes = await Supabase.instance.client
-              .from('orders')
-              .insert({
-                'business_id': widget.shop['id'],
-                'owner_user_id': user.id,
-                'customer_name': customerName,
-                'total': _total,
-                'status': 'pending',
-                'source': 'online',
-                'notes': finalNotes,
-              })
-              .select('id')
-              .single();
+        } catch (insertErr) {
+          debugPrint('[StoreCartView] Insert failed ($insertErr), attempting fallback...');
+          try {
+            // If check constraint on source or discount_cents fails, fallback gracefully
+            final fallbackData = Map<String, dynamic>.from(baseOrderData)
+              ..remove('discount_cents')
+              ..['source'] = 'online';
+            orderRes = await Supabase.instance.client
+                .from('orders')
+                .insert(fallbackData)
+                .select('id')
+                .single();
+          } catch (sourceErr) {
+            debugPrint('[StoreCartView] Fallback without payment_status: $sourceErr');
+            orderRes = await Supabase.instance.client
+                .from('orders')
+                .insert({
+                  'business_id': widget.shop['id'],
+                  'owner_user_id': user.id,
+                  'customer_name': customerName,
+                  'total': _total,
+                  'status': 'pending',
+                  'source': 'online',
+                  'notes': finalNotes,
+                })
+                .select('id')
+                .single();
+          }
+        }
+
+        orderId = orderRes['id'].toString();
+        _activeDraftOrderId = orderId;
+        _activeDraftSignature = cartSig;
+
+        // Items MUST be saved with the order. If they fail, withdraw the order so
+        // the merchant never receives an empty/unpreparable order.
+        try {
+          final uuidRegex = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+          final itemsData = _items
+              .map((item) {
+                    final rawPid = item.product.id.trim();
+                    final isValidUuid = uuidRegex.hasMatch(rawPid);
+                    return {
+                      'order_id': orderId,
+                      if (isValidUuid) 'product_id': rawPid,
+                      'product_name': item.formattedProductName,
+                      'quantity': item.quantity,
+                      'unit_price': item.unitPriceWithOption,
+                      'subtotal': item.totalPrice,
+                    };
+                  })
+              .toList();
+          await Supabase.instance.client.from('order_items').insert(itemsData);
+        } catch (itemErr) {
+          debugPrint('order_items insert failed, cancelling order #$orderId: $itemErr');
+          _activeDraftOrderId = null;
+          _activeDraftSignature = null;
+          await _cancelOrder(orderId);
+          throw Exception('Item pesanan gagal disimpan. Sila cuba lagi.');
         }
       }
 
-      final String orderId = orderRes['id'].toString();
-
-      // Items MUST be saved with the order. If they fail, withdraw the order so
-      // the merchant never receives an empty/unpreparable order.
-      try {
-        final uuidRegex = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
-        final itemsData = _items
-            .map((item) {
-                  final rawPid = item.product.id.trim();
-                  final isValidUuid = uuidRegex.hasMatch(rawPid);
-                  return {
-                    'order_id': orderId,
-                    if (isValidUuid) 'product_id': rawPid,
-                    'product_name': item.formattedProductName,
-                    'quantity': item.quantity,
-                    'unit_price': item.unitPriceWithOption,
-                    'subtotal': item.totalPrice,
-                  };
-                })
-            .toList();
-        await Supabase.instance.client.from('order_items').insert(itemsData);
-      } catch (itemErr) {
-        debugPrint('order_items insert failed, cancelling order #$orderId: $itemErr');
-        await _cancelOrder(orderId);
-        throw Exception('Item pesanan gagal disimpan. Sila cuba lagi.');
-      }
-
       if (!mounted) return;
+      // Kekalkan _checkoutInFlight = true sepanjang modal pembayaran dibuka supaya tidak boleh dicetus dua kali!
       setState(() => _isProcessing = false);
 
       String resolvedPaymentMethod = _selectedPaymentMethod;
 
       // Jika Bayar di Kaunter (Tunai), terus hantar pesanan ke kedai tanpa buka modal pembayaran kedua!
       if (_selectedPaymentMethod != 'cash' && _total > 0) {
-        final bool paid = await CustomerPaymentModal.show(
+        bool paid = await CustomerPaymentModal.show(
           context: context,
           amount: _total,
           orderTitle: 'Pesanan #${orderId.length > 6 ? orderId.substring(0, 6).toUpperCase() : orderId} - $_shopName',
@@ -1210,16 +1283,34 @@ class _StoreCartViewState extends State<StoreCartView> {
         );
 
         if (!mounted) return;
+
+        // Semak semula status di Supabase sebelum membatal (elak batal pesanan yang sebenarnya sudah dibayar!)
         if (!paid) {
-          // Pelanggan membatalkan bayaran sebelum selesai -> batalkan draf pesanan supaya kedai tidak menerima pesanan belum bayar
+          try {
+            final checkRow = await Supabase.instance.client
+                .from('orders')
+                .select('payment_status')
+                .eq('id', orderId)
+                .maybeSingle();
+            if (checkRow?['payment_status']?.toString().toLowerCase() == 'paid') {
+              paid = true;
+            }
+          } catch (_) {}
+        }
+
+        if (!paid) {
+          // Pelanggan membatalkan bayaran sebelum selesai -> batalkan draf pesanan HANYA jika belum dibayar
           try {
             await Supabase.instance.client
                 .from('orders')
                 .update({'status': 'cancelled', 'payment_status': 'pending'})
-                .eq('id', orderId);
+                .eq('id', orderId)
+                .neq('payment_status', 'paid');
           } catch (_) {
             await _cancelOrder(orderId);
           }
+          _activeDraftOrderId = null;
+          _activeDraftSignature = null;
           if (!mounted) return;
           showGlassToast(context, 'Pembayaran dibatalkan. Troli anda masih disimpan.', isError: true);
           return;
@@ -1241,6 +1332,9 @@ class _StoreCartViewState extends State<StoreCartView> {
           } catch (_) {}
         }
       }
+
+      _activeDraftOrderId = null;
+      _activeDraftSignature = null;
 
       // Rekod penebusan baucar supaya kuota tidak boleh diguna tanpa had
       if (_voucherApplied && _voucher != null && _discountAmount > 0) {
@@ -1299,8 +1393,12 @@ class _StoreCartViewState extends State<StoreCartView> {
       );
     } catch (e) {
       if (!mounted) return;
-      setState(() => _isProcessing = false);
       showGlassToast(context, 'Pesanan gagal dihantar: ${e.toString().replaceFirst('Exception: ', '')}', isError: true);
+    } finally {
+      _checkoutInFlight = false;
+      if (mounted && _isProcessing) {
+        setState(() => _isProcessing = false);
+      }
     }
   }
 
@@ -1825,12 +1923,12 @@ class _StoreCartViewState extends State<StoreCartView> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             elevation: 4,
                           ),
-                          onPressed: _isProcessing
+                          onPressed: (_isProcessing || _checkoutInFlight)
                               ? null
                               : (!widget.isStoreOpen && !_isPreOrder
                                   ? () => showGlassToast(context, 'Kedai sedang tutup. Sila aktifkan pilihan Pesanan Awal (Pre-Order) di atas.', isError: true)
                                   : _handleCheckout),
-                          child: _isProcessing
+                          child: (_isProcessing || _checkoutInFlight)
                               ? const SizedBox(
                                   width: 22,
                                   height: 22,

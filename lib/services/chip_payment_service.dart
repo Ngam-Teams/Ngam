@@ -119,12 +119,26 @@ class ChipPaymentService {
         String errMsg = 'Gagal mengesahkan sesi pembayaran selamat di pelayan. Sila cuba sebentar lagi.';
         try {
           final decoded = jsonDecode(edgeRes.body);
-          if (decoded is Map && decoded['error'] != null) {
-            errMsg = decoded['error'].toString();
-          } else if (decoded is Map && decoded['__all__'] is List && (decoded['__all__'] as List).isNotEmpty) {
-            final firstErr = (decoded['__all__'] as List).first;
-            if (firstErr is Map && firstErr['message'] != null) {
-              errMsg = 'CHIP Gateway: ${firstErr['message']}';
+          if (decoded is Map) {
+            if (decoded['already_paid'] == true ||
+                decoded['status']?.toString().toLowerCase() == 'paid' ||
+                (decoded['error']?.toString().toLowerCase().contains('telah pun dibayar') ?? false)) {
+              return ChipPurchaseResult(
+                id: decoded['id']?.toString() ?? (reference ?? ''),
+                checkoutUrl: '',
+                duitNowUrl: '',
+                amount: amount,
+                status: 'paid',
+                raw: Map<String, dynamic>.from(decoded),
+              );
+            }
+            if (decoded['error'] != null) {
+              errMsg = decoded['error'].toString();
+            } else if (decoded['__all__'] is List && (decoded['__all__'] as List).isNotEmpty) {
+              final firstErr = (decoded['__all__'] as List).first;
+              if (firstErr is Map && firstErr['message'] != null) {
+                errMsg = 'CHIP Gateway: ${firstErr['message']}';
+              }
             }
           }
         } catch (_) {}
@@ -168,5 +182,45 @@ class ChipPaymentService {
     }
 
     return 'pending';
+  }
+
+  /// Batalkan sesi pembayaran CHIP Asia secara selamat.
+  /// Semak status terkini dahulu: jika pelanggan sudah bayar, kembalikan `'paid'` dan JANGAN batalkan!
+  /// Jika belum dibayar, batalkan sesi di pelayan CHIP supaya tab/QR lama tidak lagi boleh dibayar.
+  Future<String> cancelPurchase(String purchaseId, {String? orderId}) async {
+    if (purchaseId.isEmpty || purchaseId.startsWith('DUITNOW-') || purchaseId.startsWith('web-')) {
+      return 'cancelled';
+    }
+
+    // 1. Semak status terkini dahulu (berfungsi walaupun Edge Function belum dikemas kini)
+    final liveStatus = await checkPurchaseStatus(purchaseId);
+    if (liveStatus == 'paid') {
+      return 'paid';
+    }
+
+    // 2. Hantar permintaan batal ke CHIP melalui Edge Function
+    try {
+      final edgeRes = await http.post(
+        Uri.parse(_edgeFunctionUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'action': 'cancel_purchase',
+          'purchase_id': purchaseId,
+          if (orderId != null && orderId.isNotEmpty) 'order_id': orderId,
+        }),
+      );
+      if (edgeRes.statusCode == 200) {
+        final data = jsonDecode(edgeRes.body) as Map<String, dynamic>;
+        final st = data['status']?.toString().toLowerCase() ?? 'cancelled';
+        if (st == 'paid' || data['already_paid'] == true) {
+          return 'paid';
+        }
+        return st;
+      }
+    } catch (e) {
+      debugPrint('[ChipPaymentService] Cancel purchase error: $e');
+    }
+
+    return 'cancelled';
   }
 }

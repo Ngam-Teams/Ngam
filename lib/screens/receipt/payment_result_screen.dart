@@ -4,6 +4,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../explore/order_status_tracker_screen.dart';
+import '../../services/store_cart_service.dart';
 import 'ereceipt_screen.dart';
 
 class PaymentResultScreen extends StatefulWidget {
@@ -23,6 +24,8 @@ class PaymentResultScreen extends StatefulWidget {
 class _PaymentResultScreenState extends State<PaymentResultScreen> {
   Map<String, dynamic>? _orderData;
   Map<String, dynamic>? _businessData;
+  List<Map<String, dynamic>> _orderItems = [];
+  String? _fulfillmentLabel;
 
   bool get isSuccess => widget.status.toLowerCase() == 'success' || widget.status.toLowerCase() == 'paid';
   bool get isCancelled => widget.status.toLowerCase() == 'cancel' || widget.status.toLowerCase() == 'cancelled';
@@ -39,29 +42,118 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
     final rawId = widget.orderId!.trim();
     if (rawId.isEmpty) return;
 
+    final db = Supabase.instance.client;
+    Map<String, dynamic>? orderRow;
+    Map<String, dynamic>? bizRow;
+    List<Map<String, dynamic>> items = [];
+
+    // 1. Fetch order row (joined with valid businesses.address_line column; fallback to plain select)
     try {
-      final res = await Supabase.instance.client
+      orderRow = await db
           .from('orders')
-          .select('*, businesses(id, business_name, business_phone, business_address)')
+          .select('*, businesses(id, business_name, business_phone, address_line)')
           .eq('id', rawId)
           .maybeSingle();
+    } catch (_) {
+      try {
+        orderRow = await db
+            .from('orders')
+            .select('*')
+            .eq('id', rawId)
+            .maybeSingle();
+      } catch (_) {}
+    }
 
-      if (mounted) {
-        setState(() {
-          _orderData = res;
-          if (res != null && res['businesses'] is Map) {
-            _businessData = res['businesses'] as Map<String, dynamic>;
+    // 2. Fallback to bookings table if not found in orders (e.g. RZRV-... booking checkout redirect)
+    if (orderRow == null) {
+      try {
+        Map<String, dynamic>? bRes;
+        try {
+          bRes = await db
+              .from('bookings')
+              .select('*, businesses(id, business_name, business_phone, address_line)')
+              .eq('id', rawId)
+              .maybeSingle();
+        } catch (_) {}
+        bRes ??= await db
+            .from('bookings')
+            .select('*, businesses(id, business_name, business_phone, address_line)')
+            .eq('booking_metadata->>short_ref', rawId)
+            .maybeSingle();
+        if (bRes != null) {
+          orderRow = {
+            ...bRes,
+            'total': bRes['total_price'],
+          };
+        }
+      } catch (_) {}
+    }
+
+    if (orderRow != null) {
+      if (orderRow['businesses'] is Map) {
+        bizRow = Map<String, dynamic>.from(orderRow['businesses'] as Map);
+      } else if (orderRow['business_id'] != null) {
+        try {
+          final fetchedBiz = await db
+              .from('businesses')
+              .select('id, business_name, business_phone, address_line')
+              .eq('id', orderRow['business_id'].toString())
+              .maybeSingle();
+          if (fetchedBiz != null) {
+            bizRow = Map<String, dynamic>.from(fetchedBiz);
           }
-        });
+        } catch (_) {}
       }
-    } catch (_) {}
+
+      // 3. Fetch order_items independently so item list is always preserved
+      try {
+        final itemsRes = await db
+            .from('order_items')
+            .select()
+            .eq('order_id', orderRow['id'].toString());
+        if ((itemsRes as List).isNotEmpty) {
+          items = itemsRes.map<Map<String, dynamic>>((row) {
+            return Map<String, dynamic>.from(row as Map);
+          }).toList();
+        }
+      } catch (_) {}
+
+      // 4. Clear cart for this store on successful payment redirect (prevents duplicate checkout in another tab)
+      final bizId = orderRow['business_id']?.toString() ?? '';
+      if (isSuccess && bizId.isNotEmpty) {
+        StoreCartService.clearShop(bizId);
+      }
+    }
+
+    String? parsedFulfillment;
+    final notesStr = orderRow?['notes']?.toString();
+    if (notesStr != null && notesStr.isNotEmpty) {
+      final match = RegExp(r'\[([^\]]+)\]').firstMatch(notesStr);
+      if (match != null) {
+        parsedFulfillment = match.group(1);
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _orderData = orderRow;
+        _businessData = bizRow;
+        _orderItems = items;
+        _fulfillmentLabel = parsedFulfillment;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
-    final nowStr = DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.now());
+    final DateTime? orderDate = _orderData?['paid_at'] != null
+        ? DateTime.tryParse(_orderData!['paid_at'].toString())?.toLocal()
+        : (_orderData?['created_at'] != null
+            ? DateTime.tryParse(_orderData!['created_at'].toString())?.toLocal()
+            : null);
+    final nowStr = DateFormat('dd MMM yyyy, hh:mm a').format(orderDate ?? DateTime.now());
 
     final totalAmount = (_orderData?['total'] as num?)?.toDouble();
     final shopName = _businessData?['business_name']?.toString() ?? 'Kedai Ngam';
@@ -269,9 +361,13 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
                         Navigator.of(context).pushReplacement(
                           MaterialPageRoute(
                             builder: (_) => OrderStatusTrackerScreen(
-                              orderId: widget.orderId!,
+                              orderId: _orderData?['id']?.toString() ?? widget.orderId!,
+                              shopId: _orderData?['business_id']?.toString(),
                               shopName: shopName,
                               totalAmount: totalAmount ?? 0.0,
+                              paymentMethod: _orderData?['payment_method']?.toString(),
+                              fulfillmentType: _fulfillmentLabel,
+                              items: _orderItems,
                             ),
                           ),
                         );

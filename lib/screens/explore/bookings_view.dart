@@ -2321,6 +2321,18 @@ class _BookingsViewState extends State<BookingsView> {
     if (id == null || id.startsWith('local_')) return;
     final db = Supabase.instance.client;
     try {
+      final existing = await db
+          .from('bookings')
+          .select('booking_metadata')
+          .eq('id', id)
+          .maybeSingle();
+      final meta = existing?['booking_metadata'];
+      if (meta is Map && meta['payment_status']?.toString().toLowerCase() == 'paid') {
+        debugPrint('[BookingsView] Skipping _releaseHold for already-paid booking $id');
+        return;
+      }
+    } catch (_) {}
+    try {
       // Prefer deleting (keeps merchant list clean). Without a delete policy this
       // returns no rows, so fall back to cancelling (always allowed for own holds).
       final deleted = await db.from('bookings').delete().eq('id', id).select('id');
@@ -2681,10 +2693,42 @@ class _BookingsViewState extends State<BookingsView> {
       );
 
       if (!paid) {
-        await _releaseHold();
-        if (!mounted) return;
-        showGlassToast(context, 'Pembayaran dibatalkan. Tempahan belum dihantar ke kedai.', isError: true);
-        return;
+        // Re-check DB in case CHIP webhook confirmed payment right as the modal was closed
+        bool alreadyPaid = false;
+        final checkHoldId = _holdingRecordId;
+        try {
+          Map<String, dynamic>? row;
+          if (checkHoldId != null && !checkHoldId.startsWith('local_')) {
+            row = await db
+                .from('bookings')
+                .select('status, booking_metadata')
+                .eq('id', checkHoldId)
+                .maybeSingle();
+          } else {
+            row = await db
+                .from('bookings')
+                .select('status, booking_metadata')
+                .eq('booking_metadata->>short_ref', shortBookingId)
+                .maybeSingle();
+          }
+          final meta = row?['booking_metadata'];
+          final dbPayStatus = (meta is Map ? meta['payment_status'] : null)?.toString().toLowerCase() ?? '';
+          if (dbPayStatus == 'paid') {
+            alreadyPaid = true;
+            final dbRef = (meta is Map ? (meta['transaction_ref'] ?? meta['chip_purchase_id']) : null)?.toString() ?? '';
+            if (dbRef.isNotEmpty) transactionRef = dbRef;
+          }
+        } catch (_) {}
+
+        if (!alreadyPaid) {
+          await _releaseHold();
+          if (!mounted) return;
+          showGlassToast(context, 'booking.payment_cancelled'.tr(), isError: true);
+          return;
+        }
+        if (mounted) {
+          showGlassToast(context, 'payment_modal.already_paid_detected'.tr());
+        }
       }
       paymentStatus = 'paid';
     } else {

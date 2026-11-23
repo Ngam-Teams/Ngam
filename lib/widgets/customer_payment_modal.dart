@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -54,6 +55,8 @@ class CustomerPaymentModal extends StatefulWidget {
     this.onPaymentSuccess,
   });
 
+  static bool _isModalOpen = false;
+
   static Future<bool> show({
     required BuildContext context,
     required double amount,
@@ -68,48 +71,69 @@ class CustomerPaymentModal extends StatefulWidget {
     String? initialMethod,
     Future<void> Function(String method, String transactionRef)? onPaymentSuccess,
   }) async {
-    final res = await showDialog<bool>(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
-      barrierDismissible: false,
-      builder: (ctx) => CustomerPaymentModal(
-        amount: amount,
-        orderTitle: orderTitle,
-        shopName: shopName,
-        orderId: orderId,
-        items: items,
-        customerName: customerName,
-        customerPhone: customerPhone,
-        voucherCode: voucherCode,
-        discountAmount: discountAmount,
-        initialMethod: initialMethod,
-        onPaymentSuccess: onPaymentSuccess,
-      ),
-    );
-    return res ?? false;
+    if (_isModalOpen) return false;
+    _isModalOpen = true;
+    try {
+      final res = await showDialog<bool>(
+        context: context,
+        barrierColor: Colors.black.withValues(alpha: 0.45),
+        barrierDismissible: false,
+        builder: (ctx) => CustomerPaymentModal(
+          amount: amount,
+          orderTitle: orderTitle,
+          shopName: shopName,
+          orderId: orderId,
+          items: items,
+          customerName: customerName,
+          customerPhone: customerPhone,
+          voucherCode: voucherCode,
+          discountAmount: discountAmount,
+          initialMethod: initialMethod,
+          onPaymentSuccess: onPaymentSuccess,
+        ),
+      );
+      return res ?? false;
+    } finally {
+      _isModalOpen = false;
+    }
   }
 
   @override
   State<CustomerPaymentModal> createState() => _CustomerPaymentModalState();
 }
 
-class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
+class _CustomerPaymentModalState extends State<CustomerPaymentModal>
+    with WidgetsBindingObserver {
   PaymentStep _currentStep = PaymentStep.duitNowQr;
   String _selectedMethod = 'duitnow'; // 'duitnow', 'fpx_card', 'cash'
   bool get _isCash => _selectedMethod == 'cash';
 
   ChipPurchaseResult? _purchase;
   bool _isLoadingQr = true;
+  bool _isCreatingPurchase = false;
+  bool _isCheckingStatus = false;
   bool _isVerifyingManual = false;
+  bool _isCancelling = false;
+  bool _hasHandledSuccess = false;
   String? _gatewayError;
   Timer? _statusTimer;
   Timer? _countdownTimer;
+  StreamSubscription<List<Map<String, dynamic>>>? _orderStreamSub;
   int _secondsRemaining = 300; // 5 minit
   String _transactionRef = '';
+
+  static final RegExp _uuidPattern = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+  );
+
+  String get _methodLabel => _selectedMethod == 'fpx_card'
+      ? 'FPX / Kad (CHIP Asia)'
+      : 'DuitNow QR (CHIP Asia)';
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final initMethod = (widget.initialMethod ?? 'duitnow').trim().toLowerCase();
     if (initMethod == 'fpx' || initMethod == 'card' || initMethod == 'fpx_card') {
       _selectedMethod = 'fpx_card';
@@ -127,6 +151,7 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
     } else {
       _currentStep = PaymentStep.duitNowQr;
       _isLoadingQr = true;
+      _listenOrderPaymentStatus();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _startGatewayFlow();
       });
@@ -135,9 +160,74 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _statusTimer?.cancel();
     _countdownTimer?.cancel();
+    _orderStreamSub?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Apabila pengguna kembali dari tab pelayar CHIP Asia / aplikasi bank,
+    // semak status bayaran serta-merta tanpa menunggu timer latar belakang.
+    if (state == AppLifecycleState.resumed &&
+        mounted &&
+        !_hasHandledSuccess &&
+        !_isCancelling &&
+        _currentStep == PaymentStep.duitNowQr) {
+      _pollStatusOnce();
+    }
+  }
+
+  void _listenOrderPaymentStatus() {
+    final oid = widget.orderId.trim();
+    if (!_uuidPattern.hasMatch(oid)) return;
+    try {
+      _orderStreamSub?.cancel();
+      _orderStreamSub = Supabase.instance.client
+          .from('orders')
+          .stream(primaryKey: ['id'])
+          .eq('id', oid)
+          .listen((rows) {
+        if (!mounted || _hasHandledSuccess || rows.isEmpty) return;
+        final row = rows.first;
+        final payStatus = row['payment_status']?.toString().toLowerCase() ?? '';
+        if (payStatus == 'paid') {
+          final ref = row['chip_purchase_id']?.toString() ?? _purchase?.id ?? oid;
+          _handleSuccessPayment(_methodLabel, ref);
+        }
+      }, onError: (_) {});
+    } catch (_) {}
+  }
+
+  Future<bool> _isOrderAlreadyPaidInDb() async {
+    final oid = widget.orderId.trim();
+    if (oid.isEmpty) return false;
+    try {
+      if (_uuidPattern.hasMatch(oid)) {
+        final row = await Supabase.instance.client
+            .from('orders')
+            .select('payment_status')
+            .eq('id', oid)
+            .maybeSingle();
+        if (row?['payment_status']?.toString().toLowerCase() == 'paid') {
+          return true;
+        }
+      } else {
+        final row = await Supabase.instance.client
+            .from('bookings')
+            .select('booking_metadata')
+            .or('booking_metadata->>short_ref.eq.$oid,booking_metadata->>booking_id.eq.$oid')
+            .maybeSingle();
+        final meta = row?['booking_metadata'];
+        if (meta is Map &&
+            meta['payment_status']?.toString().toLowerCase() == 'paid') {
+          return true;
+        }
+      }
+    } catch (_) {}
+    return false;
   }
 
   void _startCountdown() {
@@ -150,45 +240,123 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
         } else {
           timer.cancel();
           _statusTimer?.cancel();
-          if (_currentStep == PaymentStep.duitNowQr) {
-            showGlassToast(context, 'payment_modal.session_expired'.tr(), isError: true);
-            Navigator.pop(context, false);
+          if (_currentStep == PaymentStep.duitNowQr && !_hasHandledSuccess) {
+            _handleSafeCancel(isExpired: true);
           }
         }
       }
     });
   }
 
+  Future<void> _pollStatusOnce() async {
+    final purchaseId = _purchase?.id ?? '';
+    if (purchaseId.isEmpty || _isCheckingStatus || _hasHandledSuccess || !mounted) {
+      return;
+    }
+    _isCheckingStatus = true;
+    try {
+      final status = await ChipPaymentService.instance.checkPurchaseStatus(purchaseId);
+      if (!mounted || _hasHandledSuccess) return;
+      if (status == 'paid') {
+        _handleSuccessPayment(_methodLabel, purchaseId);
+      }
+    } finally {
+      _isCheckingStatus = false;
+    }
+  }
+
   void _startPollingStatus(String purchaseId) {
     _statusTimer?.cancel();
     _statusTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) async {
-      if (!mounted) {
+      if (!mounted || _hasHandledSuccess) {
         timer.cancel();
         return;
       }
-      final status = await ChipPaymentService.instance.checkPurchaseStatus(purchaseId);
-      if (status == 'paid') {
-        timer.cancel();
-        _countdownTimer?.cancel();
-        final label = _selectedMethod == 'fpx_card' ? 'FPX / Kad (CHIP Asia)' : 'DuitNow QR (CHIP Asia)';
-        _handleSuccessPayment(label, purchaseId);
-      }
+      await _pollStatusOnce();
     });
   }
 
-  void _handleSuccessPayment(String method, String ref) async {
+  Future<void> _handleSuccessPayment(String method, String ref) async {
+    if (_hasHandledSuccess) return;
+    _hasHandledSuccess = true;
+    _statusTimer?.cancel();
+    _countdownTimer?.cancel();
+    _orderStreamSub?.cancel();
+
     HapticFeedback.heavyImpact();
-    setState(() {
-      _transactionRef = ref.isNotEmpty ? ref : 'CHIP-${DateTime.now().millisecondsSinceEpoch}';
-      _currentStep = PaymentStep.receipt;
-    });
+    if (mounted) {
+      setState(() {
+        _isCancelling = false;
+        _isVerifyingManual = false;
+        _isLoadingQr = false;
+        _transactionRef = ref.isNotEmpty ? ref : 'CHIP-${DateTime.now().millisecondsSinceEpoch}';
+        _currentStep = PaymentStep.receipt;
+      });
+    }
 
     if (!_isCash && widget.onPaymentSuccess != null) {
       await widget.onPaymentSuccess!(method, _transactionRef);
     }
   }
 
+  /// Pembatalan selamat:
+  /// 1. Semak status sebenar di CHIP Asia & Supabase dahulu.
+  /// 2. Jika bayaran SUDAH berjaya, JANGAN batal — terus paparkan resit!
+  /// 3. Jika belum bayar, batalkan purchase di pelayan CHIP supaya tab/QR lama tidak lagi boleh dibayar.
+  Future<void> _handleSafeCancel({bool isExpired = false}) async {
+    if (_isCancelling || _hasHandledSuccess) return;
+    _statusTimer?.cancel();
+    _countdownTimer?.cancel();
+
+    final purchaseId = _purchase?.id ?? '';
+    if (mounted) {
+      setState(() => _isCancelling = true);
+    }
+
+    try {
+      // Semak CHIP dahulu dan batalkan sesi di pelayan CHIP jika belum dibayar
+      if (purchaseId.isNotEmpty) {
+        final cancelRes = await ChipPaymentService.instance.cancelPurchase(
+          purchaseId,
+          orderId: widget.orderId,
+        );
+        if (!mounted || _hasHandledSuccess) return;
+        if (cancelRes == 'paid') {
+          await _handleSuccessPayment(_methodLabel, purchaseId);
+          if (mounted) {
+            showGlassToast(context, 'payment_modal.already_paid_detected'.tr());
+          }
+          return;
+        }
+      }
+
+      // Semak juga status di Supabase (sekiranya webhook baru sahaja mengesahkan bayaran)
+      final paidInDb = await _isOrderAlreadyPaidInDb();
+      if (!mounted || _hasHandledSuccess) return;
+      if (paidInDb) {
+        await _handleSuccessPayment(_methodLabel, purchaseId.isNotEmpty ? purchaseId : widget.orderId);
+        if (mounted) {
+          showGlassToast(context, 'payment_modal.already_paid_detected'.tr());
+        }
+        return;
+      }
+
+      if (mounted) {
+        if (isExpired) {
+          showGlassToast(context, 'payment_modal.session_expired'.tr(), isError: true);
+        }
+        Navigator.pop(context, false);
+      }
+    } finally {
+      if (mounted && !_hasHandledSuccess) {
+        setState(() => _isCancelling = false);
+      }
+    }
+  }
+
   Future<void> _startGatewayFlow() async {
+    if (_isCreatingPurchase || _hasHandledSuccess) return;
+    _isCreatingPurchase = true;
     setState(() {
       _currentStep = PaymentStep.duitNowQr;
       _isLoadingQr = true;
@@ -206,6 +374,15 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
       );
 
       if (!mounted) return;
+      if (res.isPaid) {
+        _purchase = res;
+        await _handleSuccessPayment(_methodLabel, res.id);
+        if (mounted) {
+          showGlassToast(context, 'payment_modal.already_paid_detected'.tr());
+        }
+        return;
+      }
+
       setState(() {
         _purchase = res;
         _isLoadingQr = false;
@@ -213,8 +390,10 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
       _startCountdown();
       _startPollingStatus(res.id);
 
-      // Jika perbankan FPX / Kad, buka pautan luar gerbang pembayaran
-      if ((_selectedMethod == 'fpx_card' || !res.hasDirectQrPayload) && res.checkoutUrl.isNotEmpty) {
+      // Hanya buka tab/gerbang luar secara automatik untuk FPX / Kad.
+      // Untuk DuitNow QR, paparkan QR terus dalam modal supaya pengguna tidak keliru dengan dua tab terbuka serentak;
+      // pengguna masih boleh klik butang "Bayar Terus di Halaman CHIP Asia" jika mahu bayar pada peranti yang sama.
+      if (_selectedMethod == 'fpx_card' && res.checkoutUrl.isNotEmpty) {
         final uri = Uri.tryParse(res.checkoutUrl);
         if (uri != null) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -234,26 +413,28 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
         _isLoadingQr = false;
         _gatewayError = e.toString().replaceFirst('Exception: ', '');
       });
+    } finally {
+      _isCreatingPurchase = false;
     }
   }
 
   Future<void> _verifyPaymentStatusNow() async {
     final purchaseId = _purchase?.id ?? '';
-    if (purchaseId.isEmpty || _isVerifyingManual) return;
+    if (purchaseId.isEmpty || _isVerifyingManual || _isCancelling || _hasHandledSuccess) return;
 
     setState(() => _isVerifyingManual = true);
     HapticFeedback.mediumImpact();
     try {
       final status = await ChipPaymentService.instance.checkPurchaseStatus(purchaseId);
-      if (!mounted) return;
+      final paidInDb = status == 'paid' ? true : await _isOrderAlreadyPaidInDb();
+      if (!mounted || _hasHandledSuccess) return;
       setState(() => _isVerifyingManual = false);
 
-      if (status == 'paid') {
-        _statusTimer?.cancel();
-        _countdownTimer?.cancel();
-        final label = _selectedMethod == 'fpx_card' ? 'FPX / Kad (CHIP Asia)' : 'DuitNow QR (CHIP Asia)';
-        _handleSuccessPayment(label, purchaseId);
-        showGlassToast(context, 'payment_modal.payment_verified'.tr());
+      if (status == 'paid' || paidInDb) {
+        await _handleSuccessPayment(_methodLabel, purchaseId);
+        if (mounted) {
+          showGlassToast(context, 'payment_modal.payment_verified'.tr());
+        }
       } else {
         showGlassToast(
           context,
@@ -397,7 +578,16 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
     ];
 
     return PopScope(
-      canPop: _currentStep != PaymentStep.receipt,
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (_currentStep == PaymentStep.receipt) return;
+        if (_currentStep == PaymentStep.duitNowQr && _gatewayError == null) {
+          _handleSafeCancel();
+        } else {
+          Navigator.pop(context, false);
+        }
+      },
       child: Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -728,16 +918,21 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                               ),
                               const SizedBox(width: 6),
                               IconButton(
-                                icon: HugeIcon(
-                                  icon: HugeIcons.strokeRoundedCancel01,
-                                  color: isDark ? Colors.white60 : Colors.black54,
-                                  size: 18,
-                                ),
-                                onPressed: () {
-                                  _statusTimer?.cancel();
-                                  _countdownTimer?.cancel();
-                                  Navigator.pop(context, false);
-                                },
+                                icon: _isCancelling
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Color(0xFF00E5FF),
+                                        ),
+                                      )
+                                    : HugeIcon(
+                                        icon: HugeIcons.strokeRoundedCancel01,
+                                        color: isDark ? Colors.white60 : Colors.black54,
+                                        size: 18,
+                                      ),
+                                onPressed: _isCancelling ? null : () => _handleSafeCancel(),
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
                               ),
@@ -873,10 +1068,14 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                                   label: _selectedMethod == 'fpx_card'
                                       ? 'payment_modal.reopen_fpx_gateway'.tr()
                                       : 'payment_modal.open_chip_gateway'.tr(),
-                                  onTap: () {
-                                    final uri = Uri.tryParse(_purchase!.checkoutUrl);
-                                    if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
-                                  },
+                                  onTap: _isCancelling
+                                      ? null
+                                      : () {
+                                          final uri = Uri.tryParse(_purchase!.checkoutUrl);
+                                          if (uri != null) {
+                                            launchUrl(uri, mode: LaunchMode.externalApplication);
+                                          }
+                                        },
                                   isDark: isDark,
                                   isPrimary: true,
                                 ),
@@ -891,7 +1090,9 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
                                 label: _isVerifyingManual
                                     ? 'payment_modal.checking_status'.tr()
                                     : 'payment_modal.i_have_paid'.tr(),
-                                onTap: _isVerifyingManual ? null : _verifyPaymentStatusNow,
+                                onTap: (_isVerifyingManual || _isCancelling)
+                                    ? null
+                                    : _verifyPaymentStatusNow,
                                 isDark: isDark,
                                 isPrimary: true,
                                 customGradient: const [Color(0xFF10B981), Color(0xFF059669)],
@@ -901,16 +1102,14 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal> {
 
                             const SizedBox(height: 8),
 
-                            // Butang Batal (Frosted Pill)
+                            // Butang Batal (Semak status & batalkan sesi CHIP secara selamat)
                             Center(
                               child: TextButton(
-                                onPressed: () {
-                                  _statusTimer?.cancel();
-                                  _countdownTimer?.cancel();
-                                  Navigator.pop(context, false);
-                                },
+                                onPressed: _isCancelling ? null : () => _handleSafeCancel(),
                                 child: Text(
-                                  'payment_modal.cancel_and_return'.tr(),
+                                  _isCancelling
+                                      ? 'payment_modal.cancelling_session'.tr()
+                                      : 'payment_modal.cancel_and_return'.tr(),
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: isDark ? Colors.white60 : Colors.black54,

@@ -123,7 +123,9 @@ class ReceiptPdfService {
       commands.add('BT /F1 8.5 Tf 0.35 0.42 0.52 rg 55 668 Td (${_escapePdf("Sokongan: support@ngam.my")}) Tj ET');
     }
 
-    final fulfill = fulfillmentType ?? 'Bungkus / Takeaway';
+    final fulfill = (fulfillmentType != null && fulfillmentType.trim().isNotEmpty)
+        ? fulfillmentType.trim()
+        : 'Ambil Sendiri / Self-Pickup';
     final slot = pickupTime != null && pickupTime.isNotEmpty ? ' • $pickupTime' : '';
     commands.add('BT /F1 8.5 Tf 0.0 0.55 0.7 rg 55 653 Td (${_escapePdf("Kaedah: $fulfill$slot")}) Tj ET');
 
@@ -218,20 +220,23 @@ class ReceiptPdfService {
       y -= 18;
     }
 
+    // Extra vertical breathing room so Grand Total Banner top edge never overlaps Subtotal/Discount/Tax rows
+    y -= 14;
+
     // Grand Total Banner (#0B132B)
-    commands.add('0.043 0.075 0.169 rg 315 ${y - 8} 240.28 28 re f');
-    commands.add('BT /F2 10.5 Tf 1 1 1 rg 325 $y Td (${_escapePdf("JUMLAH KESELURUHAN:")}) Tj ET');
-    commands.add('BT /F2 12 Tf 0.0 0.898 1.0 rg 475 $y Td (${_escapePdf(currency.format(totalAmount))}) Tj ET');
-    y -= 32;
+    commands.add('0.043 0.075 0.169 rg 315 ${y - 9} 240.28 28 re f');
+    commands.add('BT /F2 10 Tf 1 1 1 rg 325 $y Td (${_escapePdf("JUMLAH KESELURUHAN:")}) Tj ET');
+    commands.add('BT /F2 11.5 Tf 0.0 0.898 1.0 rg 475 $y Td (${_escapePdf(currency.format(totalAmount))}) Tj ET');
+    y -= 36;
 
     // Customer note if available
     if (notes != null && notes.trim().isNotEmpty) {
       final cleanNote = notes.replaceAll(RegExp(r'\[.*?\]'), '').trim();
       if (cleanNote.isNotEmpty) {
-        commands.add('0.98 0.98 0.95 rg 40 ${y - 20} 515.28 26 re f');
-        commands.add('0.9 0.85 0.6 RG 0.8 w 40 ${y - 20} 515.28 26 re S');
+        commands.add('0.98 0.98 0.95 rg 40 ${y - 14} 515.28 26 re f');
+        commands.add('0.9 0.85 0.6 RG 0.8 w 40 ${y - 14} 515.28 26 re S');
         final displayNote = _truncate(cleanNote, 70);
-        commands.add('BT /F1 8.5 Tf 0.4 0.35 0.1 rg 50 ${y - 8} Td (${_escapePdf("Nota Pelanggan: $displayNote")}) Tj ET');
+        commands.add('BT /F1 8.5 Tf 0.4 0.35 0.1 rg 50 ${y - 4} Td (${_escapePdf("Nota Pelanggan: $displayNote")}) Tj ET');
       }
     }
 
