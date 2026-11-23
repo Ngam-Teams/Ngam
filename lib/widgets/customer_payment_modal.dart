@@ -11,9 +11,9 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'glass_box.dart';
+import '../utils/ngam_ref.dart';
 import '../services/chip_payment_service.dart';
 import '../services/receipt_pdf_service.dart';
 import 'glass_toast.dart';
@@ -161,8 +161,10 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal>
     } else if (_selectedMethod == 'cash') {
       _isLoadingQr = false;
       _currentStep = PaymentStep.receipt;
-      final shortId = widget.orderId.length > 8 ? widget.orderId.substring(0, 8) : widget.orderId;
-      _transactionRef = 'CASH-${shortId.toUpperCase()}';
+      final shortId = NgamRef.isBookingReference(widget.orderId)
+          ? NgamRef.booking(widget.orderId)
+          : NgamRef.order(widget.orderId);
+      _transactionRef = shortId;
     } else {
       _currentStep = PaymentStep.duitNowQr;
       _isLoadingQr = true;
@@ -521,9 +523,9 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal>
         throw Exception('QR PNG bytes null');
       }
 
-      final shortId = widget.orderId.length > 8
-          ? widget.orderId.substring(0, 8).toUpperCase()
-          : widget.orderId.toUpperCase();
+      final shortId = NgamRef.isBookingReference(widget.orderId)
+          ? NgamRef.booking(widget.orderId)
+          : NgamRef.order(widget.orderId);
       await saveAndDownloadFile(
         bytes: pngBytes,
         fileName: 'DuitNow_QR_Ngam_$shortId.png',
@@ -1376,7 +1378,11 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal>
                           ),
                           child: Column(
                             children: [
-                              _buildReceiptRow('payment_modal.order_number'.tr(), '#${widget.orderId.length > 8 ? widget.orderId.substring(0, 8).toUpperCase() : widget.orderId}', isDark),
+                              _buildReceiptRow(
+                                'payment_modal.order_number'.tr(),
+                                '#${NgamRef.isBookingReference(widget.orderId) ? NgamRef.booking(widget.orderId) : NgamRef.order(widget.orderId)}',
+                                isDark,
+                              ),
                               const Divider(height: 16),
                               _buildReceiptRow('payment_modal.store'.tr(), widget.shopName, isDark),
                               const Divider(height: 16),

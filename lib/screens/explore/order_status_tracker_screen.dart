@@ -13,6 +13,7 @@ import '../../services/receipt_pdf_service.dart';
 import '../../services/chat_service.dart';
 import '../../services/dispute_service.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/ngam_ref.dart';
 import '../../widgets/customer_payment_modal.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../../widgets/glass_toast.dart';
@@ -548,13 +549,13 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
         } catch (_) {}
       }
 
-      // Support short_ref booking IDs (e.g. RZRV-261123-XXXXX)
+      // Support short_ref & booking_id (cth: NB261123H4W8X3 atau RZRV-261123-XXXXX)
       if (bRes == null) {
         try {
           bRes = await db
               .from('bookings')
               .select('*, businesses(id, business_name, business_phone, address_line)')
-              .eq('booking_metadata->>short_ref', widget.orderId)
+              .or('booking_metadata->>short_ref.eq.${widget.orderId},booking_metadata->>booking_id.eq.${widget.orderId}')
               .maybeSingle();
         } catch (_) {}
       }
@@ -1447,9 +1448,9 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final currency = NumberFormat.currency(locale: 'ms_MY', symbol: 'RM ');
 
-    final String displayOrderNum = widget.orderId.length > 8
-        ? widget.orderId.substring(0, 8).toUpperCase()
-        : widget.orderId.toUpperCase();
+    final String displayOrderNum = (_isBookingRecord || NgamRef.isBookingReference(widget.orderId))
+        ? NgamRef.booking(widget.orderId, _orderCreatedAt)
+        : NgamRef.order(widget.orderId, createdAt: _orderCreatedAt);
 
     return PopScope(
       canPop: false,
@@ -2157,7 +2158,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                                   ),
                                 ),
                                 GestureDetector(
-                                  onTap: () => _copyOrderRef(widget.orderId),
+                                  onTap: () => _copyOrderRef(displayOrderNum),
                                   behavior: HitTestBehavior.opaque,
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,

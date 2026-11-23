@@ -14,6 +14,7 @@ import '../../widgets/glass_toast.dart'; //  ADD THIS TO YOUR IMPORTS
 import '../../services/voucher_service.dart';
 import '../../widgets/voucher_selection_sheet.dart';
 import '../../widgets/customer_payment_modal.dart';
+import '../../utils/ngam_ref.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:math'; //  Required for generating the short ID
 import 'dart:async';
@@ -2539,13 +2540,8 @@ class _BookingsViewState extends State<BookingsView> {
     UserData.userName.value = finalCustomerName;
     UserData.userPhone.value = finalCustomerPhone;
 
-    // Generate Short ID
-    final dt = DateTime.now();
-    final datePart = "${dt.year.toString().substring(2)}${dt.month.toString().padLeft(2, '0')}${dt.day.toString().padLeft(2, '0')}";
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    final rnd = Random();
-    final randomPart = String.fromCharCodes(Iterable.generate(5, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))));
-    final String shortBookingId = "RZRV-$datePart-$randomPart";
+    // Generate 14-char Ngam Booking reference (cth: NB261123H4W8X3)
+    final String shortBookingId = NgamRef.booking();
 
     final String targetDate = _dates[_selectedDateIndex]['fullDate']!.substring(0, 10);
     final String targetTime = _times[_selectedTimeIndex];

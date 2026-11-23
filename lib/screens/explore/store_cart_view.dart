@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/product_model.dart';
 import '../../services/voucher_service.dart';
 import '../../utils/business_industry_helper.dart';
+import '../../utils/ngam_ref.dart';
 import '../../widgets/glass_toast.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../../widgets/customer_payment_modal.dart';
@@ -1244,7 +1245,7 @@ class _StoreCartViewState extends State<StoreCartView> {
         bool paid = await CustomerPaymentModal.show(
           context: context,
           amount: _total,
-          orderTitle: 'Pesanan #${orderId.length > 6 ? orderId.substring(0, 6).toUpperCase() : orderId} - $_shopName',
+          orderTitle: 'Pesanan #${NgamRef.order(orderId)} - $_shopName',
           shopName: _shopName,
           orderId: orderId,
           items: _items

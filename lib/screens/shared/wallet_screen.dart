@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/ngam_ref.dart';
 import '../../services/payment_service.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/glass_toast.dart';
@@ -89,6 +90,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           .limit(20);
           
       final mapped = data.map((row) {
+        final rowId = (row['id'] ?? '').toString();
         final type = row['type'] as String;
         final amount = (row['amount'] as num).toDouble();
         final date = DateTime.parse(row['created_at']).toLocal();
@@ -96,35 +98,43 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
         
         String title = '';
         String subtitle = '';
+        String refCode = '';
         bool isPositive = amount >= 0;
         
         switch (type) {
           case 'topup':
             title = 'Top Up';
-            subtitle = desc ?? 'Wallet Deposit';
+            refCode = NgamRef.topup(rowId, createdAt: date);
+            subtitle = '#$refCode • ${desc ?? 'Wallet Deposit'}';
             break;
           case 'withdrawal':
             title = 'Withdrawal';
-            subtitle = desc ?? 'Bank Transfer';
+            refCode = NgamRef.withdrawal(rowId, createdAt: date);
+            subtitle = '#$refCode • ${desc ?? 'Bank Transfer'}';
             break;
           case 'payment':
             title = 'Payment';
-            subtitle = desc ?? 'Service charge';
+            refCode = NgamRef.order(rowId, createdAt: date);
+            subtitle = '#$refCode • ${desc ?? 'Service charge'}';
             break;
           case 'refund':
             title = 'Refund';
-            subtitle = desc ?? 'Payment Refund';
+            refCode = NgamRef.refund(rowId, createdAt: date);
+            subtitle = '#$refCode • ${desc ?? 'Payment Refund'}';
             break;
           case 'earning':
             title = 'Earning';
-            subtitle = desc ?? 'Income Received';
+            refCode = NgamRef.order(rowId, createdAt: date);
+            subtitle = '#$refCode • ${desc ?? 'Income Received'}';
             break;
           default:
             title = 'Transaction';
-            subtitle = desc ?? 'Other';
+            refCode = NgamRef.order(rowId, createdAt: date);
+            subtitle = '#$refCode • ${desc ?? 'Other'}';
         }
         
         return {
+          'ref': refCode,
           'title': title,
           'subtitle': subtitle,
           'amount': amount.abs(),

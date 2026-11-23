@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/ereceipt_service.dart';
 import '../../services/receipt_pdf_service.dart';
 import '../../utils/glass_toast.dart';
+import '../../utils/ngam_ref.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../explore/store_route_loader.dart';
 import 'my_receipts_screen.dart';
@@ -53,9 +54,7 @@ class _EreceiptScreenState extends State<EreceiptScreen> {
       base = EreceiptService.buildReceiptFromUri(widget.uri!);
     } else {
       final oid = (widget.orderId ?? '').trim();
-      final shortRef = oid.length > 8
-          ? oid.substring(0, 8).toUpperCase()
-          : (oid.isNotEmpty ? oid.toUpperCase() : 'NG-RECEIPT');
+      final shortRef = oid.isNotEmpty ? NgamRef.order(oid) : NgamRef.pos();
       base = {
         if (oid.isNotEmpty) 'order_id': oid,
         'ref': shortRef,

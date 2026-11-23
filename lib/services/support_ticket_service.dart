@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app_update_service.dart';
 import 'r2_storage_service.dart';
+import '../utils/ngam_ref.dart';
 
 class SupportTicketModel {
   final String id;
@@ -115,16 +116,7 @@ class SupportTicketService {
     return '$platform • v${AppUpdateService.currentVersion}';
   }
 
-  String _generateTicketCode() {
-    final now = DateTime.now();
-    final yy = (now.year % 100).toString().padLeft(2, '0');
-    final mm = now.month.toString().padLeft(2, '0');
-    final dd = now.day.toString().padLeft(2, '0');
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    final rand = Random.secure();
-    final suffix = List.generate(4, (_) => chars[rand.nextInt(chars.length)]).join();
-    return 'NGM-$yy$mm$dd-$suffix';
-  }
+  String _generateTicketCode() => NgamRef.support();
 
   String _inferMimeType(XFile file) {
     final name = file.name.toLowerCase();

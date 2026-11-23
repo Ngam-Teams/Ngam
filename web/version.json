@@ -1,6 +1,6 @@
 {
-  "version": "1.0.85",
-  "build_number": 58,
-  "released_at": "2026-11-23T15:55:12Z",
-  "changelog": "Paparkan pilihan Perbankan FPX & Kad dalam keadaan samar-samar (dimmed) dengan lencana MIN. RM 10.00 & ikon kunci apabila jumlah bayaran akhir (selepas tolak baucar/diskaun) kurang daripada RM 10.00."
+  "version": "1.0.86",
+  "build_number": 59,
+  "released_at": "2026-11-23T16:45:00Z",
+  "changelog": "Seragamkan nombor rujukan 14-aksara tanpa sempang gaya Shopee (NO, NB, NP, NS, ND, NR, NW, NT) pada Pesanan, Tempahan, POS, Resit PDF, Dompet dan e-mel CHIP Asia."
 }

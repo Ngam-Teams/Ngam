@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../utils/ngam_ref.dart';
 
 class EreceiptService {
   static const String _receiptsKey = 'ngam_saved_ereceipts_v1';
@@ -125,10 +126,10 @@ class EreceiptService {
     final orderId = (qp['order_id'] ?? qp['id'] ?? (isUuid ? pathSegment : '')).trim();
     final ref = (qp['ref'] ??
             (pathSegment.isNotEmpty
-                ? (isUuid ? pathSegment.substring(0, 8).toUpperCase() : pathSegment.toUpperCase())
+                ? (isUuid ? NgamRef.order(pathSegment) : pathSegment.toUpperCase())
                 : (orderId.isNotEmpty
-                    ? (orderId.length > 8 ? orderId.substring(0, 8).toUpperCase() : orderId.toUpperCase())
-                    : 'NG-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}')))
+                    ? NgamRef.order(orderId)
+                    : NgamRef.pos())))
         .trim();
 
     final store = (qp['store'] ?? qp['handle'] ?? '').replaceAll('@', '').trim();
@@ -288,7 +289,8 @@ class EreceiptService {
               : <String, dynamic>{};
           final total = (r['total'] as num?)?.toDouble() ?? 0.0;
           final subtotal = (r['subtotal'] as num?)?.toDouble() ?? total;
-          final shortRef = oid.length > 8 ? oid.substring(0, 8).toUpperCase() : oid.toUpperCase();
+          final createdDt = DateTime.tryParse((r['created_at'] ?? '').toString());
+          final shortRef = NgamRef.order(oid, createdAt: createdDt);
 
           final mapped = <String, dynamic>{
             'order_id': oid,

@@ -76,21 +76,61 @@ async function verifyChipSignature(
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const NGAM_REF_REGEX = /^N[OBPSDRWT]\d{6}[A-Z0-9]{6}$/i;
+const NGAM_BOOKING_REF_REGEX = /^NB\d{6}[A-Z0-9]{6}$/i;
+const NGAM_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
-/**
- * Pendekkan UUID panjang pesanan (cth: cb488583-837d-...) kepada rujukan resit kemas (cth: NGAM-CB488583)
- * untuk tajuk & resit e-mel CHIP Collect. Tempahan `RZRV-...` dikekalkan.
- */
-function formatChipDisplayReference(orderId: string): string {
-  const clean = String(orderId || "").trim();
-  if (UUID_REGEX.test(clean)) {
-    return `NGAM-${clean.slice(0, 8).toUpperCase()}`;
+function mytDatePart(dateInput?: string | number | Date | null): string {
+  const baseMs = dateInput ? new Date(dateInput).getTime() : Date.now();
+  const safeMs = Number.isFinite(baseMs) ? baseMs : Date.now();
+  const myt = new Date(safeMs + 8 * 3600 * 1000);
+  const yy = String(myt.getUTCFullYear() % 100).padStart(2, "0");
+  const mm = String(myt.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(myt.getUTCDate()).padStart(2, "0");
+  return `${yy}${mm}${dd}`;
+}
+
+function code6FromId(rawId: string): string {
+  const clean = String(rawId || "").trim().replace(/#/g, "");
+  if (NGAM_REF_REGEX.test(clean)) {
+    return clean.slice(8).toUpperCase();
   }
-  return clean;
+  const hex = clean.replace(/-/g, "").toLowerCase();
+  if (hex.length >= 12 && /^[0-9a-f]+$/.test(hex.slice(0, 12))) {
+    let out = "";
+    for (let i = 0; i < 6; i++) {
+      const byteVal = parseInt(hex.slice(i * 2, i * 2 + 2), 16) || 0;
+      out += NGAM_ALPHABET[byteVal % 32];
+    }
+    return out;
+  }
+  const alnum = clean.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  return alnum.length >= 6 ? alnum.slice(-6) : alnum.padEnd(6, "2");
 }
 
 /**
- * Tukarkan rujukan pendek CHIP (`NGAM-XXXXXXXX`) kembali kepada UUID penuh `orders.id` / `bookings.id`
+ * Format ID pesanan/tempahan kepada standard 14-aksara tanpa sempang:
+ * - Pesanan (`NO`): `NO261123K7M9P2`
+ * - Tempahan (`NB`): `NB261123H4W8X3`
+ */
+function formatChipDisplayReference(
+  orderId: string,
+  targetType = "order",
+  createdAt?: string | null
+): string {
+  const clean = String(orderId || "").trim().replace(/#/g, "");
+  if (NGAM_REF_REGEX.test(clean) || clean.toUpperCase().startsWith("RZRV-")) {
+    return clean.toUpperCase();
+  }
+  const prefix = targetType === "booking" ? "NB" : "NO";
+  if (UUID_REGEX.test(clean)) {
+    return `${prefix}${mytDatePart(createdAt)}${code6FromId(clean)}`;
+  }
+  return clean.toUpperCase();
+}
+
+/**
+ * Tukarkan rujukan 14-aksara (`NO...` / `NB...`) kembali kepada UUID penuh `orders.id` / `bookings.id`
  * sebelum dipanggil ke RPC `process_verified_chip_webhook`.
  */
 async function resolveCanonicalReferenceId(
@@ -102,6 +142,19 @@ async function resolveCanonicalReferenceId(
   for (const cand of candidates) {
     if (cand && (UUID_REGEX.test(cand) || cand.startsWith("RZRV-"))) {
       return cand;
+    }
+  }
+
+  for (const cand of candidates) {
+    if (cand && NGAM_BOOKING_REF_REGEX.test(cand)) {
+      try {
+        const { data: bkByCode } = await supabase
+          .from("bookings")
+          .select("id")
+          .or(`booking_metadata->>booking_id.eq.${cand.toUpperCase()},booking_metadata->>short_ref.eq.${cand.toUpperCase()}`)
+          .maybeSingle();
+        if (bkByCode?.id) return String(bkByCode.id);
+      } catch (_) {}
     }
   }
 
@@ -501,8 +554,14 @@ serve(async (req: Request) => {
       const clientName = payload.client_name || "Pelanggan Ngam";
       const clientPhone = payload.client_phone || "+601115892468";
 
-      const chipDisplayRef = formatChipDisplayReference(orderId);
-      const webhookCallbackUrl = `${supabaseUrl}/functions/v1/payment-webhook?order_id=${encodeURIComponent(orderId)}`;
+      const canonicalTargetId = String(
+        calcData.order_id || calcData.booking_uuid || calcData.booking_id || orderId
+      ).trim();
+      const chipDisplayRef = formatChipDisplayReference(
+        orderId,
+        String(calcData.target_type || "order")
+      );
+      const webhookCallbackUrl = `${supabaseUrl}/functions/v1/payment-webhook?order_id=${encodeURIComponent(canonicalTargetId)}`;
 
       // Bina senarai item terperinci untuk resit e-mel percuma CHIP Asia (jumlah mesti tepat = verifiedCents)
       let chipProducts: Array<{ name: string; price: number; quantity: number; discount?: number }> = [

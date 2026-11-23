@@ -97,7 +97,7 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
         bRes ??= await db
             .from('bookings')
             .select('*, businesses(*)')
-            .eq('booking_metadata->>short_ref', rawId)
+            .or('booking_metadata->>short_ref.eq.$rawId,booking_metadata->>booking_id.eq.$rawId')
             .maybeSingle();
         if (bRes != null) {
           isBookingRecord = true;
