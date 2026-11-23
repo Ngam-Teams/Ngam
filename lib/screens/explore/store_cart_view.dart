@@ -1264,19 +1264,23 @@ class _StoreCartViewState extends State<StoreCartView> {
             if (method.trim().isNotEmpty) {
               resolvedPaymentMethod = method.trim();
             }
+            final isSwitchedToCash = resolvedPaymentMethod.toLowerCase().contains('cash') ||
+                resolvedPaymentMethod.toLowerCase().contains('tunai');
+            final nextPayStatus = isSwitchedToCash ? 'unpaid' : 'paid';
+            final nextPayMethod = isSwitchedToCash ? 'cash' : resolvedPaymentMethod;
             try {
               await Supabase.instance.client
                   .from('orders')
                   .update({
-                    'payment_status': 'paid',
-                    'payment_method': resolvedPaymentMethod,
+                    'payment_status': nextPayStatus,
+                    'payment_method': nextPayMethod,
                   })
                   .eq('id', orderId);
             } catch (_) {
               try {
                 await Supabase.instance.client
                     .from('orders')
-                    .update({'payment_status': 'paid'})
+                    .update({'payment_status': nextPayStatus})
                     .eq('id', orderId);
               } catch (_) {}
             }
@@ -1285,7 +1289,7 @@ class _StoreCartViewState extends State<StoreCartView> {
 
         if (!mounted) return;
 
-        // Semak semula status di Supabase sebelum membatal (elak batal pesanan yang sebenarnya sudah dibayar!)
+        // Semak semula status di Supabase
         if (!paid) {
           try {
             final checkRow = await Supabase.instance.client
@@ -1299,38 +1303,35 @@ class _StoreCartViewState extends State<StoreCartView> {
           } catch (_) {}
         }
 
-        if (!paid) {
-          // Pelanggan membatalkan bayaran sebelum selesai -> batalkan draf pesanan HANYA jika belum dibayar
+        if (paid) {
+          final isSwitchedToCash = resolvedPaymentMethod.toLowerCase().contains('cash') ||
+              resolvedPaymentMethod.toLowerCase().contains('tunai');
+          final nextPayStatus = isSwitchedToCash ? 'unpaid' : 'paid';
+          final nextPayMethod = isSwitchedToCash ? 'cash' : resolvedPaymentMethod;
           try {
             await Supabase.instance.client
                 .from('orders')
-                .update({'status': 'cancelled', 'payment_status': 'pending'})
-                .eq('id', orderId)
-                .neq('payment_status', 'paid');
-          } catch (_) {
-            await _cancelOrder(orderId);
-          }
-          _activeDraftOrderId = null;
-          _activeDraftSignature = null;
-          if (!mounted) return;
-          showGlassToast(context, 'Pembayaran dibatalkan. Troli anda masih disimpan.', isError: true);
-          return;
-        }
-        try {
-          await Supabase.instance.client
-              .from('orders')
-              .update({
-                'payment_status': 'paid',
-                'payment_method': resolvedPaymentMethod,
-              })
-              .eq('id', orderId);
-        } catch (_) {
-          try {
-            await Supabase.instance.client
-                .from('orders')
-                .update({'payment_status': 'paid'})
+                .update({
+                  'payment_status': nextPayStatus,
+                  'payment_method': nextPayMethod,
+                })
                 .eq('id', orderId);
-          } catch (_) {}
+          } catch (_) {
+            try {
+              await Supabase.instance.client
+                  .from('orders')
+                  .update({'payment_status': nextPayStatus})
+                  .eq('id', orderId);
+            } catch (_) {}
+          }
+        } else {
+          // Gaya Shopee & TikTok Shop:
+          // JANGAN batalkan pesanan secara automatik! Kekalkan pesanan sebagai 'pending' (Menunggu Pembayaran)
+          // supaya pelanggan boleh klik "Bayar Sekarang", "Tukar Kaedah Bayaran", atau "Batalkan" (dengan sebab)
+          // pada skrin Penjejak Pesanan sebelum tamat tempoh 15 minit.
+          if (mounted) {
+            showGlassToast(context, 'order_status.order_saved_awaiting_payment'.tr());
+          }
         }
       }
 

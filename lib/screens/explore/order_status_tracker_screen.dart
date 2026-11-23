@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -7,10 +8,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../services/chip_payment_service.dart';
 import '../../services/receipt_pdf_service.dart';
 import '../../services/chat_service.dart';
 import '../../services/dispute_service.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/customer_payment_modal.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../../widgets/glass_toast.dart';
 import '../shared/chat_screen.dart';
@@ -43,6 +46,8 @@ class OrderStatusTrackerScreen extends StatefulWidget {
 }
 
 class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
+  static const int _paymentWindowSeconds = 15 * 60; // 15 minit tempoh bayaran (gaya Shopee / TikTok Shop)
+
   String _status = 'pending'; // 'pending', 'preparing', 'ready', 'completed', 'cancelled'
   String _paymentStatus = 'paid';
   String _paymentMethod = '';
@@ -59,6 +64,8 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
   String? _customerName;
   String? _customerPhone;
   String? _notes;
+  String? _cancelReason;
+  String? _chipPurchaseId;
   String? _fulfillmentLabel;
   String? _bookingTime;
   String? _bookingDate;
@@ -69,7 +76,17 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
   bool _isCancelling = false;
   bool _hasReviewed = false;
   bool _isDownloadingPdf = false;
+  Timer? _paymentExpiryTimer;
+  int _expiryRemainingSeconds = _paymentWindowSeconds;
   DisputeCase? _activeDispute;
+
+  bool get _isCashMethod {
+    final m = _paymentMethod.trim().toLowerCase();
+    return m == 'cash' || m == 'tunai' || m == 'counter' || m.contains('cash') || m.contains('tunai');
+  }
+
+  bool get _isAwaitingOnlinePayment =>
+      _status == 'pending' && _paymentStatus == 'pending' && !_isCashMethod;
 
   Map<String, dynamic> _normalizeItem(Map<String, dynamic> raw) {
     final name = raw['name'] ?? raw['product_name'] ?? raw['title'] ?? raw['service_name'] ?? 'Item';
@@ -144,6 +161,194 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
     _loadOrderData();
   }
 
+  @override
+  void dispose() {
+    _paymentExpiryTimer?.cancel();
+    super.dispose();
+  }
+
+  String? _extractCancelReason(String? rawNotes) {
+    if (rawNotes == null || rawNotes.isEmpty) return null;
+    final match = RegExp(r'\[Sebab Batal:\s*([^\]]+)\]', caseSensitive: false).firstMatch(rawNotes);
+    return match?.group(1)?.trim();
+  }
+
+  void _syncPaymentExpiryTimer() {
+    _paymentExpiryTimer?.cancel();
+    if (!_isAwaitingOnlinePayment) return;
+
+    final created = _orderCreatedAt ?? DateTime.now();
+    final expiresAt = created.add(const Duration(seconds: _paymentWindowSeconds));
+    final remaining = expiresAt.difference(DateTime.now()).inSeconds;
+    if (remaining <= 0) {
+      _expiryRemainingSeconds = 0;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _autoExpireUnpaidOrder();
+      });
+      return;
+    }
+
+    _expiryRemainingSeconds = remaining;
+    _paymentExpiryTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted || !_isAwaitingOnlinePayment) {
+        timer.cancel();
+        return;
+      }
+      final left = expiresAt.difference(DateTime.now()).inSeconds;
+      if (left <= 0) {
+        timer.cancel();
+        setState(() => _expiryRemainingSeconds = 0);
+        _autoExpireUnpaidOrder();
+      } else {
+        setState(() => _expiryRemainingSeconds = left);
+      }
+    });
+  }
+
+  Future<void> _autoExpireUnpaidOrder() async {
+    if (!_isAwaitingOnlinePayment || _isCancelling) return;
+    _isCancelling = true;
+    try {
+      // Semak dengan CHIP Asia dahulu sekiranya pelanggan baru sahaja selesai bayar
+      if (_chipPurchaseId != null && _chipPurchaseId!.isNotEmpty) {
+        final chipRes = await ChipPaymentService.instance.cancelPurchase(
+          _chipPurchaseId!,
+          orderId: widget.orderId,
+        );
+        if (chipRes == 'paid') {
+          if (mounted) {
+            setState(() {
+              _paymentStatus = 'paid';
+              _isCancelling = false;
+            });
+          }
+          return;
+        }
+      }
+
+      final reasonText = 'order_status.cancel_reason_auto_expired'.tr();
+      final existingNotes = (_notes ?? '').replaceAll(RegExp(r'\[Sebab Batal:[^\]]*\]'), '').trim();
+      final updatedNotes = existingNotes.isEmpty
+          ? '[Sebab Batal: $reasonText]'
+          : '$existingNotes [Sebab Batal: $reasonText]';
+
+      await Supabase.instance.client
+          .from('orders')
+          .update({
+            'status': 'cancelled',
+            'notes': updatedNotes,
+          })
+          .eq('id', widget.orderId)
+          .neq('payment_status', 'paid');
+
+      // Pulihkan stok produk fizikal
+      await _restoreInventoryStock();
+
+      if (mounted) {
+        setState(() {
+          _status = 'cancelled';
+          _notes = updatedNotes;
+          _cancelReason = reasonText;
+          _isCancelling = false;
+        });
+        showGlassToast(context, 'order_status.order_auto_expired_toast'.tr(), isError: true);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isCancelling = false);
+    }
+  }
+
+  Future<void> _restoreInventoryStock() async {
+    try {
+      final items = await Supabase.instance.client
+          .from('order_items')
+          .select('product_id, quantity')
+          .eq('order_id', widget.orderId);
+      for (final row in (items as List)) {
+        final prodId = row['product_id']?.toString();
+        final qty = (row['quantity'] as num?)?.toInt() ?? 0;
+        if (prodId != null && prodId.isNotEmpty && qty > 0) {
+          final prod = await Supabase.instance.client
+              .from('business_products')
+              .select('stock, track_inventory, item_type')
+              .eq('id', prodId)
+              .maybeSingle();
+          if (prod != null &&
+              prod['item_type'] != 'service' &&
+              (prod['track_inventory'] as bool? ?? true)) {
+            final curStock = (prod['stock'] as num?)?.toInt() ?? 0;
+            await Supabase.instance.client
+                .from('business_products')
+                .update({'stock': curStock + qty})
+                .eq('id', prodId);
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _retryOrChangePayment({required bool startAtMethodSelect}) async {
+    if (_isCancelling || !_isAwaitingOnlinePayment) return;
+
+    String resolvedMethod = _paymentMethod.isNotEmpty ? _paymentMethod : 'duitnow';
+    final bool paid = await CustomerPaymentModal.show(
+      context: context,
+      amount: _totalAmount,
+      orderTitle: 'Pesanan #${widget.orderId.length > 6 ? widget.orderId.substring(0, 6).toUpperCase() : widget.orderId} - $_shopName',
+      shopName: _shopName,
+      orderId: widget.orderId,
+      items: _loadedItems,
+      customerName: _customerName,
+      customerPhone: _customerPhone,
+      discountAmount: _discount > 0 ? _discount : null,
+      initialMethod: resolvedMethod,
+      startAtMethodSelect: startAtMethodSelect,
+      onPaymentSuccess: (method, txRef) async {
+        if (method.trim().isNotEmpty) {
+          resolvedMethod = method.trim();
+        }
+        final isSwitchedToCash = resolvedMethod.toLowerCase().contains('cash') ||
+            resolvedMethod.toLowerCase().contains('tunai');
+        final nextPayStatus = isSwitchedToCash ? 'unpaid' : 'paid';
+        final nextPayMethod = isSwitchedToCash ? 'cash' : resolvedMethod;
+        try {
+          await Supabase.instance.client
+              .from('orders')
+              .update({
+                'payment_status': nextPayStatus,
+                'payment_method': nextPayMethod,
+              })
+              .eq('id', widget.orderId);
+        } catch (_) {
+          try {
+            await Supabase.instance.client
+                .from('orders')
+                .update({'payment_status': nextPayStatus})
+                .eq('id', widget.orderId);
+          } catch (_) {}
+        }
+      },
+    );
+
+    if (!mounted) return;
+    if (paid) {
+      final isSwitchedToCash = resolvedMethod.toLowerCase().contains('cash') ||
+          resolvedMethod.toLowerCase().contains('tunai');
+      _paymentExpiryTimer?.cancel();
+      setState(() {
+        _paymentMethod = isSwitchedToCash ? 'cash' : resolvedMethod;
+        _paymentStatus = isSwitchedToCash ? 'unpaid' : 'paid';
+        if (!isSwitchedToCash) {
+          _orderPaidAt = DateTime.now();
+        }
+      });
+      if (isSwitchedToCash) {
+        showGlassToast(context, 'order_status.payment_method_updated_cash'.tr());
+      }
+    }
+    _loadOrderData();
+  }
+
   void _loadOrderData() async {
     final db = Supabase.instance.client;
     Map<String, dynamic>? res;
@@ -214,6 +419,8 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
               _discount = discountRm;
             }
             _notes = res['notes']?.toString();
+            _cancelReason = _extractCancelReason(_notes);
+            _chipPurchaseId = res['chip_purchase_id']?.toString();
             _shopId = res['business_id']?.toString() ?? _shopId;
             _customerName = res['customer_name']?.toString();
             _customerPhone = res['customer_phone']?.toString();
@@ -236,7 +443,9 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
             }
 
             if ((_fulfillmentLabel == null || _fulfillmentLabel!.isEmpty) && _notes != null) {
-              final match = RegExp(r'\[([^\]]+)\]').firstMatch(_notes!);
+              final match = RegExp(r'\[([^\]]+)\]').firstMatch(
+                _notes!.replaceAll(RegExp(r'\[Sebab Batal:[^\]]*\]'), ''),
+              );
               if (match != null) {
                 _fulfillmentLabel = match.group(1);
               }
@@ -253,6 +462,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
             _loadBookingFallback();
           } else {
             _calculateSubtotal();
+            _syncPaymentExpiryTimer();
           }
         });
       }
@@ -488,83 +698,277 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
   Future<void> _cancelPendingOrder() async {
     if (_status != 'pending' || _isCancelling) return;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final confirm = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            backgroundColor: isDark ? const Color(0xFF161B22) : Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Text(
-              'order_status.cancel_confirm_title'.tr(),
-              style: TextStyle(
-                color: isDark ? Colors.white : Colors.black87,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            content: Text(
-              _paymentStatus == 'paid'
-                  ? 'order_status.cancel_confirm_desc_paid'.tr()
-                  : 'order_status.cancel_confirm_desc_unpaid'.tr(),
-              style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 13),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text('order_status.cancel_btn_back'.tr(), style: const TextStyle(color: Colors.grey)),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text('order_status.cancel_btn_confirm'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-        ) ??
-        false;
+    final bool isPaidOrder = _paymentStatus == 'paid';
 
-    if (!confirm) return;
+    final List<String> presetReasons = [
+      'order_status.cancel_reason_1'.tr(),
+      'order_status.cancel_reason_2'.tr(),
+      'order_status.cancel_reason_3'.tr(),
+      'order_status.cancel_reason_4'.tr(),
+      'order_status.cancel_reason_5'.tr(),
+      'order_status.cancel_reason_6'.tr(),
+    ];
+
+    int selectedIndex = -1;
+    final TextEditingController otherReasonCtrl = TextEditingController();
+
+    final String? chosenReason = await showDialog<String>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.65),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final bool isOther = selectedIndex == presetReasons.length - 1;
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 430),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF141923) : Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.08),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.14),
+                      blurRadius: 28,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.redAccent.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Center(
+                              child: HugeIcon(
+                                icon: HugeIcons.strokeRoundedAlert02,
+                                color: Colors.redAccent,
+                                size: 22,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'order_status.cancel_reason_title'.tr(),
+                              style: TextStyle(
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            icon: Icon(
+                              Icons.close_rounded,
+                              size: 20,
+                              color: isDark ? Colors.white60 : Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: (isPaidOrder ? const Color(0xFFF59E0B) : Colors.blue).withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: (isPaidOrder ? const Color(0xFFF59E0B) : Colors.blue).withValues(alpha: 0.30),
+                          ),
+                        ),
+                        child: Text(
+                          isPaidOrder
+                              ? 'order_status.cancel_reason_subtitle_paid'.tr()
+                              : 'order_status.cancel_reason_subtitle_unpaid'.tr(),
+                          style: TextStyle(
+                            color: isDark ? Colors.white70 : const Color(0xFF334155),
+                            fontSize: 12.5,
+                            height: 1.4,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      ...List.generate(presetReasons.length, (idx) {
+                        final isSelected = selectedIndex == idx;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => setModalState(() => selectedIndex = idx),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? Colors.redAccent.withValues(alpha: isDark ? 0.16 : 0.08)
+                                    : (isDark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF8FAFC)),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? Colors.redAccent.withValues(alpha: 0.6)
+                                      : (isDark ? Colors.white12 : Colors.black12),
+                                  width: isSelected ? 1.4 : 1.0,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                                    size: 18,
+                                    color: isSelected ? Colors.redAccent : (isDark ? Colors.white38 : Colors.black38),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      presetReasons[idx],
+                                      style: TextStyle(
+                                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                        fontSize: 13,
+                                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                      if (isOther) ...[
+                        const SizedBox(height: 4),
+                        TextField(
+                          controller: otherReasonCtrl,
+                          maxLines: 2,
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black87,
+                            fontSize: 13,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'order_status.cancel_reason_other_hint'.tr(),
+                            hintStyle: TextStyle(
+                              color: isDark ? Colors.white38 : Colors.black38,
+                              fontSize: 12.5,
+                            ),
+                            filled: true,
+                            fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: isDark ? Colors.white24 : Colors.black12),
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: isDark ? Colors.white70 : Colors.black87,
+                                side: BorderSide(color: isDark ? Colors.white24 : Colors.black12),
+                                padding: const EdgeInsets.symmetric(vertical: 13),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              ),
+                              child: Text('order_status.cancel_btn_back'.tr()),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.redAccent,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 13),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              ),
+                              onPressed: () {
+                                if (selectedIndex < 0) {
+                                  showGlassToast(context, 'order_status.cancel_reason_required_toast'.tr(), isError: true);
+                                  return;
+                                }
+                                String finalReason = presetReasons[selectedIndex];
+                                if (isOther) {
+                                  final custom = otherReasonCtrl.text.trim();
+                                  if (custom.isEmpty) {
+                                    showGlassToast(context, 'order_status.cancel_reason_required_toast'.tr(), isError: true);
+                                    return;
+                                  }
+                                  finalReason = custom;
+                                }
+                                Navigator.pop(ctx, finalReason);
+                              },
+                              child: Text(
+                                'order_status.cancel_btn_confirm'.tr(),
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    otherReasonCtrl.dispose();
+
+    if (chosenReason == null || chosenReason.trim().isEmpty) return;
+    _paymentExpiryTimer?.cancel();
     setState(() => _isCancelling = true);
     try {
+      // Jika pesanan belum dibayar tetapi ada sesi CHIP aktif, batalkan sesi CHIP terlebih dahulu
+      if (!isPaidOrder && _chipPurchaseId != null && _chipPurchaseId!.isNotEmpty) {
+        try {
+          await ChipPaymentService.instance.cancelPurchase(
+            _chipPurchaseId!,
+            orderId: widget.orderId,
+          );
+        } catch (_) {}
+      }
+
+      final existingNotes = (_notes ?? '').replaceAll(RegExp(r'\[Sebab Batal:[^\]]*\]'), '').trim();
+      final updatedNotes = existingNotes.isEmpty
+          ? '[Sebab Batal: ${chosenReason.trim()}]'
+          : '$existingNotes [Sebab Batal: ${chosenReason.trim()}]';
+
       await Supabase.instance.client.from('orders').update({
         'status': 'cancelled',
-        if (_paymentStatus == 'paid') 'payment_status': 'refund_pending',
+        'notes': updatedNotes,
+        if (isPaidOrder) 'payment_status': 'refund_pending',
       }).eq('id', widget.orderId);
 
       // Pulihkan stok produk fizikal bagi pesanan yang dibatalkan
-      try {
-        final items = await Supabase.instance.client
-            .from('order_items')
-            .select('product_id, quantity')
-            .eq('order_id', widget.orderId);
-        for (final row in (items as List)) {
-          final prodId = row['product_id']?.toString();
-          final qty = (row['quantity'] as num?)?.toInt() ?? 0;
-          if (prodId != null && prodId.isNotEmpty && qty > 0) {
-            final prod = await Supabase.instance.client
-                .from('business_products')
-                .select('stock, track_inventory, item_type')
-                .eq('id', prodId)
-                .maybeSingle();
-            if (prod != null &&
-                prod['item_type'] != 'service' &&
-                (prod['track_inventory'] as bool? ?? true)) {
-              final curStock = (prod['stock'] as num?)?.toInt() ?? 0;
-              await Supabase.instance.client
-                  .from('business_products')
-                  .update({'stock': curStock + qty})
-                  .eq('id', prodId);
-            }
-          }
-        }
-      } catch (_) {}
+      await _restoreInventoryStock();
 
       if (mounted) {
         setState(() {
           _status = 'cancelled';
-          if (_paymentStatus == 'paid') _paymentStatus = 'refund_pending';
+          _notes = updatedNotes;
+          _cancelReason = chosenReason.trim();
+          if (isPaidOrder) _paymentStatus = 'refund_pending';
           _isCancelling = false;
         });
         showGlassToast(context, 'order_status.cancel_success'.tr());
@@ -992,6 +1396,9 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
   }
 
   String get _statusTitle {
+    if (_isAwaitingOnlinePayment) {
+      return 'order_status.status_awaiting_payment_title'.tr();
+    }
     switch (_status) {
       case 'pending':
         return 'order_status.status_pending_title'.tr();
@@ -1010,6 +1417,9 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
   }
 
   String get _statusSubtitle {
+    if (_isAwaitingOnlinePayment) {
+      return 'order_status.status_awaiting_payment_sub'.tr();
+    }
     switch (_status) {
       case 'pending':
         return 'order_status.status_pending_sub'.tr();
@@ -1057,7 +1467,15 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
               final latest = snapshot.data!.first;
               _status = latest['status']?.toString().toLowerCase() ?? _status;
               _paymentStatus = latest['payment_status']?.toString().toLowerCase() ?? _paymentStatus;
+              final latestNotes = latest['notes']?.toString();
+              if (latestNotes != null && latestNotes.isNotEmpty) {
+                _notes = latestNotes;
+                _cancelReason = _extractCancelReason(_notes) ?? _cancelReason;
+              }
             }
+
+            final String countdownStr =
+                '${(_expiryRemainingSeconds ~/ 60).toString().padLeft(2, '0')}:${(_expiryRemainingSeconds % 60).toString().padLeft(2, '0')}';
 
             return Stack(
               children: [
@@ -1108,11 +1526,13 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                                 child: HugeIcon(
                                   icon: _status == 'cancelled'
                                       ? HugeIcons.strokeRoundedCancel01
-                                      : (_status == 'ready' || _status == 'completed'
-                                          ? HugeIcons.strokeRoundedCheckmarkCircle03
-                                          : (_status == 'preparing' || _status == 'in_progress'
-                                              ? HugeIcons.strokeRoundedRestaurant01
-                                              : HugeIcons.strokeRoundedTime02)),
+                                      : (_isAwaitingOnlinePayment
+                                          ? HugeIcons.strokeRoundedWallet02
+                                          : (_status == 'ready' || _status == 'completed'
+                                              ? HugeIcons.strokeRoundedCheckmarkCircle03
+                                              : (_status == 'preparing' || _status == 'in_progress'
+                                                  ? HugeIcons.strokeRoundedRestaurant01
+                                                  : HugeIcons.strokeRoundedTime02))),
                                   color: _statusColor,
                                   size: 38,
                                 ),
@@ -1162,8 +1582,146 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
 
                       const SizedBox(height: 18),
 
-                      // Pickup Verification or Kitchen Preparation Card (hide if cancelled)
-                      if (_status != 'cancelled') ...[
+                      // --- 0. AWAITING PAYMENT CARD (Shopee & TikTok Shop Style) ---
+                      if (_isAwaitingOnlinePayment) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF131822) : Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: const Color(0xFFF59E0B).withValues(alpha: 0.45),
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.18 : 0.08),
+                                blurRadius: 20,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 42,
+                                    height: 42,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF59E0B).withValues(alpha: 0.14),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Center(
+                                      child: HugeIcon(
+                                        icon: HugeIcons.strokeRoundedWallet02,
+                                        color: Color(0xFFF59E0B),
+                                        size: 22,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'order_status.awaiting_payment_banner_title'.tr(),
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w800,
+                                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'order_status.awaiting_payment_countdown'.tr(args: [countdownStr]),
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFFF59E0B),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'order_status.awaiting_payment_desc'.tr(),
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: isDark ? Colors.white70 : const Color(0xFF475569),
+                                  height: 1.4,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 50,
+                                child: ElevatedButton.icon(
+                                  onPressed: () => _retryOrChangePayment(startAtMethodSelect: false),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFF59E0B),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                  icon: const HugeIcon(
+                                    icon: HugeIcons.strokeRoundedQrCode,
+                                    color: Colors.white,
+                                    size: 19,
+                                  ),
+                                  label: Text(
+                                    'order_status.pay_now_btn'.tr(args: [currency.format(_totalAmount)]),
+                                    style: const TextStyle(
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 46,
+                                child: OutlinedButton.icon(
+                                  onPressed: () => _retryOrChangePayment(startAtMethodSelect: true),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: const Color(0xFF00E5FF),
+                                    side: BorderSide(
+                                      color: const Color(0xFF00E5FF).withValues(alpha: 0.45),
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                  icon: const HugeIcon(
+                                    icon: HugeIcons.strokeRoundedCreditCard,
+                                    color: Color(0xFF00E5FF),
+                                    size: 18,
+                                  ),
+                                  label: Text(
+                                    'order_status.change_payment_method_btn'.tr(),
+                                    style: const TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                      ]
+                      // Pickup Verification or Kitchen Preparation Card (hide if cancelled or awaiting online payment)
+                      else if (_status != 'cancelled') ...[
                         if (_status == 'ready') ...[
                           // --- 1. READY FOR PICKUP: SHOW ACTIVE QR CODE ---
                           Container(
@@ -1662,11 +2220,25 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                                       ? 'order_status.payment_refund_pending'.tr()
                                       : (_paymentStatus == 'refunded'
                                           ? 'order_status.payment_refunded'.tr()
-                                          : 'order_status.payment_unpaid'.tr())),
+                                          : (_paymentStatus == 'pending' && !_isCashMethod
+                                              ? 'order_status.payment_pending'.tr()
+                                              : 'order_status.payment_unpaid'.tr()))),
                               isDark,
                               isSuccess: _paymentStatus == 'paid',
+                              isHighlight: _paymentStatus == 'pending' || _paymentStatus == 'refund_pending',
                             ),
                             _divider(isDark),
+
+                            // 4b. Sebab Pembatalan (jika pesanan telah dibatalkan)
+                            if (_status == 'cancelled' && _cancelReason != null && _cancelReason!.isNotEmpty) ...[
+                              _detailRow(
+                                'order_status.cancel_reason_label'.tr(),
+                                _cancelReason!,
+                                isDark,
+                                isHighlight: true,
+                              ),
+                              _divider(isDark),
+                            ],
 
                             // 5. Kaedah Bayaran
                             _detailRow(
@@ -1968,6 +2540,55 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                                 ),
                               ),
                             ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ] else if ((_status == 'preparing' || _status == 'in_progress' || _status == 'ready') &&
+                          _paymentStatus == 'paid') ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: isDark ? 0.10 : 0.07),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.amber.withValues(alpha: 0.30),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                'order_status.paid_preparing_cancel_info'.tr(),
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark ? Colors.white70 : const Color(0xFF334155),
+                                  height: 1.35,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 42,
+                                child: OutlinedButton.icon(
+                                  onPressed: _handleDisputeAction,
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.amber.shade700,
+                                    side: BorderSide(color: Colors.amber.withValues(alpha: 0.55)),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                  icon: HugeIcon(
+                                    icon: HugeIcons.strokeRoundedAlert02,
+                                    color: Colors.amber.shade700,
+                                    size: 16,
+                                  ),
+                                  label: Text(
+                                    'order_status.request_refund_dispute_btn'.tr(),
+                                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 12),

@@ -1,6 +1,6 @@
 {
-  "version": "1.0.80",
-  "build_number": 53,
-  "released_at": "2026-11-23T11:51:00Z",
-  "changelog": "Pembayaran CHIP Asia kini menghantar alamat e-mel sebenar akaun pelanggan yang didaftarkan (bukan lagi e-mel placeholder pelanggan@ngam.dev)."
+  "version": "1.0.81",
+  "build_number": 54,
+  "released_at": "2026-11-23T11:58:49Z",
+  "changelog": "Aliran pesanan gaya Shopee & TikTok Shop: pesanan belum selesai bayar disimpan sebagai Menunggu Pembayaran (Pending) dengan pemasa tamat tempoh 15 minit, butang Bayar Sekarang & Tukar Kaedah Bayaran, serta dialog wajib pilih Sebab Pembatalan (termasuk Refund Pending bagi pesanan sudah dibayar)."
 }

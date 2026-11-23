@@ -400,10 +400,37 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                               final payMethod = (o['payment_method'] ?? 'cash').toString().toLowerCase();
                               final payStatus = (o['payment_status'] ?? '').toString().toLowerCase();
                               final status = (o['status'] ?? '').toString().toLowerCase();
-                              if (src != 'pos' && payMethod != 'cash' && payStatus == 'pending') {
-                                return false;
+                              final rawNotes = (o['notes'] ?? '').toString();
+
+                              // Auto-expire unpaid online orders after 15 minutes (Shopee / TikTok Shop style)
+                              if (src != 'pos' &&
+                                  payMethod != 'cash' &&
+                                  payStatus == 'pending' &&
+                                  status == 'pending') {
+                                final createdDt = DateTime.tryParse(o['created_at']?.toString() ?? '')?.toLocal();
+                                if (createdDt != null &&
+                                    DateTime.now().difference(createdDt).inMinutes >= 15) {
+                                  final oid = o['id']?.toString() ?? '';
+                                  if (oid.isNotEmpty) {
+                                    final expReason = 'order_status.cancel_reason_auto_expired'.tr();
+                                    final cleanNotes = rawNotes.replaceAll(RegExp(r'\[Sebab Batal:[^\]]*\]'), '').trim();
+                                    final newNotes = cleanNotes.isEmpty
+                                        ? '[Sebab Batal: $expReason]'
+                                        : '$cleanNotes [Sebab Batal: $expReason]';
+                                    Supabase.instance.client
+                                        .from('orders')
+                                        .update({'status': 'cancelled', 'notes': newNotes})
+                                        .eq('id', oid)
+                                        .neq('payment_status', 'paid')
+                                        .then((_) {}, onError: (_) {});
+                                  }
+                                }
                               }
-                              if (status == 'cancelled' && payStatus == 'pending') {
+
+                              // Hide legacy silent draft cancellations that have no cancellation reason
+                              if (status == 'cancelled' &&
+                                  payStatus == 'pending' &&
+                                  !rawNotes.contains('[Sebab Batal:')) {
                                 return false;
                               }
                               return true;
@@ -1082,7 +1109,10 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                       Text(
                         isPaid
                             ? 'my_bookings.paid_online'.tr(args: [payMethod])
-                            : 'my_bookings.pay_at_counter'.tr(args: [payMethod]),
+                            : ((item['paymentStatus'] == 'pending' &&
+                                    !(payMethod.toLowerCase().contains('cash') || payMethod.toLowerCase().contains('tunai')))
+                                ? 'my_bookings.awaiting_payment'.tr(args: [payMethod])
+                                : 'my_bookings.pay_at_counter'.tr(args: [payMethod])),
                         style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.bold,
@@ -1125,47 +1155,163 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                   Expanded(
                     child: GestureDetector(
                       onTap: () async {
-                        final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
+                        final List<String> presetReasons = [
+                          'order_status.cancel_reason_1'.tr(),
+                          'order_status.cancel_reason_2'.tr(),
+                          'order_status.cancel_reason_3'.tr(),
+                          'order_status.cancel_reason_4'.tr(),
+                          'order_status.cancel_reason_5'.tr(),
+                          'order_status.cancel_reason_6'.tr(),
+                        ];
+                        int selectedIdx = -1;
+                        final otherCtrl = TextEditingController();
+
+                        final String? chosenReason = await showDialog<String>(
+                          context: context,
+                          builder: (ctx) => StatefulBuilder(
+                            builder: (ctx, setModalState) {
+                              final bool isOther = selectedIdx == presetReasons.length - 1;
+                              return AlertDialog(
                                 backgroundColor: isDark ? const Color(0xFF1E242B) : Colors.white,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                                 title: Text(
-                                  'my_bookings.cancel_order_title'.tr(),
+                                  'order_status.cancel_reason_title'.tr(),
                                   style: TextStyle(
                                     color: isDark ? Colors.white : Colors.black,
                                     fontWeight: FontWeight.bold,
+                                    fontSize: 16.5,
                                   ),
                                 ),
-                                content: Text(
-                                  'my_bookings.cancel_order_desc'.tr(),
-                                  style: TextStyle(
-                                    color: isDark ? Colors.white70 : Colors.black87,
-                                    fontSize: 13,
+                                content: SingleChildScrollView(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        isPaid
+                                            ? 'order_status.cancel_reason_subtitle_paid'.tr()
+                                            : 'order_status.cancel_reason_subtitle_unpaid'.tr(),
+                                        style: TextStyle(
+                                          color: isDark ? Colors.white70 : Colors.black87,
+                                          fontSize: 12.5,
+                                          height: 1.35,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      ...List.generate(presetReasons.length, (idx) {
+                                        final sel = selectedIdx == idx;
+                                        return Padding(
+                                          padding: const EdgeInsets.only(bottom: 6),
+                                          child: InkWell(
+                                            borderRadius: BorderRadius.circular(10),
+                                            onTap: () => setModalState(() => selectedIdx = idx),
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                                              decoration: BoxDecoration(
+                                                color: sel
+                                                    ? Colors.redAccent.withValues(alpha: 0.12)
+                                                    : Colors.transparent,
+                                                borderRadius: BorderRadius.circular(10),
+                                                border: Border.all(
+                                                  color: sel
+                                                      ? Colors.redAccent
+                                                      : (isDark ? Colors.white12 : Colors.black12),
+                                                ),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    sel
+                                                        ? Icons.radio_button_checked_rounded
+                                                        : Icons.radio_button_off_rounded,
+                                                    size: 17,
+                                                    color: sel ? Colors.redAccent : Colors.grey,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      presetReasons[idx],
+                                                      style: TextStyle(
+                                                        color: isDark ? Colors.white : Colors.black87,
+                                                        fontSize: 12.5,
+                                                        fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }),
+                                      if (isOther) ...[
+                                        const SizedBox(height: 4),
+                                        TextField(
+                                          controller: otherCtrl,
+                                          maxLines: 2,
+                                          style: TextStyle(
+                                            color: isDark ? Colors.white : Colors.black87,
+                                            fontSize: 12.5,
+                                          ),
+                                          decoration: InputDecoration(
+                                            hintText: 'order_status.cancel_reason_other_hint'.tr(),
+                                            isDense: true,
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ),
                                 actions: [
                                   TextButton(
-                                    onPressed: () => Navigator.pop(ctx, false),
+                                    onPressed: () => Navigator.pop(ctx),
                                     child: Text('common.back'.tr(), style: const TextStyle(color: Colors.grey)),
                                   ),
                                   TextButton(
-                                    onPressed: () => Navigator.pop(ctx, true),
+                                    onPressed: () {
+                                      if (selectedIdx < 0) {
+                                        showGlassToast(context, 'order_status.cancel_reason_required_toast'.tr(), isError: true);
+                                        return;
+                                      }
+                                      String reason = presetReasons[selectedIdx];
+                                      if (isOther) {
+                                        final custom = otherCtrl.text.trim();
+                                        if (custom.isEmpty) {
+                                          showGlassToast(context, 'order_status.cancel_reason_required_toast'.tr(), isError: true);
+                                          return;
+                                        }
+                                        reason = custom;
+                                      }
+                                      Navigator.pop(ctx, reason);
+                                    },
                                     child: Text(
                                       'my_bookings.cancel_order_confirm'.tr(),
                                       style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
                                     ),
                                   ),
                                 ],
-                              ),
-                            ) ??
-                            false;
-                        if (!confirm) return;
+                              );
+                            },
+                          ),
+                        );
+                        otherCtrl.dispose();
+                        if (chosenReason == null || chosenReason.trim().isEmpty) return;
                         try {
+                          final rawExistingNotes = (item['notes']?.toString() ?? '')
+                              .replaceAll(RegExp(r'\[Sebab Batal:[^\]]*\]'), '')
+                              .trim();
+                          final updatedNotes = rawExistingNotes.isEmpty
+                              ? '[Sebab Batal: ${chosenReason.trim()}]'
+                              : '$rawExistingNotes [Sebab Batal: ${chosenReason.trim()}]';
+
                           await Supabase.instance.client
                               .from('orders')
                               .update({
                                 'status': 'cancelled',
+                                'notes': updatedNotes,
                                 if (isPaid) 'payment_status': 'refund_pending',
                               })
                               .eq('id', orderDbId);
@@ -1240,6 +1386,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                             fulfillmentType: item['category'],
                             items: items,
                             shopId: item['shopId']?.toString(),
+                            paymentMethod: item['paymentMethod']?.toString(),
                           ),
                         ),
                       );
@@ -1247,11 +1394,22 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF00B8D4),
+                        color: (!isHistory &&
+                                !isPaid &&
+                                item['paymentStatus'] == 'pending' &&
+                                !(payMethod.toLowerCase().contains('cash') || payMethod.toLowerCase().contains('tunai')))
+                            ? const Color(0xFFF59E0B)
+                            : const Color(0xFF00B8D4),
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF00B8D4).withValues(alpha: 0.3),
+                            color: ((!isHistory &&
+                                        !isPaid &&
+                                        item['paymentStatus'] == 'pending' &&
+                                        !(payMethod.toLowerCase().contains('cash') || payMethod.toLowerCase().contains('tunai')))
+                                    ? const Color(0xFFF59E0B)
+                                    : const Color(0xFF00B8D4))
+                                .withValues(alpha: 0.3),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           )
@@ -1263,14 +1421,26 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             HugeIcon(
-                              icon: isHistory ? HugeIcons.strokeRoundedInvoice01 : HugeIcons.strokeRoundedDeliveryView01,
+                              icon: isHistory
+                                  ? HugeIcons.strokeRoundedInvoice01
+                                  : ((!isPaid &&
+                                          item['paymentStatus'] == 'pending' &&
+                                          !(payMethod.toLowerCase().contains('cash') || payMethod.toLowerCase().contains('tunai')))
+                                      ? HugeIcons.strokeRoundedWallet02
+                                      : HugeIcons.strokeRoundedDeliveryView01),
                               color: Colors.white,
                               size: 15,
                             ),
                             const SizedBox(width: 6),
                             Flexible(
                               child: Text(
-                                isHistory ? 'my_bookings.action_view_receipt'.tr() : 'my_bookings.action_track_order'.tr(),
+                                isHistory
+                                    ? 'my_bookings.action_view_receipt'.tr()
+                                    : ((!isPaid &&
+                                            item['paymentStatus'] == 'pending' &&
+                                            !(payMethod.toLowerCase().contains('cash') || payMethod.toLowerCase().contains('tunai')))
+                                        ? 'my_bookings.action_pay_now'.tr()
+                                        : 'my_bookings.action_track_order'.tr()),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(

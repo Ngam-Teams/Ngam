@@ -5,7 +5,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../explore/business_store_view.dart';
 import '../explore/order_status_tracker_screen.dart';
-import '../../models/product_model.dart';
 import '../../services/chip_payment_service.dart';
 import '../../services/store_cart_service.dart';
 import 'ereceipt_screen.dart';
@@ -36,9 +35,10 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
       widget.status.toLowerCase() == 'success' ||
       widget.status.toLowerCase() == 'paid' ||
       (_orderData?['payment_status']?.toString().toLowerCase() == 'paid');
-  bool get isCancelled =>
+  bool get isOrderCancelled =>
       !isSuccess &&
-      (widget.status.toLowerCase() == 'cancel' || widget.status.toLowerCase() == 'cancelled');
+      (_orderData?['status']?.toString().toLowerCase() == 'cancelled');
+  bool get isAwaitingPayment => !isSuccess && !isOrderCancelled;
 
   @override
   void initState() {
@@ -190,36 +190,13 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
           StoreCartService.clearShop(bizId);
         }
       } else {
-        // Payment was cancelled or failed on CHIP redirect:
-        // Cancel unpaid draft order / holding booking so merchant doesn't receive a ghost order,
-        // and restore cart items into StoreCartService so user can retry immediately.
+        // Gaya Shopee & TikTok Shop:
+        // Jangan batalkan pesanan produk/makanan secara automatik apabila pembayaran belum selesai!
+        // Kekalkan pesanan sebagai 'pending' (Menunggu Pembayaran) dan kosongkan troli supaya pelanggan
+        // boleh membayar semula, menukar kaedah bayaran, atau membatalkan (dengan memilih sebab) dalam tempoh 15 minit.
         if (!isBookingRecord) {
-          try {
-            await db
-                .from('orders')
-                .update({'status': 'cancelled', 'payment_status': 'pending'})
-                .eq('id', orderRow['id'].toString())
-                .neq('payment_status', 'paid');
-          } catch (_) {}
-          if (bizId.isNotEmpty && items.isNotEmpty && StoreCartService.countForShop(bizId) == 0) {
-            for (final it in items) {
-              final pId = it['product_id']?.toString() ?? it['id']?.toString() ?? '';
-              final pName = it['product_name']?.toString() ?? it['name']?.toString() ?? 'Item';
-              final qtyNum = it['quantity'] ?? it['qty'] ?? 1;
-              final int qty = qtyNum is num ? qtyNum.toInt() : (int.tryParse(qtyNum.toString()) ?? 1);
-              final double unitPrice = (it['unit_price'] as num?)?.toDouble() ??
-                  (((it['subtotal'] ?? it['price']) as num?)?.toDouble() ?? 0.0) / (qty > 0 ? qty : 1);
-              StoreCartService.addItem(
-                bizId,
-                ProductModel(
-                  id: pId,
-                  shopId: bizId,
-                  name: pName,
-                  price: unitPrice,
-                ),
-                quantity: qty,
-              );
-            }
+          if (bizId.isNotEmpty) {
+            StoreCartService.clearShop(bizId);
           }
         } else if (orderRow['status']?.toString().toLowerCase() == 'holding') {
           final meta = orderRow['booking_metadata'];
@@ -273,17 +250,19 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
 
     final Color statusColor = isSuccess
         ? const Color(0xFF10B981)
-        : (isCancelled ? const Color(0xFFF59E0B) : const Color(0xFFEF4444));
+        : (isAwaitingPayment ? const Color(0xFFF59E0B) : const Color(0xFFEF4444));
 
     final String titleText = isSuccess
         ? 'payment_result.success_title'.tr()
-        : (isCancelled ? 'payment_result.cancelled_title'.tr() : 'payment_result.failed_title'.tr());
+        : (isAwaitingPayment
+            ? 'payment_result.pending_title'.tr()
+            : 'payment_result.cancelled_title'.tr());
 
     final String subtitleText = isSuccess
         ? 'payment_result.success_subtitle'.tr()
-        : (isCancelled
-            ? 'payment_result.cancelled_subtitle'.tr()
-            : 'payment_result.failed_subtitle'.tr());
+        : (isAwaitingPayment
+            ? 'payment_result.pending_subtitle'.tr()
+            : 'payment_result.cancelled_subtitle'.tr());
 
     return PopScope(
       canPop: false,
@@ -323,8 +302,8 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
                     child: HugeIcon(
                       icon: isSuccess
                           ? HugeIcons.strokeRoundedCheckmarkCircle02
-                          : (isCancelled
-                              ? HugeIcons.strokeRoundedAlertCircle
+                          : (isAwaitingPayment
+                              ? HugeIcons.strokeRoundedTime02
                               : HugeIcons.strokeRoundedCancel01),
                       color: statusColor,
                       size: 46,
@@ -395,7 +374,7 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    'RESIT PEMBAYARAN',
+                                    'payment_result.receipt_title'.tr().toUpperCase(),
                                     style: TextStyle(
                                       color: dark ? Colors.white60 : Colors.black45,
                                       fontSize: 12,
@@ -412,7 +391,11 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(
-                                  isSuccess ? 'SELESAI' : (isCancelled ? 'BATAL' : 'GAGAL'),
+                                  isSuccess
+                                      ? 'payment_result.badge_paid'.tr()
+                                      : (isAwaitingPayment
+                                          ? 'payment_result.badge_pending'.tr()
+                                          : 'payment_result.badge_cancelled'.tr()),
                                   style: TextStyle(
                                     color: statusColor,
                                     fontSize: 11,
@@ -464,7 +447,7 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
                 const SizedBox(height: 32),
 
                 // Action Buttons
-                if (isSuccess && widget.orderId != null && widget.orderId!.isNotEmpty) ...[
+                if ((isSuccess || isAwaitingPayment) && widget.orderId != null && widget.orderId!.isNotEmpty) ...[
                   SizedBox(
                     width: double.infinity,
                     height: 52,
@@ -485,20 +468,24 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2196F3),
+                        backgroundColor: isAwaitingPayment ? const Color(0xFFF59E0B) : const Color(0xFF2196F3),
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      icon: const HugeIcon(
-                        icon: HugeIcons.strokeRoundedDeliveryTruck01,
+                      icon: HugeIcon(
+                        icon: isAwaitingPayment
+                            ? HugeIcons.strokeRoundedWallet02
+                            : HugeIcons.strokeRoundedDeliveryTruck01,
                         color: Colors.white,
                         size: 20,
                       ),
                       label: Text(
-                        'payment_result.track_order_btn'.tr(),
+                        isAwaitingPayment
+                            ? 'payment_result.pay_now_btn'.tr()
+                            : 'payment_result.track_order_btn'.tr(),
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
@@ -507,14 +494,57 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
+                  if (isSuccess) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => EreceiptScreen(orderId: widget.orderId!),
+                            ),
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF38BDF8),
+                          side: BorderSide(
+                            color: const Color(0xFF38BDF8).withValues(alpha: 0.45),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        icon: const HugeIcon(
+                          icon: HugeIcons.strokeRoundedInvoice01,
+                          color: Color(0xFF38BDF8),
+                          size: 19,
+                        ),
+                        label: Text(
+                          'payment_result.view_ereceipt_btn'.tr(),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ],
+
+                if (_businessData != null && !isSuccess) ...[
                   SizedBox(
                     width: double.infinity,
                     height: 50,
                     child: OutlinedButton.icon(
                       onPressed: () {
-                        Navigator.of(context).push(
+                        Navigator.of(context).pushReplacement(
                           MaterialPageRoute(
-                            builder: (_) => EreceiptScreen(orderId: widget.orderId!),
+                            builder: (_) => BusinessStoreView(
+                              shop: _businessData!,
+                              autoShowPromoPopup: false,
+                            ),
                           ),
                         );
                       },
@@ -528,54 +558,14 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
                         ),
                       ),
                       icon: const HugeIcon(
-                        icon: HugeIcons.strokeRoundedInvoice01,
+                        icon: HugeIcons.strokeRoundedStore01,
                         color: Color(0xFF38BDF8),
                         size: 19,
                       ),
                       label: Text(
-                        'payment_result.view_ereceipt_btn'.tr(),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-
-                if (!isSuccess && _businessData != null) ...[
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(
-                            builder: (_) => BusinessStoreView(
-                              shop: _businessData!,
-                              autoShowPromoPopup: false,
-                            ),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2196F3),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      icon: const HugeIcon(
-                        icon: HugeIcons.strokeRoundedStore01,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      label: Text(
                         'payment_result.return_to_store_btn'.tr(),
                         style: const TextStyle(
-                          fontSize: 15,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
                       ),

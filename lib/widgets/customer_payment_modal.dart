@@ -40,6 +40,7 @@ class CustomerPaymentModal extends StatefulWidget {
   final String? voucherCode;
   final double? discountAmount;
   final String? initialMethod;
+  final bool startAtMethodSelect;
   final Future<void> Function(String method, String transactionRef)? onPaymentSuccess;
 
   const CustomerPaymentModal({
@@ -55,6 +56,7 @@ class CustomerPaymentModal extends StatefulWidget {
     this.voucherCode,
     this.discountAmount,
     this.initialMethod,
+    this.startAtMethodSelect = false,
     this.onPaymentSuccess,
   });
 
@@ -73,6 +75,7 @@ class CustomerPaymentModal extends StatefulWidget {
     String? voucherCode,
     double? discountAmount,
     String? initialMethod,
+    bool startAtMethodSelect = false,
     Future<void> Function(String method, String transactionRef)? onPaymentSuccess,
   }) async {
     if (_isModalOpen) return false;
@@ -94,6 +97,7 @@ class CustomerPaymentModal extends StatefulWidget {
           voucherCode: voucherCode,
           discountAmount: discountAmount,
           initialMethod: initialMethod,
+          startAtMethodSelect: startAtMethodSelect,
           onPaymentSuccess: onPaymentSuccess,
         ),
       );
@@ -142,15 +146,19 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     final initMethod = (widget.initialMethod ?? 'duitnow').trim().toLowerCase();
-    if (initMethod == 'fpx' || initMethod == 'card' || initMethod == 'fpx_card') {
+    if (initMethod.contains('fpx') || initMethod.contains('card') || initMethod.contains('kad')) {
       _selectedMethod = 'fpx_card';
-    } else if (initMethod == 'cash') {
+    } else if (initMethod.contains('cash') || initMethod.contains('tunai')) {
       _selectedMethod = 'cash';
     } else {
       _selectedMethod = 'duitnow';
     }
 
-    if (_selectedMethod == 'cash') {
+    if (widget.startAtMethodSelect) {
+      _isLoadingQr = false;
+      _currentStep = PaymentStep.selectMethod;
+      _listenOrderPaymentStatus();
+    } else if (_selectedMethod == 'cash') {
       _isLoadingQr = false;
       _currentStep = PaymentStep.receipt;
       final shortId = widget.orderId.length > 8 ? widget.orderId.substring(0, 8) : widget.orderId;
@@ -301,7 +309,7 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal>
       });
     }
 
-    if (!_isCash && widget.onPaymentSuccess != null) {
+    if (widget.onPaymentSuccess != null) {
       await widget.onPaymentSuccess!(method, _transactionRef);
     }
   }
@@ -887,8 +895,13 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal>
                             _buildPillButton(
                               label: 'payment_modal.proceed_payment'.tr(),
                               onTap: () {
+                                if (_selectedMethod == 'fpx_card' && widget.amount < 10.0) {
+                                  showGlassToast(context, 'cart.fpx_min_spend_error'.tr(), isError: true);
+                                  return;
+                                }
                                 if (_selectedMethod == 'cash') {
-                                  _handleSuccessPayment('payment_modal.counter_cash_label'.tr(), 'CASH-${DateTime.now().millisecondsSinceEpoch}');
+                                  final shortId = widget.orderId.length > 8 ? widget.orderId.substring(0, 8).toUpperCase() : widget.orderId.toUpperCase();
+                                  _handleSuccessPayment('cash', 'CASH-$shortId');
                                 } else {
                                   _startGatewayFlow();
                                 }
@@ -1245,14 +1258,35 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal>
 
                             const SizedBox(height: 8),
 
-                            // Butang Batal (Semak status & batalkan sesi CHIP secara selamat)
+                            // Butang Tukar Kaedah Bayaran (Shopee / TikTok Shop Style)
+                            SizedBox(
+                              width: double.infinity,
+                              child: _buildPillButton(
+                                label: 'payment_modal.change_method_btn'.tr(),
+                                onTap: _isCancelling
+                                    ? null
+                                    : () {
+                                        _statusTimer?.cancel();
+                                        _countdownTimer?.cancel();
+                                        setState(() {
+                                          _currentStep = PaymentStep.selectMethod;
+                                        });
+                                      },
+                                isDark: isDark,
+                                isPrimary: false,
+                              ),
+                            ),
+
+                            const SizedBox(height: 6),
+
+                            // Butang Bayar Kemudian (Simpan Pesanan sebagai Menunggu Pembayaran)
                             Center(
                               child: TextButton(
                                 onPressed: _isCancelling ? null : () => _handleSafeCancel(),
                                 child: Text(
                                   _isCancelling
                                       ? 'payment_modal.cancelling_session'.tr()
-                                      : 'payment_modal.cancel_and_return'.tr(),
+                                      : 'payment_modal.pay_later_btn'.tr(),
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: isDark ? Colors.white60 : Colors.black54,
