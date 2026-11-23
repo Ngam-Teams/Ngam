@@ -253,17 +253,16 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
                       child: GlassContainer(
                         useOwnLayer: true,
                         quality: GlassQuality.standard,
-                        shape: LiquidRoundedSuperellipse(borderRadius: 24),
+                        shape: LiquidRoundedSuperellipse(borderRadius: 26),
                         settings: _glassSettings(isDark),
                         child: Container(
-                          height: 50,
+                          height: 48,
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(24),
+                            borderRadius: BorderRadius.circular(26),
                             color: isDark
                                 ? Colors.white.withValues(alpha: 0.06)
                                 : Colors.white.withValues(alpha: 0.28),
-                            // Outline removed per user request
                           ),
                           child: Row(
                             children: [
@@ -273,7 +272,7 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
                                     ? Colors.white54
                                     : const Color(0xFF3A3A3C)
                                         .withValues(alpha: 0.5),
-                                size: 20,
+                                size: 19,
                                 strokeWidth: 2.0,
                               ),
                               const SizedBox(width: 12),
@@ -287,8 +286,8 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
                                   },
                                   style: TextStyle(
                                     color: textPrimary,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 13.5,
                                   ),
                                   cursorColor: textPrimary,
                                   decoration: InputDecoration(
@@ -298,7 +297,7 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
                                           ? Colors.white38
                                           : const Color(0xFF3A3A3C)
                                               .withValues(alpha: 0.45),
-                                      fontSize: 14,
+                                      fontSize: 13.5,
                                       fontWeight: FontWeight.w400,
                                     ),
                                     border: InputBorder.none,
@@ -306,7 +305,9 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
                                     enabledBorder: InputBorder.none,
                                     errorBorder: InputBorder.none,
                                     disabledBorder: InputBorder.none,
+                                    focusedErrorBorder: InputBorder.none,
                                     filled: false,
+                                    fillColor: Colors.transparent,
                                     isDense: true,
                                     contentPadding: EdgeInsets.zero,
                                   ),

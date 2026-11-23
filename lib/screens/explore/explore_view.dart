@@ -2222,16 +2222,16 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
               child: GlassContainer(
                 useOwnLayer: true,
                 quality: GlassQuality.standard,
-                shape: LiquidRoundedSuperellipse(borderRadius: 24.0),
+                shape: LiquidRoundedSuperellipse(borderRadius: 26.0),
                 settings: _getGlassSettings(isDark),
                 child: Container(
                   height: 48,
                   alignment: Alignment.center,
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(26),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
+                      color: Colors.white.withValues(alpha: isDark ? 0.14 : 0.65),
                       width: 1.0,
                     ),
                     boxShadow: [
@@ -2246,8 +2246,8 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: 19,
+                        height: 19,
                         child: Center(
                           child: _isSearching
                               ? CircularProgressIndicator(
@@ -2260,7 +2260,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                   color: isDark
                                       ? Colors.white70
                                       : _lightModeGray.withValues(alpha: 0.6),
-                                  size: 20,
+                                  size: 19,
                                   strokeWidth: 2.0,
                                 ),
                         ),
@@ -2282,8 +2282,8 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                               onSubmitted: _executeSearch,
                               style: TextStyle(
                                 color: isDark ? Colors.white : _lightModeGray,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 13.5,
                               ),
                               cursorColor: Colors.blue,
                               decoration: InputDecoration(
@@ -2292,7 +2292,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                   color: isDark
                                       ? Colors.white38
                                       : _lightModeGray.withValues(alpha: 0.4),
-                                  fontSize: 15,
+                                  fontSize: 13.5,
                                   fontWeight: FontWeight.w400,
                                 ),
                                 border: InputBorder.none,
@@ -2300,9 +2300,11 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                                 enabledBorder: InputBorder.none,
                                 errorBorder: InputBorder.none,
                                 disabledBorder: InputBorder.none,
+                                focusedErrorBorder: InputBorder.none,
                                 isDense: true,
                                 isCollapsed: true,
                                 filled: false,
+                                fillColor: Colors.transparent,
                                 contentPadding: EdgeInsets.zero,
                               ),
                             ),

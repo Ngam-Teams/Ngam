@@ -1063,16 +1063,14 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
   Widget _buildLiveSearchInput(bool isDark) {
     return Container(
       height: 48,
-      padding: const EdgeInsets.only(left: 14, right: 6),
+      padding: const EdgeInsets.only(left: 16, right: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(26),
         color: isDark
-            ? Colors.white.withValues(alpha: 0.07)
-            : Colors.white.withValues(alpha: 0.88),
+            ? Colors.white.withValues(alpha: 0.06)
+            : Colors.white.withValues(alpha: 0.78),
         border: Border.all(
-          color: _searchFocusNode.hasFocus
-              ? const Color(0xFF38BDF8).withValues(alpha: 0.55)
-              : Colors.white.withValues(alpha: isDark ? 0.14 : 0.65),
+          color: Colors.white.withValues(alpha: isDark ? 0.14 : 0.65),
           width: 1.0,
         ),
         boxShadow: [
@@ -1090,7 +1088,7 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
             color: Color(0xFF38BDF8),
             size: 19,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: TextField(
               controller: _searchController,
@@ -1104,7 +1102,7 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
               style: TextStyle(
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
                 fontSize: 13.5,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
               decoration: InputDecoration(
                 hintText: widget.isVideoFocused
@@ -1115,9 +1113,16 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
                   fontSize: 13.5,
                   fontWeight: FontWeight.w500,
                 ),
-                border: InputBorder.none,
+                filled: false,
+                fillColor: Colors.transparent,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
+                focusedErrorBorder: InputBorder.none,
               ),
             ),
           ),

@@ -173,7 +173,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
 
     const horizontalMargin = 16.0;
     final fullWidth = screenWidth - (horizontalMargin * 2);
-    const searchHeight = 44.0;
+    const searchHeight = 48.0;
     const endTop = 12.0;
     const startTop = 172.0;
 
@@ -365,13 +365,16 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                                         contentPadding: EdgeInsets.zero,
                                         hintText: "support.search_hint".tr(),
                                         hintStyle: TextStyle(
-                                          fontSize: 13,
+                                          fontSize: 13.5,
                                           color: isDark ? Colors.white30 : Colors.black26,
                                           fontWeight: FontWeight.normal,
                                         ),
                                         border: InputBorder.none,
                                         enabledBorder: InputBorder.none,
                                         focusedBorder: InputBorder.none,
+                                        errorBorder: InputBorder.none,
+                                        disabledBorder: InputBorder.none,
+                                        focusedErrorBorder: InputBorder.none,
                                       ),
                                     ),
                                   ),

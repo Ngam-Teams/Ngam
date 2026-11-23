@@ -231,34 +231,91 @@ class _MapPickerState extends State<MapPicker> {
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      hintText: 'Taip nama tempat, jalan, atau poskod...',
-                      prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                      prefixIcon: const UnconstrainedBox(child: HugeIcon(icon: HugeIcons.strokeRoundedSearch01, color: Colors.grey, size: 20)),
-                      suffixIcon: isSearching
-                          ? const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                            )
-                          : null,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                    ),
-                    onChanged: (val) async {
-                      searchQuery = val;
-                      if (val.trim().length >= 3) {
-                        setSheetState(() => isSearching = true);
-                        final res = await _searchPhoton(val);
-                        if (searchQuery == val) {
-                          setSheetState(() {
-                            results = res;
-                            isSearching = false;
-                          });
-                        }
-                      } else {
-                        setSheetState(() => results = []);
-                      }
+                  Builder(
+                    builder: (ctx) {
+                      final isDark = Theme.of(ctx).brightness == Brightness.dark;
+                      return Container(
+                        height: 48,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(26),
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : Colors.white.withValues(alpha: 0.78),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: isDark ? 0.14 : 0.65),
+                            width: 1.0,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.05),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            const HugeIcon(
+                              icon: HugeIcons.strokeRoundedSearch01,
+                              color: Color(0xFF38BDF8),
+                              size: 19,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextField(
+                                autofocus: true,
+                                style: TextStyle(
+                                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Taip nama tempat, jalan, atau poskod...',
+                                  hintStyle: TextStyle(
+                                    color: isDark ? Colors.white54 : Colors.grey.shade600,
+                                    fontSize: 13.5,
+                                  ),
+                                  filled: false,
+                                  fillColor: Colors.transparent,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  errorBorder: InputBorder.none,
+                                  disabledBorder: InputBorder.none,
+                                  focusedErrorBorder: InputBorder.none,
+                                ),
+                                onChanged: (val) async {
+                                  searchQuery = val;
+                                  if (val.trim().length >= 3) {
+                                    setSheetState(() => isSearching = true);
+                                    final res = await _searchPhoton(val);
+                                    if (searchQuery == val) {
+                                      setSheetState(() {
+                                        results = res;
+                                        isSearching = false;
+                                      });
+                                    }
+                                  } else {
+                                    setSheetState(() => results = []);
+                                  }
+                                },
+                              ),
+                            ),
+                            if (isSearching)
+                              const Padding(
+                                padding: EdgeInsets.only(left: 8),
+                                child: SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
                     },
                   ),
                   const SizedBox(height: 12),

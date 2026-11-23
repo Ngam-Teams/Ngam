@@ -202,56 +202,68 @@ class _VoucherSelectionSheetState extends State<VoucherSelectionSheet> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
               child: Container(
-                padding: const EdgeInsets.all(4),
+                height: 48,
+                padding: const EdgeInsets.only(left: 16, right: 6),
                 decoration: BoxDecoration(
-                  color: cardBg,
-                  borderRadius: BorderRadius.circular(16),
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : Colors.white.withValues(alpha: 0.78),
+                  borderRadius: BorderRadius.circular(26),
                   border: Border.all(
-                    color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+                    color: Colors.white.withValues(alpha: isDark ? 0.14 : 0.65),
                   ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
                     ),
                   ],
                 ),
                 child: Row(
                   children: [
-                    const SizedBox(width: 12),
                     Expanded(
                       child: TextField(
                         controller: _customCodeController,
                         textCapitalization: TextCapitalization.characters,
                         style: TextStyle(
                           color: textPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.8,
                         ),
                         decoration: InputDecoration(
                           hintText: 'Ada kod promo khas? Taip di sini...',
                           hintStyle: TextStyle(
                             color: textSecondary,
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.normal,
                             letterSpacing: 0,
                           ),
-                          border: InputBorder.none,
+                          filled: false,
+                          fillColor: Colors.transparent,
                           isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          errorBorder: InputBorder.none,
+                          disabledBorder: InputBorder.none,
+                          focusedErrorBorder: InputBorder.none,
                         ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primary,
                         foregroundColor: Colors.white,
                         elevation: 0,
+                        minimumSize: const Size(0, 36),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       ),
                       onPressed: _isCheckingCode ? null : _applyCustomCode,
                       child: _isCheckingCode
@@ -262,7 +274,7 @@ class _VoucherSelectionSheetState extends State<VoucherSelectionSheet> {
                             )
                           : const Text(
                               'Guna',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
                             ),
                     ),
                   ],

@@ -1,6 +1,6 @@
 {
-  "version": "1.0.83",
-  "build_number": 56,
-  "released_at": "2026-11-23T13:12:00Z",
-  "changelog": "Susun atur desktop skrin Butiran Produk kini bergaya 2-kolum Shopee (galeri gambar/video penuh + jalur thumbnail di kiri, harga/baucar/varian/butang beli di kanan)."
+  "version": "1.0.84",
+  "build_number": 57,
+  "released_at": "2026-11-23T14:57:00Z",
+  "changelog": "Seragamkan semua bar carian & input pil merentasi Ngam kepada ketinggian 48px lutsinar tanpa latar isi atau garisan fokus dalaman."
 }

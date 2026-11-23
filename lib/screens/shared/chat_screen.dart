@@ -257,28 +257,32 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: GlassContainer(
                     useOwnLayer: true,
                     quality: GlassQuality.standard,
-                    shape: LiquidRoundedSuperellipse(borderRadius: 24.0),
+                    shape: LiquidRoundedSuperellipse(borderRadius: 26.0),
                     settings: _glassSettings(isDark),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
                       curve: Curves.easeOutCubic,
                       height: 48,
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
                         color: isDark
-                            ? Colors.white.withValues(alpha: 0.05)
-                            : Colors.white.withValues(alpha: 0.55),
-                        borderRadius: BorderRadius.circular(24),
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.white.withValues(alpha: 0.78),
+                        borderRadius: BorderRadius.circular(26),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: isDark ? 0.14 : 0.65),
+                          width: 1.0,
+                        ),
                       ),
                       child: Row(
                         children: [
                           SizedBox(
-                            width: 20,
-                            height: 20,
+                            width: 19,
+                            height: 19,
                             child: HugeIcon(
                               icon: HugeIcons.strokeRoundedSearch01,
                               color: isDark ? Colors.white70 : Colors.grey.shade600,
-                              size: 20,
+                              size: 19,
                               strokeWidth: 2.0,
                             ),
                           ),
@@ -290,19 +294,22 @@ class _ChatScreenState extends State<ChatScreen> {
                               onChanged: _onSearchChanged,
                               style: TextStyle(
                                 color: isDark ? Colors.white : Colors.black87,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 13.5,
                               ),
                               decoration: InputDecoration(
                                 hintText: 'chat.search_conversations'.tr(),
                                 hintStyle: TextStyle(
-                                  fontSize: 15,
+                                  fontSize: 13.5,
                                   color: isDark ? Colors.white54 : Colors.grey.shade500,
                                   fontWeight: FontWeight.w400,
                                 ),
                                 border: InputBorder.none,
                                 enabledBorder: InputBorder.none,
                                 focusedBorder: InputBorder.none,
+                                errorBorder: InputBorder.none,
+                                disabledBorder: InputBorder.none,
+                                focusedErrorBorder: InputBorder.none,
                                 isDense: true,
                                 filled: false,
                                 fillColor: Colors.transparent,

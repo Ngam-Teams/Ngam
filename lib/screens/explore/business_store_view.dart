@@ -1022,13 +1022,13 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
           child: GlassContainer(
             useOwnLayer: true,
             quality: GlassQuality.standard,
-            shape: LiquidRoundedSuperellipse(borderRadius: 24),
+            shape: LiquidRoundedSuperellipse(borderRadius: 26),
             settings: _glassSettings(isDark),
             child: Container(
-              height: 50,
+              height: 48,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(26),
                 color: isDark
                     ? Colors.white.withValues(alpha: 0.06)
                     : Colors.white.withValues(alpha: 0.28),
@@ -1038,7 +1038,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                   HugeIcon(
                     icon: HugeIcons.strokeRoundedSearch01,
                     color: isDark ? Colors.white54 : const Color(0xFF3A3A3C).withValues(alpha: 0.5),
-                    size: 20,
+                    size: 19,
                     strokeWidth: 2.0,
                   ),
                   const SizedBox(width: 12),
@@ -1062,7 +1062,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                       },
                       style: TextStyle(
                         color: textPrimary,
-                        fontSize: 15,
+                        fontSize: 13.5,
                         fontWeight: FontWeight.w500,
                       ),
                       cursorColor: textPrimary,
@@ -1072,7 +1072,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                           color: isDark
                               ? Colors.white38
                               : const Color(0xFF3A3A3C).withValues(alpha: 0.45),
-                          fontSize: 15,
+                          fontSize: 13.5,
                           fontWeight: FontWeight.w400,
                         ),
                         border: InputBorder.none,
@@ -1080,7 +1080,9 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                         enabledBorder: InputBorder.none,
                         errorBorder: InputBorder.none,
                         disabledBorder: InputBorder.none,
+                        focusedErrorBorder: InputBorder.none,
                         filled: false,
+                        fillColor: Colors.transparent,
                         isDense: true,
                         contentPadding: EdgeInsets.zero,
                       ),
