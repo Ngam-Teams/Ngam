@@ -447,7 +447,10 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                 _notes!.replaceAll(RegExp(r'\[Sebab Batal:[^\]]*\]'), ''),
               );
               if (match != null) {
-                _fulfillmentLabel = match.group(1);
+                _fulfillmentLabel = match
+                    .group(1)
+                    ?.replaceAll('Bungkus (Ambil Pantas)', 'Ambil Sendiri (Segera)')
+                    .replaceAll('Bungkus:', 'Ambil Sendiri:');
               }
             }
           }
@@ -1531,7 +1534,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                                           : (_status == 'ready' || _status == 'completed'
                                               ? HugeIcons.strokeRoundedCheckmarkCircle03
                                               : (_status == 'preparing' || _status == 'in_progress'
-                                                  ? HugeIcons.strokeRoundedRestaurant01
+                                                  ? HugeIcons.strokeRoundedPackage
                                                   : HugeIcons.strokeRoundedTime02))),
                                   color: _statusColor,
                                   size: 38,
@@ -1943,7 +1946,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                                       ),
                                       child: const Center(
                                         child: HugeIcon(
-                                          icon: HugeIcons.strokeRoundedRestaurant01,
+                                          icon: HugeIcons.strokeRoundedPackage,
                                           color: Color(0xFF00E5FF),
                                           size: 22,
                                         ),
