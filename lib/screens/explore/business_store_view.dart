@@ -199,6 +199,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
             ...widget.shop,
             'name': _shopName,
             'business_name': _shopName,
+            if (_syncedIndustry != null) 'business_industry': _syncedIndustry,
             if (_syncedOperatingHours != null)
               'operating_hours': _syncedOperatingHours,
           },
@@ -1963,6 +1964,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                             ...widget.shop,
                             'name': _shopName,
                             'business_name': _shopName,
+                            if (_syncedIndustry != null) 'business_industry': _syncedIndustry,
                             if (_syncedOperatingHours != null)
                               'operating_hours': _syncedOperatingHours,
                           },

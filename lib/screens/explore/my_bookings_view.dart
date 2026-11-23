@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../utils/business_industry_helper.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../../widgets/glass_toast.dart';
 import 'booking_ticket_screen.dart';
@@ -428,7 +429,13 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                               final biz = _businessCache[bizId];
                               final String rawNotes = o['notes']?.toString() ?? '';
                               
-                              String fulfillment = 'my_bookings.fulfillment_takeaway'.tr();
+                              final isFnbOrder = BusinessIndustryHelper.isFnb(
+                                industry: biz?['business_industry']?.toString(),
+                                shopName: biz?['business_name']?.toString(),
+                              );
+                              String fulfillment = isFnbOrder
+                                  ? 'my_bookings.fulfillment_takeaway'.tr()
+                                  : 'my_bookings.fulfillment_pickup'.tr();
                               final match = RegExp(r'\[([^\]]+)\]').firstMatch(rawNotes);
                               if (match != null) {
                                 fulfillment = match.group(1) ?? fulfillment;

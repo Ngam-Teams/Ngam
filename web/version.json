@@ -1,6 +1,6 @@
 {
-  "version": "1.0.74",
-  "build_number": 47,
-  "released_at": "2026-11-20T18:25:00Z",
-  "changelog": "Kad Video & Post di Carian / Trending Videos kini memaparkan bingkai cover sebenar video/gambar serta sokongan autoplay senyap gaya TikTok ketika scroll."
+  "version": "1.0.75",
+  "build_number": 48,
+  "released_at": "2026-11-23T07:05:07Z",
+  "changelog": "Reka bentuk baharu Laman Utama gaya kompak Shopee × TikTok Shop dengan baris boleh tatal & Bento Liquid Glass, pilihan pengambilan Troli serasi semua jenis perniagaan, sokongan URL pendek QR e-Resit serta git hook auto-naik versi."
 }

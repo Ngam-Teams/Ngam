@@ -23,3 +23,18 @@
 
 ## 3. Web & PWA Compatibility
 - Ensure all screens and services run properly on Flutter Web/PWA as well as Android/iOS.
+
+## 4. Auto Version Bump on Every Commit
+- All repositories (`Ngam`, `Ngam_Business`, `Ngam_Admin`, `Ngam_Teams`) include shared Git hooks under `.githooks/` (`pre-commit` & `prepare-commit-msg`).
+- On a fresh clone, enable them once with:
+  ```bash
+  git config core.hooksPath .githooks
+  ```
+- On every commit, the hook automatically:
+  1. Bumps `pubspec.yaml` patch & build number (`X.Y.Z+B` -> `X.Y.(Z+1)+(B+1)`), unless `pubspec.yaml` was already manually bumped in the commit.
+  2. Syncs `web/version.json` (`version`, `build_number`, `released_at`).
+  3. Syncs `AppUpdateService.fallbackVersion` in `app_update_service.dart`.
+  4. Appends `(vX.Y.Z+B)` to the commit subject if not already present.
+- After completing and verifying changes, update `web/version.json`'s `changelog`, commit (letting `.githooks` bump the version), and push automatically.
+- To bypass for a single commit, run `SKIP_VERSION_BUMP=1 git commit ...`.
+

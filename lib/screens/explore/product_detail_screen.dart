@@ -17,6 +17,7 @@ import '../../services/r2_storage_service.dart';
 import '../../services/saved_service.dart';
 import '../../services/store_cart_service.dart';
 import '../../services/voucher_service.dart';
+import '../../utils/business_industry_helper.dart';
 import '../../utils/glass_toast.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../../widgets/natural_aspect_image.dart';
@@ -2138,7 +2139,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             decoration: InputDecoration(
               labelText: 'product_detail.note_label'.tr(),
               labelStyle: TextStyle(color: textSecondary, fontSize: 12),
-              hintText: 'product_detail.note_hint'.tr(),
+              hintText: BusinessIndustryHelper.isFnb(
+                industry: (_shopDetails?['business_industry'] ??
+                        widget.shop['business_industry'])
+                    ?.toString(),
+                category: _shopCategory,
+                shopName: _shopName,
+              )
+                  ? 'product_detail.note_hint'.tr()
+                  : 'product_detail.note_hint_product'.tr(),
               hintStyle: TextStyle(
                 color: isDark ? Colors.white30 : Colors.black26,
                 fontSize: 12,

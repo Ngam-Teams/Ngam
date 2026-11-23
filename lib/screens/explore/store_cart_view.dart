@@ -9,6 +9,7 @@ import 'package:ngam/widgets/glass_box.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/product_model.dart';
 import '../../services/voucher_service.dart';
+import '../../utils/business_industry_helper.dart';
 import '../../widgets/glass_toast.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../../widgets/customer_payment_modal.dart';
@@ -100,7 +101,33 @@ class _StoreCartViewState extends State<StoreCartView> {
   bool _isPreOrder = false;
   String _selectedPaymentMethod = 'duitnow'; // 'duitnow', 'fpx_card', 'cash'
   String? _syncedShopName;
+  String? _syncedBusinessIndustry;
   Map<String, dynamic>? _syncedOperatingHours;
+
+  StoreOrderContext get _orderContext {
+    final granularType = (_effectiveOperatingHours?['business_type'] ??
+            widget.shop['business_type'])
+        ?.toString();
+    final industry = (_syncedBusinessIndustry ??
+            widget.shop['business_industry'])
+        ?.toString();
+    final category =
+        (widget.shop['category'] ?? widget.shop['type'])?.toString();
+    return BusinessIndustryHelper.resolve(
+      granularType: granularType,
+      industry: industry,
+      category: category,
+      shopName: _shopName,
+      hasTableNumber:
+          widget.tableNumber != null && widget.tableNumber!.trim().isNotEmpty,
+    );
+  }
+
+  bool get _isFnbBusiness => _orderContext == StoreOrderContext.fnb;
+
+  String get _immediatePickupLabel => _isFnbBusiness
+      ? 'cart.bungkus_immediate_label'.tr()
+      : 'cart.pickup_immediate_label'.tr();
 
   String? get _effectiveTableNumber {
     final t = _tableController.text.trim();
@@ -132,24 +159,42 @@ class _StoreCartViewState extends State<StoreCartView> {
     return fallback.isNotEmpty ? fallback : 'Kedai Pilihan';
   }
 
+  void _reconcileFulfillmentForIndustry() {
+    if (!_isFnbBusiness && _fulfillmentMode == 1) {
+      _fulfillmentMode = 0;
+    }
+    if (_fulfillmentMode == 0 && !_bungkusChooseTime) {
+      _selectedPickupTime = _immediatePickupLabel;
+    }
+  }
+
   Future<void> _syncShopDetails() async {
     final shopId = widget.shop['id']?.toString() ?? '';
     if (shopId.length < 20) return;
 
-    final current = _shopName;
-    if (current == 'Kedai Pilihan' || current == 'Kedai Ngam' || current == 'Store') {
-      try {
-        final row = await Supabase.instance.client
-            .from('businesses')
-            .select('business_name')
-            .eq('id', shopId)
-            .maybeSingle();
-        final fetched = row?['business_name']?.toString().trim() ?? '';
-        if (fetched.isNotEmpty && mounted) {
-          setState(() => _syncedShopName = fetched);
+    try {
+      final row = await Supabase.instance.client
+          .from('businesses')
+          .select('business_name, business_industry')
+          .eq('id', shopId)
+          .maybeSingle();
+      if (row != null && mounted) {
+        final fetchedName = row['business_name']?.toString().trim() ?? '';
+        final fetchedIndustry = row['business_industry']?.toString().trim() ?? '';
+        final current = _shopName;
+        final shouldUpdateName = fetchedName.isNotEmpty &&
+            (current == 'Kedai Pilihan' || current == 'Kedai Ngam' || current == 'Store');
+        final shouldUpdateIndustry = fetchedIndustry.isNotEmpty &&
+            _syncedBusinessIndustry != fetchedIndustry;
+        if (shouldUpdateName || shouldUpdateIndustry) {
+          setState(() {
+            if (shouldUpdateName) _syncedShopName = fetchedName;
+            if (shouldUpdateIndustry) _syncedBusinessIndustry = fetchedIndustry;
+            _reconcileFulfillmentForIndustry();
+          });
         }
-      } catch (_) {}
-    }
+      }
+    } catch (_) {}
 
     try {
       final settings = await Supabase.instance.client
@@ -160,6 +205,7 @@ class _StoreCartViewState extends State<StoreCartView> {
       if (settings != null && settings['operating_hours'] is Map && mounted) {
         setState(() {
           _syncedOperatingHours = Map<String, dynamic>.from(settings['operating_hours'] as Map);
+          _reconcileFulfillmentForIndustry();
           _syncDefaultSlotForSelectedDate();
         });
       }
@@ -283,7 +329,7 @@ class _StoreCartViewState extends State<StoreCartView> {
       }
       final slots = <String>[];
       if (!isBungkus && widget.isStoreOpen && nowMins >= openMins) {
-        slots.add('Segera (~15 minit)');
+        slots.add(_immediatePickupLabel);
       }
       const offsets = [
         (mins: 30, label: '30 minit lagi'),
@@ -708,9 +754,11 @@ class _StoreCartViewState extends State<StoreCartView> {
               optionExtraPrice: c.optionExtraPrice,
             ))
         .toList();
-    if (widget.tableNumber != null && widget.tableNumber!.isNotEmpty) {
+    if (_isFnbBusiness && widget.tableNumber != null && widget.tableNumber!.isNotEmpty) {
       _tableController.text = widget.tableNumber!;
-      _fulfillmentMode = 1; // Dine-in
+      _fulfillmentMode = 1; // Dine-in (F&B only)
+    } else {
+      _selectedPickupTime = _immediatePickupLabel;
     }
     _syncDefaultSlotForSelectedDate();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -746,7 +794,12 @@ class _StoreCartViewState extends State<StoreCartView> {
   double get _total => (_subtotal + _deliveryFee - _discountAmount).clamp(0.0, 999999.0);
 
   String? get _shopCategory =>
-      (widget.shop['business_industry'] ?? widget.shop['category'] ?? widget.shop['type'])?.toString();
+      (_syncedBusinessIndustry ??
+              _effectiveOperatingHours?['business_type'] ??
+              widget.shop['business_industry'] ??
+              widget.shop['category'] ??
+              widget.shop['type'])
+          ?.toString();
 
 
 
@@ -989,7 +1042,7 @@ class _StoreCartViewState extends State<StoreCartView> {
           (user.email?.split('@').first) ??
           '';
 
-      final String? activeTable = _effectiveTableNumber;
+      final String? activeTable = _isFnbBusiness ? _effectiveTableNumber : null;
       final String customerName = rawName.isNotEmpty
           ? rawName
           : (activeTable != null
@@ -1005,13 +1058,15 @@ class _StoreCartViewState extends State<StoreCartView> {
           ? 'Pre-Order: $_selectedPickupDate, $_selectedPickupTime'
           : (_fulfillmentMode == 3
               ? 'Delivery: $_selectedPickupDate, $_selectedPickupTime${deliveryAddress.isNotEmpty ? " (Alamat: $deliveryAddress)" : ""}'
-              : (_fulfillmentMode == 1
+              : (_isFnbBusiness && _fulfillmentMode == 1
                   ? 'Dine In'
-                  : (_bungkusChooseTime ? 'Bungkus: Hari Ini, $_selectedPickupTime' : 'Bungkus (Ambil Pantas)')));
+                  : (_bungkusChooseTime
+                      ? 'cart.pickup_scheduled_tag'.tr(args: [_selectedPickupTime])
+                      : 'cart.pickup_immediate_tag'.tr())));
 
       final String fulfillmentLabel = scheduleInfo;
 
-      final String source = activeTable != null || _fulfillmentMode == 1
+      final String source = (_isFnbBusiness && (activeTable != null || _fulfillmentMode == 1))
           ? 'table'
           : (_fulfillmentMode == 3
               ? 'delivery'
@@ -1224,7 +1279,28 @@ class _StoreCartViewState extends State<StoreCartView> {
   }
 
   Future<void> _editItemOptionDialog(CartItem item, bool isDark) async {
-    final options = ['Biasa', 'Kurang Manis', 'Lebih Pedas', 'Kurang Ais', 'Besar (+RM2.00)', 'Tambah Cheese (+RM2.00)'];
+    final List<String> options = switch (_orderContext) {
+      StoreOrderContext.fnb => [
+          'cart.opt_standard'.tr(),
+          'cart.opt_less_sweet'.tr(),
+          'cart.opt_extra_spicy'.tr(),
+          'cart.opt_less_ice'.tr(),
+          'cart.opt_large_extra'.tr(),
+          'cart.opt_add_cheese'.tr(),
+        ],
+      StoreOrderContext.service => [
+          'cart.opt_standard'.tr(),
+          'cart.opt_with_bag'.tr(),
+          'cart.opt_seal_check'.tr(),
+          'cart.opt_collect_with_appt'.tr(),
+        ],
+      StoreOrderContext.retail => [
+          'cart.opt_standard'.tr(),
+          'cart.opt_with_bag'.tr(),
+          'cart.opt_gift_wrap'.tr(),
+          'cart.opt_seal_check'.tr(),
+        ],
+    };
     String selectedOpt = item.selectedOption ?? '';
     final noteCtrl = TextEditingController(text: item.itemNote ?? '');
 
@@ -1244,7 +1320,7 @@ class _StoreCartViewState extends State<StoreCartView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Pilihan & Nota: ${item.product.name}',
+                'cart.item_option_title'.tr(args: [item.product.name]),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -1282,7 +1358,9 @@ class _StoreCartViewState extends State<StoreCartView> {
                 controller: noteCtrl,
                 style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13),
                 decoration: InputDecoration(
-                  hintText: 'Nota khas item (cth: Tak nak bawang / Asing kuah)...',
+                  hintText: _isFnbBusiness
+                      ? 'cart.item_note_hint_fnb'.tr()
+                      : 'cart.item_note_hint_product'.tr(),
                   hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.black38),
                   filled: false,
                   fillColor: Colors.transparent,
@@ -1315,7 +1393,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                     });
                     Navigator.pop(ctx);
                   },
-                  child: Text('cart.save_options'.tr(), style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: Text('cart.save_options'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -1414,7 +1492,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                           const SizedBox(height: 16),
                         ],
 
-                        if (_effectiveTableNumber != null) ...[
+                        if (_isFnbBusiness && _effectiveTableNumber != null) ...[
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             decoration: BoxDecoration(
@@ -1529,7 +1607,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                                               child: Text(
                                                 (item.selectedOption?.isNotEmpty == true || item.itemNote?.isNotEmpty == true)
                                                     ? '${item.selectedOption ?? ''}${item.selectedOption != null && item.itemNote != null ? ' • ' : ''}${item.itemNote ?? ''}'
-                                                    : '+ Pilihan / Nota Item',
+                                                    : 'cart.item_option_btn'.tr(),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                                 style: const TextStyle(
@@ -2157,14 +2235,14 @@ class _StoreCartViewState extends State<StoreCartView> {
               const HugeIcon(icon: HugeIcons.strokeRoundedClock01, color: Color(0xFF00E5FF), size: 20),
               const SizedBox(width: 8),
               Text(
-                'Pilihan & Waktu Pengambilan',
+                'cart.fulfillment_section_title'.tr(),
                 style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: textPrimary),
               ),
             ],
           ),
           const SizedBox(height: 14),
 
-          // Fulfillment Tabs: Bungkus, Dine In, Pre-Order, and Delivery (if supported)
+          // Fulfillment Tabs: Universal Self-Pickup, Dine In (F&B only), Pre-Order, and Delivery (if supported)
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
@@ -2173,8 +2251,9 @@ class _StoreCartViewState extends State<StoreCartView> {
             ),
             child: Row(
               children: [
-                _buildFulfillmentTab(0, 'cart.takeaway_tab'.tr(), HugeIcons.strokeRoundedShoppingCart02, isDark, textPrimary, textSecondary),
-                _buildFulfillmentTab(1, 'cart.dine_in_tab'.tr(), HugeIcons.strokeRoundedDesk01, isDark, textPrimary, textSecondary),
+                _buildFulfillmentTab(0, 'cart.pickup_tab'.tr(), HugeIcons.strokeRoundedStore01, isDark, textPrimary, textSecondary),
+                if (_isFnbBusiness)
+                  _buildFulfillmentTab(1, 'cart.dine_in_tab'.tr(), HugeIcons.strokeRoundedDesk01, isDark, textPrimary, textSecondary),
                 _buildFulfillmentTab(2, 'cart.preorder_tab'.tr(), HugeIcons.strokeRoundedCalendar02, isDark, textPrimary, textSecondary),
                 if (supportsDelivery)
                   _buildFulfillmentTab(3, 'cart.delivery_tab'.tr(), HugeIcons.strokeRoundedDeliveryTruck01, isDark, textPrimary, textSecondary),
@@ -2186,7 +2265,7 @@ class _StoreCartViewState extends State<StoreCartView> {
 
           // Details depending on fulfillment mode
           if (_fulfillmentMode == 0) ...[
-            // Bungkus: Toggle Sekarang vs Pilih Masa
+            // Self-Pickup: Toggle Sekarang vs Pilih Masa
             Builder(
               builder: (context) {
                 final today = DateTime.now();
@@ -2204,7 +2283,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                             onTap: () {
                               setState(() {
                                 _bungkusChooseTime = false;
-                                _selectedPickupTime = 'Segera (~15 minit)';
+                                _selectedPickupTime = _immediatePickupLabel;
                               });
                             },
                             child: AnimatedContainer(
@@ -2297,7 +2376,9 @@ class _StoreCartViewState extends State<StoreCartView> {
                             Expanded(
                               child: Text(
                                 sched.isOpen && widget.isStoreOpen
-                                    ? 'cart.bungkus_now_ready'.tr()
+                                    ? (_isFnbBusiness
+                                        ? 'cart.bungkus_now_ready'.tr()
+                                        : 'cart.pickup_now_ready'.tr())
                                     : 'cart.bungkus_closed_now'.tr(args: [hoursStr]),
                                 style: TextStyle(fontSize: 12, color: textPrimary, fontWeight: FontWeight.w600),
                               ),
@@ -2424,7 +2505,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                 );
               },
             ),
-          ] else if (_fulfillmentMode == 1) ...[
+          ] else if (_isFnbBusiness && _fulfillmentMode == 1) ...[
             // Dine In Table + Dedicated Transparent Table No. Field + QR Scan Button
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2731,13 +2812,13 @@ class _StoreCartViewState extends State<StoreCartView> {
             if (index == 2 || index == 3 || (index == 0 && _bungkusChooseTime)) {
               _syncDefaultSlotForSelectedDate();
             } else if (index == 0 && !_bungkusChooseTime) {
-              _selectedPickupTime = 'Segera (~15 minit)';
+              _selectedPickupTime = _immediatePickupLabel;
             }
           });
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
           decoration: BoxDecoration(
             color: isSelected
                 ? (isDark ? Colors.white.withValues(alpha: 0.16) : Colors.white)
@@ -2756,12 +2837,16 @@ class _StoreCartViewState extends State<StoreCartView> {
                 size: 15,
               ),
               const SizedBox(width: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                  color: isSelected ? textPrimary : textSecondary,
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                    color: isSelected ? textPrimary : textSecondary,
+                  ),
                 ),
               ),
             ],

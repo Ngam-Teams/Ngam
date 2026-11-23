@@ -115,11 +115,20 @@ class EreceiptService {
 
   static Map<String, dynamic> buildReceiptFromUri(Uri uri) {
     final qp = uri.queryParameters;
-    final orderId = (qp['order_id'] ?? qp['id'] ?? '').trim();
+    final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+    final pathSegment = (segments.length > 1 && segments[1].toLowerCase() != 'view')
+        ? Uri.decodeComponent(segments[1]).trim()
+        : '';
+    final isUuid = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+    ).hasMatch(pathSegment);
+    final orderId = (qp['order_id'] ?? qp['id'] ?? (isUuid ? pathSegment : '')).trim();
     final ref = (qp['ref'] ??
-            (orderId.isNotEmpty
-                ? (orderId.length > 8 ? orderId.substring(0, 8).toUpperCase() : orderId.toUpperCase())
-                : 'NG-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}'))
+            (pathSegment.isNotEmpty
+                ? (isUuid ? pathSegment.substring(0, 8).toUpperCase() : pathSegment.toUpperCase())
+                : (orderId.isNotEmpty
+                    ? (orderId.length > 8 ? orderId.substring(0, 8).toUpperCase() : orderId.toUpperCase())
+                    : 'NG-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}')))
         .trim();
 
     final store = (qp['store'] ?? qp['handle'] ?? '').replaceAll('@', '').trim();
