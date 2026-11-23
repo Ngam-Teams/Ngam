@@ -299,6 +299,7 @@
     "tax_service": "Tax / Service Charge",
     "discount": "Discount",
     "total_amount": "Total Amount",
+    "action_view_ereceipt": "e-Receipt",
     "action_download_pdf_receipt": "Download PDF Receipt",
     "action_downloading_pdf": "Generating PDF...",
     "action_review_shop": "Rate & Review Shop",

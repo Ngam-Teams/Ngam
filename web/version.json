@@ -1,6 +1,6 @@
 {
-  "version": "1.0.86",
-  "build_number": 59,
-  "released_at": "2026-11-23T16:45:00Z",
-  "changelog": "Seragamkan nombor rujukan 14-aksara tanpa sempang gaya Shopee (NO, NB, NP, NS, ND, NR, NW, NT) pada Pesanan, Tempahan, POS, Resit PDF, Dompet dan e-mel CHIP Asia."
+  "version": "1.0.87",
+  "build_number": 60,
+  "released_at": "2026-11-23T17:11:00Z",
+  "changelog": "Tambah butang Lihat e-Resit pada skrin Butiran & Penjejakan Pesanan serta baiki paparan Jumlah Kecil pada e-Resit Digital."
 }

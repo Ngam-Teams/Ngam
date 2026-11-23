@@ -302,15 +302,30 @@ class _EreceiptScreenState extends State<EreceiptScreen> {
     final refNo = (_receipt['ref'] ?? 'NG-4029').toString();
     final method = (_receipt['payment_method'] ?? 'DuitNow QR').toString();
     final total = (_receipt['total'] as num?)?.toDouble() ?? 0.0;
-    final subtotal = (_receipt['subtotal'] as num?)?.toDouble() ?? total;
-    final tax = (_receipt['tax'] as num?)?.toDouble() ?? 0.0;
-    final svc = (_receipt['service_charge'] as num?)?.toDouble() ?? 0.0;
-    final rounding = (_receipt['rounding'] as num?)?.toDouble() ?? 0.0;
-    final discount = (_receipt['discount'] as num?)?.toDouble() ?? 0.0;
     final items = (_receipt['items'] as List?)
             ?.map((e) => Map<String, dynamic>.from(e as Map))
             .toList() ??
         <Map<String, dynamic>>[];
+    final rawSubtotal = (_receipt['subtotal'] as num?)?.toDouble() ?? 0.0;
+    final itemsSum = items.fold<double>(0.0, (acc, item) {
+      final linePrice = ((item['price'] ?? item['subtotal']) as num?)?.toDouble();
+      if (linePrice != null && linePrice > 0) return acc + linePrice;
+      final qty = (item['qty'] as num?)?.toInt() ?? 1;
+      final unit = (item['unit_price'] as num?)?.toDouble() ?? 0.0;
+      return acc + (unit * qty);
+    });
+    final subtotal = rawSubtotal > 0
+        ? rawSubtotal
+        : (itemsSum > 0 ? itemsSum : total);
+    final tax = (_receipt['tax'] as num?)?.toDouble() ?? 0.0;
+    final svc = (_receipt['service_charge'] as num?)?.toDouble() ?? 0.0;
+    final rounding = (_receipt['rounding'] as num?)?.toDouble() ?? 0.0;
+    final rawDiscount = (_receipt['discount'] as num?)?.toDouble() ?? 0.0;
+    final discount = rawDiscount > 0
+        ? rawDiscount
+        : (subtotal > total + 0.009 && tax == 0 && svc == 0
+            ? double.parse((subtotal - total).toStringAsFixed(2))
+            : 0.0);
 
     final dt = DateTime.tryParse((_receipt['date'] ?? '').toString())?.toLocal() ?? DateTime.now();
     final dateStr = DateFormat('dd MMM yyyy, hh:mm a').format(dt);

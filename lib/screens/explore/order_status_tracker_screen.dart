@@ -17,6 +17,7 @@ import '../../utils/ngam_ref.dart';
 import '../../widgets/customer_payment_modal.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../../widgets/glass_toast.dart';
+import '../receipt/ereceipt_screen.dart';
 import '../shared/chat_screen.dart';
 import 'dispute_center_screen.dart';
 
@@ -2041,38 +2042,84 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Header: Title & WhatsApp Contact
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(7),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF00E5FF).withValues(alpha: 0.12),
-                                        borderRadius: BorderRadius.circular(10),
+                            // Header: Title & Quick Actions (e-Resit, Chat, WhatsApp)
+                            SizedBox(
+                              width: double.infinity,
+                              child: Wrap(
+                                alignment: WrapAlignment.spaceBetween,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(7),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF00E5FF).withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: const HugeIcon(
+                                          icon: HugeIcons.strokeRoundedInvoice02,
+                                          color: Color(0xFF00E5FF),
+                                          size: 16,
+                                        ),
                                       ),
-                                      child: const HugeIcon(
-                                        icon: HugeIcons.strokeRoundedInvoice02,
-                                        color: Color(0xFF00E5FF),
-                                        size: 16,
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        'order_status.order_details_title'.tr(),
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Text(
-                                      'order_status.order_details_title'.tr(),
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.bold,
-                                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                    ],
+                                  ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                    if (widget.orderId.isNotEmpty)
+                                      GestureDetector(
+                                        onTap: () {
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (_) => EreceiptScreen(orderId: widget.orderId),
+                                            ),
+                                          );
+                                        },
+                                        child: Container(
+                                          margin: const EdgeInsets.only(right: 6),
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF00E5FF).withValues(alpha: 0.14),
+                                            borderRadius: BorderRadius.circular(10),
+                                            border: Border.all(
+                                              color: const Color(0xFF00E5FF).withValues(alpha: 0.35),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const HugeIcon(
+                                                icon: HugeIcons.strokeRoundedInvoice01,
+                                                color: Color(0xFF00E5FF),
+                                                size: 14,
+                                              ),
+                                              const SizedBox(width: 5),
+                                              Text(
+                                                'order_status.action_view_ereceipt'.tr(),
+                                                style: const TextStyle(
+                                                  color: Color(0xFF00E5FF),
+                                                  fontSize: 11.5,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
                                     if ((_shopId ?? widget.shopId ?? '').isNotEmpty)
                                       GestureDetector(
                                         onTap: _openShopChat,
@@ -2143,6 +2190,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                                   ],
                                 ),
                               ],
+                            ),
                             ),
                             const SizedBox(height: 16),
 
@@ -2705,6 +2753,58 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                                           fontSize: 14,
                                           fontWeight: FontWeight.w800,
                                         ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // 2.5 View Full Digital e-Receipt Button (save & claim Ngam points)
+                      if (widget.orderId.isNotEmpty) ...[
+                        Container(
+                          width: double.infinity,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF38BDF8).withValues(alpha: isDark ? 0.10 : 0.08),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: const Color(0xFF38BDF8).withValues(alpha: 0.45),
+                              width: 1.2,
+                            ),
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(18),
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => EreceiptScreen(orderId: widget.orderId),
+                                  ),
+                                );
+                              },
+                              child: Center(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const HugeIcon(
+                                      icon: HugeIcons.strokeRoundedInvoice01,
+                                      color: Color(0xFF38BDF8),
+                                      size: 19,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'payment_result.view_ereceipt_btn'.tr(),
+                                      style: const TextStyle(
+                                        color: Color(0xFF38BDF8),
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: -0.2,
                                       ),
                                     ),
                                   ],
