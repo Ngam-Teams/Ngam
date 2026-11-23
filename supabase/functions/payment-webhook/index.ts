@@ -445,9 +445,81 @@ serve(async (req: Request) => {
 
       const webhookCallbackUrl = `${supabaseUrl}/functions/v1/payment-webhook`;
 
+      // Bina senarai item terperinci untuk resit e-mel percuma CHIP Asia (jumlah mesti tepat = verifiedCents)
+      let chipProducts: Array<{ name: string; price: number; quantity: number; discount?: number }> = [
+        {
+          name: orderTitle,
+          price: verifiedCents, // Authoritative server-calculated integer cents
+          quantity: 1,
+        },
+      ];
+
+      if (calcData.target_type === "order" && calcData.order_id) {
+        try {
+          const { data: orderItems } = await supabase
+            .from("order_items")
+            .select("product_name, quantity, unit_price, subtotal")
+            .eq("order_id", calcData.order_id);
+
+          if (Array.isArray(orderItems) && orderItems.length > 0) {
+            const parsedItems: Array<{ name: string; price: number; quantity: number; discount?: number }> = [];
+            let itemsSumCents = 0;
+
+            for (const item of orderItems) {
+              const name = String(item.product_name || "Item").trim().slice(0, 250);
+              const qty = Math.max(1, Math.round(Number(item.quantity || 1)));
+              const subNum = Number(item.subtotal);
+              const unitNum = Number(item.unit_price);
+              let unitCents = 0;
+              if (Number.isFinite(unitNum) && unitNum > 0) {
+                unitCents = Math.round(unitNum * 100);
+              } else if (Number.isFinite(subNum) && subNum > 0) {
+                unitCents = Math.round((subNum / qty) * 100);
+              }
+              if (unitCents > 0) {
+                parsedItems.push({ name, price: unitCents, quantity: qty });
+                itemsSumCents += unitCents * qty;
+              }
+            }
+
+            if (parsedItems.length > 0) {
+              if (itemsSumCents === verifiedCents) {
+                chipProducts = parsedItems;
+              } else if (itemsSumCents < verifiedCents) {
+                // Tambah baris caj penghantaran / cukai supaya jumlah sepadan tepat
+                parsedItems.push({
+                  name: "Caj Penghantaran / Servis",
+                  price: verifiedCents - itemsSumCents,
+                  quantity: 1,
+                });
+                chipProducts = parsedItems;
+              } else {
+                // Ada diskaun baucar: agihkan diskaun ke item supaya jumlah = verifiedCents
+                let remainingDiscount = itemsSumCents - verifiedCents;
+                for (const p of parsedItems) {
+                  if (remainingDiscount <= 0) break;
+                  const lineTotal = p.price * p.quantity;
+                  const apply = Math.min(remainingDiscount, lineTotal - 1);
+                  if (apply > 0) {
+                    p.discount = apply;
+                    remainingDiscount -= apply;
+                  }
+                }
+                if (remainingDiscount === 0) {
+                  chipProducts = parsedItems;
+                }
+              }
+            }
+          }
+        } catch (itemErr) {
+          console.warn("[payment-webhook] Itemized CHIP products fallback:", itemErr);
+        }
+      }
+
       const chipPayload: Record<string, unknown> = {
         brand_id: chipBrandId,
         reference: orderId,
+        send_receipt: true,
         client: {
           email: clientEmail,
           full_name: clientName,
@@ -455,13 +527,8 @@ serve(async (req: Request) => {
         },
         purchase: {
           currency: "MYR",
-          products: [
-            {
-              name: orderTitle,
-              price: verifiedCents, // Authoritative server-calculated integer cents
-              quantity: 1,
-            },
-          ],
+          notes: `${calcData.business_name || "Ngam"} • Ref #${orderId.slice(0, 8).toUpperCase()}`,
+          products: chipProducts,
         },
         success_callback: webhookCallbackUrl,
         success_redirect:
