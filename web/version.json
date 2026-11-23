@@ -1,6 +1,6 @@
 {
-  "version": "1.0.84",
-  "build_number": 57,
-  "released_at": "2026-11-23T14:57:00Z",
-  "changelog": "Seragamkan semua bar carian & input pil merentasi Ngam kepada ketinggian 48px lutsinar tanpa latar isi atau garisan fokus dalaman."
+  "version": "1.0.85",
+  "build_number": 58,
+  "released_at": "2026-11-23T15:55:12Z",
+  "changelog": "Paparkan pilihan Perbankan FPX & Kad dalam keadaan samar-samar (dimmed) dengan lencana MIN. RM 10.00 & ikon kunci apabila jumlah bayaran akhir (selepas tolak baucar/diskaun) kurang daripada RM 10.00."
 }

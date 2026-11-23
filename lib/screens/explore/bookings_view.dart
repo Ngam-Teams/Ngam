@@ -3885,6 +3885,11 @@ class _BookingsViewState extends State<BookingsView> {
 
         Column(
           children: List.generate(_paymentMethods.length, (i) {
+            if (_totalPrice < 10.0 &&
+                _selectedPaymentIndex < _paymentMethods.length &&
+                _paymentMethods[_selectedPaymentIndex]["type"] == "fpx_card") {
+              _selectedPaymentIndex = 0;
+            }
             final String pType = (_paymentMethods[i]["type"] ?? '').toString();
             final bool isFpx = pType == "fpx_card";
             final bool isFpxDisabled = isFpx && _totalPrice < 10.0;

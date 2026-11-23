@@ -147,7 +147,7 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal>
     WidgetsBinding.instance.addObserver(this);
     final initMethod = (widget.initialMethod ?? 'duitnow').trim().toLowerCase();
     if (initMethod.contains('fpx') || initMethod.contains('card') || initMethod.contains('kad')) {
-      _selectedMethod = 'fpx_card';
+      _selectedMethod = widget.amount >= 10.0 ? 'fpx_card' : 'duitnow';
     } else if (initMethod.contains('cash') || initMethod.contains('tunai')) {
       _selectedMethod = 'cash';
     } else {
@@ -859,13 +859,18 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal>
 
                         const SizedBox(height: 8),
 
-                        // Opsyen 2: FPX Online Banking & Kad
+                        // Opsyen 2: FPX Online Banking & Kad (Had Minima RM 10.00 selepas diskaun/baucar)
                         _buildPaymentOption(
                           isDark: isDark,
                           value: 'fpx_card',
                           title: 'payment_modal.fpx_title'.tr(),
-                          subtitle: 'payment_modal.fpx_subtitle'.tr(),
+                          subtitle: widget.amount >= 10.0
+                              ? 'payment_modal.fpx_subtitle'.tr()
+                              : 'cart.fpx_min_spend_subtitle'.tr(),
                           icon: HugeIcons.strokeRoundedCreditCard,
+                          badge: widget.amount >= 10.0 ? null : 'cart.fpx_min_spend_badge'.tr(),
+                          badgeColor: Colors.amber.shade800,
+                          isEnabled: widget.amount >= 10.0,
                         ),
 
                         const SizedBox(height: 8),
@@ -1604,121 +1609,143 @@ $thanksStr
     required dynamic icon,
     String? badge,
     Color? badgeColor,
+    bool isEnabled = true,
   }) {
-    final bool isSelected = _selectedMethod == value;
+    final bool isSelected = isEnabled && _selectedMethod == value;
 
     return GestureDetector(
       onTap: () {
+        if (!isEnabled) {
+          HapticFeedback.heavyImpact();
+          showGlassToast(context, 'cart.fpx_min_spend_error'.tr(), isError: true);
+          return;
+        }
         HapticFeedback.selectionClick();
         setState(() => _selectedMethod = value);
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? (const Color(0xFF00E5FF).withValues(alpha: 0.08))
-              : (isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03)),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 200),
+        opacity: isEnabled ? 1.0 : 0.42,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
             color: isSelected
-                ? const Color(0xFF00E5FF)
-                : Colors.white.withValues(alpha: isDark ? 0.10 : 0.30),
-            width: isSelected ? 1.5 : 1.0,
+                ? (const Color(0xFF00E5FF).withValues(alpha: 0.08))
+                : (isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03)),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isSelected
+                  ? const Color(0xFF00E5FF)
+                  : Colors.white.withValues(alpha: isDark ? 0.10 : 0.30),
+              width: isSelected ? 1.5 : 1.0,
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFF00E5FF).withValues(alpha: 0.18)
-                    : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: HugeIcon(
-                  icon: icon,
-                  color: isSelected ? const Color(0xFF00E5FF) : (isDark ? Colors.white70 : const Color(0xFF475569)),
-                  size: 18,
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(0xFF00E5FF).withValues(alpha: 0.18)
+                      : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: HugeIcon(
+                    icon: icon,
+                    color: !isEnabled
+                        ? Colors.grey
+                        : (isSelected ? const Color(0xFF00E5FF) : (isDark ? Colors.white70 : const Color(0xFF475569))),
+                    size: 18,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          title,
-                          style: TextStyle(
-                            color: isDark ? Colors.white : const Color(0xFF0F172A),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12.5,
-                          ),
-                        ),
-                      ),
-                      if (badge != null) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: (badgeColor ?? const Color(0xFF00E5FF)).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
                           child: Text(
-                            badge,
+                            title,
                             style: TextStyle(
-                              color: badgeColor ?? const Color(0xFF00E5FF),
-                              fontWeight: FontWeight.w900,
-                              fontSize: 9,
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12.5,
                             ),
                           ),
                         ),
+                        if (badge != null) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: (badgeColor ?? const Color(0xFF00E5FF)).withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: (badgeColor ?? const Color(0xFF00E5FF)).withValues(alpha: 0.45),
+                              ),
+                            ),
+                            child: Text(
+                              badge,
+                              style: TextStyle(
+                                color: badgeColor ?? const Color(0xFF00E5FF),
+                                fontWeight: FontWeight.w900,
+                                fontSize: 9,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
-                      fontSize: 10.5,
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              width: 18,
-              height: 18,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? const Color(0xFF00E5FF) : (isDark ? Colors.white24 : Colors.black26),
-                  width: 2,
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                        fontSize: 10.5,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: isSelected
-                  ? Center(
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF00E5FF),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    )
-                  : null,
-            ),
-          ],
+              const SizedBox(width: 8),
+              if (!isEnabled)
+                Icon(
+                  Icons.lock_outline_rounded,
+                  size: 17,
+                  color: isDark ? Colors.white38 : Colors.black38,
+                )
+              else
+                Container(
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? const Color(0xFF00E5FF) : (isDark ? Colors.white24 : Colors.black26),
+                      width: 2,
+                    ),
+                  ),
+                  child: isSelected
+                      ? Center(
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF00E5FF),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        )
+                      : null,
+                ),
+            ],
+          ),
         ),
       ),
     );

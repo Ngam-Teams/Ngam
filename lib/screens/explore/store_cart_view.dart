@@ -3015,6 +3015,9 @@ class _StoreCartViewState extends State<StoreCartView> {
 
   Widget _buildPaymentMethodSection(bool isDark, Color textPrimary, Color textSecondary) {
     final bool isFpxEligible = _total >= 10.0;
+    if (!isFpxEligible && _selectedPaymentMethod == 'fpx_card') {
+      _selectedPaymentMethod = 'duitnow';
+    }
     return _liquidGlassBox(
       isDark: isDark,
       radius: 20,
@@ -3189,23 +3192,30 @@ class _StoreCartViewState extends State<StoreCartView> {
               ),
             ),
             const SizedBox(width: 8),
-            Container(
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? const Color(0xFF00E5FF) : Colors.grey.shade500,
-                  width: 2,
+            if (!isEnabled)
+              Icon(
+                Icons.lock_outline_rounded,
+                size: 18,
+                color: isDark ? Colors.white38 : Colors.black38,
+              )
+            else
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected ? const Color(0xFF00E5FF) : Colors.grey.shade500,
+                    width: 2,
+                  ),
+                  color: isSelected ? const Color(0xFF00E5FF) : Colors.transparent,
                 ),
-                color: isSelected ? const Color(0xFF00E5FF) : Colors.transparent,
+                child: isSelected
+                    ? const Center(
+                        child: Icon(Icons.check, size: 13, color: Colors.black),
+                      )
+                    : null,
               ),
-              child: isSelected
-                  ? const Center(
-                      child: Icon(Icons.check, size: 13, color: Colors.black),
-                    )
-                  : null,
-            ),
           ],
         ),
       ),

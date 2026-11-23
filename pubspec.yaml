@@ -2,7 +2,7 @@ name: ngam
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.0.84+57
+version: 1.0.85+58
 
 environment:
   sdk: ^3.8.1
