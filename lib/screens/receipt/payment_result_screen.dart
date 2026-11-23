@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
+import '../explore/business_store_view.dart';
 import '../explore/order_status_tracker_screen.dart';
+import '../../models/product_model.dart';
+import '../../services/chip_payment_service.dart';
 import '../../services/store_cart_service.dart';
 import 'ereceipt_screen.dart';
 
@@ -26,9 +29,16 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
   Map<String, dynamic>? _businessData;
   List<Map<String, dynamic>> _orderItems = [];
   String? _fulfillmentLabel;
+  bool _verifiedPaidOverride = false;
 
-  bool get isSuccess => widget.status.toLowerCase() == 'success' || widget.status.toLowerCase() == 'paid';
-  bool get isCancelled => widget.status.toLowerCase() == 'cancel' || widget.status.toLowerCase() == 'cancelled';
+  bool get isSuccess =>
+      _verifiedPaidOverride ||
+      widget.status.toLowerCase() == 'success' ||
+      widget.status.toLowerCase() == 'paid' ||
+      (_orderData?['payment_status']?.toString().toLowerCase() == 'paid');
+  bool get isCancelled =>
+      !isSuccess &&
+      (widget.status.toLowerCase() == 'cancel' || widget.status.toLowerCase() == 'cancelled');
 
   @override
   void initState() {
@@ -46,22 +56,31 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
     Map<String, dynamic>? orderRow;
     Map<String, dynamic>? bizRow;
     List<Map<String, dynamic>> items = [];
+    bool isBookingRecord = false;
 
-    // 1. Fetch order row (joined with valid businesses.address_line column; fallback to plain select)
+    // 1. Fetch order row (joined with valid businesses columns; fallback to plain select)
     try {
       orderRow = await db
           .from('orders')
-          .select('*, businesses(id, business_name, business_phone, address_line)')
+          .select('*, businesses(*)')
           .eq('id', rawId)
           .maybeSingle();
     } catch (_) {
       try {
         orderRow = await db
             .from('orders')
-            .select('*')
+            .select('*, businesses(id, business_name, business_phone, address_line)')
             .eq('id', rawId)
             .maybeSingle();
-      } catch (_) {}
+      } catch (_) {
+        try {
+          orderRow = await db
+              .from('orders')
+              .select('*')
+              .eq('id', rawId)
+              .maybeSingle();
+        } catch (_) {}
+      }
     }
 
     // 2. Fallback to bookings table if not found in orders (e.g. RZRV-... booking checkout redirect)
@@ -71,16 +90,17 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
         try {
           bRes = await db
               .from('bookings')
-              .select('*, businesses(id, business_name, business_phone, address_line)')
+              .select('*, businesses(*)')
               .eq('id', rawId)
               .maybeSingle();
         } catch (_) {}
         bRes ??= await db
             .from('bookings')
-            .select('*, businesses(id, business_name, business_phone, address_line)')
+            .select('*, businesses(*)')
             .eq('booking_metadata->>short_ref', rawId)
             .maybeSingle();
         if (bRes != null) {
+          isBookingRecord = true;
           orderRow = {
             ...bRes,
             'total': bRes['total_price'],
@@ -96,7 +116,7 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
         try {
           final fetchedBiz = await db
               .from('businesses')
-              .select('id, business_name, business_phone, address_line')
+              .select('*')
               .eq('id', orderRow['business_id'].toString())
               .maybeSingle();
           if (fetchedBiz != null) {
@@ -106,22 +126,114 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
       }
 
       // 3. Fetch order_items independently so item list is always preserved
-      try {
-        final itemsRes = await db
-            .from('order_items')
-            .select()
-            .eq('order_id', orderRow['id'].toString());
-        if ((itemsRes as List).isNotEmpty) {
-          items = itemsRes.map<Map<String, dynamic>>((row) {
-            return Map<String, dynamic>.from(row as Map);
-          }).toList();
-        }
-      } catch (_) {}
+      if (!isBookingRecord) {
+        try {
+          final itemsRes = await db
+              .from('order_items')
+              .select()
+              .eq('order_id', orderRow['id'].toString());
+          if ((itemsRes as List).isNotEmpty) {
+            items = itemsRes.map<Map<String, dynamic>>((row) {
+              return Map<String, dynamic>.from(row as Map);
+            }).toList();
+          }
+        } catch (_) {}
+      }
 
-      // 4. Clear cart for this store on successful payment redirect (prevents duplicate checkout in another tab)
+      // 4. Verify & settle CHIP purchase status on Same-Tab Redirect (_self)
+      final String chipPurchaseId = isBookingRecord
+          ? ((orderRow['booking_metadata'] is Map
+                      ? (orderRow['booking_metadata'] as Map)['chip_purchase_id']
+                      : null)
+                  ?.toString()
+                  .trim() ??
+              '')
+          : (orderRow['chip_purchase_id']?.toString().trim() ?? '');
+
+      bool confirmedPaid = widget.status.toLowerCase() == 'success' ||
+          widget.status.toLowerCase() == 'paid' ||
+          orderRow['payment_status']?.toString().toLowerCase() == 'paid';
+
+      if (chipPurchaseId.isNotEmpty) {
+        if (confirmedPaid) {
+          // Trigger server-side verification & settlement in case webhook is still in flight
+          try {
+            await ChipPaymentService.instance.checkPurchaseStatus(chipPurchaseId);
+          } catch (_) {}
+        } else {
+          // User returned via /receipt/cancel or /receipt/failed -> check & cancel CHIP session safely
+          try {
+            final cancelStatus = await ChipPaymentService.instance.cancelPurchase(
+              chipPurchaseId,
+              orderId: orderRow['id']?.toString() ?? rawId,
+            );
+            if (cancelStatus == 'paid') {
+              confirmedPaid = true;
+              _verifiedPaidOverride = true;
+            }
+          } catch (_) {}
+        }
+      }
+
       final bizId = orderRow['business_id']?.toString() ?? '';
-      if (isSuccess && bizId.isNotEmpty) {
-        StoreCartService.clearShop(bizId);
+      if (confirmedPaid) {
+        if (!isBookingRecord && orderRow['payment_status']?.toString().toLowerCase() != 'paid') {
+          try {
+            await db
+                .from('orders')
+                .update({'payment_status': 'paid'})
+                .eq('id', orderRow['id'].toString());
+            orderRow['payment_status'] = 'paid';
+          } catch (_) {}
+        }
+        if (bizId.isNotEmpty) {
+          StoreCartService.clearShop(bizId);
+        }
+      } else {
+        // Payment was cancelled or failed on CHIP redirect:
+        // Cancel unpaid draft order / holding booking so merchant doesn't receive a ghost order,
+        // and restore cart items into StoreCartService so user can retry immediately.
+        if (!isBookingRecord) {
+          try {
+            await db
+                .from('orders')
+                .update({'status': 'cancelled', 'payment_status': 'pending'})
+                .eq('id', orderRow['id'].toString())
+                .neq('payment_status', 'paid');
+          } catch (_) {}
+          if (bizId.isNotEmpty && items.isNotEmpty && StoreCartService.countForShop(bizId) == 0) {
+            for (final it in items) {
+              final pId = it['product_id']?.toString() ?? it['id']?.toString() ?? '';
+              final pName = it['product_name']?.toString() ?? it['name']?.toString() ?? 'Item';
+              final qtyNum = it['quantity'] ?? it['qty'] ?? 1;
+              final int qty = qtyNum is num ? qtyNum.toInt() : (int.tryParse(qtyNum.toString()) ?? 1);
+              final double unitPrice = (it['unit_price'] as num?)?.toDouble() ??
+                  (((it['subtotal'] ?? it['price']) as num?)?.toDouble() ?? 0.0) / (qty > 0 ? qty : 1);
+              StoreCartService.addItem(
+                bizId,
+                ProductModel(
+                  id: pId,
+                  shopId: bizId,
+                  name: pName,
+                  price: unitPrice,
+                ),
+                quantity: qty,
+              );
+            }
+          }
+        } else if (orderRow['status']?.toString().toLowerCase() == 'holding') {
+          final meta = orderRow['booking_metadata'];
+          final metaPaid = meta is Map && meta['payment_status']?.toString().toLowerCase() == 'paid';
+          if (!metaPaid) {
+            try {
+              await db.from('bookings').delete().eq('id', orderRow['id'].toString());
+            } catch (_) {
+              try {
+                await db.from('bookings').update({'status': 'cancelled'}).eq('id', orderRow['id'].toString());
+              } catch (_) {}
+            }
+          }
+        }
       }
     }
 
@@ -424,6 +536,46 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
                         'payment_result.view_ereceipt_btn'.tr(),
                         style: const TextStyle(
                           fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
+                if (!isSuccess && _businessData != null) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (_) => BusinessStoreView(
+                              shop: _businessData!,
+                              autoShowPromoPopup: false,
+                            ),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2196F3),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      icon: const HugeIcon(
+                        icon: HugeIcons.strokeRoundedStore01,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      label: Text(
+                        'payment_result.return_to_store_btn'.tr(),
+                        style: const TextStyle(
+                          fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
                       ),

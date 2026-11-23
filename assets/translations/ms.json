@@ -532,6 +532,10 @@
     "cancel_and_return": "Batal & Kembali ke Troli / Tukar Kaedah Bayaran",
     "cancelling_session": "Menyemak & membatalkan sesi pembayaran...",
     "already_paid_detected": "Bayaran telah pun diterima! Membuka resit pesanan anda...",
+    "save_qr_btn": "Simpan / Muat Turun Gambar QR",
+    "saving_qr": "Menyimpan Gambar QR...",
+    "qr_saved_toast": "Gambar DuitNow QR disimpan! Buka aplikasi bank atau e-Dompet & muat naik dari galeri.",
+    "qr_save_failed": "Gagal menyimpan gambar QR. Sila cuba lagi.",
     "back_to_cart": "Kembali ke Troli",
     "try_again": "Cuba Semula",
     "gateway_error_title": "Ralat Sesi Pembayaran",
@@ -1363,7 +1367,8 @@
     "date_time": "Tarikh & Masa",
     "payment_method": "Kaedah Bayaran",
     "total_paid": "Jumlah Bayaran",
-    "view_ereceipt_btn": "Lihat e-Resit Penuh"
+    "view_ereceipt_btn": "Lihat e-Resit Penuh",
+    "return_to_store_btn": "Kembali ke Kedai & Cuba Semula"
   },
   "explore": {
     "search_hint": "Cari"

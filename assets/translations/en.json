@@ -532,6 +532,10 @@
     "cancel_and_return": "Cancel & Return to Cart / Change Payment Method",
     "cancelling_session": "Verifying & cancelling payment session...",
     "already_paid_detected": "Payment already received! Opening your order receipt...",
+    "save_qr_btn": "Save / Download QR Image",
+    "saving_qr": "Saving QR Image...",
+    "qr_saved_toast": "DuitNow QR saved! Open your bank or e-Wallet app and upload from gallery.",
+    "qr_save_failed": "Failed to save QR image. Please try again.",
     "back_to_cart": "Back to Cart",
     "try_again": "Try Again",
     "gateway_error_title": "Payment Session Error",
@@ -1363,7 +1367,8 @@
     "date_time": "Date & Time",
     "payment_method": "Payment Method",
     "total_paid": "Total Paid",
-    "view_ereceipt_btn": "View Full e-Receipt"
+    "view_ereceipt_btn": "View Full e-Receipt",
+    "return_to_store_btn": "Return to Store & Try Again"
   },
   "explore": {
     "search_hint": "Search"

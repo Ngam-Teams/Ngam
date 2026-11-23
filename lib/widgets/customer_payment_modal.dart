@@ -1,18 +1,18 @@
 import '../utils/file_saver/file_saver.dart';
 import 'dart:async';
-import 'dart:ui';
+import 'dart:ui' as ui;
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shimmer/shimmer.dart';
 
 import 'glass_box.dart';
-import '../utils/app_theme.dart';
 import '../services/chip_payment_service.dart';
 import '../services/receipt_pdf_service.dart';
 import 'glass_toast.dart';
@@ -114,7 +114,9 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal>
   bool _isCheckingStatus = false;
   bool _isVerifyingManual = false;
   bool _isCancelling = false;
+  bool _isSavingQr = false;
   bool _hasHandledSuccess = false;
+  final GlobalKey _qrCardBoundaryKey = GlobalKey();
   String? _gatewayError;
   Timer? _statusTimer;
   Timer? _countdownTimer;
@@ -390,21 +392,18 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal>
       _startCountdown();
       _startPollingStatus(res.id);
 
-      // Hanya buka tab/gerbang luar secara automatik untuk FPX / Kad.
-      // Untuk DuitNow QR, paparkan QR terus dalam modal supaya pengguna tidak keliru dengan dua tab terbuka serentak;
-      // pengguna masih boleh klik butang "Bayar Terus di Halaman CHIP Asia" jika mahu bayar pada peranti yang sama.
+      // Hanya buka gerbang CHIP secara automatik untuk FPX / Kad:
+      // - Di Android/iOS: buka dalam In-App Browser (Chrome Custom Tabs / SFSafariViewController) di dalam Ngam.
+      // - Di Web/PWA: buka dalam tab yang sama (_self) seperti Shopee / TikTok Shop supaya tiada 2 tab bertindih.
       if (_selectedMethod == 'fpx_card' && res.checkoutUrl.isNotEmpty) {
-        final uri = Uri.tryParse(res.checkoutUrl);
-        if (uri != null) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-          if (mounted) {
-            showGlassToast(
-              context,
-              'payment_modal.opening_chip_gateway'.tr(),
-              icon: HugeIcons.strokeRoundedLinkSquare01,
-            );
-          }
+        if (mounted) {
+          showGlassToast(
+            context,
+            'payment_modal.opening_chip_gateway'.tr(),
+            icon: HugeIcons.strokeRoundedLinkSquare01,
+          );
         }
+        await _launchChipGatewayUrl(res.checkoutUrl);
       }
     } catch (e) {
       debugPrint('[CustomerPaymentModal] CHIP createPurchase error: $e');
@@ -415,6 +414,123 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal>
       });
     } finally {
       _isCreatingPurchase = false;
+    }
+  }
+
+  /// Buka halaman gerbang CHIP Asia mengikut gaya Shopee / TikTok Shop:
+  /// - Android / iOS: In-App Browser (`LaunchMode.inAppBrowserView`) terus di dalam aplikasi Ngam.
+  /// - Web / PWA (`ngam.dev`): Same-Tab Redirect (`_self`) supaya tidak membuka tab kedua yang mengelirukan.
+  Future<void> _launchChipGatewayUrl(String rawUrl) async {
+    final uri = Uri.tryParse(rawUrl.trim());
+    if (uri == null) return;
+
+    try {
+      if (kIsWeb) {
+        await launchUrl(
+          uri,
+          webOnlyWindowName: '_self',
+        );
+        return;
+      }
+
+      final openedInApp = await launchUrl(
+        uri,
+        mode: LaunchMode.inAppBrowserView,
+        browserConfiguration: const BrowserConfiguration(showTitle: true),
+      );
+      if (!openedInApp) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {
+      await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+        webOnlyWindowName: kIsWeb ? '_self' : null,
+      );
+    }
+  }
+
+  /// Simpan / muat turun kad DuitNow QR sebagai gambar PNG resolusi tinggi
+  /// supaya pengguna boleh terus muat naik dari galeri dalam aplikasi bank / e-Dompet (MAE, TNG, CIMB, GrabPay).
+  Future<void> _saveQrCodeImage() async {
+    if (_isSavingQr || _isCancelling) return;
+    setState(() => _isSavingQr = true);
+    HapticFeedback.lightImpact();
+
+    try {
+      Uint8List? pngBytes;
+
+      // 1. Tangkap kad DuitNow QR penuh melalui RepaintBoundary
+      try {
+        final boundary = _qrCardBoundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+        if (boundary != null) {
+          final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+          final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+          if (byteData != null) {
+            pngBytes = byteData.buffer.asUint8List();
+          }
+        }
+      } catch (_) {}
+
+      // 2. Fallback: Jana gambar QR terus melalui QrPainter jika RepaintBoundary tidak tersedia
+      if (pngBytes == null) {
+        final qrData = (_purchase?.duitNowUrl.isNotEmpty == true)
+            ? _purchase!.duitNowUrl
+            : (_purchase?.checkoutUrl.isNotEmpty == true
+                ? _purchase!.checkoutUrl
+                : 'https://gate.chip-in.asia');
+        final painter = QrPainter(
+          data: qrData,
+          version: QrVersions.auto,
+          gapless: true,
+          eyeStyle: const QrEyeStyle(
+            eyeShape: QrEyeShape.square,
+            color: Color(0xFFED0058),
+          ),
+          dataModuleStyle: const QrDataModuleStyle(
+            dataModuleShape: QrDataModuleShape.square,
+            color: Colors.black,
+          ),
+        );
+        final picData = await painter.toImageData(600, format: ui.ImageByteFormat.png);
+        if (picData != null) {
+          pngBytes = picData.buffer.asUint8List();
+        }
+      }
+
+      if (pngBytes == null) {
+        throw Exception('QR PNG bytes null');
+      }
+
+      final shortId = widget.orderId.length > 8
+          ? widget.orderId.substring(0, 8).toUpperCase()
+          : widget.orderId.toUpperCase();
+      await saveAndDownloadFile(
+        bytes: pngBytes,
+        fileName: 'DuitNow_QR_Ngam_$shortId.png',
+        mimeType: 'image/png',
+      );
+
+      if (mounted) {
+        showGlassToast(
+          context,
+          'payment_modal.qr_saved_toast'.tr(),
+          icon: HugeIcons.strokeRoundedDownload04,
+        );
+      }
+    } catch (e) {
+      debugPrint('[CustomerPaymentModal] Save QR image error: $e');
+      if (mounted) {
+        showGlassToast(
+          context,
+          'payment_modal.qr_save_failed'.tr(),
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSavingQr = false);
+      }
     }
   }
 
@@ -944,123 +1060,144 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal>
                           if (_isLoadingQr)
                             _buildQrShimmer(isDark)
                           else ...[
-                            // Kad DuitNow QR Rasmi
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: (_selectedMethod == 'fpx_card')
-                                        ? const Color(0xFF0F172A).withValues(alpha: 0.10)
-                                        : const Color(0xFFED0058).withValues(alpha: 0.16),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 6),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
-                                        decoration: BoxDecoration(
-                                          color: _selectedMethod == 'fpx_card'
-                                              ? const Color(0xFF0F172A)
-                                              : const Color(0xFFED0058),
-                                          borderRadius: BorderRadius.circular(6),
+                            // Kad DuitNow QR Rasmi (Dibungkus dengan RepaintBoundary untuk Simpan/Muat Turun Gambar QR)
+                            RepaintBoundary(
+                              key: _qrCardBoundaryKey,
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: (_selectedMethod == 'fpx_card')
+                                          ? const Color(0xFF0F172A).withValues(alpha: 0.10)
+                                          : const Color(0xFFED0058).withValues(alpha: 0.16),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
+                                          decoration: BoxDecoration(
+                                            color: _selectedMethod == 'fpx_card'
+                                                ? const Color(0xFF0F172A)
+                                                : const Color(0xFFED0058),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            _selectedMethod == 'fpx_card' ? 'CHIP ASIA FPX / KAD' : 'DuitNow',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 12,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
                                         ),
-                                        child: Text(
-                                          _selectedMethod == 'fpx_card' ? 'CHIP ASIA FPX / KAD' : 'DuitNow',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: 12,
-                                            letterSpacing: 0.5,
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withValues(alpha: 0.05),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            _selectedMethod == 'fpx_card'
+                                                ? 'payment_modal.secure_checkout'.tr()
+                                                : 'payment_modal.qr_interoperable'.tr(),
+                                            style: const TextStyle(
+                                              color: Colors.black87,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 9,
+                                              letterSpacing: 0.8,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: Colors.black.withValues(alpha: 0.08),
+                                          width: 1.2,
+                                        ),
+                                      ),
+                                      child: SizedBox(
+                                        width: 196,
+                                        height: 196,
+                                        child: QrImageView(
+                                          data: (_purchase?.duitNowUrl.isNotEmpty == true)
+                                              ? _purchase!.duitNowUrl
+                                              : (_purchase?.checkoutUrl.isNotEmpty == true
+                                                  ? _purchase!.checkoutUrl
+                                                  : 'https://gate.chip-in.asia'),
+                                          version: QrVersions.auto,
+                                          eyeStyle: QrEyeStyle(
+                                            eyeShape: QrEyeShape.square,
+                                            color: _selectedMethod == 'fpx_card'
+                                                ? const Color(0xFF0F172A)
+                                                : const Color(0xFFED0058),
+                                          ),
+                                          dataModuleStyle: const QrDataModuleStyle(
+                                            dataModuleShape: QrDataModuleShape.square,
+                                            color: Colors.black,
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(width: 6),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: Colors.black.withValues(alpha: 0.05),
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          _selectedMethod == 'fpx_card'
-                                              ? 'payment_modal.secure_checkout'.tr()
-                                              : 'payment_modal.qr_interoperable'.tr(),
-                                          style: const TextStyle(
-                                            color: Colors.black87,
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 9,
-                                            letterSpacing: 0.8,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: Colors.black.withValues(alpha: 0.08),
-                                        width: 1.2,
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      currencyFormat.format(_purchase?.amount ?? widget.amount),
+                                      style: const TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -0.5,
                                       ),
                                     ),
-                                    child: SizedBox(
-                                      width: 196,
-                                      height: 196,
-                                      child: QrImageView(
-                                        data: (_purchase?.duitNowUrl.isNotEmpty == true)
-                                            ? _purchase!.duitNowUrl
-                                            : (_purchase?.checkoutUrl.isNotEmpty == true
-                                                ? _purchase!.checkoutUrl
-                                                : 'https://gate.chip-in.asia'),
-                                        version: QrVersions.auto,
-                                        eyeStyle: QrEyeStyle(
-                                          eyeShape: QrEyeShape.square,
-                                          color: _selectedMethod == 'fpx_card'
-                                              ? const Color(0xFF0F172A)
-                                              : const Color(0xFFED0058),
-                                        ),
-                                        dataModuleStyle: const QrDataModuleStyle(
-                                          dataModuleShape: QrDataModuleShape.square,
-                                          color: Colors.black,
-                                        ),
-                                      ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      'payment_modal.waiting_realtime_conf'.tr(),
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(color: Colors.black45, fontSize: 11),
                                     ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    currencyFormat.format(_purchase?.amount ?? widget.amount),
-                                    style: const TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: -0.5,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    'payment_modal.waiting_realtime_conf'.tr(),
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(color: Colors.black45, fontSize: 11),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
 
-                            const SizedBox(height: 14),
+                            const SizedBox(height: 12),
 
-                            // Butang Tindakan Buka CHIP (Pill)
+                            // Butang Simpan / Muat Turun Gambar QR (Gaya Shopee & TikTok Shop)
+                            if (_selectedMethod != 'fpx_card') ...[
+                              SizedBox(
+                                width: double.infinity,
+                                child: _buildPillButton(
+                                  label: _isSavingQr
+                                      ? 'payment_modal.saving_qr'.tr()
+                                      : 'payment_modal.save_qr_btn'.tr(),
+                                  onTap: (_isSavingQr || _isCancelling) ? null : _saveQrCodeImage,
+                                  isDark: isDark,
+                                  isPrimary: true,
+                                  customGradient: const [Color(0xFFED0058), Color(0xFFC8004B)],
+                                  customBorderColor: const Color(0xFFFF4D8D),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+
+                            // Butang Tindakan Buka CHIP (In-App Browser di Mobile / Tab Sama di Web)
                             if (_purchase?.checkoutUrl.isNotEmpty == true) ...[
                               SizedBox(
                                 width: double.infinity,
@@ -1070,14 +1207,9 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal>
                                       : 'payment_modal.open_chip_gateway'.tr(),
                                   onTap: _isCancelling
                                       ? null
-                                      : () {
-                                          final uri = Uri.tryParse(_purchase!.checkoutUrl);
-                                          if (uri != null) {
-                                            launchUrl(uri, mode: LaunchMode.externalApplication);
-                                          }
-                                        },
+                                      : () => _launchChipGatewayUrl(_purchase!.checkoutUrl),
                                   isDark: isDark,
-                                  isPrimary: true,
+                                  isPrimary: _selectedMethod == 'fpx_card',
                                 ),
                               ),
                               const SizedBox(height: 8),

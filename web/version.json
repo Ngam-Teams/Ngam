@@ -1,6 +1,6 @@
 {
-  "version": "1.0.78",
-  "build_number": 51,
-  "released_at": "2026-11-23T11:29:49Z",
-  "changelog": "Betulkan isu pembayaran berganda (double payment) CHIP Asia dengan kunci checkout, pembatalan sesi CHIP & idempotensi pelayan; baiki resit & penjejak pesanan memaparkan RM 0.00 / Kedai Ngam / 0 item (kolum address_line) serta betulkan pertindihan teks PDF Jumlah Keseluruhan."
+  "version": "1.0.79",
+  "build_number": 52,
+  "released_at": "2026-11-23T11:41:27Z",
+  "changelog": "Gaya pembayaran Shopee & TikTok Shop: buka CHIP Asia dalam In-App Browser pada Android/iOS, Same-Tab Redirect (_self) pada Web tanpa tab kedua, tambah butang Simpan/Muat Turun Gambar DuitNow QR, serta pulihkan troli automatik jika bayaran dibatalkan."
 }
