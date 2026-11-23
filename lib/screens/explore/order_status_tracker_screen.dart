@@ -24,6 +24,7 @@ class OrderStatusTrackerScreen extends StatefulWidget {
   final String? fulfillmentType;
   final List<Map<String, dynamic>> items;
   final String? shopId;
+  final String? paymentMethod;
 
   const OrderStatusTrackerScreen({
     super.key,
@@ -34,6 +35,7 @@ class OrderStatusTrackerScreen extends StatefulWidget {
     this.fulfillmentType,
     this.items = const [],
     this.shopId,
+    this.paymentMethod,
   });
 
   @override
@@ -43,7 +45,7 @@ class OrderStatusTrackerScreen extends StatefulWidget {
 class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
   String _status = 'pending'; // 'pending', 'preparing', 'ready', 'completed', 'cancelled'
   String _paymentStatus = 'paid';
-  String _paymentMethod = 'online';
+  String _paymentMethod = '';
   String _shopName = '';
   String? _shopPhone;
   String? _shopAddress;
@@ -95,6 +97,36 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
     };
   }
 
+  String _formatPaymentMethod(String raw) {
+    final trimmed = raw.trim();
+    final lower = trimmed.toLowerCase();
+    if (lower.isEmpty || lower == 'online' || lower == 'chip' || lower == 'chip_asia') {
+      return 'order_status.method_online_fallback'.tr();
+    }
+    if (lower == 'duitnow' || lower == 'duitnow_qr' || (lower.contains('duitnow') && !lower.contains('fpx'))) {
+      return 'order_status.method_duitnow'.tr();
+    }
+    if (lower == 'fpx_card' || (lower.contains('fpx') && (lower.contains('card') || lower.contains('kad')))) {
+      return 'order_status.method_fpx_card'.tr();
+    }
+    if (lower == 'fpx' || lower == 'online_banking' || lower.contains('fpx')) {
+      return 'order_status.method_fpx'.tr();
+    }
+    if (lower == 'card' || lower.contains('credit') || lower.contains('debit') || lower.contains('visa') || lower.contains('mastercard') || lower.contains('kad')) {
+      return 'order_status.method_card'.tr();
+    }
+    if (lower == 'ngampay' || lower == 'wallet' || lower.contains('ngampay')) {
+      return 'order_status.method_ngampay'.tr();
+    }
+    if (lower == 'ewallet' || lower == 'e-wallet' || lower.contains('tng') || lower.contains('touch') || lower.contains('grabpay') || lower.contains('boost') || lower.contains('shopeepay')) {
+      return trimmed.contains(' ') ? trimmed : 'order_status.method_ewallet'.tr();
+    }
+    if (lower == 'cash' || lower == 'tunai' || lower == 'counter' || lower.contains('cash') || lower.contains('tunai')) {
+      return 'order_status.method_cash'.tr();
+    }
+    return trimmed;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -102,6 +134,9 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
     _totalAmount = widget.totalAmount;
     _shopId = widget.shopId;
     _fulfillmentLabel = widget.fulfillmentType;
+    if (widget.paymentMethod != null && widget.paymentMethod!.trim().isNotEmpty) {
+      _paymentMethod = widget.paymentMethod!.trim();
+    }
     if (widget.items.isNotEmpty) {
       _loadedItems = widget.items.map((it) => _normalizeItem(it)).toList();
       _subtotal = _loadedItems.fold(0.0, (acc, it) => acc + ((it['price'] as num?)?.toDouble() ?? 0.0));
@@ -127,7 +162,10 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
           if (res != null) {
             _status = res['status']?.toString().toLowerCase() ?? 'pending';
             _paymentStatus = res['payment_status']?.toString().toLowerCase() ?? 'paid';
-            _paymentMethod = res['payment_method']?.toString().toLowerCase() ?? 'online';
+            final dbMethod = res['payment_method']?.toString().trim() ?? '';
+            if (dbMethod.isNotEmpty) {
+              _paymentMethod = dbMethod;
+            }
             _totalAmount = (res['total'] as num?)?.toDouble() ?? _totalAmount;
             _notes = res['notes']?.toString();
             _shopId = res['business_id']?.toString() ?? _shopId;
@@ -791,7 +829,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
         customerPhone: _customerPhone,
         orderCreatedAt: _orderCreatedAt ?? DateTime.now(),
         paymentTime: _orderPaidAt,
-        paymentMethod: _paymentMethod,
+        paymentMethod: _formatPaymentMethod(_paymentMethod),
         paymentStatus: _paymentStatus,
         fulfillmentType: _fulfillmentLabel,
         pickupTime: widget.pickupTime ?? _bookingTime,
@@ -1531,10 +1569,12 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                             _detailRow(
                               'order_status.payment_status_label'.tr(),
                               _paymentStatus == 'paid'
-                                  ? 'order_status.payment_paid'.tr(args: [_paymentMethod.toUpperCase()])
+                                  ? 'order_status.payment_paid'.tr()
                                   : (_paymentStatus == 'refund_pending'
                                       ? 'order_status.payment_refund_pending'.tr()
-                                      : 'order_status.payment_unpaid'.tr(args: [_paymentMethod.toUpperCase()])),
+                                      : (_paymentStatus == 'refunded'
+                                          ? 'order_status.payment_refunded'.tr()
+                                          : 'order_status.payment_unpaid'.tr())),
                               isDark,
                               isSuccess: _paymentStatus == 'paid',
                             ),
@@ -1543,7 +1583,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                             // 5. Kaedah Bayaran
                             _detailRow(
                               'order_status.payment_method_label'.tr(),
-                              _paymentMethod.toUpperCase(),
+                              _formatPaymentMethod(_paymentMethod),
                               isDark,
                             ),
                             _divider(isDark),

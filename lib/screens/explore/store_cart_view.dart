@@ -1164,6 +1164,8 @@ class _StoreCartViewState extends State<StoreCartView> {
       if (!mounted) return;
       setState(() => _isProcessing = false);
 
+      String resolvedPaymentMethod = _selectedPaymentMethod;
+
       // Jika Bayar di Kaunter (Tunai), terus hantar pesanan ke kedai tanpa buka modal pembayaran kedua!
       if (_selectedPaymentMethod != 'cash' && _total > 0) {
         final bool paid = await CustomerPaymentModal.show(
@@ -1185,12 +1187,25 @@ class _StoreCartViewState extends State<StoreCartView> {
           discountAmount: (_voucherApplied && _discountAmount > 0) ? _discountAmount : null,
           initialMethod: _selectedPaymentMethod,
           onPaymentSuccess: (method, txRef) async {
+            if (method.trim().isNotEmpty) {
+              resolvedPaymentMethod = method.trim();
+            }
             try {
               await Supabase.instance.client
                   .from('orders')
-                  .update({'payment_status': 'paid'})
+                  .update({
+                    'payment_status': 'paid',
+                    'payment_method': resolvedPaymentMethod,
+                  })
                   .eq('id', orderId);
-            } catch (_) {}
+            } catch (_) {
+              try {
+                await Supabase.instance.client
+                    .from('orders')
+                    .update({'payment_status': 'paid'})
+                    .eq('id', orderId);
+              } catch (_) {}
+            }
           },
         );
 
@@ -1212,9 +1227,19 @@ class _StoreCartViewState extends State<StoreCartView> {
         try {
           await Supabase.instance.client
               .from('orders')
-              .update({'payment_status': 'paid'})
+              .update({
+                'payment_status': 'paid',
+                'payment_method': resolvedPaymentMethod,
+              })
               .eq('id', orderId);
-        } catch (_) {}
+        } catch (_) {
+          try {
+            await Supabase.instance.client
+                .from('orders')
+                .update({'payment_status': 'paid'})
+                .eq('id', orderId);
+          } catch (_) {}
+        }
       }
 
       // Rekod penebusan baucar supaya kuota tidak boleh diguna tanpa had
@@ -1261,6 +1286,7 @@ class _StoreCartViewState extends State<StoreCartView> {
             orderId: orderId,
             shopName: _shopName,
             totalAmount: _total,
+            paymentMethod: resolvedPaymentMethod,
             pickupTime: (_fulfillmentMode == 2 || _fulfillmentMode == 3)
                 ? '$_selectedPickupDate, $_selectedPickupTime'
                 : (_fulfillmentMode == 1

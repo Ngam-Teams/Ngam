@@ -1,6 +1,6 @@
 {
-  "version": "1.0.76",
-  "build_number": 49,
-  "released_at": "2026-11-23T10:15:40Z",
-  "changelog": "Kemas kini metadata Google Search Site Name (WebSite JSON-LD, og:site_name & application-name) supaya hasil carian memaparkan 'Ngam'."
+  "version": "1.0.77",
+  "build_number": 50,
+  "released_at": "2026-11-23T10:21:00Z",
+  "changelog": "Status bayaran pada resit pesanan kini lebih kemas (tanpa label ONLINE dalam kurungan) dan Kaedah Bayaran memaparkan kaedah khusus seperti DuitNow QR, FPX/Kad atau Tunai."
 }
