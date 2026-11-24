@@ -890,8 +890,8 @@ class _BookingsViewState extends State<BookingsView> {
       "badge": "DISYORKAN",
     },
     {
-      "name": "Perbankan FPX & Kad Debit / Kredit",
-      "subtitle": "Maybank2u, CIMB Clicks, Bank Islam, Visa & Mastercard (CHIP Asia)",
+      "name": "DuitNow Online Banking & Kad",
+      "subtitle": "Maybank2u, CIMB Clicks, Bank Islam, Visa & Mastercard",
       "icon": HugeIcons.strokeRoundedCreditCard,
       "type": "fpx_card",
     },

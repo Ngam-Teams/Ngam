@@ -10,6 +10,7 @@ import '../../services/chip_payment_service.dart';
 import '../../services/store_cart_service.dart';
 import '../../utils/glass_toast.dart';
 import '../../utils/ngam_ref.dart';
+import '../../utils/payment_method_formatter.dart';
 import 'ereceipt_screen.dart';
 
 class PaymentResultScreen extends StatefulWidget {
@@ -475,7 +476,16 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
                           const SizedBox(height: 12),
                           _buildReceiptRow('payment_result.date_time'.tr(), nowStr, dark),
                           const SizedBox(height: 12),
-                          _buildReceiptRow('payment_result.payment_method'.tr(), 'CHIP DuitNow QR / FPX', dark),
+                          _buildReceiptRow(
+                            'payment_result.payment_method'.tr(),
+                            PaymentMethodFormatter.format(
+                              _orderData?['payment_method']?.toString() ??
+                                  (_orderData?['booking_metadata'] is Map
+                                      ? (_orderData!['booking_metadata'] as Map)['payment_method']?.toString()
+                                      : null),
+                            ),
+                            dark,
+                          ),
 
                           if (totalAmount != null) ...[
                             const Divider(height: 28),

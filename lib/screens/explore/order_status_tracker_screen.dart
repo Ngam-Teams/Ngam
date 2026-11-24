@@ -14,6 +14,7 @@ import '../../services/chat_service.dart';
 import '../../services/dispute_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/ngam_ref.dart';
+import '../../utils/payment_method_formatter.dart';
 import '../../widgets/customer_payment_modal.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../../widgets/glass_toast.dart';
@@ -133,33 +134,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
   }
 
   String _formatPaymentMethod(String raw) {
-    final trimmed = raw.trim();
-    final lower = trimmed.toLowerCase();
-    if (lower.isEmpty || lower == 'online' || lower == 'chip' || lower == 'chip_asia') {
-      return 'order_status.method_online_fallback'.tr();
-    }
-    if (lower == 'duitnow' || lower == 'duitnow_qr' || (lower.contains('duitnow') && !lower.contains('fpx'))) {
-      return 'order_status.method_duitnow'.tr();
-    }
-    if (lower == 'fpx_card' || (lower.contains('fpx') && (lower.contains('card') || lower.contains('kad')))) {
-      return 'order_status.method_fpx_card'.tr();
-    }
-    if (lower == 'fpx' || lower == 'online_banking' || lower.contains('fpx')) {
-      return 'order_status.method_fpx'.tr();
-    }
-    if (lower == 'card' || lower.contains('credit') || lower.contains('debit') || lower.contains('visa') || lower.contains('mastercard') || lower.contains('kad')) {
-      return 'order_status.method_card'.tr();
-    }
-    if (lower == 'ngampay' || lower == 'wallet' || lower.contains('ngampay')) {
-      return 'order_status.method_ngampay'.tr();
-    }
-    if (lower == 'ewallet' || lower == 'e-wallet' || lower.contains('tng') || lower.contains('touch') || lower.contains('grabpay') || lower.contains('boost') || lower.contains('shopeepay')) {
-      return trimmed.contains(' ') ? trimmed : 'order_status.method_ewallet'.tr();
-    }
-    if (lower == 'cash' || lower == 'tunai' || lower == 'counter' || lower.contains('cash') || lower.contains('tunai')) {
-      return 'order_status.method_cash'.tr();
-    }
-    return trimmed;
+    return PaymentMethodFormatter.format(raw);
   }
 
   @override

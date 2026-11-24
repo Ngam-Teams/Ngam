@@ -182,6 +182,86 @@ async function resolveCanonicalReferenceId(
   return String(rawRef || fallbackOrderId || "").trim();
 }
 
+/**
+ * Normalizes raw CHIP-IN Asia / Razer Merchant Services payment_method tokens
+ * (such as `razer`, `razer_tng`, `fpx_b2b1`, `chip_online`) into clean canonical
+ * values (`duitnow_qr`, `duitnow_obw`, `visa`, `mastercard`, `card`, `tng`,
+ * `grabpay`, `shopeepay`, `boost`, `atome`, `online`) — never leaking `razer`.
+ */
+async function normalizeChipPaymentMethod(
+  chipData: Record<string, unknown> | null | undefined,
+  canonicalRefId?: string
+): Promise<string> {
+  const tx = (chipData?.transaction_data ?? {}) as Record<string, unknown>;
+  const extra = (tx?.extra ?? {}) as Record<string, unknown>;
+  const payment = (chipData?.payment ?? {}) as Record<string, unknown>;
+
+  const rawCandidates = [
+    extra.channel,
+    extra.payment_method,
+    extra.card_brand,
+    tx.payment_method,
+    payment.payment_type,
+    chipData?.payment_method,
+  ]
+    .map((v) => String(v || "").trim().toLowerCase())
+    .filter((v) => v.length > 0);
+
+  for (const cand of rawCandidates) {
+    if (
+      cand === "duitnow_qr" ||
+      cand === "duitnow" ||
+      cand === "razer_maybankqr" ||
+      cand === "maybankqr" ||
+      cand.includes("duitnow_qr") ||
+      cand.includes("duitnow qr")
+    ) {
+      return "duitnow_qr";
+    }
+    if (
+      cand === "fpx" ||
+      cand === "fpx_b2b1" ||
+      cand === "duitnow_obw" ||
+      cand === "online_banking" ||
+      cand.includes("fpx") ||
+      cand.includes("duitnow_obw")
+    ) {
+      return "duitnow_obw";
+    }
+    if (cand === "visa" || cand.includes("visa")) return "visa";
+    if (cand === "mastercard" || cand.includes("master")) return "mastercard";
+    if (cand === "card" || cand === "maestro" || cand.includes("card")) return "card";
+    if (cand === "razer_tng" || cand === "tng" || cand.includes("touch") || cand.includes("tng")) {
+      return "tng";
+    }
+    if (cand === "razer_grabpay" || cand === "grabpay" || cand.includes("grab")) return "grabpay";
+    if (cand === "razer_shopeepay" || cand === "shopeepay" || cand.includes("shopee")) {
+      return "shopeepay";
+    }
+    if (cand === "razer_boost" || cand === "boost" || cand.includes("boost")) return "boost";
+    if (cand === "razer_atome" || cand === "atome" || cand.includes("atome")) return "atome";
+  }
+
+  // If CHIP returned generic `razer` / `chip_online`, preserve what the customer
+  // originally picked on the order (`duitnow` -> `duitnow_qr`, `fpx_card` -> `duitnow_obw`).
+  if (canonicalRefId && UUID_REGEX.test(canonicalRefId)) {
+    try {
+      const { data: ord } = await supabase
+        .from("orders")
+        .select("payment_method")
+        .eq("id", canonicalRefId)
+        .maybeSingle();
+      const existing = String(ord?.payment_method || "").trim().toLowerCase();
+      if (existing === "duitnow" || existing === "duitnow_qr") return "duitnow_qr";
+      if (existing === "fpx_card" || existing === "fpx" || existing === "duitnow_obw") {
+        return "duitnow_obw";
+      }
+    } catch (_) {}
+  }
+
+  return "online";
+}
+
 serve(async (req: Request) => {
   // Handle CORS preflight for Flutter Web
   if (req.method === "OPTIONS") {
@@ -478,10 +558,7 @@ serve(async (req: Request) => {
                 String(existingChip.id || existingPurchaseId),
                 orderId
               );
-              const payMethod =
-                existingChip.transaction_data?.payment_method ||
-                existingChip.payment?.payment_type ||
-                "chip_online";
+              const payMethod = await normalizeChipPaymentMethod(existingChip, refId);
               if (refId && existingTotal > 0) {
                 const { data: settleData } = await supabase.rpc("process_verified_chip_webhook", {
                   p_chip_purchase_id: String(existingChip.id || existingPurchaseId),
@@ -729,10 +806,7 @@ serve(async (req: Request) => {
           typeof chipData.purchase?.total === "number"
             ? Math.round(chipData.purchase.total)
             : 0;
-        const payMethod =
-          chipData.transaction_data?.payment_method ||
-          chipData.payment?.payment_type ||
-          "chip_online";
+        const payMethod = await normalizeChipPaymentMethod(chipData, refId);
 
         if (refId && paidCents > 0) {
           const { data: settleData, error: settleErr } = await supabase.rpc(
@@ -811,10 +885,7 @@ serve(async (req: Request) => {
           typeof statusData?.purchase?.total === "number"
             ? Math.round(statusData.purchase.total)
             : 0;
-        const payMethod =
-          statusData?.transaction_data?.payment_method ||
-          statusData?.payment?.payment_type ||
-          "chip_online";
+        const payMethod = await normalizeChipPaymentMethod(statusData, refId);
 
         if (refId && paidCents > 0) {
           const { data: settleData } = await supabase.rpc("process_verified_chip_webhook", {
@@ -896,11 +967,7 @@ serve(async (req: Request) => {
       typeof payload.purchase?.total === "number"
         ? Math.round(payload.purchase.total)
         : -1;
-    const paymentMethod: string =
-      payload.transaction_data?.payment_method ||
-      payload.payment?.payment_type ||
-      payload.payment_method ||
-      "chip_online";
+    const paymentMethod: string = await normalizeChipPaymentMethod(payload, targetId);
 
     if (!chipPurchaseId || !targetId) {
       return new Response(

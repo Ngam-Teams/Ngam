@@ -3053,10 +3053,10 @@ class _StoreCartViewState extends State<StoreCartView> {
           ),
           const SizedBox(height: 10),
 
-          // Option 2: FPX & Kad (Had Minima RM 10.00)
+          // Option 2: DuitNow Online Banking & Kad (Had Minima RM 10.00)
           _buildPaymentChoiceTile(
             value: 'fpx_card',
-            title: 'Perbankan FPX & Kad Debit/Kredit',
+            title: 'payment_modal.fpx_title'.tr(),
             subtitle: isFpxEligible
                 ? 'Maybank2u, CIMB, Bank Islam, RHB, Visa & Mastercard'
                 : 'cart.fpx_min_spend_subtitle'.tr(),

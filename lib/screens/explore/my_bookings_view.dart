@@ -4,6 +4,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../utils/business_industry_helper.dart';
 import '../../utils/ngam_ref.dart';
+import '../../utils/payment_method_formatter.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../../widgets/glass_toast.dart';
 import 'booking_ticket_screen.dart';
@@ -761,7 +762,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
     final bool isCancelled = status == 'cancelled';
     final List<Map<String, dynamic>> items = List<Map<String, dynamic>>.from(item['items'] ?? []);
     final String customerNote = item['customerNote']?.toString() ?? '';
-    final String payMethod = (item['paymentMethod']?.toString() ?? 'cash').toUpperCase();
+    final String payMethod = PaymentMethodFormatter.format(item['paymentMethod']?.toString());
     final String payStatus = (item['paymentStatus']?.toString() ?? 'paid').toLowerCase();
     final bool isPaid = payStatus == 'paid';
 

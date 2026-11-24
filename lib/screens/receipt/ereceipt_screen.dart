@@ -9,6 +9,7 @@ import '../../services/ereceipt_service.dart';
 import '../../services/receipt_pdf_service.dart';
 import '../../utils/glass_toast.dart';
 import '../../utils/ngam_ref.dart';
+import '../../utils/payment_method_formatter.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../explore/store_route_loader.dart';
 import 'my_receipts_screen.dart';
@@ -312,7 +313,7 @@ class _EreceiptScreenState extends State<EreceiptScreen> {
         shopName: (_receipt['shop_name'] ?? 'ereceipt.default_shop'.tr()).toString(),
         shopPhone: _receipt['shop_phone']?.toString(),
         shopAddress: _receipt['shop_address']?.toString(),
-        paymentMethod: (_receipt['payment_method'] ?? 'DuitNow QR').toString(),
+        paymentMethod: PaymentMethodFormatter.format(_receipt['payment_method']?.toString()),
         paymentStatus: (_receipt['payment_status'] ?? 'paid').toString(),
         orderCreatedAt: createdDt,
         paymentTime: dt,
@@ -365,7 +366,7 @@ class _EreceiptScreenState extends State<EreceiptScreen> {
 
     final shopName = (_receipt['shop_name'] ?? 'ereceipt.default_shop'.tr()).toString();
     final refNo = _resolveReceiptRef(_receipt);
-    final method = (_receipt['payment_method'] ?? 'DuitNow QR').toString();
+    final method = PaymentMethodFormatter.format(_receipt['payment_method']?.toString());
     final total = (_receipt['total'] as num?)?.toDouble() ?? 0.0;
     final items = (_receipt['items'] as List?)
             ?.map((e) => Map<String, dynamic>.from(e as Map))
