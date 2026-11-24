@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import '../../services/ereceipt_service.dart';
+import '../../utils/ngam_ref.dart';
 import '../../utils/qr_route_helper.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../explore/qr_scanner_screen.dart';
@@ -350,9 +351,17 @@ class _MyReceiptsScreenState extends State<MyReceiptsScreen> {
     Color textSecondary,
   ) {
     final shopName = (receipt['shop_name'] ?? 'ereceipt.default_shop'.tr()).toString();
-    final refNo = (receipt['ref'] ?? 'NG').toString();
-    final total = (receipt['total'] as num?)?.toDouble() ?? 0.0;
+    final rawRef = (receipt['ref'] ?? '').toString().trim().replaceAll('#', '');
+    final oid = (receipt['order_id'] ?? '').toString().trim();
+    final createdDt = DateTime.tryParse((receipt['created_at'] ?? receipt['date'] ?? '').toString());
     final isOnline = (receipt['source'] ?? '').toString() == 'online';
+    final isPos = (receipt['source'] ?? '').toString() == 'pos';
+    final refNo = NgamRef.isValid(rawRef)
+        ? rawRef.toUpperCase()
+        : (oid.isNotEmpty
+            ? (isPos ? NgamRef.pos(oid, createdDt) : NgamRef.order(oid, createdAt: createdDt))
+            : NgamRef.pos(rawRef.isNotEmpty ? rawRef : null, createdDt));
+    final total = (receipt['total'] as num?)?.toDouble() ?? 0.0;
     final claimed = receipt['points_claimed'] == true;
     final pts = (receipt['points_earned'] as num?)?.toInt() ??
         EreceiptService.computePoints(total);

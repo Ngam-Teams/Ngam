@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -7,6 +8,8 @@ import '../explore/business_store_view.dart';
 import '../explore/order_status_tracker_screen.dart';
 import '../../services/chip_payment_service.dart';
 import '../../services/store_cart_service.dart';
+import '../../utils/glass_toast.dart';
+import '../../utils/ngam_ref.dart';
 import 'ereceipt_screen.dart';
 
 class PaymentResultScreen extends StatefulWidget {
@@ -29,6 +32,7 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
   List<Map<String, dynamic>> _orderItems = [];
   String? _fulfillmentLabel;
   bool _verifiedPaidOverride = false;
+  bool _isBookingRecord = false;
 
   bool get isSuccess =>
       _verifiedPaidOverride ||
@@ -229,6 +233,7 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
         _businessData = bizRow;
         _orderItems = items;
         _fulfillmentLabel = parsedFulfillment;
+        _isBookingRecord = isBookingRecord;
       });
     }
   }
@@ -237,16 +242,31 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
+    final DateTime? orderCreatedDt = _orderData?['created_at'] != null
+        ? DateTime.tryParse(_orderData!['created_at'].toString())?.toLocal()
+        : null;
     final DateTime? orderDate = _orderData?['paid_at'] != null
         ? DateTime.tryParse(_orderData!['paid_at'].toString())?.toLocal()
-        : (_orderData?['created_at'] != null
-            ? DateTime.tryParse(_orderData!['created_at'].toString())?.toLocal()
-            : null);
+        : orderCreatedDt;
     final nowStr = DateFormat('dd MMM yyyy, hh:mm a').format(orderDate ?? DateTime.now());
 
     final totalAmount = (_orderData?['total'] as num?)?.toDouble();
     final shopName = _businessData?['business_name']?.toString() ?? 'Kedai Ngam';
-    final displayOrderId = widget.orderId?.isNotEmpty == true ? widget.orderId! : 'CHIP-TEST';
+    final rawRefId = (_orderData?['id']?.toString() ?? widget.orderId ?? '').trim();
+    final isPos = (_orderData?['source']?.toString().toLowerCase() == 'pos');
+    final metaBookingRef = (_orderData?['booking_metadata'] is Map)
+        ? ((_orderData!['booking_metadata'] as Map)['booking_id'] ??
+                (_orderData!['booking_metadata'] as Map)['short_ref'])
+            ?.toString()
+            .trim()
+        : null;
+    final String displayOrderId = (metaBookingRef != null && NgamRef.isValid(metaBookingRef))
+        ? metaBookingRef.toUpperCase()
+        : ((_isBookingRecord || NgamRef.isBookingReference(widget.orderId))
+            ? NgamRef.booking(rawRefId, orderCreatedDt)
+            : (isPos
+                ? NgamRef.pos(rawRefId, orderCreatedDt)
+                : NgamRef.order(rawRefId, createdAt: orderCreatedDt)));
 
     final Color statusColor = isSuccess
         ? const Color(0xFF10B981)
@@ -407,7 +427,49 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
                           ),
                           const Divider(height: 28),
 
-                          _buildReceiptRow('payment_result.order_id'.tr(), displayOrderId, dark),
+                          GestureDetector(
+                            onTap: () {
+                              Clipboard.setData(ClipboardData(text: displayOrderId));
+                              showGlassToast(
+                                context,
+                                'order_status.copy_ref_success'.tr(),
+                                icon: HugeIcons.strokeRoundedCopy01,
+                              );
+                            },
+                            behavior: HitTestBehavior.opaque,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'payment_result.order_id'.tr(),
+                                  style: TextStyle(
+                                    color: dark ? Colors.white54 : const Color(0xFF64748B),
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '#$displayOrderId',
+                                      style: const TextStyle(
+                                        color: Color(0xFF00E5FF),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.4,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    HugeIcon(
+                                      icon: HugeIcons.strokeRoundedCopy01,
+                                      color: dark ? Colors.white54 : const Color(0xFF64748B),
+                                      size: 14,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
                           const SizedBox(height: 12),
                           _buildReceiptRow('store.store_information'.tr(), shopName, dark),
                           const SizedBox(height: 12),

@@ -78,9 +78,25 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
   bool _isCancelling = false;
   bool _hasReviewed = false;
   bool _isDownloadingPdf = false;
+  bool _isBookingRecord = false;
+  bool _isPosOrder = false;
+  String? _explicitBookingRef;
   Timer? _paymentExpiryTimer;
   int _expiryRemainingSeconds = _paymentWindowSeconds;
   DisputeCase? _activeDispute;
+
+  String get _displayOrderRef {
+    if (_explicitBookingRef != null && NgamRef.isValid(_explicitBookingRef)) {
+      return _explicitBookingRef!.replaceAll('#', '').toUpperCase();
+    }
+    if (_isBookingRecord || NgamRef.isBookingReference(widget.orderId)) {
+      return NgamRef.booking(widget.orderId, _orderCreatedAt);
+    }
+    if (_isPosOrder) {
+      return NgamRef.pos(widget.orderId, _orderCreatedAt);
+    }
+    return NgamRef.order(widget.orderId, createdAt: _orderCreatedAt);
+  }
 
   bool get _isCashMethod {
     final m = _paymentMethod.trim().toLowerCase();
@@ -296,7 +312,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
     final bool paid = await CustomerPaymentModal.show(
       context: context,
       amount: _totalAmount,
-      orderTitle: 'Pesanan #${widget.orderId.length > 6 ? widget.orderId.substring(0, 6).toUpperCase() : widget.orderId} - $_shopName',
+      orderTitle: 'Pesanan #$_displayOrderRef - $_shopName',
       shopName: _shopName,
       orderId: widget.orderId,
       items: _loadedItems,
@@ -406,6 +422,8 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
       if (mounted) {
         setState(() {
           if (res != null) {
+            _isBookingRecord = false;
+            _isPosOrder = (res['source']?.toString().toLowerCase() == 'pos');
             _status = res['status']?.toString().toLowerCase() ?? 'pending';
             _paymentStatus = res['payment_status']?.toString().toLowerCase() ?? 'paid';
             final dbMethod = res['payment_method']?.toString().trim() ?? '';
@@ -574,6 +592,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
 
       if (bRes != null && mounted) {
         setState(() {
+          _isBookingRecord = true;
           _status = bRes!['status']?.toString().toLowerCase() ?? _status;
           _totalAmount = (bRes['total_price'] as num?)?.toDouble() ?? _totalAmount;
           _shopId = bRes['business_id']?.toString() ?? _shopId;
@@ -591,6 +610,10 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
           }
 
           final meta = bRes['booking_metadata'] as Map<String, dynamic>? ?? {};
+          final rawMetaRef = (meta['booking_id'] ?? meta['short_ref'])?.toString().trim();
+          if (rawMetaRef != null && NgamRef.isValid(rawMetaRef)) {
+            _explicitBookingRef = rawMetaRef.toUpperCase();
+          }
           if (meta['payment_status'] != null) {
             _paymentStatus = meta['payment_status'].toString().toLowerCase();
           }
@@ -686,9 +709,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
     } else if (!phone.startsWith('60') && phone.length >= 9) {
       phone = '60$phone';
     }
-    final shortId = widget.orderId.length > 8
-        ? widget.orderId.substring(0, 8).toUpperCase()
-        : widget.orderId.toUpperCase();
+    final shortId = _displayOrderRef;
     final msg = Uri.encodeComponent(
       'Hai $_shopName, saya ingin bertanya tentang pesanan saya #$shortId (RM ${_totalAmount.toStringAsFixed(2)}).',
     );
@@ -1318,7 +1339,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
 
     try {
       await ReceiptPdfService.downloadReceiptPdf(
-        orderId: widget.orderId,
+        orderId: _displayOrderRef,
         shopName: _shopName,
         shopPhone: _shopPhone,
         shopAddress: _shopAddress,
@@ -1449,9 +1470,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final currency = NumberFormat.currency(locale: 'ms_MY', symbol: 'RM ');
 
-    final String displayOrderNum = (_isBookingRecord || NgamRef.isBookingReference(widget.orderId))
-        ? NgamRef.booking(widget.orderId, _orderCreatedAt)
-        : NgamRef.order(widget.orderId, createdAt: _orderCreatedAt);
+    final String displayOrderNum = _displayOrderRef;
 
     return PopScope(
       canPop: false,
@@ -1839,12 +1858,12 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                                 ),
                                 const SizedBox(height: 14),
                                 GestureDetector(
-                                  onTap: () => _copyOrderRef(widget.orderId),
+                                  onTap: () => _copyOrderRef(displayOrderNum),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Text(
-                                        'ID: #${widget.orderId.length > 12 ? widget.orderId.substring(0, 12).toUpperCase() : widget.orderId.toUpperCase()}',
+                                        'ID: #$displayOrderNum',
                                         style: TextStyle(
                                           fontSize: 11,
                                           color: isDark ? Colors.white54 : Colors.black54,

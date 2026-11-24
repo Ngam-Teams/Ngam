@@ -29,6 +29,7 @@ import '../explore/order_status_tracker_screen.dart';
 import '../explore/product_detail_screen.dart';
 import '../explore/qr_scanner_screen.dart';
 import '../shared/voucher_screen.dart';
+import '../../utils/ngam_ref.dart';
 import '../../utils/qr_route_helper.dart';
 
 // =============================================================================
@@ -1729,7 +1730,11 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
         final String orderId = latest['id']?.toString() ?? '';
         final String status = (latest['status']?.toString() ?? 'pending').toLowerCase();
         final double total = (latest['total'] as num?)?.toDouble() ?? 0.0;
-        final String shortId = orderId.length > 6 ? orderId.substring(0, 6).toUpperCase() : orderId.toUpperCase();
+        final createdDt = DateTime.tryParse((latest['created_at'] ?? '').toString());
+        final bool isPos = (latest['source']?.toString().toLowerCase() == 'pos');
+        final String shortId = isPos
+            ? NgamRef.pos(orderId, createdDt)
+            : NgamRef.order(orderId, createdAt: createdDt);
 
         final String statusLabel = status == 'ready'
             ? 'customer.order_status_ready'.tr()

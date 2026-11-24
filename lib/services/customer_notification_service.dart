@@ -10,6 +10,7 @@ import '../screens/explore/my_bookings_view.dart';
 import '../screens/shared/chat_screen.dart';
 import 'notification_bridge.dart';
 import 'push_service.dart';
+import '../utils/ngam_ref.dart';
 
 // =============================================================================
 // CustomerNotificationService
@@ -120,8 +121,14 @@ class CustomerNotificationService {
   void _onOrderStatusChanged(Map<String, dynamic> order) {
     final orderId = order['id']?.toString() ?? '';
     final status = order['status']?.toString().toLowerCase() ?? '';
-    final orderNum = order['order_number']?.toString() ??
-        (orderId.length > 6 ? orderId.substring(0, 6) : orderId);
+    final createdDt = DateTime.tryParse((order['created_at'] ?? '').toString());
+    final rawNum = order['order_number']?.toString();
+    final isPos = (order['source'] ?? '').toString().toLowerCase() == 'pos';
+    final orderNum = (rawNum != null && NgamRef.isValid(rawNum))
+        ? rawNum.toUpperCase()
+        : (isPos
+            ? NgamRef.pos(orderId, createdDt)
+            : NgamRef.order(orderId, createdAt: createdDt));
 
     if (orderId.isEmpty || status.isEmpty) return;
 

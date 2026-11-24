@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -44,6 +45,31 @@ class _EreceiptScreenState extends State<EreceiptScreen> {
     _initReceipt();
   }
 
+  String _resolveReceiptRef(Map<String, dynamic> r) {
+    final existingRef = (r['ref'] ?? '').toString().trim().replaceAll('#', '');
+    if (NgamRef.isValid(existingRef)) {
+      return existingRef.toUpperCase();
+    }
+    final oid = (r['order_id'] ?? widget.orderId ?? '').toString().trim();
+    final createdDt = DateTime.tryParse((r['created_at'] ?? r['date'] ?? '').toString());
+    final src = (r['source'] ?? '').toString().toLowerCase();
+    if (oid.isNotEmpty) {
+      if (NgamRef.isBookingReference(oid)) {
+        return NgamRef.booking(oid, createdDt);
+      }
+      if (src == 'pos') {
+        return NgamRef.pos(oid, createdDt);
+      }
+      return NgamRef.order(oid, createdAt: createdDt);
+    }
+    if (existingRef.isNotEmpty) {
+      return src == 'online'
+          ? NgamRef.order(existingRef, createdAt: createdDt)
+          : NgamRef.pos(existingRef, createdDt);
+    }
+    return NgamRef.pos(null, createdDt);
+  }
+
   Future<void> _initReceipt() async {
     await EreceiptService.init();
 
@@ -79,6 +105,7 @@ class _EreceiptScreenState extends State<EreceiptScreen> {
           'items': base['items'],
       };
     }
+    base['ref'] = _resolveReceiptRef(base);
 
     _receipt = base;
     _refreshClaimState();
@@ -137,7 +164,16 @@ class _EreceiptScreenState extends State<EreceiptScreen> {
             }
           } catch (_) {}
 
+          final createdDt = DateTime.tryParse((orderRes['created_at'] ?? '').toString());
+          final isPos = (orderRes['source'] ?? '').toString().toLowerCase() == 'pos';
+          final resolvedRef = isPos
+              ? NgamRef.pos(oid, createdDt)
+              : NgamRef.order(oid, createdAt: createdDt);
+
           setState(() {
+            _receipt['ref'] = resolvedRef;
+            _receipt['created_at'] = orderRes['created_at'] ?? _receipt['created_at'];
+            _receipt['source'] = isPos ? 'pos' : (_receipt['source'] ?? 'online');
             _receipt['business_id'] = orderRes['business_id']?.toString() ?? _receipt['business_id'];
             if (biz != null) {
               _receipt['shop_name'] = biz['business_name'] ?? _receipt['shop_name'];
@@ -238,18 +274,23 @@ class _EreceiptScreenState extends State<EreceiptScreen> {
               ?.map((e) => Map<String, dynamic>.from(e as Map))
               .toList() ??
           <Map<String, dynamic>>[];
-      final dt = DateTime.tryParse((_receipt['date'] ?? '').toString())?.toLocal() ?? DateTime.now();
+      final createdDt = DateTime.tryParse(
+            (_receipt['created_at'] ?? _receipt['date'] ?? '').toString(),
+          )?.toLocal() ??
+          DateTime.now();
+      final dt = DateTime.tryParse((_receipt['date'] ?? '').toString())?.toLocal() ?? createdDt;
+      final resolvedRef = _resolveReceiptRef(_receipt);
       final tax = ((_receipt['tax'] as num?)?.toDouble() ?? 0.0) +
           ((_receipt['service_charge'] as num?)?.toDouble() ?? 0.0);
 
       await ReceiptPdfService.downloadReceiptPdf(
-        orderId: (_receipt['order_id'] ?? _receipt['ref'] ?? 'NGAM').toString(),
+        orderId: resolvedRef,
         shopName: (_receipt['shop_name'] ?? 'ereceipt.default_shop'.tr()).toString(),
         shopPhone: _receipt['shop_phone']?.toString(),
         shopAddress: _receipt['shop_address']?.toString(),
         paymentMethod: (_receipt['payment_method'] ?? 'DuitNow QR').toString(),
         paymentStatus: (_receipt['payment_status'] ?? 'paid').toString(),
-        orderCreatedAt: dt,
+        orderCreatedAt: createdDt,
         paymentTime: dt,
         tableNumber: _receipt['table_number']?.toString(),
         notes: _receipt['notes']?.toString(),
@@ -299,7 +340,7 @@ class _EreceiptScreenState extends State<EreceiptScreen> {
     final textSecondary = isDark ? Colors.white60 : const Color(0xFF64748B);
 
     final shopName = (_receipt['shop_name'] ?? 'ereceipt.default_shop'.tr()).toString();
-    final refNo = (_receipt['ref'] ?? 'NG-4029').toString();
+    final refNo = _resolveReceiptRef(_receipt);
     final method = (_receipt['payment_method'] ?? 'DuitNow QR').toString();
     final total = (_receipt['total'] as num?)?.toDouble() ?? 0.0;
     final items = (_receipt['items'] as List?)
@@ -557,11 +598,45 @@ class _EreceiptScreenState extends State<EreceiptScreen> {
                                     Divider(height: 28, color: borderColor),
 
                                     // Reference & Date Meta Rows
-                                    _buildMetaRow(
-                                      'ereceipt.receipt_no_label'.tr(),
-                                      '#$refNo',
-                                      textSecondary,
-                                      textPrimary,
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'ereceipt.receipt_no_label'.tr(),
+                                          style: TextStyle(color: textSecondary, fontSize: 12.5),
+                                        ),
+                                        GestureDetector(
+                                          onTap: () {
+                                            Clipboard.setData(ClipboardData(text: refNo));
+                                            showGlassToast(
+                                              context,
+                                              'order_status.copy_ref_success'.tr(),
+                                              icon: HugeIcons.strokeRoundedCopy01,
+                                            );
+                                          },
+                                          behavior: HitTestBehavior.opaque,
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                '#$refNo',
+                                                style: TextStyle(
+                                                  color: const Color(0xFF00E5FF),
+                                                  fontSize: 12.5,
+                                                  fontWeight: FontWeight.w800,
+                                                  letterSpacing: 0.4,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              HugeIcon(
+                                                icon: HugeIcons.strokeRoundedCopy01,
+                                                color: textSecondary,
+                                                size: 14,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                     const SizedBox(height: 8),
                                     _buildMetaRow(

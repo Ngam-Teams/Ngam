@@ -907,8 +907,10 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal>
                                   return;
                                 }
                                 if (_selectedMethod == 'cash') {
-                                  final shortId = widget.orderId.length > 8 ? widget.orderId.substring(0, 8).toUpperCase() : widget.orderId.toUpperCase();
-                                  _handleSuccessPayment('cash', 'CASH-$shortId');
+                                  final formattedRef = NgamRef.isBookingReference(widget.orderId)
+                                      ? NgamRef.booking(widget.orderId)
+                                      : NgamRef.order(widget.orderId);
+                                  _handleSuccessPayment('cash', formattedRef);
                                 } else {
                                   _startGatewayFlow();
                                 }
@@ -1426,14 +1428,17 @@ class _CustomerPaymentModalState extends State<CustomerPaymentModal>
                                 final thanksStr = 'payment_modal.receipt_thanks'.tr();
                                 final storeStr = 'payment_modal.store'.tr();
 
+                                final formattedRef = NgamRef.isBookingReference(widget.orderId)
+                                    ? NgamRef.booking(widget.orderId)
+                                    : NgamRef.order(widget.orderId);
                                 final receiptStr = '''
 ========================================
          $receiptTitle          
 ========================================
 $storeStr   : ${widget.shopName}
-$receiptOrder : #${widget.orderId}
+$receiptOrder : #$formattedRef
 $receiptAmount  : ${currencyFormat.format(widget.amount)}
-$receiptRef : $_transactionRef
+$receiptRef : ${_transactionRef.isNotEmpty ? _transactionRef : formattedRef}
 $receiptStatus  : $statusStr
 $receiptDate  : ${DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now())}
 ========================================
@@ -1442,7 +1447,7 @@ $thanksStr
                                 Clipboard.setData(ClipboardData(text: receiptStr));
                                 try {
                                   await ReceiptPdfService.downloadReceiptPdf(
-                                    orderId: widget.orderId,
+                                    orderId: formattedRef,
                                     shopName: widget.shopName,
                                     customerName: widget.customerName,
                                     customerPhone: widget.customerPhone,
@@ -1464,7 +1469,7 @@ $thanksStr
                                 } catch (_) {
                                   await saveAndDownloadText(
                                     textContent: receiptStr,
-                                    fileName: 'Resit_Ngam_${widget.orderId}.txt',
+                                    fileName: 'Resit_Ngam_$formattedRef.txt',
                                   );
                                   if (context.mounted) {
                                     showGlassToast(

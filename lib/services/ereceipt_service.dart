@@ -235,6 +235,15 @@ class EreceiptService {
           ? copy['claim_key'].toString()
           : buildClaimKey(copy);
       copy['claim_key'] = key;
+      final existingRef = (copy['ref'] ?? '').toString().trim().replaceAll('#', '');
+      if (!NgamRef.isValid(existingRef)) {
+        final oid = (copy['order_id'] ?? '').toString().trim();
+        final dt = DateTime.tryParse((copy['created_at'] ?? copy['date'] ?? '').toString());
+        final src = (copy['source'] ?? '').toString().toLowerCase();
+        copy['ref'] = oid.isNotEmpty
+            ? (src == 'pos' ? NgamRef.pos(oid, dt) : NgamRef.order(oid, createdAt: dt))
+            : NgamRef.pos(existingRef.isNotEmpty ? existingRef : null, dt);
+      }
       byKey[key] = copy;
     }
 
@@ -244,7 +253,7 @@ class EreceiptService {
         final rows = await Supabase.instance.client
             .from('orders')
             .select(
-              'id, business_id, total, subtotal, status, payment_status, payment_method, created_at, paid_at, notes, businesses(id, business_name, business_handle, business_logo_url, business_phone, address_line)',
+              'id, business_id, source, total, subtotal, status, payment_status, payment_method, created_at, paid_at, notes, businesses(id, business_name, business_handle, business_logo_url, business_phone, address_line)',
             )
             .eq('customer_id', user.id)
             .order('created_at', ascending: false)
@@ -290,11 +299,15 @@ class EreceiptService {
           final total = (r['total'] as num?)?.toDouble() ?? 0.0;
           final subtotal = (r['subtotal'] as num?)?.toDouble() ?? total;
           final createdDt = DateTime.tryParse((r['created_at'] ?? '').toString());
-          final shortRef = NgamRef.order(oid, createdAt: createdDt);
+          final isPos = (r['source'] ?? '').toString().toLowerCase() == 'pos';
+          final shortRef = isPos
+              ? NgamRef.pos(oid, createdDt)
+              : NgamRef.order(oid, createdAt: createdDt);
 
           final mapped = <String, dynamic>{
             'order_id': oid,
             'ref': shortRef,
+            'created_at': (r['created_at'] ?? '').toString(),
             'business_id': r['business_id']?.toString() ?? biz['id']?.toString() ?? '',
             'store_handle': (biz['business_handle'] ?? '').toString().replaceAll('@', ''),
             'shop_name': (biz['business_name'] ?? 'Peniaga Ngam').toString(),
@@ -312,7 +325,7 @@ class EreceiptService {
             'date': (r['paid_at'] ?? r['created_at'] ?? DateTime.now().toIso8601String()).toString(),
             'notes': r['notes']?.toString(),
             'items': itemsByOrder[oid] ?? <Map<String, dynamic>>[],
-            'source': 'online',
+            'source': isPos ? 'pos' : 'online',
           };
           final key = buildClaimKey(mapped);
           mapped['claim_key'] = key;

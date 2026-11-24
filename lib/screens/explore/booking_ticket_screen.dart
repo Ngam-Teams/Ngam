@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../widgets/glass_nav_button.dart';
 import 'dart:async'; //  Needed for Timer
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -11,6 +12,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/chat_service.dart';
 import '../../services/dispute_service.dart';
 import '../../utils/glass_toast.dart';
+import '../../utils/ngam_ref.dart';
 import '../shared/chat_screen.dart';
 import 'bookings_view.dart';
 import 'dispute_center_screen.dart';
@@ -757,11 +759,14 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
     }
 
     final String displayPrice = widget.totalPrice.startsWith('RM') ? widget.totalPrice : 'RM ${widget.totalPrice}';
+    final String displayRef = NgamRef.isValid(widget.bookingId)
+        ? widget.bookingId.replaceAll('#', '').toUpperCase()
+        : NgamRef.booking(_resolvedBookingDbId ?? widget.bookingDbId ?? widget.bookingId);
 
     final text = '''
 *NGAM — RESIT TEMPAHAN DIGITAL*
 --------------------------------
-*No. Tempahan:* ${widget.bookingId}
+*No. Tempahan:* #$displayRef
 *Kedai:* ${widget.shopName}
 *Kategori:* ${widget.category}
 *$itemType:* ${widget.providerName}
@@ -1008,7 +1013,56 @@ Disahkan melalui aplikasi *Ngam*.
                               const SizedBox(height: 12),
                               _buildDetailRow(l10n.ticketTime, widget.time, isDark),
                               const SizedBox(height: 12),
-                              _buildDetailRow(l10n.ticketBookingId, widget.bookingId, isDark),
+                              Builder(
+                                builder: (context) {
+                                  final displayRef = NgamRef.isValid(widget.bookingId)
+                                      ? widget.bookingId.replaceAll('#', '').toUpperCase()
+                                      : NgamRef.booking(_resolvedBookingDbId ?? widget.bookingDbId ?? widget.bookingId);
+                                  return GestureDetector(
+                                    onTap: () {
+                                      Clipboard.setData(ClipboardData(text: displayRef));
+                                      showGlassToast(
+                                        context,
+                                        'order_status.copy_ref_success'.tr(),
+                                        icon: HugeIcons.strokeRoundedCopy01,
+                                      );
+                                    },
+                                    behavior: HitTestBehavior.opaque,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          l10n.ticketBookingId,
+                                          style: TextStyle(
+                                            color: isDark ? Colors.white54 : Colors.black54,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              '#$displayRef',
+                                              style: const TextStyle(
+                                                color: Color(0xFF00E5FF),
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w800,
+                                                letterSpacing: 0.4,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            HugeIcon(
+                                              icon: HugeIcons.strokeRoundedCopy01,
+                                              color: isDark ? Colors.white54 : Colors.black54,
+                                              size: 14,
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
                               const SizedBox(height: 12),
                               _buildDetailRow(l10n.ticketTotalPaid, widget.totalPrice, isDark, isBold: true),
                               const SizedBox(height: 12),

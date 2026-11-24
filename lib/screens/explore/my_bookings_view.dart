@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../utils/business_industry_helper.dart';
+import '../../utils/ngam_ref.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../../widgets/glass_toast.dart';
 import 'booking_ticket_screen.dart';
@@ -367,12 +368,18 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                               final providerName = meta['provider_name'] ?? meta['staff_name'] ?? 'my_bookings.default_staff'.tr();
                               final specialRequest = meta['special_request'] ?? meta['notes'] ?? dbItem['notes']?.toString();
 
+                              final rawBookingMetaRef = (meta['booking_id'] ?? meta['short_ref'])?.toString().trim();
+                              final bookingCreatedDt = DateTime.tryParse(dbItem['created_at']?.toString() ?? '');
+                              final bookingDisplayRef = (rawBookingMetaRef != null && NgamRef.isValid(rawBookingMetaRef))
+                                  ? rawBookingMetaRef.toUpperCase()
+                                  : NgamRef.booking(dbItem['id']?.toString(), bookingCreatedDt);
+
                               return {
                                 'record_type': 'booking',
                                 'created_at': dbItem['created_at']?.toString() ?? '',
                                 'db_id': dbItem['id'],
                                 'shopId': bizId,
-                                'id': meta['booking_id'] ?? meta['short_ref'] ?? 'BK-0000',
+                                'id': bookingDisplayRef,
                                 'title': shopName,
                                 'serviceName': serviceName,
                                 'providerName': providerName,
@@ -479,15 +486,20 @@ class _MyBookingsViewState extends State<MyBookingsView> {
 
                               String formattedTime = '';
                               final createdStr = o['created_at']?.toString() ?? '';
+                              DateTime? orderCreatedDt;
                               if (createdStr.isNotEmpty) {
                                 try {
-                                  final dt = DateTime.parse(createdStr).toLocal();
-                                  formattedTime = DateFormat('d MMM, h:mm a').format(dt);
+                                  orderCreatedDt = DateTime.parse(createdStr).toLocal();
+                                  formattedTime = DateFormat('d MMM, h:mm a').format(orderCreatedDt);
                                 } catch (_) {}
                               }
 
                               final double totalVal = (o['total'] as num?)?.toDouble() ?? 0.0;
                               final String oid = (o['id']?.toString() ?? '').toLowerCase().trim();
+                              final bool isPos = (o['source']?.toString().toLowerCase() == 'pos');
+                              final String orderDisplayRef = isPos
+                                  ? NgamRef.pos(oid, orderCreatedDt)
+                                  : NgamRef.order(oid, createdAt: orderCreatedDt);
 
                               // Prioritize store logo url
                               final bizLogo = biz?['business_logo_url']?.toString().trim();
@@ -506,7 +518,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                                 'created_at': createdStr,
                                 'db_id': oid,
                                 'shopId': bizId,
-                                'id': oid.length > 8 ? oid.substring(0, 8).toUpperCase() : oid.toUpperCase(),
+                                'id': orderDisplayRef,
                                 'title': biz?['business_name']?.toString() ?? 'my_bookings.default_store'.tr(),
                                 'category': fulfillment,
                                 'img': shopImg,

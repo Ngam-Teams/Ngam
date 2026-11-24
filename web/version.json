@@ -1,6 +1,6 @@
 {
-  "version": "1.0.87",
-  "build_number": 60,
-  "released_at": "2026-11-23T17:11:00Z",
-  "changelog": "Tambah butang Lihat e-Resit pada skrin Butiran & Penjejakan Pesanan serta baiki paparan Jumlah Kecil pada e-Resit Digital."
+  "version": "1.0.88",
+  "build_number": 61,
+  "released_at": "2026-11-24T04:54:55Z",
+  "changelog": "Baiki ralat binaan & seragamkan sepenuhnya format no. rujukan baharu 14-aksara tanpa sempang (NO/NB/NP/NS/ND/NR/NW/NT) pada semua skrin, e-Resit, resit PDF, skrin keputusan bayaran, tiket tempahan serta butang salin (tiada lagi salinan UUID mentah)."
 }
