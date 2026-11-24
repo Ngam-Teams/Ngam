@@ -225,6 +225,15 @@ class EreceiptService {
     };
   }
 
+  static bool isReceiptEligibleForPoints(Map<String, dynamic> receipt) {
+    final total = (receipt['total'] as num?)?.toDouble() ?? 0.0;
+    if (total <= 0) return false;
+    final payStatus = (receipt['payment_status'] ?? 'paid').toString().toLowerCase();
+    final status = (receipt['status'] ?? '').toString().toLowerCase();
+    if (status == 'cancelled' || status == 'failed') return false;
+    return payStatus == 'paid' || status == 'completed';
+  }
+
   static Future<List<Map<String, dynamic>>> fetchMergedReceipts() async {
     await init();
     final Map<String, Map<String, dynamic>> byKey = {};
@@ -285,6 +294,9 @@ class EreceiptService {
           } catch (_) {}
         }
 
+        bool autoCreditedAny = false;
+        int addedPoints = 0;
+
         for (final raw in rows) {
           final r = Map<String, dynamic>.from(raw as Map);
           final status = (r['status'] ?? '').toString().toLowerCase();
@@ -322,6 +334,7 @@ class EreceiptService {
             'discount': 0.0,
             'payment_method': (r['payment_method'] ?? 'Online').toString(),
             'payment_status': payStatus.isNotEmpty ? payStatus : 'paid',
+            'status': status,
             'date': (r['paid_at'] ?? r['created_at'] ?? DateTime.now().toIso8601String()).toString(),
             'notes': r['notes']?.toString(),
             'items': itemsByOrder[oid] ?? <Map<String, dynamic>>[],
@@ -330,16 +343,36 @@ class EreceiptService {
           final key = buildClaimKey(mapped);
           mapped['claim_key'] = key;
 
-          if (byKey.containsKey(key)) {
-            final existing = byKey[key]!;
-            mapped['points_claimed'] = existing['points_claimed'] == true;
+          final existing = byKey[key];
+          if (existing != null && existing['points_claimed'] == true) {
+            mapped['points_claimed'] = true;
             mapped['points_earned'] = existing['points_earned'] ?? computePoints(total);
             mapped['claimed_at'] = existing['claimed_at'];
           } else {
-            mapped['points_claimed'] = false;
-            mapped['points_earned'] = computePoints(total);
+            // Auto-credit points for logged-in user's paid/completed orders
+            final pts = computePoints(total);
+            mapped['points_claimed'] = true;
+            mapped['points_earned'] = pts;
+            mapped['claimed_at'] = DateTime.now().toIso8601String();
+            mapped['saved_at'] = mapped['saved_at'] ?? DateTime.now().toIso8601String();
+            autoCreditedAny = true;
+            addedPoints += pts;
           }
           byKey[key] = mapped;
+        }
+
+        if (autoCreditedAny) {
+          final mergedList = byKey.values.toList()
+            ..sort((a, b) {
+              final da = DateTime.tryParse((a['claimed_at'] ?? a['date'] ?? '').toString()) ??
+                  DateTime.fromMillisecondsSinceEpoch(0);
+              final db = DateTime.tryParse((b['claimed_at'] ?? b['date'] ?? '').toString()) ??
+                  DateTime.fromMillisecondsSinceEpoch(0);
+              return db.compareTo(da);
+            });
+          savedReceiptsNotifier.value = mergedList;
+          totalPointsNotifier.value = totalPointsNotifier.value + addedPoints;
+          await _persist();
         }
       } catch (e) {
         debugPrint('[EreceiptService] Fetch Supabase orders error: $e');

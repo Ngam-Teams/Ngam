@@ -112,7 +112,10 @@ class _EreceiptScreenState extends State<EreceiptScreen> {
     if (mounted) setState(() => _isLoading = false);
 
     await _enrichFromSupabase();
+    await _autoClaimIfEligible();
   }
+
+  bool get _isEligibleForPoints => EreceiptService.isReceiptEligibleForPoints(_receipt);
 
   void _refreshClaimState() {
     final total = (_receipt['total'] as num?)?.toDouble() ?? 0.0;
@@ -123,6 +126,26 @@ class _EreceiptScreenState extends State<EreceiptScreen> {
     _pointsEarned = (savedMatch?['points_earned'] as num?)?.toInt() ??
         (_receipt['points_earned'] as num?)?.toInt() ??
         EreceiptService.computePoints(total);
+  }
+
+  Future<void> _autoClaimIfEligible() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null || _isClaimed || !_isEligibleForPoints) return;
+
+    final res = await EreceiptService.saveAndClaimReceipt(_receipt);
+    if (!mounted) return;
+    setState(() {
+      _receipt = Map<String, dynamic>.from(res['receipt'] as Map);
+      _isClaimed = true;
+      _pointsEarned = (res['pointsEarned'] as num?)?.toInt() ?? _pointsEarned;
+    });
+    if (res['alreadyClaimed'] != true) {
+      showGlassToast(
+        context,
+        'ereceipt.auto_claimed_toast'.tr(args: [_pointsEarned.toString()]),
+        icon: HugeIcons.strokeRoundedSparkles,
+      );
+    }
   }
 
   Future<void> _enrichFromSupabase() async {
@@ -188,6 +211,7 @@ class _EreceiptScreenState extends State<EreceiptScreen> {
             _receipt['subtotal'] = (orderRes['subtotal'] as num?)?.toDouble() ?? _receipt['subtotal'];
             _receipt['payment_method'] = orderRes['payment_method'] ?? _receipt['payment_method'];
             _receipt['payment_status'] = orderRes['payment_status'] ?? _receipt['payment_status'];
+            _receipt['status'] = orderRes['status'] ?? _receipt['status'];
             _receipt['date'] = orderRes['paid_at'] ?? orderRes['created_at'] ?? _receipt['date'];
             _receipt['notes'] = orderRes['notes'] ?? _receipt['notes'];
             if (items.isNotEmpty) _receipt['items'] = items;
@@ -431,9 +455,12 @@ class _EreceiptScreenState extends State<EreceiptScreen> {
                               ValueListenableBuilder<int>(
                                 valueListenable: EreceiptService.totalPointsNotifier,
                                 builder: (context, totalBalance, _) {
+                                  final isPending = !_isClaimed && !_isEligibleForPoints;
                                   final accent = _isClaimed
                                       ? const Color(0xFF10B981)
-                                      : const Color(0xFF3B82F6);
+                                      : (isPending
+                                          ? const Color(0xFFF59E0B)
+                                          : const Color(0xFF3B82F6));
                                   return Container(
                                     width: double.infinity,
                                     padding: const EdgeInsets.all(16),
@@ -464,7 +491,9 @@ class _EreceiptScreenState extends State<EreceiptScreen> {
                                             child: HugeIcon(
                                               icon: _isClaimed
                                                   ? HugeIcons.strokeRoundedCheckmarkCircle02
-                                                  : HugeIcons.strokeRoundedSparkles,
+                                                  : (isPending
+                                                      ? HugeIcons.strokeRoundedTime02
+                                                      : HugeIcons.strokeRoundedSparkles),
                                               color: accent,
                                               size: 22,
                                             ),
@@ -479,8 +508,11 @@ class _EreceiptScreenState extends State<EreceiptScreen> {
                                                 _isClaimed
                                                     ? 'ereceipt.points_claimed_title'
                                                         .tr(args: [_pointsEarned.toString()])
-                                                    : 'ereceipt.points_ready_title'
-                                                        .tr(args: [_pointsEarned.toString()]),
+                                                    : (isPending
+                                                        ? 'ereceipt.points_pending_title'
+                                                            .tr(args: [_pointsEarned.toString()])
+                                                        : 'ereceipt.points_ready_title'
+                                                            .tr(args: [_pointsEarned.toString()])),
                                                 style: GoogleFonts.outfit(
                                                   color: textPrimary,
                                                   fontSize: 15,
@@ -493,7 +525,9 @@ class _EreceiptScreenState extends State<EreceiptScreen> {
                                                     ? 'ereceipt.points_claimed_subtitle'.tr(
                                                         args: [totalBalance.toString()],
                                                       )
-                                                    : 'ereceipt.points_ready_subtitle'.tr(),
+                                                    : (isPending
+                                                        ? 'ereceipt.points_pending_subtitle'.tr()
+                                                        : 'ereceipt.points_ready_subtitle'.tr()),
                                                 style: TextStyle(
                                                   color: textSecondary,
                                                   fontSize: 12,
@@ -800,52 +834,54 @@ class _EreceiptScreenState extends State<EreceiptScreen> {
                               ),
                               const SizedBox(height: 18),
 
-                              // Primary Claim & Save Button
-                              SizedBox(
-                                width: double.infinity,
-                                height: 52,
-                                child: ElevatedButton.icon(
-                                  onPressed: _isClaiming ? null : _handleClaimAndSave,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: _isClaimed
-                                        ? const Color(0xFF10B981)
-                                        : const Color(0xFF2563EB),
-                                    foregroundColor: Colors.white,
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
+                              // Primary Claim & Save Button (auto-credited when logged in & paid; manual for guests)
+                              if (_isClaimed || _isEligibleForPoints) ...[
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 52,
+                                  child: ElevatedButton.icon(
+                                    onPressed: _isClaiming ? null : _handleClaimAndSave,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: _isClaimed
+                                          ? const Color(0xFF10B981)
+                                          : const Color(0xFF2563EB),
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
                                     ),
-                                  ),
-                                  icon: _isClaiming
-                                      ? const SizedBox(
-                                          width: 18,
-                                          height: 18,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
+                                    icon: _isClaiming
+                                        ? const SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : HugeIcon(
+                                            icon: _isClaimed
+                                                ? HugeIcons.strokeRoundedCheckmarkCircle02
+                                                : HugeIcons.strokeRoundedBookmarkAdd02,
                                             color: Colors.white,
+                                            size: 20,
                                           ),
-                                        )
-                                      : HugeIcon(
-                                          icon: _isClaimed
-                                              ? HugeIcons.strokeRoundedCheckmarkCircle02
-                                              : HugeIcons.strokeRoundedBookmarkAdd02,
-                                          color: Colors.white,
-                                          size: 20,
-                                        ),
-                                  label: Text(
-                                    _isClaimed
-                                        ? 'ereceipt.already_saved_btn'
-                                            .tr(args: [_pointsEarned.toString()])
-                                        : 'ereceipt.claim_save_btn'
-                                            .tr(args: [_pointsEarned.toString()]),
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
+                                    label: Text(
+                                      _isClaimed
+                                          ? 'ereceipt.already_saved_btn'
+                                              .tr(args: [_pointsEarned.toString()])
+                                          : 'ereceipt.claim_save_btn'
+                                              .tr(args: [_pointsEarned.toString()]),
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(height: 12),
+                                const SizedBox(height: 12),
+                              ],
 
                               // Secondary Action Row: Download PDF & Visit Store / My Receipts
                               Row(
