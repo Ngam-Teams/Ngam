@@ -24,6 +24,8 @@ enum BookingType {
   barber,
   dining,
   hospitality,
+  petHotel,
+  petService,
   automotive,
   health,
   facility,
@@ -80,20 +82,106 @@ class _BookingsViewState extends State<BookingsView> {
   String _generatedBookingId = "";
 
   late BookingType _bookingType;
+  bool get _isOvernightBooking =>
+      _bookingType == BookingType.hospitality || _bookingType == BookingType.petHotel;
   List<Map<String, String>> _staffs = [];
   final List<Map<String, String>> _dates = [];
   final List<String> _times = ["8:00", "9:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00", "19:00", "20:00"];
   List<Map<String, String>> _servicesList = [];
   List<Map<String, String>> _addonsList = [];
 
-  BookingType _detectBookingType([String? overrideCategory, String? overrideName]) {
+  BookingType _detectBookingType([
+    String? overrideCategory,
+    String? overrideName,
+    String? businessType,
+    String? categoryGroup,
+    String? bookingMode,
+  ]) {
     final cat = (overrideCategory ?? widget.category).toLowerCase().trim();
     final name = (overrideName ?? widget.shopName).toLowerCase().trim();
+    final bType = (businessType ?? '').toLowerCase().trim();
+    final cGroup = (categoryGroup ?? '').toLowerCase().trim();
+    final bMode = (bookingMode ?? '').toLowerCase().trim();
 
-    // 1. HOSPITALITY / HOTEL / RESORT / HOMESTAY / PENGINAPAN
+    // 0. 3-LAYER TAXONOMY PRIORITY (Exact business_type & category_group + booking_mode)
+    if (bType == 'pet_hotel' ||
+        (cGroup == 'pets' && bMode == 'overnight')) {
+      return BookingType.petHotel;
+    }
+    if (bType == 'pet_grooming' || bType == 'pet_clinic') {
+      return BookingType.petService;
+    }
+    if (bType == 'pet_cafe') {
+      return BookingType.dining;
+    }
+    if (bType == 'pet_shop') {
+      return BookingType.retail;
+    }
+    if (cGroup == 'stay' ||
+        bType == 'hotel' ||
+        bType == 'homestay' ||
+        bType == 'chalet' ||
+        bType == 'roomstay' ||
+        bType == 'resort' ||
+        bType == 'glamping' ||
+        bMode == 'overnight') {
+      return BookingType.hospitality;
+    }
+    if (bType == 'kedai_makan' || cGroup == 'fnb') {
+      return BookingType.dining;
+    }
+    if (bType == 'barbershop') {
+      return BookingType.barber;
+    }
+    if (cGroup == 'beauty') {
+      return BookingType.beauty;
+    }
+    if (cGroup == 'automotive') {
+      return BookingType.automotive;
+    }
+    if (cGroup == 'health') {
+      return BookingType.health;
+    }
+    if (cGroup == 'sports') {
+      return BookingType.facility;
+    }
+    if (cGroup == 'retail') {
+      return BookingType.retail;
+    }
+
+    // 0b. PET HOTEL / CAT BOARDING HEURISTIC (must check BEFORE generic 'hotel')
+    final combined = '$cat $name $bType $cGroup';
+    final hasPetWord = combined.contains('kucing') ||
+        combined.contains('cat ') ||
+        combined.endsWith('cat') ||
+        combined.contains('meow') ||
+        combined.contains('pet') ||
+        combined.contains('haiwan') ||
+        combined.contains('vet') ||
+        combined.contains('bulus');
+    if (hasPetWord) {
+      if (combined.contains('hotel') ||
+          combined.contains('asrama') ||
+          combined.contains('boarding') ||
+          combined.contains('inap') ||
+          combined.contains('stay')) {
+        return BookingType.petHotel;
+      }
+      if (combined.contains('groom') ||
+          combined.contains('mandi') ||
+          combined.contains('spa') ||
+          combined.contains('klinik') ||
+          combined.contains('clinic') ||
+          combined.contains('vet')) {
+        return BookingType.petService;
+      }
+    }
+
+    // 1. HOSPITALITY / HOTEL / RESORT / HOMESTAY / CHALET / ROOMSTAY / PENGINAPAN
     if (cat.contains('hotel') ||
         cat.contains('resort') ||
         cat.contains('homestay') ||
+        cat.contains('roomstay') ||
         cat.contains('chalet') ||
         cat.contains('motel') ||
         cat.contains('lodge') ||
@@ -110,6 +198,7 @@ class _BookingsViewState extends State<BookingsView> {
         name.contains('hotel') ||
         name.contains('resort') ||
         name.contains('homestay') ||
+        name.contains('roomstay') ||
         name.contains('chalet') ||
         name.contains('motel') ||
         name.contains('villa') ||
@@ -446,6 +535,61 @@ class _BookingsViewState extends State<BookingsView> {
         ];
         break;
 
+      case BookingType.petHotel:
+        _staffs = [
+          {
+            "name": "Standard Cat Cabin (1 Ekor)",
+            "specialty": "Bilik Berhawa Dingin, Litter Box & Air Bertapis",
+            "rating": "4.9",
+            "image": "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=400",
+          },
+          {
+            "name": "Deluxe Condo Suite (1-2 Ekor)",
+            "specialty": "Ruang 2 Tingkat, Cat Tree & Pemantauan Harian",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1573865526739-10659fec78a5?q=80&w=400",
+          },
+          {
+            "name": "VIP Private Family Room (2-4 Ekor)",
+            "specialty": "Bilik Persendirian Luas, CCTV & Sesi Bermain Harian",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1495360010541-f48722b34f7d?q=80&w=400",
+          },
+        ];
+        _servicesList = [
+          {"name": "Penginapan Standard Cat Cabin (1 Malam)", "price": "RM35", "time": "1440m"},
+          {"name": "Penginapan Deluxe Condo Suite (1 Malam)", "price": "RM55", "time": "1440m"},
+          {"name": "Penginapan VIP Private Room (1 Malam)", "price": "RM85", "time": "1440m"},
+        ];
+        _addonsList = [
+          {"name": "Basic Grooming & Mandian Wangi Sebelum Check-Out", "price": "+RM45", "time": "+60m"},
+          {"name": "Makanan Premium (Wet Food & Kibbles Harian)", "price": "+RM10", "time": "+0m"},
+          {"name": "Potong Kuku & Cuci Telinga", "price": "+RM15", "time": "+15m"},
+          {"name": "Update Video & Gambar Harian di WhatsApp", "price": "+RM0", "time": "+0m"},
+        ];
+        break;
+
+      case BookingType.petService:
+        _staffs = [
+          {
+            "name": "Mana-mana Groomer / Pakar Haiwan",
+            "specialty": "Slot Paling Pantas & Pengendalian Lembut",
+            "rating": "5.0",
+            "image": "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=400",
+          },
+        ];
+        _servicesList = [
+          {"name": "Basic Grooming (Mandi, Kering, Kuku & Telinga)", "price": "RM55", "time": "60m"},
+          {"name": "Medicated Bath (Rawatan Kutu / Fungus)", "price": "RM75", "time": "75m"},
+          {"name": "Full Grooming + Lion Cut / Styling", "price": "RM95", "time": "90m"},
+        ];
+        _addonsList = [
+          {"name": "De-shedding / Buang Bulu Mati", "price": "+RM20", "time": "+20m"},
+          {"name": "Syampu Anti-Kutu Premium", "price": "+RM15", "time": "+10m"},
+          {"name": "Potong Kuku & Cuci Telinga Tambahan", "price": "+RM12", "time": "+15m"},
+        ];
+        break;
+
       case BookingType.barber:
         _staffs = [
           {
@@ -775,7 +919,7 @@ class _BookingsViewState extends State<BookingsView> {
 
   double get _subtotal {
     double total = 0;
-    final int multiplier = _bookingType == BookingType.hospitality ? _nightsCount : 1;
+    final int multiplier = _isOvernightBooking ? _nightsCount : 1;
     for (int i in _selectedServices) {
       if (i >= 0 && i < _servicesList.length) {
         total += _parseMoney(_servicesList[i]["price"] ?? '') * multiplier;
@@ -815,6 +959,14 @@ class _BookingsViewState extends State<BookingsView> {
         if (_currentStep == 0) return "Pilih jenis bilik / suite:";
         if (_currentStep == 1) return "Pakej penginapan & tambahan:";
         return "Sahkan tempahan penginapan:";
+      case BookingType.petHotel:
+        if (_currentStep == 0) return "booking.pet_hotel_step_0".tr();
+        if (_currentStep == 1) return "booking.pet_hotel_step_1".tr();
+        return "booking.pet_hotel_step_2".tr();
+      case BookingType.petService:
+        if (_currentStep == 0) return "booking.pet_service_step_0".tr();
+        if (_currentStep == 1) return "booking.pet_service_step_1".tr();
+        return "booking.pet_service_step_2".tr();
       case BookingType.barber:
         if (_currentStep == 0) return "Pilih tukang gunting / barber:";
         if (_currentStep == 1) return "Pilih gaya potongan & rawatan:";
@@ -850,6 +1002,8 @@ class _BookingsViewState extends State<BookingsView> {
     switch (_bookingType) {
       case BookingType.dining: return "Pilihan Meja / Pakej Makan";
       case BookingType.hospitality: return "Pilihan Bilik & Pakej Penginapan";
+      case BookingType.petHotel: return "booking.pet_hotel_service_title".tr();
+      case BookingType.petService: return "booking.pet_service_service_title".tr();
       case BookingType.barber: return "Pakej Potongan & Penggayaan";
       case BookingType.automotive: return "Pakej Servis Kenderaan";
       case BookingType.health: return "Pilihan Rawatan & Konsultasi";
@@ -864,6 +1018,8 @@ class _BookingsViewState extends State<BookingsView> {
     switch (_bookingType) {
       case BookingType.dining: return "Permintaan & Kemudahan Khas";
       case BookingType.hospitality: return "Kemudahan & Fasiliti Tambahan";
+      case BookingType.petHotel: return "booking.pet_hotel_addons_title".tr();
+      case BookingType.petService: return "booking.pet_service_addons_title".tr();
       case BookingType.barber: return "Servis Tambahan & Rawatan";
       case BookingType.automotive: return "Servis Tambahan Pilihan";
       case BookingType.health: return "Ujian & Rawatan Lanjutan";
@@ -878,6 +1034,8 @@ class _BookingsViewState extends State<BookingsView> {
     switch (_bookingType) {
       case BookingType.dining: return "Alergi Makanan / Keperluan Diet Khas?";
       case BookingType.hospitality: return "Bilik Bebas Asap Rokok (Non-Smoking) / Aras Tinggi?";
+      case BookingType.petHotel: return "booking.pet_hotel_toggle_title".tr();
+      case BookingType.petService: return "booking.pet_service_toggle_title".tr();
       case BookingType.barber: return "Kulit Kepala Sensitif atau Alahan Sabun/Pewarna?";
       case BookingType.automotive: return "Kenderaan Saiz Besar (SUV / 4x4 / MPV)?";
       case BookingType.health: return "Alahan Ubat-ubatan (Drug Allergies)?";
@@ -892,6 +1050,8 @@ class _BookingsViewState extends State<BookingsView> {
     switch (_bookingType) {
       case BookingType.dining: return "Tandakan jika ada alahan kacang, makanan laut atau gluten";
       case BookingType.hospitality: return "Tandakan untuk mengutamakan bilik bebas bau rokok atau bilik aras tinggi";
+      case BookingType.petHotel: return "booking.pet_hotel_toggle_sub".tr();
+      case BookingType.petService: return "booking.pet_service_toggle_sub".tr();
       case BookingType.barber: return "Kulit sensitif terhadap sabun pencuci, minyak wangi atau pewarna rambut";
       case BookingType.automotive: return "Tandakan jika kenderaan anda memerlukan ruang bay besar";
       case BookingType.health: return "Tandakan jika ada alahan kepada sebarang jenis ubat";
@@ -906,6 +1066,8 @@ class _BookingsViewState extends State<BookingsView> {
     switch (_bookingType) {
       case BookingType.dining: return "Pilihan Meja";
       case BookingType.hospitality: return "Pilihan Bilik / Suite";
+      case BookingType.petHotel: return "booking.pet_hotel_provider_label".tr();
+      case BookingType.petService: return "booking.pet_service_provider_label".tr();
       case BookingType.barber: return "Pakar Barber";
       case BookingType.automotive: return "Stesen / Servis";
       case BookingType.health: return "Doktor / Pakar";
@@ -922,6 +1084,10 @@ class _BookingsViewState extends State<BookingsView> {
         return HugeIcons.strokeRoundedRestaurant01;
       case BookingType.hospitality:
         return HugeIcons.strokeRoundedBedDouble;
+      case BookingType.petHotel:
+        return HugeIcons.strokeRoundedHome01;
+      case BookingType.petService:
+        return HugeIcons.strokeRoundedSparkles;
       case BookingType.barber:
         return HugeIcons.strokeRoundedScissor;
       case BookingType.automotive:
@@ -958,7 +1124,7 @@ class _BookingsViewState extends State<BookingsView> {
         ? Map<String, dynamic>.from(b['booking_metadata'] as Map)
         : <String, dynamic>{};
 
-    if (_bookingType == BookingType.hospitality && bDate.isNotEmpty) {
+    if (_isOvernightBooking && bDate.isNotEmpty) {
       final startDt = DateTime.tryParse(targetDate);
       final bStartDt = DateTime.tryParse(bDate);
       if (startDt != null && bStartDt != null) {
@@ -986,7 +1152,7 @@ class _BookingsViewState extends State<BookingsView> {
 
     final int? slotMins = parseMins(timeStr);
     final int? bookedStartMins = parseMins(bTime);
-    if (_bookingType != BookingType.hospitality) {
+    if (!_isOvernightBooking) {
       if (slotMins == null || bookedStartMins == null) {
         if (bTime != timeStr) return false;
       } else {
@@ -1212,6 +1378,10 @@ class _BookingsViewState extends State<BookingsView> {
         return 'Cth: 4 Dewasa, 1 Kerusi Bayi / Meja tepi tingkap';
       case BookingType.hospitality:
         return 'Cth: Tiba lewat sekitar 8:00 PM / minta katil saiz King';
+      case BookingType.petHotel:
+        return 'booking.pet_hotel_notes_hint'.tr();
+      case BookingType.petService:
+        return 'booking.pet_service_notes_hint'.tr();
       case BookingType.barber:
         return 'Cth: Gaya Low Fade & kemaskan janggut';
       case BookingType.automotive:
@@ -1322,25 +1492,50 @@ class _BookingsViewState extends State<BookingsView> {
   }
 
   Future<void> _fetchMerchantLiveConfig() async {
+    String realIndustry = '';
+    String realName = widget.shopName;
+    String? realBusinessType;
+    String? realCategoryGroup;
+    String? realBookingMode;
+
     if (widget.shopId.isNotEmpty) {
-      // 0. Auto-heal: Query industry sebenar dari table businesses Supabase
+      // 0. Auto-heal: Query 3-layer taxonomy & industry sebenar dari table businesses Supabase
       try {
-        final biz = await Supabase.instance.client
-            .from('businesses')
-            .select('id, business_name, business_industry')
-            .eq('id', widget.shopId)
-            .maybeSingle();
+        Map<String, dynamic>? biz;
+        try {
+          biz = await Supabase.instance.client
+              .from('businesses')
+              .select('id, business_name, business_industry, category_group, business_type, booking_mode')
+              .eq('id', widget.shopId)
+              .maybeSingle();
+        } catch (_) {
+          // Fallback if 3-layer taxonomy SQL migration has not been applied yet
+          biz = await Supabase.instance.client
+              .from('businesses')
+              .select('id, business_name, business_industry')
+              .eq('id', widget.shopId)
+              .maybeSingle();
+        }
 
         if (biz != null) {
-          final realIndustry = biz['business_industry']?.toString() ?? '';
-          final realName = biz['business_name']?.toString() ?? widget.shopName;
+          realIndustry = biz['business_industry']?.toString() ?? '';
+          realName = biz['business_name']?.toString() ?? widget.shopName;
+          realBusinessType = biz['business_type']?.toString();
+          realCategoryGroup = biz['category_group']?.toString();
+          realBookingMode = biz['booking_mode']?.toString();
           if (realName.trim().isNotEmpty) {
             _shopName = realName.trim();
           }
           if (realIndustry.trim().isNotEmpty) {
             _shopCategory = realIndustry.trim();
           }
-          final detected = _detectBookingType(realIndustry, realName);
+          final detected = _detectBookingType(
+            realIndustry,
+            realName,
+            realBusinessType,
+            realCategoryGroup,
+            realBookingMode,
+          );
           if (detected != _bookingType) {
             _bookingType = detected;
             _initCategoryTemplate();
@@ -1352,7 +1547,7 @@ class _BookingsViewState extends State<BookingsView> {
       }
     }
 
-    // 1. Dapatkan waktu operasi sebenar dari business_settings
+    // 1. Dapatkan waktu operasi & backup taxonomy mirror dari business_settings
     try {
       final settings = await Supabase.instance.client
           .from('business_settings')
@@ -1362,6 +1557,26 @@ class _BookingsViewState extends State<BookingsView> {
 
       if (settings != null && settings['operating_hours'] is Map) {
         final opHours = settings['operating_hours'] as Map<String, dynamic>;
+        final opBizType = opHours['business_type']?.toString();
+        final opCatGroup = opHours['category_group']?.toString();
+        final opBookMode = opHours['booking_mode']?.toString();
+        if ((realBusinessType == null || realBusinessType.isEmpty) &&
+            opBizType != null &&
+            opBizType.isNotEmpty) {
+          final detected = _detectBookingType(
+            realIndustry,
+            realName,
+            opBizType,
+            realCategoryGroup ?? opCatGroup,
+            realBookingMode ?? opBookMode,
+          );
+          if (detected != _bookingType) {
+            _bookingType = detected;
+            _initCategoryTemplate();
+            if (mounted) setState(() {});
+          }
+        }
+
         final openStr = opHours['open_time'] as String?;
         final closeStr = opHours['close_time'] as String?;
 
@@ -1445,11 +1660,12 @@ class _BookingsViewState extends State<BookingsView> {
       debugPrint('Error fetching business_products in booking: $e');
     }
 
-    // 3. Dapatkan staf sebenar dari team_members (hanya jika jenis service/barber/health/automotive/beauty)
+    // 3. Dapatkan staf sebenar dari team_members (hanya jika jenis service/barber/health/automotive/beauty/petService)
     if (_bookingType == BookingType.service ||
         _bookingType == BookingType.barber ||
         _bookingType == BookingType.health ||
         _bookingType == BookingType.beauty ||
+        _bookingType == BookingType.petService ||
         _bookingType == BookingType.automotive) {
       try {
         final members = await Supabase.instance.client
@@ -2580,9 +2796,13 @@ class _BookingsViewState extends State<BookingsView> {
     String paymentStatus = chosenPaymentType == 'cash' ? 'unpaid' : 'pending';
     String transactionRef = '';
 
-    final DateTime? checkOutDate = _bookingType == BookingType.hospitality
+    final DateTime? checkOutDate = _isOvernightBooking
         ? DateTime.parse(_dates[_selectedDateIndex]['fullDate']!).add(Duration(days: _nightsCount))
         : null;
+
+    final String paxNoteText = _bookingType == BookingType.petHotel
+        ? 'booking.pets_unit'.tr(args: ['$_paxCount'])
+        : '$_paxCount Pax';
 
     Map<String, dynamic> buildMetadataPayload(String currentPayStatus, String currentRef) => {
       'short_ref': shortBookingId,
@@ -2607,23 +2827,23 @@ class _BookingsViewState extends State<BookingsView> {
       'category': widget.category,
       'booking_type': _bookingType.name,
       'pax': _paxCount,
-      if (_bookingType == BookingType.hospitality) 'nights_count': _nightsCount,
+      if (_isOvernightBooking) 'nights_count': _nightsCount,
       if (checkOutDate != null)
         'check_out_date':
             "${checkOutDate.year}-${checkOutDate.month.toString().padLeft(2, '0')}-${checkOutDate.day.toString().padLeft(2, '0')}",
       if (_industryDetailCtrl.text.trim().isNotEmpty) 'industry_detail': _industryDetailCtrl.text.trim(),
       'has_allergies_or_notes': _hasAllergies,
       'notes': [
-        if (_bookingType == BookingType.dining || _bookingType == BookingType.hospitality || _bookingType == BookingType.facility)
-          '$_paxCount Pax',
-        if (_bookingType == BookingType.hospitality) '$_nightsCount Malam',
+        if (_bookingType == BookingType.dining || _isOvernightBooking || _bookingType == BookingType.facility)
+          paxNoteText,
+        if (_isOvernightBooking) 'booking.nights_unit'.tr(args: ['$_nightsCount']),
         if (_industryDetailCtrl.text.trim().isNotEmpty) _industryDetailCtrl.text.trim(),
         if (combinedNotes.isNotEmpty) combinedNotes,
       ].join(' • ').isNotEmpty
           ? [
-              if (_bookingType == BookingType.dining || _bookingType == BookingType.hospitality || _bookingType == BookingType.facility)
-                '$_paxCount Pax',
-              if (_bookingType == BookingType.hospitality) '$_nightsCount Malam',
+              if (_bookingType == BookingType.dining || _isOvernightBooking || _bookingType == BookingType.facility)
+                paxNoteText,
+              if (_isOvernightBooking) 'booking.nights_unit'.tr(args: ['$_nightsCount']),
               if (_industryDetailCtrl.text.trim().isNotEmpty) _industryDetailCtrl.text.trim(),
               if (combinedNotes.isNotEmpty) combinedNotes,
             ].join(' • ')
@@ -3277,8 +3497,8 @@ class _BookingsViewState extends State<BookingsView> {
             },
           ),
 
-        // 5. Pax / Nights section for Hospitality, Dining & Facility
-        if (_bookingType == BookingType.hospitality ||
+        // 5. Pax / Pets & Nights section for Hospitality, Pet Hotel, Dining & Facility
+        if (_isOvernightBooking ||
             _bookingType == BookingType.dining ||
             _bookingType == BookingType.facility) ...[
           const SizedBox(height: 20),
@@ -3296,11 +3516,13 @@ class _BookingsViewState extends State<BookingsView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _bookingType == BookingType.hospitality
-                                ? 'booking.guests_hospitality'.tr()
-                                : (_bookingType == BookingType.dining
-                                    ? 'booking.guests_dining'.tr()
-                                    : 'booking.guests_facility'.tr()),
+                            _bookingType == BookingType.petHotel
+                                ? 'booking.guests_pet_hotel'.tr()
+                                : (_bookingType == BookingType.hospitality
+                                    ? 'booking.guests_hospitality'.tr()
+                                    : (_bookingType == BookingType.dining
+                                        ? 'booking.guests_dining'.tr()
+                                        : 'booking.guests_facility'.tr())),
                             style: TextStyle(
                               fontSize: 13.5,
                               fontWeight: FontWeight.w700,
@@ -3311,7 +3533,9 @@ class _BookingsViewState extends State<BookingsView> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'booking.guests_sub'.tr(),
+                            _bookingType == BookingType.petHotel
+                                ? 'booking.guests_pet_sub'.tr()
+                                : 'booking.guests_sub'.tr(),
                             style: TextStyle(
                               fontSize: 11,
                               color: isDark
@@ -3347,7 +3571,9 @@ class _BookingsViewState extends State<BookingsView> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Text(
-                            '$_paxCount Pax',
+                            _bookingType == BookingType.petHotel
+                                ? 'booking.pets_unit'.tr(args: ['$_paxCount'])
+                                : '$_paxCount Pax',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w900,
@@ -3379,7 +3605,7 @@ class _BookingsViewState extends State<BookingsView> {
                     ),
                   ],
                 ),
-                if (_bookingType == BookingType.hospitality) ...[
+                if (_isOvernightBooking) ...[
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Divider(
@@ -3704,8 +3930,7 @@ class _BookingsViewState extends State<BookingsView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ..._selectedServices.map((i) {
-                final int mult =
-                    _bookingType == BookingType.hospitality ? _nightsCount : 1;
+                final int mult = _isOvernightBooking ? _nightsCount : 1;
                 final double unitPrice =
                     _parseMoney(_servicesList[i]["price"]!);
                 final String title = mult > 1
@@ -3835,19 +4060,30 @@ class _BookingsViewState extends State<BookingsView> {
                 keyboardType: TextInputType.phone,
               ),
               if (_bookingType == BookingType.automotive ||
-                  _bookingType == BookingType.service) ...[
+                  _bookingType == BookingType.service ||
+                  _bookingType == BookingType.petHotel ||
+                  _bookingType == BookingType.petService) ...[
                 const SizedBox(height: 10),
                 _buildPremiumInput(
                   isDark: isDark,
-                  label: _bookingType == BookingType.automotive
-                      ? "booking.vehicle_label".tr()
-                      : "booking.address_label".tr(),
-                  hint: _bookingType == BookingType.automotive
-                      ? "booking.vehicle_hint".tr()
-                      : "booking.address_hint".tr(),
-                  icon: _bookingType == BookingType.automotive
-                      ? HugeIcons.strokeRoundedCar01
-                      : HugeIcons.strokeRoundedLocation01,
+                  label: (_bookingType == BookingType.petHotel ||
+                          _bookingType == BookingType.petService)
+                      ? "booking.pet_detail_label".tr()
+                      : (_bookingType == BookingType.automotive
+                          ? "booking.vehicle_label".tr()
+                          : "booking.address_label".tr()),
+                  hint: (_bookingType == BookingType.petHotel ||
+                          _bookingType == BookingType.petService)
+                      ? "booking.pet_detail_hint".tr()
+                      : (_bookingType == BookingType.automotive
+                          ? "booking.vehicle_hint".tr()
+                          : "booking.address_hint".tr()),
+                  icon: (_bookingType == BookingType.petHotel ||
+                          _bookingType == BookingType.petService)
+                      ? HugeIcons.strokeRoundedSparkles
+                      : (_bookingType == BookingType.automotive
+                          ? HugeIcons.strokeRoundedCar01
+                          : HugeIcons.strokeRoundedLocation01),
                   controller: _industryDetailCtrl,
                   keyboardType: TextInputType.text,
                 ),

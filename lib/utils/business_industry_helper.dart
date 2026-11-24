@@ -15,6 +15,7 @@ class BusinessIndustryHelper {
     'f&b',
     'food',
     'restaurant',
+    'kedai_makan',
     'cafe_bakery',
     'food_stall',
     'food_truck',
@@ -51,6 +52,14 @@ class BusinessIndustryHelper {
     'spa_massage',
     'nail_lash',
     'aesthetic_clinic',
+    'stay',
+    'hotel',
+    'homestay',
+    'chalet',
+    'roomstay',
+    'resort',
+    'glamping',
+    'hospitality',
     'automotive',
     'auto',
     'carwash',
@@ -98,8 +107,6 @@ class BusinessIndustryHelper {
     'gadget_repair',
     'coworking_space',
     'event_hall',
-    'hotel',
-    'hospitality',
   };
 
   static StoreOrderContext? _matchToken(String raw) {
@@ -145,7 +152,12 @@ class BusinessIndustryHelper {
         lower.contains('servis') ||
         lower.contains('service') ||
         lower.contains('hotel') ||
-        lower.contains('homestay')) {
+        lower.contains('homestay') ||
+        lower.contains('chalet') ||
+        lower.contains('roomstay') ||
+        lower.contains('resort') ||
+        lower.contains('glamping') ||
+        lower.contains('penginapan')) {
       return StoreOrderContext.service;
     }
 
@@ -202,42 +214,50 @@ class BusinessIndustryHelper {
 
   static StoreOrderContext resolve({
     String? granularType,
+    String? categoryGroup,
     String? industry,
     String? category,
     String? shopName,
     bool hasTableNumber = false,
   }) {
-    // 1. Most specific: granular business_type from business_settings.operating_hours
+    // 1. Most specific: granular business_type (3-layer Layer 2)
     if (granularType != null) {
       final matched = _matchToken(granularType);
       if (matched != null) return matched;
     }
 
-    // 2. Canonical businesses.business_industry
+    // 2. Category group (3-layer Layer 1)
+    if (categoryGroup != null) {
+      final matched = _matchToken(categoryGroup);
+      if (matched != null) return matched;
+    }
+
+    // 3. Canonical businesses.business_industry
     if (industry != null) {
       final matched = _matchToken(industry);
       if (matched != null) return matched;
     }
 
-    // 3. Passed shop category
+    // 4. Passed shop category
     if (category != null) {
       final matched = _matchToken(category);
       if (matched != null) return matched;
     }
 
-    // 4. Smart fallback from store name
+    // 5. Smart fallback from store name
     if (shopName != null) {
       final matched = _matchToken(shopName);
       if (matched != null) return matched;
     }
 
-    // 5. If opened from a table QR scan with unknown metadata, treat as F&B;
+    // 6. If opened from a table QR scan with unknown metadata, treat as F&B;
     // otherwise default to retail/self-pickup so we never show Dine-In / Bungkus erroneously.
     return hasTableNumber ? StoreOrderContext.fnb : StoreOrderContext.retail;
   }
 
   static bool isFnb({
     String? granularType,
+    String? categoryGroup,
     String? industry,
     String? category,
     String? shopName,
@@ -245,6 +265,7 @@ class BusinessIndustryHelper {
   }) {
     return resolve(
           granularType: granularType,
+          categoryGroup: categoryGroup,
           industry: industry,
           category: category,
           shopName: shopName,

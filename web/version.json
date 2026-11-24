@@ -1,6 +1,6 @@
 {
-  "version": "1.0.89",
-  "build_number": 62,
-  "released_at": "2026-11-24T05:11:53Z",
-  "changelog": "Poin Ngam kini dikreditkan secara automatik untuk semua pesanan berbayar & imbasan e-Resit POS bagi pengguna berdaftar (butang tebus manual hanya untuk tetamu/belum log masuk)."
+  "version": "1.0.90",
+  "build_number": 63,
+  "released_at": "2026-11-24T05:17:31Z",
+  "changelog": "Sokongan seni bina 3-Lapisan Perniagaan (Penginapan: Hotel, Homestay, Chalet, Roomstay, Resort, Glamping + Kedai Makan) serta sokongan penuh Hotel Kucing & Servis Haiwan pada enjin tempahan bermalam (bilangan ekor, malam, tarikh check-out & butiran kucing/vaksin)."
 }
