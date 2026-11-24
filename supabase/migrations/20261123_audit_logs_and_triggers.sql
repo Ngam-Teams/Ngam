@@ -206,8 +206,23 @@ DECLARE
   v_old_pay TEXT := LOWER(COALESCE(OLD.payment_status, ''));
   v_new_pay TEXT := LOWER(COALESCE(NEW.payment_status, ''));
   v_short TEXT := UPPER(LEFT(NEW.id::TEXT, 8));
+  v_changes JSONB := '[]'::jsonb;
 BEGIN
   IF v_new_st = 'cancelled' AND v_old_st <> 'cancelled' THEN
+    v_changes := v_changes || jsonb_build_object(
+      'field', 'status',
+      'label', 'Status',
+      'from', UPPER(REPLACE(COALESCE(NULLIF(v_old_st, ''), 'pending'), '_', ' ')),
+      'to', 'CANCELLED'
+    );
+    IF v_new_pay IS DISTINCT FROM v_old_pay AND v_new_pay <> '' THEN
+      v_changes := v_changes || jsonb_build_object(
+        'field', 'payment_status',
+        'label', 'Status Bayaran',
+        'from', UPPER(REPLACE(COALESCE(NULLIF(v_old_pay, ''), 'unpaid'), '_', ' ')),
+        'to', UPPER(REPLACE(v_new_pay, '_', ' '))
+      );
+    END IF;
     PERFORM public._record_system_audit_log(
       NEW.business_id,
       'ORDER_CANCELLED',
@@ -216,24 +231,33 @@ BEGIN
       NEW.id::TEXT,
       format('Pesanan #%s dibatalkan (RM %s).', v_short, TO_CHAR(COALESCE(NEW.total, 0), 'FM999999990.00')),
       jsonb_build_object(
-        'old_status', v_old_st,
-        'new_status', v_new_st,
-        'payment_status', v_new_pay,
-        'total', COALESCE(NEW.total, 0)
+        'target_label', v_short,
+        'order_ref', v_short,
+        'changes', v_changes,
+        'details', jsonb_build_object('total', COALESCE(NEW.total, 0))
       )
     );
   ELSIF v_new_pay IN ('refunded', 'refund_pending') AND v_old_pay NOT IN ('refunded', 'refund_pending') THEN
+    v_changes := jsonb_build_array(
+      jsonb_build_object(
+        'field', 'payment_status',
+        'label', 'Status Bayaran',
+        'from', UPPER(REPLACE(COALESCE(NULLIF(v_old_pay, ''), 'paid'), '_', ' ')),
+        'to', UPPER(REPLACE(v_new_pay, '_', ' '))
+      )
+    );
     PERFORM public._record_system_audit_log(
       NEW.business_id,
       'ORDER_REFUNDED',
       'critical',
       'order',
       NEW.id::TEXT,
-      format('Status bayaran pesanan #%s ditukar kepada %s (RM %s).', v_short, UPPER(v_new_pay), TO_CHAR(COALESCE(NEW.total, 0), 'FM999999990.00')),
+      format('Status bayaran pesanan #%s ditukar kepada %s (RM %s).', v_short, UPPER(REPLACE(v_new_pay, '_', ' ')), TO_CHAR(COALESCE(NEW.total, 0), 'FM999999990.00')),
       jsonb_build_object(
-        'old_payment_status', v_old_pay,
-        'new_payment_status', v_new_pay,
-        'total', COALESCE(NEW.total, 0)
+        'target_label', v_short,
+        'order_ref', v_short,
+        'changes', v_changes,
+        'details', jsonb_build_object('total', COALESCE(NEW.total, 0))
       )
     );
   END IF;
@@ -253,6 +277,9 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_old_price TEXT;
+  v_new_price TEXT;
 BEGIN
   IF TG_OP = 'DELETE' THEN
     PERFORM public._record_system_audit_log(
@@ -262,27 +289,36 @@ BEGIN
       'product',
       OLD.id::TEXT,
       format('Item "%s" telah dipadam daripada katalog.', COALESCE(OLD.name, 'Item')),
-      jsonb_build_object('product_name', OLD.name, 'price', OLD.price)
+      jsonb_build_object(
+        'target_label', COALESCE(OLD.name, 'Item'),
+        'details', jsonb_build_object(
+          'name', COALESCE(OLD.name, 'Item'),
+          'price', COALESCE(OLD.price, 0)
+        )
+      )
     );
     RETURN OLD;
   ELSIF TG_OP = 'UPDATE' THEN
     IF OLD.price IS DISTINCT FROM NEW.price THEN
+      v_old_price := 'RM ' || TO_CHAR(COALESCE(OLD.price, 0), 'FM999999990.00');
+      v_new_price := 'RM ' || TO_CHAR(COALESCE(NEW.price, 0), 'FM999999990.00');
       PERFORM public._record_system_audit_log(
         NEW.business_id,
         'PRODUCT_PRICE_CHANGED',
         'warning',
         'product',
         NEW.id::TEXT,
-        format(
-          'Harga "%s" diubah daripada RM %s kepada RM %s.',
-          COALESCE(NEW.name, 'Item'),
-          TO_CHAR(COALESCE(OLD.price, 0), 'FM999999990.00'),
-          TO_CHAR(COALESCE(NEW.price, 0), 'FM999999990.00')
-        ),
+        format('Harga "%s" diubah: Harga Jualan (%s → %s).', COALESCE(NEW.name, 'Item'), v_old_price, v_new_price),
         jsonb_build_object(
-          'product_name', NEW.name,
-          'old_price', OLD.price,
-          'new_price', NEW.price
+          'target_label', COALESCE(NEW.name, 'Item'),
+          'changes', jsonb_build_array(
+            jsonb_build_object(
+              'field', 'price',
+              'label', 'Harga Jualan',
+              'from', v_old_price,
+              'to', v_new_price
+            )
+          )
         )
       );
     END IF;
@@ -320,11 +356,18 @@ BEGIN
       CASE WHEN v_new_st = 'disputed' THEN 'critical' ELSE 'warning' END,
       'booking',
       NEW.id::TEXT,
-      format('Status tempahan #%s berubah daripada %s kepada %s.', v_ref, UPPER(v_old_st), UPPER(v_new_st)),
+      format('Tempahan #%s: Status (%s → %s).', v_ref, UPPER(REPLACE(COALESCE(NULLIF(v_old_st, ''), 'pending'), '_', ' ')), UPPER(REPLACE(v_new_st, '_', ' '))),
       jsonb_build_object(
+        'target_label', v_ref,
         'booking_ref', v_ref,
-        'old_status', v_old_st,
-        'new_status', v_new_st
+        'changes', jsonb_build_array(
+          jsonb_build_object(
+            'field', 'status',
+            'label', 'Status',
+            'from', UPPER(REPLACE(COALESCE(NULLIF(v_old_st, ''), 'pending'), '_', ' ')),
+            'to', UPPER(REPLACE(v_new_st, '_', ' '))
+          )
+        )
       )
     );
   END IF;
