@@ -38,3 +38,28 @@
 - After completing and verifying changes, update `web/version.json`'s `changelog`, commit (letting `.githooks` bump the version), and push automatically.
 - To bypass for a single commit, run `SKIP_VERSION_BUMP=1 git commit ...`.
 
+## 5. Supabase SQL Migration Naming & Header Standard (ALL-CAPS)
+- Whenever creating or sharing any Supabase SQL migration or script, **ALWAYS** include an **ALL-CAPS** header title at the very top of the SQL file using the format:
+  ```sql
+  -- ==============================================================================
+  -- CATEGORY: SHORT CLEAR UPPERCASE TITLE
+  -- Tarikh : YYYY-MM-DD
+  -- Fail   : YYYYMMDD_migration_filename.sql
+  -- ==============================================================================
+  ```
+- Also state the same ALL-CAPS `CATEGORY: TITLE` label in chat so the user can directly name and organize saved queries in Supabase SQL Editor.
+- Use one of these standardized **ALL-CAPS** categories:
+  - `SECURITY PATCH:` — RLS policies, permissions, security hardening, signature/auth protection
+  - `INVENTORY:` — Product stock, atomic deduction/restoration, variants, stock thresholds
+  - `PAYMENT:` — CHIP, DuitNow QR/OBW, vouchers, commissions, refunds, payouts
+  - `ORDER:` — Customer orders, `order_items`, order statuses, POS counter orders
+  - `BOOKING:` — Time-slot bookings, overnight stays, cat hotel, overlap validation
+  - `BUSINESS:` — Business profiles, 3-layer taxonomy/categories, operating hours
+  - `USER & AUTH:` — User profiles, roles, MFA, staff/team members
+  - `WALLET & POINTS:` — NgamPay, Ngam Points, loyalty stamps, cashback
+  - `CHAT & DISPUTE:` — Customer-merchant chat, support tickets, order disputes
+  - `AUDIT & LOG:` — Audit trails (`Before -> After` diffs), system logs
+  - `HOTFIX:` — Urgent production bug fixes
+  - `PERFORMANCE:` — Indexes, materialized views, query optimizations
+
+

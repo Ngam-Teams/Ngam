@@ -1,5 +1,7 @@
 -- ==============================================================================
--- Migration: 20261123_business_3layer_taxonomy.sql
+-- BUSINESS: 3-LAYER TAXONOMY CATEGORY GROUP & BOOKING MODE
+-- Tarikh : 2026-11-23
+-- Fail   : 20261123_business_3layer_taxonomy.sql
 -- Description: Implements the clean 3-Layer Business Taxonomy on public.businesses:
 --   1. category_group : Top-level discovery pillar (fnb, retail, beauty, stay,
 --                       automotive, home_services, health, sports, pets,

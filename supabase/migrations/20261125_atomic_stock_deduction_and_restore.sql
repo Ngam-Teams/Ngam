@@ -1,5 +1,7 @@
 -- ==============================================================================
--- Migration: 20261125_atomic_stock_deduction_and_restore.sql
+-- INVENTORY: ATOMIC STOCK DEDUCTION & AUTO RESTORE TRIGGER
+-- Tarikh : 2026-11-25
+-- Fail   : 20261125_atomic_stock_deduction_and_restore.sql
 -- Purpose:
 --   Fixes the critical inventory stock bug where customer purchases in Ngam
 --   failed to deduct `business_products.stock` due to RLS ("Owners manage
