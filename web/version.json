@@ -1,6 +1,6 @@
 {
-  "version": "1.0.91",
-  "build_number": 64,
-  "released_at": "2026-11-24T17:11:35Z",
-  "changelog": "Tukar halaman pembayaran DuitNow QR kepada skrin penuh gaya Shopee (tiada popup), asingkan DuitNow Online Banking & Kad tanpa paparan QR, buang jenama CHIP Asia & tanda slash pada label kaedah bayaran, serta baiki pepijat 'razer' pada resit, penjejak & webhook pembayaran."
+  "version": "1.0.92",
+  "build_number": 65,
+  "released_at": "2026-11-25T13:03:45Z",
+  "changelog": "Normalisasikan kod pembayaran 'dnqr' kepada DuitNow QR dan 'obw'/'dnobw' kepada DuitNow Online Banking pada aplikasi pelanggan serta webhook pembayaran."
 }

@@ -210,9 +210,13 @@ async function normalizeChipPaymentMethod(
   for (const cand of rawCandidates) {
     if (
       cand === "duitnow_qr" ||
+      cand === "duitnowqr" ||
       cand === "duitnow" ||
+      cand === "dnqr" ||
+      cand === "dn_qr" ||
       cand === "razer_maybankqr" ||
       cand === "maybankqr" ||
+      cand.includes("dnqr") ||
       cand.includes("duitnow_qr") ||
       cand.includes("duitnow qr")
     ) {
@@ -222,6 +226,8 @@ async function normalizeChipPaymentMethod(
       cand === "fpx" ||
       cand === "fpx_b2b1" ||
       cand === "duitnow_obw" ||
+      cand === "dnobw" ||
+      cand === "obw" ||
       cand === "online_banking" ||
       cand.includes("fpx") ||
       cand.includes("duitnow_obw")
