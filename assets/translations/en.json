@@ -1189,6 +1189,8 @@
     "fpx_min_spend_badge": "MIN. RM 10.00",
     "fpx_min_spend_error": "FPX Online Banking & Card require a minimum order of RM 10.00. Please use DuitNow QR or Cash.",
     "fpx_min_spend_subtitle": "Available for orders RM 10.00 and above via Online Banking and Cards",
+    "out_of_stock_error": "Sorry, {} is out of stock. Please remove it from your cart.",
+    "insufficient_stock_error": "Not enough stock for {} (Remaining: {} units). Please reduce the quantity.",
     "back_to_cart": "Back to Cart",
     "delivery_address_required": "Please enter your delivery address before placing the order.",
     "takeaway_tab": "Take Away",

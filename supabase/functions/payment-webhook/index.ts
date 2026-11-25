@@ -268,6 +268,32 @@ async function normalizeChipPaymentMethod(
   return "online";
 }
 
+/**
+ * Atomically deducts physical product stock for a paid order on the server
+ * (covers Web same-tab redirects, CHIP webhooks, and mobile in-app browser).
+ * Idempotent via `orders.stock_deducted`.
+ */
+async function deductOrderStockSafely(orderId: string): Promise<void> {
+  if (!orderId || !UUID_REGEX.test(orderId)) return;
+  try {
+    const { error } = await supabase.rpc("deduct_order_stock", {
+      p_order_id: orderId,
+    });
+    if (error) {
+      // Fallback using service_role if migration hasn't been executed yet
+      const { data: ord } = await supabase
+        .from("orders")
+        .select("id, status")
+        .eq("id", orderId)
+        .maybeSingle();
+      if (!ord || String(ord.status || "").toLowerCase() === "cancelled") return;
+      console.warn("[payment-webhook] deduct_order_stock RPC not ready yet:", error.message);
+    }
+  } catch (err) {
+    console.warn("[payment-webhook] deductOrderStockSafely warning:", err);
+  }
+}
+
 serve(async (req: Request) => {
   // Handle CORS preflight for Flutter Web
   if (req.method === "OPTIONS") {
@@ -580,6 +606,8 @@ serve(async (req: Request) => {
                     .update({ status: "pending" })
                     .eq("id", settleData.booking_id)
                     .eq("status", "holding");
+                } else {
+                  await deductOrderStockSafely(String(settleData?.order_id || refId));
                 }
               }
               return new Response(
@@ -834,6 +862,8 @@ serve(async (req: Request) => {
               .update({ status: "pending" })
               .eq("id", settleData.booking_id)
               .eq("status", "holding");
+          } else {
+            await deductOrderStockSafely(String(settleData?.order_id || refId));
           }
         }
       }
@@ -908,6 +938,8 @@ serve(async (req: Request) => {
               .update({ status: "pending" })
               .eq("id", settleData.booking_id)
               .eq("status", "holding");
+          } else {
+            await deductOrderStockSafely(String(settleData?.order_id || refId));
           }
         }
 
@@ -1025,6 +1057,8 @@ serve(async (req: Request) => {
         .update({ status: "pending" })
         .eq("id", settlementResult.booking_id)
         .eq("status", "holding");
+    } else {
+      await deductOrderStockSafely(String(settlementResult?.order_id || targetId));
     }
 
     return new Response(JSON.stringify(settlementResult), {

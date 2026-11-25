@@ -1189,6 +1189,8 @@
     "fpx_min_spend_badge": "MIN. RM 10.00",
     "fpx_min_spend_error": "Perbankan FPX & Kad memerlukan jumlah pesanan minima RM 10.00. Sila gunakan DuitNow QR atau Tunai.",
     "fpx_min_spend_subtitle": "Tersedia untuk pesanan RM 10.00 ke atas melalui Perbankan Dalam Talian dan Kad",
+    "out_of_stock_error": "Maaf, stok untuk {} telah habis. Sila keluarkan daripada troli.",
+    "insufficient_stock_error": "Stok {} tidak mencukupi (Baki: {} unit). Sila kurangkan kuantiti.",
     "back_to_cart": "Kembali ke Troli",
     "delivery_address_required": "Sila masukkan alamat penghantaran anda sebelum membuat pesanan.",
     "takeaway_tab": "Bungkus",

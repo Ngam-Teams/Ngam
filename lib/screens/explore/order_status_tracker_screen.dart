@@ -253,31 +253,13 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
 
   Future<void> _restoreInventoryStock() async {
     try {
-      final items = await Supabase.instance.client
-          .from('order_items')
-          .select('product_id, quantity')
-          .eq('order_id', widget.orderId);
-      for (final row in (items as List)) {
-        final prodId = row['product_id']?.toString();
-        final qty = (row['quantity'] as num?)?.toInt() ?? 0;
-        if (prodId != null && prodId.isNotEmpty && qty > 0) {
-          final prod = await Supabase.instance.client
-              .from('business_products')
-              .select('stock, track_inventory, item_type')
-              .eq('id', prodId)
-              .maybeSingle();
-          if (prod != null &&
-              prod['item_type'] != 'service' &&
-              (prod['track_inventory'] as bool? ?? true)) {
-            final curStock = (prod['stock'] as num?)?.toInt() ?? 0;
-            await Supabase.instance.client
-                .from('business_products')
-                .update({'stock': curStock + qty})
-                .eq('id', prodId);
-          }
-        }
-      }
-    } catch (_) {}
+      await Supabase.instance.client.rpc(
+        'restore_order_stock',
+        params: {'p_order_id': widget.orderId},
+      );
+    } catch (e) {
+      debugPrint('[OrderStatusTracker] restore_order_stock RPC warning: $e');
+    }
   }
 
   Future<void> _retryOrChangePayment({required bool startAtMethodSelect}) async {
@@ -319,6 +301,15 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                 .update({'payment_status': nextPayStatus})
                 .eq('id', widget.orderId);
           } catch (_) {}
+        }
+        // Tolak stok inventori secara atomik & idempoten di pelayan (SECURITY DEFINER)
+        try {
+          await Supabase.instance.client.rpc(
+            'deduct_order_stock',
+            params: {'p_order_id': widget.orderId},
+          );
+        } catch (e) {
+          debugPrint('[OrderStatusTracker] deduct_order_stock RPC warning: $e');
         }
       },
     );

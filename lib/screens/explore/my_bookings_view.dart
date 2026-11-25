@@ -1330,30 +1330,10 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                               .eq('id', orderDbId);
 
                           try {
-                            final orderItems = await Supabase.instance.client
-                                .from('order_items')
-                                .select('product_id, quantity')
-                                .eq('order_id', orderDbId);
-                            for (final row in (orderItems as List)) {
-                              final prodId = row['product_id']?.toString();
-                              final qty = (row['quantity'] as num?)?.toInt() ?? 0;
-                              if (prodId != null && prodId.isNotEmpty && qty > 0) {
-                                final prod = await Supabase.instance.client
-                                    .from('business_products')
-                                    .select('stock, track_inventory, item_type')
-                                    .eq('id', prodId)
-                                    .maybeSingle();
-                                if (prod != null &&
-                                    prod['item_type'] != 'service' &&
-                                    (prod['track_inventory'] as bool? ?? true)) {
-                                  final curStock = (prod['stock'] as num?)?.toInt() ?? 0;
-                                  await Supabase.instance.client
-                                      .from('business_products')
-                                      .update({'stock': curStock + qty})
-                                      .eq('id', prodId);
-                                }
-                              }
-                            }
+                            await Supabase.instance.client.rpc(
+                              'restore_order_stock',
+                              params: {'p_order_id': orderDbId},
+                            );
                           } catch (_) {}
 
                           if (context.mounted) {

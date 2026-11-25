@@ -1050,6 +1050,55 @@ class _StoreCartViewState extends State<StoreCartView> {
         return;
       }
 
+      // Semak stok sebenar (live) di pangkalan data sebelum cipta pesanan supaya tidak terlebih jual
+      try {
+        final Map<String, int> requestedByProduct = {};
+        final Map<String, String> nameByProduct = {};
+        for (final item in _items) {
+          final pid = item.product.id.trim();
+          if (pid.isEmpty) continue;
+          requestedByProduct[pid] = (requestedByProduct[pid] ?? 0) + item.quantity;
+          nameByProduct[pid] = item.product.name;
+        }
+        if (requestedByProduct.isNotEmpty) {
+          final prodRows = await Supabase.instance.client
+              .from('business_products')
+              .select('id, name, stock, track_inventory, item_type')
+              .inFilter('id', requestedByProduct.keys.toList());
+          for (final row in (prodRows as List)) {
+            final pid = row['id']?.toString() ?? '';
+            final itemType = (row['item_type'] ?? 'product').toString().toLowerCase();
+            final trackInv = (row['track_inventory'] as bool?) ?? true;
+            if (itemType == 'service' || !trackInv) continue;
+            final liveStock = (row['stock'] as num?)?.toInt() ?? 0;
+            final reqQty = requestedByProduct[pid] ?? 0;
+            final prodName = (row['name']?.toString().trim().isNotEmpty == true)
+                ? row['name'].toString().trim()
+                : (nameByProduct[pid] ?? 'Produk');
+            if (liveStock <= 0) {
+              if (!mounted) return;
+              showGlassToast(
+                context,
+                'cart.out_of_stock_error'.tr(args: [prodName]),
+                isError: true,
+              );
+              return;
+            }
+            if (reqQty > liveStock) {
+              if (!mounted) return;
+              showGlassToast(
+                context,
+                'cart.insufficient_stock_error'.tr(args: [prodName, liveStock.toString()]),
+                isError: true,
+              );
+              return;
+            }
+          }
+        }
+      } catch (stockCheckErr) {
+        debugPrint('[StoreCartView] Live stock check warning: $stockCheckErr');
+      }
+
       final String rawName = (user.userMetadata?['full_name'] as String?) ??
           (user.userMetadata?['name'] as String?) ??
           (user.email?.split('@').first) ??
@@ -1351,27 +1400,14 @@ class _StoreCartViewState extends State<StoreCartView> {
         );
       }
 
-      // Tolak stok inventori bagi produk fizikal yang menjejak stok
-      for (final item in _items) {
-        if (item.product.id.isNotEmpty) {
-          try {
-            final prodRow = await Supabase.instance.client
-                .from('business_products')
-                .select('stock, track_inventory, item_type')
-                .eq('id', item.product.id)
-                .maybeSingle();
-            if (prodRow != null &&
-                prodRow['item_type'] != 'service' &&
-                (prodRow['track_inventory'] as bool? ?? true)) {
-              final curStock = (prodRow['stock'] as num?)?.toInt() ?? 0;
-              final newStock = (curStock - item.quantity).clamp(0, 999999);
-              await Supabase.instance.client
-                  .from('business_products')
-                  .update({'stock': newStock})
-                  .eq('id', item.product.id);
-            }
-          } catch (_) {}
-        }
+      // Tolak stok inventori secara atomik & idempoten melalui RPC SECURITY DEFINER (bebas sekatan RLS)
+      try {
+        await Supabase.instance.client.rpc(
+          'deduct_order_stock',
+          params: {'p_order_id': orderId},
+        );
+      } catch (e) {
+        debugPrint('[StoreCartView] deduct_order_stock RPC warning: $e');
       }
 
       widget.onClearCart?.call();

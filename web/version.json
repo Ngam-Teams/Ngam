@@ -1,6 +1,6 @@
 {
-  "version": "1.0.92",
-  "build_number": 65,
-  "released_at": "2026-11-25T13:03:45Z",
-  "changelog": "Normalisasikan kod pembayaran 'dnqr' kepada DuitNow QR dan 'obw'/'dnobw' kepada DuitNow Online Banking pada aplikasi pelanggan serta webhook pembayaran."
+  "version": "1.0.93",
+  "build_number": 66,
+  "released_at": "2026-11-25T13:16:43Z",
+  "changelog": "Baiki pepijat kritikal penolakan stok inventori: guna RPC SECURITY DEFINER atomik (deduct_order_stock & restore_order_stock) + trigger automatik pangkalan data supaya stok ditolak dengan tepat selepas belian (bebas sekatan RLS & Web redirect), semakan stok langsung sebelum daftar keluar, serta pemulihan stok tepat apabila pesanan dibatalkan."
 }
