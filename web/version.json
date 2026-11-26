@@ -1,6 +1,6 @@
 {
-  "version": "1.0.97",
-  "build_number": 70,
-  "released_at": "2026-11-26T16:35:21Z",
-  "changelog": "Pengalaman checkout ala Shopee dengan EasyParcel: pelanggan boleh pilih kurier penghantaran secara langsung (SPX, PosLaju, J&T, Ninja Van, DHL, City-Link) dan bayar kos pos sekali gus dengan pesanan, serta paparan kad Status Kurier & Tracking di dalam Butiran Pesanan."
+  "version": "1.0.98",
+  "build_number": 71,
+  "released_at": "2026-11-26T16:50:06Z",
+  "changelog": "Tambah sokongan berat produk (weight_kg) untuk pengiraan harga kurier EasyParcel yang tepat mengikut jumlah berat sebenar item dalam troli pelanggan."
 }

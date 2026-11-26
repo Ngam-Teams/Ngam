@@ -820,6 +820,14 @@ class _StoreCartViewState extends State<StoreCartView> {
     });
   }
 
+  double get _totalWeightKg {
+    final sum = _items.fold<double>(
+      0.0,
+      (s, i) => s + ((i.product.weightKg > 0 ? i.product.weightKg : 0.5) * i.quantity),
+    );
+    return sum.clamp(0.1, 50.0);
+  }
+
   Future<void> _fetchEasyParcelRates({bool force = false}) async {
     final shopId = widget.shop['id']?.toString() ?? '';
     if (shopId.length < 20) return;
@@ -834,14 +842,11 @@ class _StoreCartViewState extends State<StoreCartView> {
       _epRateError = null;
     });
 
-    final totalQty = _items.fold<int>(0, (s, i) => s + i.quantity);
-    final estWeight = (totalQty * 0.5).clamp(0.5, 30.0);
-
     final result = await EasyParcelCustomerService.checkCourierRates(
       businessId: shopId,
       deliveryAddress: addr,
       parcelValue: _subtotal > 0 ? _subtotal : 50.0,
-      weightKg: estWeight,
+      weightKg: _totalWeightKg,
     );
 
     if (!mounted) return;
@@ -3112,9 +3117,9 @@ class _StoreCartViewState extends State<StoreCartView> {
                   color: epPink.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(100),
                 ),
-                child: const Text(
-                  'EasyParcel',
-                  style: TextStyle(color: epPink, fontSize: 10, fontWeight: FontWeight.w800),
+                child: Text(
+                  '${_totalWeightKg.toStringAsFixed(_totalWeightKg % 1 == 0 ? 0 : 2)} kg',
+                  style: const TextStyle(color: epPink, fontSize: 10, fontWeight: FontWeight.w800),
                 ),
               ),
               const SizedBox(width: 4),

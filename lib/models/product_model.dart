@@ -14,6 +14,7 @@ class ProductModel {
   final bool trackInventory;
   final int lowStockThreshold;
   final String unit;
+  final double weightKg;
   final String sku;
   final String barcode;
   final bool isActive;
@@ -52,6 +53,7 @@ class ProductModel {
     this.trackInventory = true,
     this.lowStockThreshold = 5,
     this.unit = 'pcs',
+    this.weightKg = 0.5,
     this.sku = '',
     this.barcode = '',
     this.isActive = true,
@@ -138,6 +140,7 @@ class ProductModel {
       trackInventory: json['track_inventory'] as bool? ?? true,
       lowStockThreshold: (json['low_stock_threshold'] as num?)?.toInt() ?? 5,
       unit: json['unit'] as String? ?? 'pcs',
+      weightKg: (json['weight_kg'] as num?)?.toDouble() ?? 0.5,
       sku: json['sku'] as String? ?? '',
       barcode: json['barcode'] as String? ?? '',
       isActive: json['is_active'] as bool? ?? (json['is_available'] as bool? ?? true),
@@ -175,6 +178,7 @@ class ProductModel {
       'track_inventory': trackInventory,
       'low_stock_threshold': lowStockThreshold,
       'unit': unit,
+      'weight_kg': weightKg,
       'sku': sku,
       'barcode': barcode,
       'is_active': isActive,
