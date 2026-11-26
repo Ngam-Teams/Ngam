@@ -1789,5 +1789,24 @@
     "suggested_videos_title": "Trending Videos",
     "video_badge": "VIDEO",
     "post_badge": "POST"
+  },
+  "easyparcel": {
+    "checkout_address_hint": "Enter full delivery address with 5-digit postcode...",
+    "checkout_courier_title": "Select Delivery Courier",
+    "checkout_loading_rates": "Checking live courier rates...",
+    "checkout_enter_postcode_hint": "Include a 5-digit Malaysian postcode in your address to view live courier options.",
+    "checkout_no_couriers": "No courier services available for this postcode.",
+    "checkout_show_more": "View all {} couriers",
+    "checkout_show_less": "Show fewer couriers",
+    "checkout_shipping_fee": "Shipping ({})",
+    "checkout_delivery_fee_label": "Delivery Fee",
+    "free_label": "FREE",
+    "checkout_select_courier_err": "Please include your 5-digit postcode and select a delivery courier.",
+    "order_shipping_title": "Courier Delivery & Tracking",
+    "status_shipped": "SHIPPED",
+    "status_awaiting_awb": "PREPARING SHIPMENT",
+    "tracking_no_label": "Tracking No",
+    "tracking_copied": "Tracking number copied.",
+    "track_parcel_btn": "Track Parcel Online"
   }
 }

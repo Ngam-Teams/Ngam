@@ -68,6 +68,11 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
   String? _customerPhone;
   String? _notes;
   String? _cancelReason;
+  String? _courierName;
+  String? _trackingNumber;
+  String? _trackingUrl;
+  String? _shipmentStatus;
+  String? _latestTrackingStatus;
   String? _chipPurchaseId;
   String? _fulfillmentLabel;
   String? _bookingTime;
@@ -262,6 +267,36 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
     }
   }
 
+  String? _extractCourierFromNotes(String? notes) {
+    if (notes == null || notes.isEmpty) return null;
+    final m = RegExp(r'\[Kurier:\s*([^|\]]+)', caseSensitive: false).firstMatch(notes);
+    return m?.group(1)?.trim();
+  }
+
+  Future<void> _loadShipmentTracking() async {
+    try {
+      final row = await Supabase.instance.client
+          .from('order_shipments')
+          .select('courier_name, awb_number, tracking_url, status, latest_tracking_status')
+          .eq('order_id', widget.orderId)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      if (row != null && mounted) {
+        setState(() {
+          final cn = row['courier_name']?.toString();
+          if (cn != null && cn.isNotEmpty) _courierName = cn;
+          final awb = row['awb_number']?.toString();
+          if (awb != null && awb.isNotEmpty) _trackingNumber = awb;
+          final tUrl = row['tracking_url']?.toString();
+          if (tUrl != null && tUrl.isNotEmpty) _trackingUrl = tUrl;
+          _shipmentStatus = row['status']?.toString();
+          _latestTrackingStatus = row['latest_tracking_status']?.toString();
+        });
+      }
+    } catch (_) {}
+  }
+
   Future<void> _retryOrChangePayment({required bool startAtMethodSelect}) async {
     if (_isCancelling || !_isAwaitingOnlinePayment) return;
 
@@ -406,6 +441,9 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
             }
             _notes = res['notes']?.toString();
             _cancelReason = _extractCancelReason(_notes);
+            _courierName = res['courier_name']?.toString() ?? _extractCourierFromNotes(_notes);
+            _trackingNumber = res['tracking_number']?.toString();
+            _trackingUrl = res['tracking_url']?.toString();
             _chipPurchaseId = res['chip_purchase_id']?.toString();
             _shopId = res['business_id']?.toString() ?? _shopId;
             _customerName = res['customer_name']?.toString();
@@ -427,6 +465,9 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
               _shopPhone = biz['business_phone']?.toString();
               _shopAddress = (biz['address_line'] ?? biz['business_address'])?.toString();
             }
+
+            // Load latest EasyParcel shipment tracking record if available
+            _loadShipmentTracking();
 
             if ((_fulfillmentLabel == null || _fulfillmentLabel!.isEmpty) && _notes != null) {
               final match = RegExp(r'\[([^\]]+)\]').firstMatch(
@@ -1462,6 +1503,20 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                 _notes = latestNotes;
                 _cancelReason = _extractCancelReason(_notes) ?? _cancelReason;
               }
+              final latestCourier = latest['courier_name']?.toString();
+              if (latestCourier != null && latestCourier.isNotEmpty) {
+                _courierName = latestCourier;
+              } else if (_courierName == null || _courierName!.isEmpty) {
+                _courierName = _extractCourierFromNotes(_notes);
+              }
+              final latestTrackNo = latest['tracking_number']?.toString();
+              if (latestTrackNo != null && latestTrackNo.isNotEmpty) {
+                _trackingNumber = latestTrackNo;
+              }
+              final latestTrackUrl = latest['tracking_url']?.toString();
+              if (latestTrackUrl != null && latestTrackUrl.isNotEmpty) {
+                _trackingUrl = latestTrackUrl;
+              }
             }
 
             final String countdownStr =
@@ -2318,6 +2373,141 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
                             if (_providerName != null && _providerName!.isNotEmpty) ...[
                               _divider(isDark),
                               _detailRow('order_status.staff_assigned'.tr(), _providerName!, isDark),
+                            ],
+
+                            // 9.5 Status Penghantaran Kurier (EasyParcel)
+                            if ((_courierName != null && _courierName!.isNotEmpty) ||
+                                (_trackingNumber != null && _trackingNumber!.isNotEmpty)) ...[
+                              _divider(isDark),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEC008C).withValues(alpha: isDark ? 0.10 : 0.06),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: const Color(0xFFEC008C).withValues(alpha: isDark ? 0.35 : 0.22),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.local_shipping_rounded, color: Color(0xFFEC008C), size: 16),
+                                        const SizedBox(width: 7),
+                                        Expanded(
+                                          child: Text(
+                                            'easyparcel.order_shipping_title'.tr(),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w800,
+                                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                            ),
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: (_trackingNumber != null && _trackingNumber!.isNotEmpty)
+                                                ? const Color(0xFF10B981).withValues(alpha: 0.18)
+                                                : Colors.amber.withValues(alpha: 0.18),
+                                            borderRadius: BorderRadius.circular(100),
+                                          ),
+                                          child: Text(
+                                            (_shipmentStatus != null && _shipmentStatus!.isNotEmpty)
+                                                ? _shipmentStatus!.toUpperCase()
+                                                : ((_trackingNumber != null && _trackingNumber!.isNotEmpty)
+                                                    ? 'easyparcel.status_shipped'.tr()
+                                                    : 'easyparcel.status_awaiting_awb'.tr()),
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w800,
+                                              color: (_trackingNumber != null && _trackingNumber!.isNotEmpty)
+                                                  ? const Color(0xFF10B981)
+                                                  : Colors.amber.shade700,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (_courierName != null && _courierName!.isNotEmpty) ...[
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        _courierName!,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: isDark ? Colors.white : const Color(0xFF1E293B),
+                                        ),
+                                      ),
+                                    ],
+                                    if (_trackingNumber != null && _trackingNumber!.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              '${'easyparcel.tracking_no_label'.tr()}: $_trackingNumber',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: isDark ? Colors.white70 : const Color(0xFF334155),
+                                              ),
+                                            ),
+                                          ),
+                                          GestureDetector(
+                                            onTap: () {
+                                              Clipboard.setData(ClipboardData(text: _trackingNumber!));
+                                              showGlassToast(context, 'easyparcel.tracking_copied'.tr());
+                                            },
+                                            child: const Padding(
+                                              padding: EdgeInsets.all(4),
+                                              child: Icon(Icons.copy_rounded, size: 15, color: Color(0xFFEC008C)),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                    if (_latestTrackingStatus != null && _latestTrackingStatus!.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        _latestTrackingStatus!,
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                    if (_trackingUrl != null && _trackingUrl!.isNotEmpty) ...[
+                                      const SizedBox(height: 8),
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: OutlinedButton.icon(
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: const Color(0xFFEC008C),
+                                            side: BorderSide(color: const Color(0xFFEC008C).withValues(alpha: 0.5)),
+                                            padding: const EdgeInsets.symmetric(vertical: 8),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                          ),
+                                          onPressed: () async {
+                                            final uri = Uri.tryParse(_trackingUrl!);
+                                            if (uri != null) {
+                                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                            }
+                                          },
+                                          icon: const Icon(Icons.open_in_new_rounded, size: 15),
+                                          label: Text(
+                                            'easyparcel.track_parcel_btn'.tr(),
+                                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
                             ],
 
                             // 10. Nota Pelanggan

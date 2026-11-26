@@ -1789,5 +1789,24 @@
     "suggested_videos_title": "Video Trending",
     "video_badge": "VIDEO",
     "post_badge": "POS"
+  },
+  "easyparcel": {
+    "checkout_address_hint": "Masukkan alamat penuh berserta poskod 5-digit...",
+    "checkout_courier_title": "Pilih Kurier Penghantaran",
+    "checkout_loading_rates": "Menyemak harga kurier langsung...",
+    "checkout_enter_postcode_hint": "Sertakan poskod 5-digit Malaysia dalam alamat anda untuk melihat pilihan kurier.",
+    "checkout_no_couriers": "Tiada perkhidmatan kurier tersedia untuk poskod ini.",
+    "checkout_show_more": "Lihat semua {} kurier",
+    "checkout_show_less": "Papar kurang",
+    "checkout_shipping_fee": "Penghantaran ({})",
+    "checkout_delivery_fee_label": "Caj Penghantaran",
+    "free_label": "PERCUMA",
+    "checkout_select_courier_err": "Sila sertakan poskod 5-digit dan pilih kurier penghantaran dahulu.",
+    "order_shipping_title": "Penghantaran Kurier & Tracking",
+    "status_shipped": "DIHANTAR",
+    "status_awaiting_awb": "MENYEDIAKAN BUNGKUSAN",
+    "tracking_no_label": "No. Tracking",
+    "tracking_copied": "Nombor tracking disalin.",
+    "track_parcel_btn": "Jejak Bungkusan Dalam Talian"
   }
 }

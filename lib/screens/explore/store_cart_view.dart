@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:ngam/widgets/glass_box.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/product_model.dart';
+import '../../services/easyparcel_customer_service.dart';
 import '../../services/voucher_service.dart';
 import '../../utils/business_industry_helper.dart';
 import '../../utils/ngam_ref.dart';
@@ -107,6 +109,18 @@ class _StoreCartViewState extends State<StoreCartView> {
   String? _syncedShopName;
   String? _syncedBusinessIndustry;
   Map<String, dynamic>? _syncedOperatingHours;
+
+  // Shopee-style EasyParcel Live Courier Selection State
+  Timer? _epRateDebounce;
+  bool _epChecked = false;
+  bool _epEnabled = false;
+  bool _epLoadingRates = false;
+  bool _epNeedsPostcode = false;
+  bool _epShowAllCouriers = false;
+  String? _epRateError;
+  String _lastQueriedPostcode = '';
+  List<CustomerCourierRate> _epRates = [];
+  CustomerCourierRate? _selectedCourier;
 
   StoreOrderContext get _orderContext {
     final granularType = (_effectiveOperatingHours?['business_type'] ??
@@ -778,11 +792,81 @@ class _StoreCartViewState extends State<StoreCartView> {
         _autoApplyBestVoucher();
       }
       _syncShopDetails();
+      _loadSavedDeliveryAddress();
+    });
+    _deliveryAddressController.addListener(_onDeliveryAddressChanged);
+  }
+
+  Future<void> _loadSavedDeliveryAddress() async {
+    if (_deliveryAddressController.text.trim().isNotEmpty) return;
+    final saved = await EasyParcelCustomerService.fetchMySavedAddress();
+    if (saved != null && saved.isNotEmpty && mounted && _deliveryAddressController.text.trim().isEmpty) {
+      _deliveryAddressController.text = saved;
+      if (_fulfillmentMode == 3) {
+        _fetchEasyParcelRates(force: true);
+      }
+    }
+  }
+
+  void _onDeliveryAddressChanged() {
+    if (_fulfillmentMode != 3) return;
+    final pc = EasyParcelCustomerService.extractPostcode(_deliveryAddressController.text);
+    if (pc == _lastQueriedPostcode && _epChecked) return;
+    _epRateDebounce?.cancel();
+    _epRateDebounce = Timer(const Duration(milliseconds: 650), () {
+      if (mounted && _fulfillmentMode == 3) {
+        _fetchEasyParcelRates();
+      }
+    });
+  }
+
+  Future<void> _fetchEasyParcelRates({bool force = false}) async {
+    final shopId = widget.shop['id']?.toString() ?? '';
+    if (shopId.length < 20) return;
+
+    final addr = _deliveryAddressController.text.trim();
+    final pc = EasyParcelCustomerService.extractPostcode(addr);
+    if (!force && _epChecked && !_epEnabled) return;
+    if (!force && pc == _lastQueriedPostcode && _epRates.isNotEmpty) return;
+
+    setState(() {
+      _epLoadingRates = true;
+      _epRateError = null;
+    });
+
+    final totalQty = _items.fold<int>(0, (s, i) => s + i.quantity);
+    final estWeight = (totalQty * 0.5).clamp(0.5, 30.0);
+
+    final result = await EasyParcelCustomerService.checkCourierRates(
+      businessId: shopId,
+      deliveryAddress: addr,
+      parcelValue: _subtotal > 0 ? _subtotal : 50.0,
+      weightKg: estWeight,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _epChecked = true;
+      _epLoadingRates = false;
+      _epEnabled = result.easyparcelEnabled;
+      _epNeedsPostcode = result.needsPostcode;
+      _epRateError = result.error;
+      _epRates = result.rates;
+      _lastQueriedPostcode = pc;
+      if (result.rates.isNotEmpty) {
+        final prevId = _selectedCourier?.serviceId;
+        final match = result.rates.where((r) => r.serviceId == prevId).toList();
+        _selectedCourier = match.isNotEmpty ? match.first : result.rates.first;
+      } else {
+        _selectedCourier = null;
+      }
     });
   }
 
   @override
   void dispose() {
+    _epRateDebounce?.cancel();
+    _deliveryAddressController.removeListener(_onDeliveryAddressChanged);
     _notesController.dispose();
     _voucherController.dispose();
     _tableController.dispose();
@@ -793,7 +877,13 @@ class _StoreCartViewState extends State<StoreCartView> {
   double get _subtotal =>
       _items.fold(0.0, (sum, item) => sum + item.totalPrice);
 
-  double get _deliveryFee => _fulfillmentMode == 3 ? (_subtotal >= 50.0 ? 0.0 : 5.00) : 0.00;
+  double get _deliveryFee {
+    if (_fulfillmentMode != 3) return 0.00;
+    if (_epEnabled && _selectedCourier != null) {
+      return _selectedCourier!.price;
+    }
+    return _subtotal >= 50.0 ? 0.0 : 5.00;
+  }
 
   double get _total => (_subtotal + _deliveryFee - _discountAmount).clamp(0.0, 999999.0);
 
@@ -1043,6 +1133,12 @@ class _StoreCartViewState extends State<StoreCartView> {
         return;
       }
 
+      if (_fulfillmentMode == 3 && _epEnabled && _selectedCourier == null) {
+        if (!mounted) return;
+        showGlassToast(context, 'easyparcel.checkout_select_courier_err'.tr(), isError: true);
+        return;
+      }
+
       if (_selectedPaymentMethod == 'fpx_card' && _total < 10.0) {
         if (!mounted) return;
         setState(() => _selectedPaymentMethod = 'duitnow');
@@ -1116,10 +1212,15 @@ class _StoreCartViewState extends State<StoreCartView> {
           : '';
 
       final String deliveryAddress = _deliveryAddressController.text.trim();
+      final String courierTag = (_fulfillmentMode == 3 && _selectedCourier != null)
+          ? '[Kurier: ${_selectedCourier!.courierName} | Service: ${_selectedCourier!.serviceId} | Pos: RM${_selectedCourier!.price.toStringAsFixed(2)}] '
+          : '';
       final String scheduleInfo = _fulfillmentMode == 2
           ? 'Pre-Order: $_selectedPickupDate, $_selectedPickupTime'
           : (_fulfillmentMode == 3
-              ? 'Delivery: $_selectedPickupDate, $_selectedPickupTime${deliveryAddress.isNotEmpty ? " (Alamat: $deliveryAddress)" : ""}'
+              ? (_selectedCourier != null
+                  ? 'Courier: ${_selectedCourier!.courierName}${deliveryAddress.isNotEmpty ? " (Alamat: $deliveryAddress)" : ""}'
+                  : 'Delivery: $_selectedPickupDate, $_selectedPickupTime${deliveryAddress.isNotEmpty ? " (Alamat: $deliveryAddress)" : ""}')
               : (_isFnbBusiness && _fulfillmentMode == 1
                   ? 'Dine In'
                   : (_bungkusChooseTime
@@ -1138,7 +1239,7 @@ class _StoreCartViewState extends State<StoreCartView> {
           ? '[PROMO ${_voucher!['code']} -RM${_discountAmount.toStringAsFixed(2)}] '
           : '';
 
-      final String finalNotes = '$tablePrefix[$fulfillmentLabel] $voucherNote${_notesController.text.trim()}'.trim();
+      final String finalNotes = '$tablePrefix[$fulfillmentLabel] $courierTag$voucherNote${_notesController.text.trim()}'.trim();
 
       final String customerPhone = (user.phone?.isNotEmpty == true)
           ? user.phone!
@@ -1207,6 +1308,8 @@ class _StoreCartViewState extends State<StoreCartView> {
           if (customerPhone.isNotEmpty) 'customer_phone': customerPhone,
           'total': _total,
           if (discountCents > 0) 'discount_cents': discountCents,
+          if (_fulfillmentMode == 3 && _selectedCourier != null)
+            'courier_name': _selectedCourier!.courierName,
           'status': 'pending',
           'source': source,
           'notes': finalNotes,
@@ -1892,8 +1995,10 @@ class _StoreCartViewState extends State<StoreCartView> {
                               if (_fulfillmentMode == 3) ...[
                                 const SizedBox(height: 8),
                                 _summaryRow(
-                                  'Caj Penghantaran (Delivery)',
-                                  _deliveryFee == 0 ? 'PERCUMA' : 'RM ${_deliveryFee.toStringAsFixed(2)}',
+                                  _selectedCourier != null
+                                      ? 'easyparcel.checkout_shipping_fee'.tr(args: [_selectedCourier!.courierName])
+                                      : 'easyparcel.checkout_delivery_fee_label'.tr(),
+                                  _deliveryFee == 0 ? 'easyparcel.free_label'.tr() : 'RM ${_deliveryFee.toStringAsFixed(2)}',
                                   textSecondary,
                                   _deliveryFee == 0 ? Colors.green : textPrimary,
                                 ),
@@ -2755,7 +2860,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                     if (_fulfillmentMode == 3) ...[
                       // Delivery Address field (transparent & compact)
                       Container(
-                        margin: const EdgeInsets.only(bottom: 14),
+                        margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
                           color: Colors.transparent,
@@ -2774,7 +2879,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                             prefixIcon: const UnconstrainedBox(
                               child: HugeIcon(icon: HugeIcons.strokeRoundedLocation01, color: Color(0xFF00E5FF), size: 17),
                             ),
-                            hintText: 'Masukkan alamat penghantaran...',
+                            hintText: 'easyparcel.checkout_address_hint'.tr(),
                             hintStyle: TextStyle(color: textSecondary, fontSize: 12),
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
@@ -2782,8 +2887,11 @@ class _StoreCartViewState extends State<StoreCartView> {
                           ),
                         ),
                       ),
+                      if (_epLoadingRates || _epEnabled)
+                        _buildEasyParcelCourierPicker(isDark, textPrimary, textSecondary),
                     ],
 
+                    if (!(_fulfillmentMode == 3 && _epEnabled)) ...[
                     // Date Selector (Hari Ini / Esok / Pilih Tarikh)
                     Row(
                       children: [
@@ -2954,10 +3062,212 @@ class _StoreCartViewState extends State<StoreCartView> {
                         ],
                       ),
                     ],
+                    ],
                   ],
                 );
               },
             ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEasyParcelCourierPicker(bool isDark, Color textPrimary, Color textSecondary) {
+    const epPink = Color(0xFFEC008C);
+    final visibleRates = _epShowAllCouriers ? _epRates : _epRates.take(4).toList();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.04)
+            : Colors.black.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: epPink.withValues(alpha: isDark ? 0.35 : 0.25),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.local_shipping_rounded, color: epPink, size: 17),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  'easyparcel.checkout_courier_title'.tr(),
+                  style: TextStyle(
+                    color: textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: epPink.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: const Text(
+                  'EasyParcel',
+                  style: TextStyle(color: epPink, fontSize: 10, fontWeight: FontWeight.w800),
+                ),
+              ),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: _epLoadingRates ? null : () => _fetchEasyParcelRates(force: true),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(Icons.refresh_rounded, size: 16, color: textSecondary),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (_epLoadingRates)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(
+                    width: 15,
+                    height: 15,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: epPink),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'easyparcel.checkout_loading_rates'.tr(),
+                    style: TextStyle(color: textSecondary, fontSize: 12),
+                  ),
+                ],
+              ),
+            )
+          else if (_epNeedsPostcode)
+            Text(
+              'easyparcel.checkout_enter_postcode_hint'.tr(),
+              style: TextStyle(color: Colors.amber.shade400, fontSize: 12),
+            )
+          else if (_epRateError != null && _epRates.isEmpty)
+            Text(
+              _epRateError!,
+              style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+            )
+          else if (_epRates.isEmpty)
+            Text(
+              'easyparcel.checkout_no_couriers'.tr(),
+              style: TextStyle(color: textSecondary, fontSize: 12),
+            )
+          else ...[
+            ...visibleRates.map((rate) {
+              final isSelected = _selectedCourier?.serviceId == rate.serviceId;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedCourier = rate),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? epPink.withValues(alpha: isDark ? 0.16 : 0.08)
+                        : (isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected
+                          ? epPink
+                          : (isDark ? Colors.white12 : Colors.black12),
+                      width: isSelected ? 1.4 : 1.0,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                        color: isSelected ? epPink : textSecondary,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      if (rate.courierLogo.isNotEmpty)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Image.network(
+                            rate.courierLogo,
+                            width: 30,
+                            height: 30,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => Icon(
+                              Icons.local_shipping_outlined,
+                              size: 20,
+                              color: textSecondary,
+                            ),
+                          ),
+                        ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              rate.courierName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: textPrimary,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              '${rate.serviceDetail.toUpperCase()} • ${rate.delivery}',
+                              style: TextStyle(color: textSecondary, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'RM ${rate.price.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          color: Color(0xFF10B981),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+            if (_epRates.length > 4)
+              GestureDetector(
+                onTap: () => setState(() => _epShowAllCouriers = !_epShowAllCouriers),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        _epShowAllCouriers
+                            ? 'easyparcel.checkout_show_less'.tr()
+                            : 'easyparcel.checkout_show_more'.tr(args: [_epRates.length.toString()]),
+                        style: const TextStyle(
+                          color: epPink,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Icon(
+                        _epShowAllCouriers ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                        color: epPink,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ],
       ),
@@ -2978,6 +3288,9 @@ class _StoreCartViewState extends State<StoreCartView> {
               _selectedPickupTime = _immediatePickupLabel;
             }
           });
+          if (index == 3) {
+            _fetchEasyParcelRates();
+          }
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),

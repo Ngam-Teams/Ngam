@@ -525,6 +525,227 @@ serve(async (req: Request) => {
       );
     }
 
+    // -------------------------------------------------------------------------
+    // CUSTOMER CHECKOUT: LIVE COURIER RATES (Shopee-style checkout)
+    // Allows any authenticated Ngam customer to fetch shipping rates for a
+    // business that has enabled EasyParcel in `business_integrations`.
+    // -------------------------------------------------------------------------
+    if (action === "customer_check_rates") {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader || !/^Bearer\s+/i.test(authHeader)) {
+        return jsonResponse({ success: false, error: "Please log in to check shipping rates" }, 401);
+      }
+      const userToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+      const { data: userData, error: userErr } = await supabase.auth.getUser(userToken);
+      if (userErr || !userData?.user) {
+        return jsonResponse({ success: false, error: "Invalid session" }, 401);
+      }
+
+      // 1. Check if this business has EasyParcel enabled
+      const { data: intRows } = await supabase
+        .from("business_integrations")
+        .select("is_connected, config")
+        .eq("business_id", businessId)
+        .eq("provider", "easyparcel")
+        .limit(1);
+      const intRow = intRows?.[0];
+      if (!intRow || intRow.is_connected !== true) {
+        return jsonResponse({
+          success: true,
+          easyparcel_enabled: false,
+          rates: [],
+        });
+      }
+
+      const cfg = (intRow.config as Record<string, unknown>) || {};
+      let pickCode = String(cfg.sender_postcode || "").trim();
+      let pickState = String(cfg.sender_state || "").trim().toLowerCase();
+
+      // Fallback to business profile address if sender postcode not in config
+      if (!pickCode || pickCode.length < 5) {
+        const { data: bizRows } = await supabase
+          .from("businesses")
+          .select("address")
+          .eq("id", businessId)
+          .limit(1);
+        const addr = String(bizRows?.[0]?.address || "");
+        const pcMatch = addr.match(/\b(\d{5})\b/);
+        if (pcMatch) pickCode = pcMatch[1];
+      }
+      if (!pickState) pickState = "sgr";
+
+      const sendCode = String(body.send_code || "").trim();
+      const sendState = String(body.send_state || "sgr").trim().toLowerCase();
+      const weight = Number(body.weight || 1);
+      const parcelValue = Number(body.parcel_value || 50);
+
+      if (!pickCode || pickCode.length < 5) {
+        return jsonResponse({
+          success: true,
+          easyparcel_enabled: true,
+          error: "Store pickup postcode is not configured yet",
+          rates: [],
+        });
+      }
+      if (!sendCode || sendCode.length < 5) {
+        return jsonResponse({
+          success: true,
+          easyparcel_enabled: true,
+          needs_postcode: true,
+          rates: [],
+        });
+      }
+
+      const auth = await resolveAuth(businessId);
+      if (!auth) {
+        return jsonResponse({
+          success: true,
+          easyparcel_enabled: false,
+          rates: [],
+        });
+      }
+
+      const formatDur = (raw: unknown): string => {
+        if (!raw) return "1-3 working day(s)";
+        let obj: Record<string, unknown> | null = null;
+        if (typeof raw === "object") {
+          obj = raw as Record<string, unknown>;
+        } else if (typeof raw === "string") {
+          const t = raw.trim();
+          if (t.startsWith("{")) {
+            try {
+              obj = JSON.parse(t) as Record<string, unknown>;
+            } catch {
+              return t;
+            }
+          } else {
+            return t || "1-3 working day(s)";
+          }
+        }
+        if (obj && obj.value !== undefined) {
+          const val = String(obj.value).trim();
+          const unit = String(obj.type || "days").toLowerCase();
+          return unit.includes("hour") ? `${val} hour(s)` : `${val} working day(s)`;
+        }
+        return "1-3 working day(s)";
+      };
+
+      const dateColl = todayMytDate();
+
+      if (auth.engine === "nextgen") {
+        const ngRes = await callNextGen("POST", "/shipment/quotations", auth.accessToken, {
+          shipment: [
+            {
+              sender: {
+                postcode: pickCode,
+                subdivision_code: toIsoSubdivision(pickState),
+                country: "MY",
+              },
+              receiver: {
+                postcode: sendCode,
+                subdivision_code: toIsoSubdivision(sendState),
+                country: "MY",
+              },
+              parcel_value: parcelValue > 0 ? parcelValue : 50,
+              weight: weight > 0 ? weight : 1,
+              width: 5,
+              length: 5,
+              height: 5,
+            },
+          ],
+        });
+
+        const dataArr = (ngRes.data as Array<Record<string, unknown>>) || [];
+        const first = dataArr[0] || {};
+        if (Number(ngRes.status_code || 0) !== 200 || String(first.status || "").toLowerCase() !== "success") {
+          return jsonResponse({
+            success: false,
+            easyparcel_enabled: true,
+            error: String(ngRes.message || first.message || "Unable to fetch shipping rates"),
+            rates: [],
+          });
+        }
+
+        const quotations = (first.quotations as Array<Record<string, unknown>>) || [];
+        const rates = quotations
+          .map((q) => {
+            const c = (q.courier as Record<string, unknown>) || {};
+            const p = (q.pricing as Record<string, unknown>) || {};
+            const isPickup = c.is_pickup === true;
+            const isDropoff = c.is_dropoff === true;
+            const detail =
+              isPickup && isDropoff ? "dropoff/pickup" : isPickup ? "pickup" : "dropoff";
+            const price = Number(p.total_amount ?? p.shipment_price ?? 0);
+            return {
+              rate_id: String(c.service_id || ""),
+              service_id: String(c.service_id || ""),
+              service_name: String(c.service_name || ""),
+              service_detail: detail,
+              courier_id: String(c.courier_id || ""),
+              courier_name: String(c.courier_name || ""),
+              courier_logo: String(c.courier_logo || ""),
+              pickup_date: dateColl,
+              delivery: formatDur(c.delivery_duration),
+              price,
+            };
+          })
+          .filter((r) => r.service_id.length > 0 && r.price > 0)
+          .sort((a, b) => a.price - b.price);
+
+        return jsonResponse({
+          success: true,
+          easyparcel_enabled: true,
+          rates,
+        });
+      }
+
+      // Classic fallback
+      const epRes = await callClassicEasyParcel(auth.environment, "EPRateCheckingBulk", {
+        api: auth.apiKey,
+        bulk: [
+          {
+            pick_code: pickCode,
+            pick_state: pickState,
+            pick_country: "MY",
+            send_code: sendCode,
+            send_state: sendState,
+            send_country: "MY",
+            weight: String(weight > 0 ? weight : 1),
+            width: "0",
+            length: "0",
+            height: "0",
+            date_coll: dateColl,
+          },
+        ],
+        exclude_fields: ["rates.*.pickup_point", "rates.*.dropoff_point"],
+      });
+
+      const resArr = (epRes.result as Array<Record<string, unknown>>) || [];
+      const first = resArr[0] || {};
+      const rawRates = (first.rates as Array<Record<string, unknown>>) || [];
+      const rates = rawRates
+        .map((r) => ({
+          rate_id: String(r.rate_id || ""),
+          service_id: String(r.service_id || ""),
+          service_name: String(r.service_name || ""),
+          service_detail: String(r.service_detail || "pickup"),
+          courier_id: String(r.courier_id || ""),
+          courier_name: String(r.courier_name || ""),
+          courier_logo: String(r.courier_logo || ""),
+          pickup_date: String(r.pickup_date || dateColl),
+          delivery: formatDur(r.delivery),
+          price: Number(r.price || 0),
+        }))
+        .filter((r) => r.service_id.length > 0 && r.price > 0)
+        .sort((a, b) => a.price - b.price);
+
+      return jsonResponse({
+        success: true,
+        easyparcel_enabled: true,
+        rates,
+      });
+    }
+
     const caller = await verifyCallerAccess(req.headers.get("Authorization"), businessId);
     if (!caller.ok) {
       return jsonResponse(
