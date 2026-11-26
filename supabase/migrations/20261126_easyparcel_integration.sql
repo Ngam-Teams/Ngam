@@ -163,3 +163,10 @@ ALTER TABLE public.orders
   ADD COLUMN IF NOT EXISTS tracking_number TEXT,
   ADD COLUMN IF NOT EXISTS tracking_url TEXT,
   ADD COLUMN IF NOT EXISTS awb_pdf_url TEXT;
+
+-- 4. Berikan kebenaran jadual kepada role `authenticated` & `service_role` (RLS kekal aktif melindungi setiap baris)
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.business_integrations TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.order_shipments TO authenticated;
+GRANT ALL ON public.business_integrations TO service_role;
+GRANT ALL ON public.order_shipments TO service_role;
+
