@@ -663,6 +663,32 @@ serve(async (req: Request) => {
           });
         }
 
+        const formatDeliveryDuration = (raw: unknown): string => {
+          if (!raw) return "1-3 working day(s)";
+          let obj: Record<string, unknown> | null = null;
+          if (typeof raw === "object") {
+            obj = raw as Record<string, unknown>;
+          } else if (typeof raw === "string") {
+            const trimmed = raw.trim();
+            if (trimmed.startsWith("{")) {
+              try {
+                obj = JSON.parse(trimmed) as Record<string, unknown>;
+              } catch {
+                return trimmed;
+              }
+            } else {
+              return trimmed || "1-3 working day(s)";
+            }
+          }
+          if (obj && obj.value !== undefined) {
+            const val = String(obj.value).trim();
+            const unit = String(obj.type || "days").toLowerCase();
+            if (unit.includes("hour")) return `${val} hour(s)`;
+            return `${val} working day(s)`;
+          }
+          return "1-3 working day(s)";
+        };
+
         const quotations = (first.quotations as Array<Record<string, unknown>>) || [];
         const rates = quotations
           .map((q) => {
@@ -683,7 +709,7 @@ serve(async (req: Request) => {
               courier_name: String(c.courier_name || ""),
               courier_logo: String(c.courier_logo || ""),
               pickup_date: dateColl,
-              delivery: String(c.delivery_duration || "1-3 working day(s)"),
+              delivery: formatDeliveryDuration(c.delivery_duration),
               price,
               shipment_price: Number(p.shipment_price ?? price),
             };
