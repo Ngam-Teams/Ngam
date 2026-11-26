@@ -306,39 +306,58 @@ async function callClassicEasyParcel(
 async function verifyCallerAccess(
   authHeader: string | null,
   businessId: string
-): Promise<{ userId: string } | null> {
-  if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
-  const token = authHeader.replace("Bearer ", "").trim();
+): Promise<{ ok: true; userId: string } | { ok: false; reason: string }> {
+  if (!authHeader || !/^Bearer\s+/i.test(authHeader)) {
+    return { ok: false, reason: "Missing Bearer Authorization header" };
+  }
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
-  if (userErr || !userData?.user) return null;
+  if (userErr || !userData?.user) {
+    return { ok: false, reason: `Invalid or expired session token (${userErr?.message || "no user"})` };
+  }
 
   const userId = userData.user.id;
+  const userEmail = (userData.user.email || "").trim().toLowerCase();
 
+  // 1. Business owner
   const { data: biz } = await supabase
     .from("businesses")
     .select("id, owner_user_id")
     .eq("id", businessId)
     .maybeSingle();
-  if (biz && biz.owner_user_id === userId) return { userId };
+  if (biz && biz.owner_user_id === userId) return { ok: true, userId };
 
-  const { data: staff } = await supabase
+  // 2. Active or invited staff (by user_id or email)
+  const { data: staffById } = await supabase
     .from("team_members")
-    .select("id")
+    .select("id, status")
     .eq("business_id", businessId)
     .eq("user_id", userId)
-    .eq("status", "active")
+    .neq("status", "inactive")
     .maybeSingle();
-  if (staff) return { userId };
+  if (staffById) return { ok: true, userId };
 
+  if (userEmail) {
+    const { data: staffByEmail } = await supabase
+      .from("team_members")
+      .select("id, status")
+      .eq("business_id", businessId)
+      .ilike("email", userEmail)
+      .neq("status", "inactive")
+      .maybeSingle();
+    if (staffByEmail) return { ok: true, userId };
+  }
+
+  // 3. Super admin / admin
   const { data: adminRole } = await supabase
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
-    .eq("role", "super_admin")
+    .in("role", ["super_admin", "admin"])
     .maybeSingle();
-  if (adminRole) return { userId };
+  if (adminRole) return { ok: true, userId };
 
-  return null;
+  return { ok: false, reason: `User ${userId.slice(0, 8)} is not an owner/staff of business ${businessId.slice(0, 8)}` };
 }
 
 type ResolvedAuth =
@@ -488,8 +507,8 @@ serve(async (req: Request) => {
     }
 
     const caller = await verifyCallerAccess(req.headers.get("Authorization"), businessId);
-    if (!caller) {
-      return jsonResponse({ success: false, error: "Unauthorized business access" }, 401);
+    if (!caller.ok) {
+      return jsonResponse({ success: false, error: caller.reason }, 401);
     }
 
     // -------------------------------------------------------------------------
