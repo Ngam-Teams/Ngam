@@ -1,6 +1,6 @@
 {
-  "version": "1.0.93",
-  "build_number": 66,
-  "released_at": "2026-11-25T13:16:43Z",
-  "changelog": "Baiki pepijat kritikal penolakan stok inventori: guna RPC SECURITY DEFINER atomik (deduct_order_stock & restore_order_stock) + trigger automatik pangkalan data supaya stok ditolak dengan tepat selepas belian (bebas sekatan RLS & Web redirect), semakan stok langsung sebelum daftar keluar, serta pemulihan stok tepat apabila pesanan dibatalkan."
+  "version": "1.0.94",
+  "build_number": 67,
+  "released_at": "2026-11-26T14:18:49Z",
+  "changelog": "Tambah backend integrasi logistik EasyParcel Malaysia: migrasi SQL jadual business_integrations & order_shipments berserta Edge Function easyparcel-proxy (semak baki, semak kadar kurier, tempah/bayar AWB & tracking)."
 }
