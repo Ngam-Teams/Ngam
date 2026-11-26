@@ -320,22 +320,25 @@ async function verifyCallerAccess(
   const userEmail = (userData.user.email || "").trim().toLowerCase();
 
   // 1. Business owner
-  const { data: biz } = await supabase
+  const { data: bizRows, error: bizErr } = await supabase
     .from("businesses")
     .select("id, owner_user_id")
     .eq("id", businessId)
-    .maybeSingle();
-  if (biz && biz.owner_user_id === userId) return { ok: true, userId };
+    .limit(1);
+  const biz = bizRows?.[0];
+  if (biz && String(biz.owner_user_id) === String(userId)) {
+    return { ok: true, userId };
+  }
 
-  // 2. Active or invited staff (by user_id or email)
+  // 2. Active or invited staff (by user_id or email) — use .limit(1) to avoid PGRST116 on multiple rows
   const { data: staffById } = await supabase
     .from("team_members")
     .select("id, status")
     .eq("business_id", businessId)
     .eq("user_id", userId)
     .neq("status", "inactive")
-    .maybeSingle();
-  if (staffById) return { ok: true, userId };
+    .limit(1);
+  if (staffById && staffById.length > 0) return { ok: true, userId };
 
   if (userEmail) {
     const { data: staffByEmail } = await supabase
@@ -344,20 +347,36 @@ async function verifyCallerAccess(
       .eq("business_id", businessId)
       .ilike("email", userEmail)
       .neq("status", "inactive")
-      .maybeSingle();
-    if (staffByEmail) return { ok: true, userId };
+      .limit(1);
+    if (staffByEmail && staffByEmail.length > 0) return { ok: true, userId };
   }
 
   // 3. Super admin / admin
-  const { data: adminRole } = await supabase
+  const { data: adminRoles } = await supabase
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
     .in("role", ["super_admin", "admin"])
-    .maybeSingle();
-  if (adminRole) return { ok: true, userId };
+    .limit(1);
+  if (adminRoles && adminRoles.length > 0) return { ok: true, userId };
 
-  return { ok: false, reason: `User ${userId.slice(0, 8)} is not an owner/staff of business ${businessId.slice(0, 8)}` };
+  // 4. Fallback: check if this user owns ANY business or has access via business_integrations
+  const { data: intRows } = await supabase
+    .from("business_integrations")
+    .select("business_id")
+    .eq("business_id", businessId)
+    .limit(1);
+  if (bizErr) {
+    return { ok: false, reason: `DB check error: ${bizErr.message}` };
+  }
+  if (!biz && (!intRows || intRows.length === 0)) {
+    return { ok: false, reason: `Business ${businessId.slice(0, 8)} not found in DB` };
+  }
+
+  return {
+    ok: false,
+    reason: `User ${userId.slice(0, 8)} is not owner (${String(biz?.owner_user_id || "none").slice(0, 8)}) or staff of business ${businessId.slice(0, 8)}`,
+  };
 }
 
 type ResolvedAuth =
