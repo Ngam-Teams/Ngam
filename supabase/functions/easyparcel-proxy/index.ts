@@ -306,7 +306,7 @@ async function callClassicEasyParcel(
 async function verifyCallerAccess(
   authHeader: string | null,
   businessId: string
-): Promise<{ ok: true; userId: string } | { ok: false; reason: string }> {
+): Promise<{ ok: boolean; userId?: string; reason?: string }> {
   if (!authHeader || !/^Bearer\s+/i.test(authHeader)) {
     return { ok: false, reason: "Missing Bearer Authorization header" };
   }
@@ -527,7 +527,10 @@ serve(async (req: Request) => {
 
     const caller = await verifyCallerAccess(req.headers.get("Authorization"), businessId);
     if (!caller.ok) {
-      return jsonResponse({ success: false, error: caller.reason }, 401);
+      return jsonResponse(
+        { success: false, error: caller.reason || "Unauthorized business access" },
+        401
+      );
     }
 
     // -------------------------------------------------------------------------
