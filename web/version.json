@@ -1,6 +1,6 @@
 {
-  "version": "1.0.95",
-  "build_number": 68,
-  "released_at": "2026-11-26T14:45:48Z",
-  "changelog": "Naik taraf easyparcel-proxy kepada Mod Platform Ngam (guna EASYPARCEL_API_KEY & EASYPARCEL_ENV daripada Supabase Secrets supaya peniaga boleh aktifkan penghantaran 1-klik tanpa perlu daftar API key sendiri, dengan sokongan pilihan akaun sendiri)."
+  "version": "1.0.96",
+  "build_number": 69,
+  "released_at": "2026-11-26T15:13:20Z",
+  "changelog": "Sokongan penuh EasyParcel NextGen Open API (2026-09) dengan OAuth 2.0 auto-refresh: tambah jadual platform_integrations & aliran OAuth terbina dalam pada Edge Function easyparcel-proxy."
 }

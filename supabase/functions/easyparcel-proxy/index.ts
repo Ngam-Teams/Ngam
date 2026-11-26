@@ -4,32 +4,77 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.6";
 /**
  * NGAM EASYPARCEL PROXY EDGE FUNCTION (`easyparcel-proxy`)
  * ---------------------------------------------------------------------------
- * Proksi selamat untuk EasyParcel Malaysia Individual API v1.4:
- * - Mengelakkan ralat CORS di Flutter Web/PWA
- * - Melindungi API Key EasyParcel di pelayan (disimpan dalam `business_integrations`)
- * - Menyokong mod Demo (`https://demo.connect.easyparcel.my/`) & Live (`https://connect.easyparcel.my/`)
+ * Menyokong DUA mod secara automatik:
+ *  A. EasyParcel NextGen Open API (2026-09, OAuth 2.0) — MOD UTAMA PLATFORM NGAM
+ *     - Guna `EASYPARCEL_CLIENT_ID` & `EASYPARCEL_CLIENT_SECRET` dalam Supabase Secrets
+ *     - Aliran OAuth 1-klik terbina dalam:
+ *       1. Buka `GET /functions/v1/easyparcel-proxy?action=oauth_start` (Admin sekali sahaja)
+ *       2. EasyParcel redirect balik ke `GET /functions/v1/easyparcel-proxy?code=...`
+ *       3. Token disimpan automatik dalam `public.platform_integrations` & auto-refresh!
+ *  B. Classic Individual API (`EP-...`) — untuk peniaga yang memilih guna akaun sendiri
+ *     atau fallback jika `EASYPARCEL_API_KEY` diset.
  *
- * Tindakan (`action`):
- *  1. `verify_connection` — Uji API key & semak baki kredit (`EPCheckCreditBalance`)
- *  2. `check_balance`     — Semak baki kredit menggunakan kunci tersimpan (`EPCheckCreditBalance`)
- *  3. `check_rates`       — Semak harga kurier PosLaju/J&T/NinjaVan/DHL (`EPRateCheckingBulk`)
- *  4. `book_and_pay`      — Cipta pesanan (`EPSubmitOrderBulk`) + Bayar kredit (`EPPayOrderBulk`) & simpan AWB
- *  5. `track_parcel`      — Semak status penghantaran terkini (`EPTrackingBulk`) & kemas kini `order_shipments`
+ * Tindakan POST (`action`):
+ *  - `platform_status`   — Semak status sambungan NextGen / Classic Platform
+ *  - `verify_connection` — Uji kunci API Classic peniaga sendiri
+ *  - `check_balance`     — Semak baki dompet EasyParcel
+ *  - `check_rates`       — Semak harga kurier (PosLaju, J&T, Ninja Van, DHL, dll.)
+ *  - `book_and_pay`      — Cipta & bayar penghantaran + simpan AWB PDF ke `order_shipments` & `orders`
+ *  - `track_parcel`      — Semak status penghantaran terkini melalui nombor AWB
  */
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-const platformApiKey = (Deno.env.get("EASYPARCEL_API_KEY") || "").trim();
-const platformEnv = (Deno.env.get("EASYPARCEL_ENV") || "demo").trim().toLowerCase() === "live"
-  ? "live"
-  : "demo";
+
+// NextGen OAuth 2.0 credentials (Platform Mode)
+const epClientId = (Deno.env.get("EASYPARCEL_CLIENT_ID") || "").trim();
+const epClientSecret = (Deno.env.get("EASYPARCEL_CLIENT_SECRET") || "").trim();
+const epRedirectUriOverride = (Deno.env.get("EASYPARCEL_REDIRECT_URI") || "").trim();
+
+// Classic API fallback credentials
+const platformClassicKey = (Deno.env.get("EASYPARCEL_API_KEY") || "").trim();
+const platformClassicEnv =
+  (Deno.env.get("EASYPARCEL_ENV") || "demo").trim().toLowerCase() === "live"
+    ? "live"
+    : "demo";
+
+const NEXTGEN_BASE = "https://api.easyparcel.com";
+const NEXTGEN_API_VERSION = "2026-09";
+const NEXTGEN_OPEN_API = `${NEXTGEN_BASE}/open_api/${NEXTGEN_API_VERSION}`;
+
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// Map EasyParcel 3-letter state codes -> ISO 3166-2 Malaysia subdivision codes (NextGen API)
+const MY_STATE_TO_ISO: Record<string, string> = {
+  jhr: "MY-01",
+  kdh: "MY-02",
+  ktn: "MY-03",
+  mlk: "MY-04",
+  nsn: "MY-05",
+  phg: "MY-06",
+  png: "MY-07",
+  prk: "MY-08",
+  pls: "MY-09",
+  sgr: "MY-10",
+  trg: "MY-11",
+  sbh: "MY-12",
+  srw: "MY-13",
+  kul: "MY-14",
+  lbn: "MY-15",
+  pjy: "MY-16",
+};
+
+function toIsoSubdivision(stateCode: string): string {
+  const s = String(stateCode || "").trim().toLowerCase();
+  if (s.startsWith("my-")) return s.toUpperCase();
+  return MY_STATE_TO_ISO[s] || "MY-10";
+}
 
 function jsonResponse(body: Record<string, unknown>, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -38,21 +83,183 @@ function jsonResponse(body: Record<string, unknown>, status = 200): Response {
   });
 }
 
-function getBaseUrl(env: string): string {
+function htmlResponse(html: string, status = 200): Response {
+  return new Response(html, {
+    status,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
+
+function getCallbackUrl(): string {
+  if (epRedirectUriOverride) return epRedirectUriOverride;
+  return `${supabaseUrl}/functions/v1/easyparcel-proxy`;
+}
+
+function normalizePhoneClassic(phone: string): string {
+  const digits = String(phone || "").replace(/[^\d+]/g, "");
+  if (!digits) return "0123456789";
+  if (digits.startsWith("+60")) return "0" + digits.slice(3);
+  if (digits.startsWith("60") && digits.length >= 10) return "0" + digits.slice(2);
+  return digits;
+}
+
+/** NextGen API expects local Malaysian number without leading 0 or +60 (e.g. "123456789") */
+function normalizePhoneNextGen(phone: string): string {
+  let digits = String(phone || "").replace(/\D/g, "");
+  if (digits.startsWith("60") && digits.length >= 10) {
+    digits = digits.slice(2);
+  }
+  if (digits.startsWith("0")) {
+    digits = digits.slice(1);
+  }
+  return digits || "123456789";
+}
+
+function todayMytDate(): string {
+  const myt = new Date(Date.now() + 8 * 3600 * 1000);
+  const y = myt.getUTCFullYear();
+  const m = String(myt.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(myt.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+// =============================================================================
+// NEXTGEN OAUTH 2.0 HELPERS
+// =============================================================================
+
+function basicAuthHeader(): string {
+  return `Basic ${btoa(`${epClientId}:${epClientSecret}`)}`;
+}
+
+async function exchangeOAuthToken(params: Record<string, string>): Promise<Record<string, unknown>> {
+  const form = new URLSearchParams(params);
+  const res = await fetch(`${NEXTGEN_BASE}/oauth/token`, {
+    method: "POST",
+    headers: {
+      Authorization: basicAuthHeader(),
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+    },
+    body: form.toString(),
+  });
+  const text = await res.text();
+  let parsed: Record<string, unknown> = {};
+  try {
+    parsed = JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    throw new Error(`EasyParcel OAuth non-JSON (${res.status}): ${text.slice(0, 200)}`);
+  }
+  if (!res.ok || !parsed.access_token) {
+    throw new Error(
+      String(parsed.error_description || parsed.message || parsed.error || `OAuth failed (${res.status})`)
+    );
+  }
+  return parsed;
+}
+
+async function savePlatformTokens(
+  tokenData: Record<string, unknown>,
+  redirectUri: string
+): Promise<void> {
+  const expiresIn = Number(tokenData.expires_in || 36000);
+  const refreshExpiresIn = Number(tokenData.refresh_token_expires_in || 31557600);
+  const expiresAt = tokenData.expires_at
+    ? String(tokenData.expires_at)
+    : new Date(Date.now() + expiresIn * 1000).toISOString();
+  const refreshExpiresAt = tokenData.refresh_token_expires_at
+    ? String(tokenData.refresh_token_expires_at)
+    : new Date(Date.now() + refreshExpiresIn * 1000).toISOString();
+
+  await supabase.from("platform_integrations").upsert(
+    {
+      provider: "easyparcel_nextgen",
+      access_token: String(tokenData.access_token),
+      refresh_token: tokenData.refresh_token ? String(tokenData.refresh_token) : null,
+      expires_at: expiresAt,
+      refresh_expires_at: refreshExpiresAt,
+      redirect_uri: redirectUri,
+      metadata: {
+        token_type: tokenData.token_type || "Bearer",
+        app: tokenData.app || null,
+      },
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "provider" }
+  );
+}
+
+async function getValidNextGenAccessToken(): Promise<string | null> {
+  if (!epClientId || !epClientSecret) return null;
+
+  const { data } = await supabase
+    .from("platform_integrations")
+    .select("access_token, refresh_token, expires_at, redirect_uri")
+    .eq("provider", "easyparcel_nextgen")
+    .maybeSingle();
+
+  if (!data || !data.access_token) return null;
+
+  const expiresMs = data.expires_at ? new Date(String(data.expires_at)).getTime() : 0;
+  // Return cached token if still valid for at least 2 minutes
+  if (expiresMs > Date.now() + 120 * 1000) {
+    return String(data.access_token);
+  }
+
+  // Otherwise auto-refresh using refresh_token
+  if (!data.refresh_token) return String(data.access_token);
+
+  const redirectUri = String(data.redirect_uri || getCallbackUrl());
+  const refreshed = await exchangeOAuthToken({
+    grant_type: "refresh_token",
+    refresh_token: String(data.refresh_token),
+    redirect_uri: redirectUri,
+  });
+
+  await savePlatformTokens(
+    {
+      ...refreshed,
+      refresh_token: refreshed.refresh_token || data.refresh_token,
+    },
+    redirectUri
+  );
+
+  return String(refreshed.access_token);
+}
+
+async function callNextGen(
+  method: "GET" | "POST",
+  path: string,
+  accessToken: string,
+  body?: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  const res = await fetch(`${NEXTGEN_OPEN_API}${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await res.text();
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    throw new Error(`EasyParcel NextGen non-JSON (${res.status}): ${text.slice(0, 200)}`);
+  }
+}
+
+// =============================================================================
+// CLASSIC INDIVIDUAL API HELPERS (Optional merchant custom key fallback)
+// =============================================================================
+
+function getClassicBaseUrl(env: string): string {
   return env === "live"
     ? "https://connect.easyparcel.my/?ac="
     : "https://demo.connect.easyparcel.my/?ac=";
 }
 
-/**
- * Encode nested JS objects/arrays into PHP `http_build_query` format
- * required by EasyParcel API (e.g. `bulk[0][pick_code]=10050`).
- */
-function appendFormParams(
-  params: URLSearchParams,
-  value: unknown,
-  prefix?: string
-): void {
+function appendFormParams(params: URLSearchParams, value: unknown, prefix?: string): void {
   if (value === null || value === undefined) return;
   if (Array.isArray(value)) {
     value.forEach((item, index) => {
@@ -69,31 +276,32 @@ function appendFormParams(
   }
 }
 
-async function callEasyParcel(
+async function callClassicEasyParcel(
   env: string,
   epAction: string,
   payload: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
   const params = new URLSearchParams();
   appendFormParams(params, payload);
-
-  const url = `${getBaseUrl(env)}${epAction}`;
-  const res = await fetch(url, {
+  const res = await fetch(`${getClassicBaseUrl(env)}${epAction}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
-      "Accept": "application/json",
+      Accept: "application/json",
     },
     body: params.toString(),
   });
-
   const rawText = await res.text();
   try {
     return JSON.parse(rawText) as Record<string, unknown>;
   } catch {
-    throw new Error(`EasyParcel returned non-JSON (${res.status}): ${rawText.slice(0, 200)}`);
+    throw new Error(`EasyParcel Classic non-JSON (${res.status}): ${rawText.slice(0, 200)}`);
   }
 }
+
+// =============================================================================
+// CALLER ACCESS & CREDENTIAL RESOLUTION
+// =============================================================================
 
 async function verifyCallerAccess(
   authHeader: string | null,
@@ -106,54 +314,42 @@ async function verifyCallerAccess(
 
   const userId = userData.user.id;
 
-  // 1. Check business owner
   const { data: biz } = await supabase
     .from("businesses")
     .select("id, owner_user_id")
     .eq("id", businessId)
     .maybeSingle();
+  if (biz && biz.owner_user_id === userId) return { userId };
 
-  if (biz && biz.owner_user_id === userId) {
-    return { userId };
-  }
-
-  // 2. Check active team member
   const { data: staff } = await supabase
     .from("team_members")
-    .select("id, role, status")
+    .select("id")
     .eq("business_id", businessId)
     .eq("user_id", userId)
     .eq("status", "active")
     .maybeSingle();
+  if (staff) return { userId };
 
-  if (staff) {
-    return { userId };
-  }
-
-  // 3. Check super_admin
   const { data: adminRole } = await supabase
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
     .eq("role", "super_admin")
     .maybeSingle();
-
-  if (adminRole) {
-    return { userId };
-  }
+  if (adminRole) return { userId };
 
   return null;
 }
 
-async function getSavedCredentials(businessId: string): Promise<{
-  apiKey: string;
-  environment: string;
-  mode: "platform" | "custom";
-  config: Record<string, unknown>;
-} | null> {
+type ResolvedAuth =
+  | { engine: "nextgen"; accessToken: string; environment: string }
+  | { engine: "classic"; apiKey: string; environment: string };
+
+async function resolveAuth(businessId: string): Promise<ResolvedAuth | null> {
+  // 1. Check if merchant opted into custom Classic EasyParcel key
   const { data } = await supabase
     .from("business_integrations")
-    .select("api_key, environment, is_connected, config")
+    .select("api_key, environment, config")
     .eq("business_id", businessId)
     .eq("provider", "easyparcel")
     .maybeSingle();
@@ -161,45 +357,118 @@ async function getSavedCredentials(businessId: string): Promise<{
   const cfg = (data?.config as Record<string, unknown>) || {};
   const mode = String(cfg.mode || "platform").toLowerCase();
 
-  // Optional: Enterprise merchant using their own EasyParcel API key
   if (mode === "custom" && data?.api_key && String(data.api_key).trim().length > 0) {
     return {
+      engine: "classic",
       apiKey: String(data.api_key).trim(),
       environment: String(data.environment || "demo") === "live" ? "live" : "demo",
-      mode: "custom",
-      config: cfg,
     };
   }
 
-  // Default: Ngam Platform Managed EasyParcel (1 master key in Supabase Secrets)
-  if (!platformApiKey) return null;
-  return {
-    apiKey: platformApiKey,
-    environment: platformEnv,
-    mode: "platform",
-    config: cfg,
-  };
+  // 2. Primary Platform Mode: EasyParcel NextGen OAuth 2.0
+  const nextGenToken = await getValidNextGenAccessToken();
+  if (nextGenToken) {
+    return { engine: "nextgen", accessToken: nextGenToken, environment: "live" };
+  }
+
+  // 3. Fallback Platform Mode: Classic API Key in Supabase Secrets
+  if (platformClassicKey) {
+    return {
+      engine: "classic",
+      apiKey: platformClassicKey,
+      environment: platformClassicEnv,
+    };
+  }
+
+  return null;
 }
 
-function normalizePhone(phone: string): string {
-  const digits = String(phone || "").replace(/[^\d+]/g, "");
-  if (!digits) return "0123456789";
-  if (digits.startsWith("+60")) return "0" + digits.slice(3);
-  if (digits.startsWith("60") && digits.length >= 10) return "0" + digits.slice(2);
-  return digits;
-}
-
-function todayMytDate(): string {
-  const myt = new Date(Date.now() + 8 * 3600 * 1000);
-  const y = myt.getUTCFullYear();
-  const m = String(myt.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(myt.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
+// =============================================================================
+// MAIN HANDLER
+// =============================================================================
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  // ---------------------------------------------------------------------------
+  // GET: EasyParcel NextGen OAuth 2.0 Start & Callback
+  // ---------------------------------------------------------------------------
+  if (req.method === "GET") {
+    const url = new URL(req.url);
+    const action = url.searchParams.get("action");
+    const code = url.searchParams.get("code");
+    const oauthError = url.searchParams.get("error");
+
+    if (action === "oauth_start") {
+      if (!epClientId || !epClientSecret) {
+        return htmlResponse(
+          `<h2>EASYPARCEL_CLIENT_ID / EASYPARCEL_CLIENT_SECRET belum diset di Supabase Secrets.</h2>`,
+          400
+        );
+      }
+      const redirectUri = getCallbackUrl();
+      const loginUrl =
+        `${NEXTGEN_BASE}/oauth/login?client_id=${encodeURIComponent(epClientId)}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&state=ngam_platform_auth`;
+      return Response.redirect(loginUrl, 302);
+    }
+
+    if (oauthError) {
+      return htmlResponse(
+        `<h2>Gagal menyambungkan EasyParcel: ${oauthError}</h2><p>Sila cuba semula.</p>`,
+        400
+      );
+    }
+
+    if (code) {
+      try {
+        if (!epClientId || !epClientSecret) {
+          return htmlResponse(
+            `<h2>EASYPARCEL_CLIENT_ID / EASYPARCEL_CLIENT_SECRET tiada dalam Supabase Secrets.</h2>`,
+            400
+          );
+        }
+        const redirectUri = getCallbackUrl();
+        const tokenData = await exchangeOAuthToken({
+          grant_type: "authorization_code",
+          code,
+          redirect_uri: redirectUri,
+        });
+        await savePlatformTokens(tokenData, redirectUri);
+
+        return htmlResponse(`
+          <!DOCTYPE html>
+          <html>
+            <head><meta charset="utf-8"><title>EasyParcel Connected</title></head>
+            <body style="font-family:system-ui,sans-serif;background:#0a0a14;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;">
+              <div style="background:#141827;border:1px solid rgba(52,211,153,.4);border-radius:20px;padding:32px;max-width:460px;text-align:center;">
+                <h2 style="color:#34d399;margin-top:0;">EasyParcel NextGen Berjaya Disambungkan!</h2>
+                <p style="color:#cbd5e1;line-height:1.5;">
+                  Token OAuth 2.0 telah disimpan dengan selamat dalam <b>Ngam Platform</b> dan akan diperbaharui secara automatik.
+                  Semua peniaga dalam Ngam Business kini boleh guna EasyParcel dengan 1 klik!
+                </p>
+                <p style="color:#94a3b8;font-size:13px;">Anda boleh tutup tetingkap ini sekarang.</p>
+              </div>
+            </body>
+          </html>
+        `);
+      } catch (err) {
+        return htmlResponse(
+          `<h2>Ralat OAuth EasyParcel</h2><pre>${err instanceof Error ? err.message : String(err)}</pre>`,
+          500
+        );
+      }
+    }
+
+    return jsonResponse({
+      ok: true,
+      service: "ngam-easyparcel-proxy",
+      nextgen_configured: Boolean(epClientId && epClientSecret),
+      callback_url: getCallbackUrl(),
+    });
   }
 
   if (req.method !== "POST") {
@@ -224,41 +493,37 @@ serve(async (req: Request) => {
     }
 
     // -------------------------------------------------------------------------
-    // 0. PLATFORM STATUS (Check if Ngam Master EasyParcel key is active)
+    // 0. PLATFORM STATUS
     // -------------------------------------------------------------------------
     if (action === "platform_status") {
+      const nextGenToken = await getValidNextGenAccessToken();
       return jsonResponse({
         success: true,
-        platform_ready: platformApiKey.length > 0,
-        environment: platformEnv,
+        platform_ready: Boolean(nextGenToken || platformClassicKey),
+        engine: nextGenToken ? "nextgen" : platformClassicKey ? "classic" : "none",
       });
     }
 
     // -------------------------------------------------------------------------
-    // 1. VERIFY CONNECTION (with explicit custom api_key & environment)
+    // 1. VERIFY CUSTOM CLASSIC API KEY
     // -------------------------------------------------------------------------
     if (action === "verify_connection") {
       const apiKey = String(body.api_key || "").trim();
       const environment = String(body.environment || "demo") === "live" ? "live" : "demo";
-
       if (!apiKey) {
         return jsonResponse({ success: false, error: "API key is required" }, 400);
       }
 
-      const epRes = await callEasyParcel(environment, "EPCheckCreditBalance", {
+      const epRes = await callClassicEasyParcel(environment, "EPCheckCreditBalance", {
         api: apiKey,
       });
-
       const ok = String(epRes.api_status || "").toLowerCase() === "success";
       if (!ok) {
         return jsonResponse({
           success: false,
           error: String(epRes.error_remark || "Invalid EasyParcel API key"),
-          error_code: epRes.error_code,
-          raw: epRes,
         });
       }
-
       return jsonResponse({
         success: true,
         balance: Number(epRes.result || 0),
@@ -267,43 +532,45 @@ serve(async (req: Request) => {
       });
     }
 
-    // All subsequent actions use Platform Master Key (default) or Merchant Custom Key
-    const creds = await getSavedCredentials(businessId);
-    if (!creds) {
+    const auth = await resolveAuth(businessId);
+    if (!auth) {
       return jsonResponse(
         {
           success: false,
           error:
-            "EasyParcel platform key (EASYPARCEL_API_KEY) is not set in Supabase Secrets yet.",
+            "EasyParcel platform is not connected yet. Admin needs to authorize EasyParcel NextGen OAuth.",
         },
         400
       );
     }
 
     // -------------------------------------------------------------------------
-    // 2. CHECK CREDIT BALANCE
+    // 2. CHECK BALANCE
     // -------------------------------------------------------------------------
     if (action === "check_balance") {
-      const epRes = await callEasyParcel(creds.environment, "EPCheckCreditBalance", {
-        api: creds.apiKey,
+      if (auth.engine === "nextgen") {
+        const res = await callNextGen("GET", "/wallet", auth.accessToken);
+        const dataObj = (res.data as Record<string, unknown>) || {};
+        const wallets = (dataObj.wallet as Array<Record<string, unknown>>) || [];
+        const bal = Number(wallets[0]?.balance || 0);
+        return jsonResponse({ success: true, balance: bal, currency: "MYR", engine: "nextgen" });
+      }
+      const epRes = await callClassicEasyParcel(auth.environment, "EPCheckCreditBalance", {
+        api: auth.apiKey,
       });
-      const ok = String(epRes.api_status || "").toLowerCase() === "success";
-      if (!ok) {
-        return jsonResponse({
-          success: false,
-          error: String(epRes.error_remark || "Failed to fetch balance"),
-        });
+      if (String(epRes.api_status || "").toLowerCase() !== "success") {
+        return jsonResponse({ success: false, error: String(epRes.error_remark || "Failed") });
       }
       return jsonResponse({
         success: true,
         balance: Number(epRes.result || 0),
         currency: "MYR",
-        environment: creds.environment,
+        engine: "classic",
       });
     }
 
     // -------------------------------------------------------------------------
-    // 3. CHECK COURIER RATES (`EPRateCheckingBulk`)
+    // 3. CHECK COURIER RATES
     // -------------------------------------------------------------------------
     if (action === "check_rates") {
       const pickCode = String(body.pick_code || "").trim();
@@ -311,9 +578,10 @@ serve(async (req: Request) => {
       const sendCode = String(body.send_code || "").trim();
       const sendState = String(body.send_state || "").trim().toLowerCase();
       const weight = Number(body.weight || 1);
-      const width = Number(body.width || 0);
-      const length = Number(body.length || 0);
-      const height = Number(body.height || 0);
+      const width = Number(body.width || 5);
+      const length = Number(body.length || 5);
+      const height = Number(body.height || 5);
+      const parcelValue = Number(body.parcel_value || 50);
       const dateColl = String(body.date_coll || todayMytDate()).trim();
 
       if (!pickCode || !pickState || !sendCode || !sendState) {
@@ -323,8 +591,74 @@ serve(async (req: Request) => {
         );
       }
 
-      const epRes = await callEasyParcel(creds.environment, "EPRateCheckingBulk", {
-        api: creds.apiKey,
+      if (auth.engine === "nextgen") {
+        const ngRes = await callNextGen("POST", "/shipment/quotations", auth.accessToken, {
+          shipment: [
+            {
+              sender: {
+                postcode: pickCode,
+                subdivision_code: toIsoSubdivision(pickState),
+                country: "MY",
+              },
+              receiver: {
+                postcode: sendCode,
+                subdivision_code: toIsoSubdivision(sendState),
+                country: "MY",
+              },
+              parcel_value: parcelValue > 0 ? parcelValue : 50,
+              weight: weight > 0 ? weight : 1,
+              width: width > 0 ? width : 5,
+              length: length > 0 ? length : 5,
+              height: height > 0 ? height : 5,
+            },
+          ],
+        });
+
+        const statusCode = Number(ngRes.status_code || 0);
+        const dataArr = (ngRes.data as Array<Record<string, unknown>>) || [];
+        const first = dataArr[0] || {};
+        if (statusCode !== 200 || String(first.status || "").toLowerCase() !== "success") {
+          return jsonResponse({
+            success: false,
+            error: String(ngRes.message || first.message || "Failed to fetch courier rates"),
+            raw: ngRes,
+          });
+        }
+
+        const quotations = (first.quotations as Array<Record<string, unknown>>) || [];
+        const rates = quotations
+          .map((q) => {
+            const c = (q.courier as Record<string, unknown>) || {};
+            const p = (q.pricing as Record<string, unknown>) || {};
+            const isPickup = c.is_pickup === true;
+            const isDropoff = c.is_dropoff === true;
+            const detail =
+              isPickup && isDropoff ? "dropoff/pickup" : isPickup ? "pickup" : "dropoff";
+            const price = Number(p.total_amount ?? p.shipment_price ?? 0);
+            return {
+              rate_id: String(c.service_id || ""),
+              service_id: String(c.service_id || ""),
+              service_name: String(c.service_name || ""),
+              service_detail: detail,
+              service_type: "parcel",
+              courier_id: String(c.courier_id || ""),
+              courier_name: String(c.courier_name || ""),
+              courier_logo: String(c.courier_logo || ""),
+              pickup_date: dateColl,
+              delivery: String(c.delivery_duration || "1-3 working day(s)"),
+              price,
+              shipment_price: Number(p.shipment_price ?? price),
+            };
+          })
+          .filter((r) => r.service_id.length > 0)
+          .sort((a, b) => a.price - b.price);
+
+        return jsonResponse({ success: true, engine: "nextgen", rates });
+      }
+
+      // Classic Individual API fallback
+      const epRes = await callClassicEasyParcel(auth.environment, "EPRateCheckingBulk", {
+        api: auth.apiKey,
         bulk: [
           {
             pick_code: pickCode,
@@ -334,9 +668,9 @@ serve(async (req: Request) => {
             send_state: sendState,
             send_country: "MY",
             weight: String(weight > 0 ? weight : 1),
-            width: String(width),
-            length: String(length),
-            height: String(height),
+            width: String(Number(body.width || 0)),
+            length: String(Number(body.length || 0)),
+            height: String(Number(body.height || 0)),
             date_coll: dateColl,
           },
         ],
@@ -344,21 +678,12 @@ serve(async (req: Request) => {
       });
 
       const ok = String(epRes.api_status || "").toLowerCase() === "success";
-      if (!ok) {
-        return jsonResponse({
-          success: false,
-          error: String(epRes.error_remark || "Rate check failed"),
-          raw: epRes,
-        });
-      }
-
       const resultArr = (epRes.result as Array<Record<string, unknown>>) || [];
       const firstResult = resultArr[0] || {};
-      const status = String(firstResult.status || "").toLowerCase();
-      if (status !== "success") {
+      if (!ok || String(firstResult.status || "").toLowerCase() !== "success") {
         return jsonResponse({
           success: false,
-          error: String(firstResult.remarks || "No couriers available for this route"),
+          error: String(firstResult.remarks || epRes.error_remark || "Rate check failed"),
         });
       }
 
@@ -380,15 +705,11 @@ serve(async (req: Request) => {
         }))
         .sort((a, b) => a.price - b.price);
 
-      return jsonResponse({
-        success: true,
-        environment: creds.environment,
-        rates,
-      });
+      return jsonResponse({ success: true, engine: "classic", rates });
     }
 
     // -------------------------------------------------------------------------
-    // 4. BOOK & PAY SHIPMENT (`EPSubmitOrderBulk` + `EPPayOrderBulk`)
+    // 4. BOOK & PAY SHIPMENT
     // -------------------------------------------------------------------------
     if (action === "book_and_pay") {
       const orderId = String(body.order_id || "").trim();
@@ -413,101 +734,187 @@ serve(async (req: Request) => {
         );
       }
 
-      // Step 4A: Submit Order to EasyParcel
-      const submitRes = await callEasyParcel(creds.environment, "EPSubmitOrderBulk", {
-        api: creds.apiKey,
-        bulk: [
-          {
-            weight: String(weight > 0 ? weight : 1),
-            width: String(Number(body.width || 0)),
-            length: String(Number(body.length || 0)),
-            height: String(Number(body.height || 0)),
-            content,
-            value: String(value > 0 ? value : 10),
-            service_id: serviceId,
-            pick_name: String(sender.name || "Merchant").trim(),
-            pick_company: String(sender.company || sender.name || "").trim(),
-            pick_contact: normalizePhone(String(sender.phone || "")),
-            pick_mobile: normalizePhone(String(sender.phone || "")),
-            pick_addr1: String(sender.addr1 || "").trim(),
-            pick_addr2: String(sender.addr2 || "").trim(),
-            pick_city: String(sender.city || "").trim(),
-            pick_state: String(sender.state || "").trim().toLowerCase(),
-            pick_code: String(sender.postcode || "").trim(),
-            pick_country: "MY",
-            send_name: String(receiver.name || "Customer").trim(),
-            send_company: "",
-            send_contact: normalizePhone(String(receiver.phone || "")),
-            send_mobile: normalizePhone(String(receiver.phone || "")),
-            send_addr1: String(receiver.addr1 || "").trim(),
-            send_addr2: String(receiver.addr2 || "").trim(),
-            send_city: String(receiver.city || "").trim(),
-            send_state: String(receiver.state || "").trim().toLowerCase(),
-            send_code: String(receiver.postcode || "").trim(),
-            send_country: "MY",
-            collect_date: collectDate,
-            reference,
-          },
-        ],
-      });
-
-      const submitOk = String(submitRes.api_status || "").toLowerCase() === "success";
-      const submitResultArr = (submitRes.result as Array<Record<string, unknown>>) || [];
-      const submitFirst = submitResultArr[0] || {};
-
-      if (!submitOk || String(submitFirst.status || "").toLowerCase() !== "success") {
-        return jsonResponse({
-          success: false,
-          error: String(
-            submitFirst.remarks || submitRes.error_remark || "Failed to create EasyParcel order"
-          ),
-          raw: submitRes,
-        });
-      }
-
-      const epOrderNo = String(submitFirst.order_number || "");
-      const epParcelNo = String(submitFirst.parcel_number || "");
-      const shippingCost = Number(submitFirst.price || body.quoted_price || 0);
-
+      let epOrderNo = "";
+      let epParcelNo = "";
       let awbNumber = "";
       let awbPdfUrl = "";
       let trackingUrl = "";
+      let shippingCost = Number(body.quoted_price || 0);
       let shipmentStatus = "created";
-      let paymentMessage = "Order Created (Unpaid)";
-      let payRes: Record<string, unknown> = {};
+      let paymentMessage = "";
+      let rawResponse: Record<string, unknown> = {};
 
-      // Step 4B: Pay Order using EasyParcel Credit Balance
-      if (autoPay && epOrderNo) {
-        payRes = await callEasyParcel(creds.environment, "EPPayOrderBulk", {
-          api: creds.apiKey,
-          bulk: [{ order_no: epOrderNo }],
+      if (auth.engine === "nextgen") {
+        const ngRes = await callNextGen("POST", "/shipment/submit_orders", auth.accessToken, {
+          shipment: [
+            {
+              reference,
+              service_id: serviceId,
+              collection_date: collectDate,
+              weight: weight > 0 ? weight : 1,
+              height: Number(body.height || 5),
+              length: Number(body.length || 5),
+              width: Number(body.width || 5),
+              item: [
+                {
+                  content,
+                  weight: weight > 0 ? weight : 1,
+                  height: Number(body.height || 5),
+                  length: Number(body.length || 5),
+                  width: Number(body.width || 5),
+                  currency_code: "MYR",
+                  value: value > 0 ? value : 10,
+                  quantity: 1,
+                },
+              ],
+              sender: {
+                name: String(sender.name || "Merchant").trim(),
+                company: String(sender.company || sender.name || "").trim(),
+                phone_number_country_code: "MY",
+                phone_number: normalizePhoneNextGen(String(sender.phone || "")),
+                email: String(sender.email || "merchant@ngam.dev").trim(),
+                address_1: String(sender.addr1 || "").trim(),
+                address_2: String(sender.addr2 || "").trim(),
+                postcode: String(sender.postcode || "").trim(),
+                city: String(sender.city || sender.postcode || "").trim(),
+                subdivision_code: toIsoSubdivision(String(sender.state || "sgr")),
+                country_code: "MY",
+              },
+              receiver: {
+                name: String(receiver.name || "Customer").trim(),
+                company: "",
+                phone_number_country_code: "MY",
+                phone_number: normalizePhoneNextGen(String(receiver.phone || "")),
+                email: String(receiver.email || "customer@ngam.dev").trim(),
+                address_1: String(receiver.addr1 || "").trim(),
+                address_2: String(receiver.addr2 || "").trim(),
+                postcode: String(receiver.postcode || "").trim(),
+                city: String(receiver.city || receiver.postcode || "").trim(),
+                subdivision_code: toIsoSubdivision(String(receiver.state || "sgr")),
+                country_code: "MY",
+              },
+            },
+          ],
         });
 
-        const payResultArr = (payRes.result as Array<Record<string, unknown>>) || [];
-        const payFirst = payResultArr[0] || {};
-        paymentMessage = String(payFirst.messagenow || "");
+        rawResponse = ngRes;
+        const dataArr = (ngRes.data as Array<Record<string, unknown>>) || [];
+        const firstOrder = dataArr[0] || {};
+        const shipments = (firstOrder.shipments as Array<Record<string, unknown>>) || [];
+        const s0 = shipments[0] || {};
 
-        const parcels = (payFirst.parcel as Array<Record<string, unknown>>) || [];
-        const p0 = parcels[0] || {};
-
-        if (p0.awb) {
-          awbNumber = String(p0.awb || "");
-          awbPdfUrl = String(p0.awb_id_link || "");
-          trackingUrl = String(p0.tracking_url || "");
-          shipmentStatus = "paid";
-        } else if (paymentMessage.toLowerCase().includes("insufficient")) {
-          shipmentStatus = "unpaid_insufficient_credit";
+        if (
+          Number(ngRes.status_code || 0) !== 200 ||
+          String(s0.status || "").toLowerCase() !== "success"
+        ) {
+          return jsonResponse({
+            success: false,
+            error: String(
+              s0.message || s0.error || ngRes.message || "Failed to submit EasyParcel order"
+            ),
+            raw: ngRes,
+          });
         }
+
+        const orderDetails = (firstOrder.order_details as Record<string, unknown>) || {};
+        const pricing = (s0.pricing_breakdown as Record<string, unknown>) || {};
+        const awbByFormat = (s0.awb_urls_by_format as Record<string, unknown>) || {};
+
+        epOrderNo = String(orderDetails.order_number || "");
+        epParcelNo = String(s0.shipment_number || "");
+        awbNumber = String(s0.awb_number || "");
+        awbPdfUrl = String(s0.awb_url || awbByFormat.A6 || awbByFormat.A4 || "");
+        trackingUrl = String(s0.tracking_url || "");
+        shippingCost = Number(pricing.total_paid_amount || body.quoted_price || 0);
+        shipmentStatus = "paid";
+        paymentMessage = "Confirmed & Paid (NextGen)";
+      } else {
+        // Classic Individual API
+        const submitRes = await callClassicEasyParcel(auth.environment, "EPSubmitOrderBulk", {
+          api: auth.apiKey,
+          bulk: [
+            {
+              weight: String(weight > 0 ? weight : 1),
+              width: String(Number(body.width || 0)),
+              length: String(Number(body.length || 0)),
+              height: String(Number(body.height || 0)),
+              content,
+              value: String(value > 0 ? value : 10),
+              service_id: serviceId,
+              pick_name: String(sender.name || "Merchant").trim(),
+              pick_company: String(sender.company || sender.name || "").trim(),
+              pick_contact: normalizePhoneClassic(String(sender.phone || "")),
+              pick_mobile: normalizePhoneClassic(String(sender.phone || "")),
+              pick_addr1: String(sender.addr1 || "").trim(),
+              pick_addr2: String(sender.addr2 || "").trim(),
+              pick_city: String(sender.city || "").trim(),
+              pick_state: String(sender.state || "").trim().toLowerCase(),
+              pick_code: String(sender.postcode || "").trim(),
+              pick_country: "MY",
+              send_name: String(receiver.name || "Customer").trim(),
+              send_company: "",
+              send_contact: normalizePhoneClassic(String(receiver.phone || "")),
+              send_mobile: normalizePhoneClassic(String(receiver.phone || "")),
+              send_addr1: String(receiver.addr1 || "").trim(),
+              send_addr2: String(receiver.addr2 || "").trim(),
+              send_city: String(receiver.city || "").trim(),
+              send_state: String(receiver.state || "").trim().toLowerCase(),
+              send_code: String(receiver.postcode || "").trim(),
+              send_country: "MY",
+              collect_date: collectDate,
+              reference,
+            },
+          ],
+        });
+
+        const submitResultArr = (submitRes.result as Array<Record<string, unknown>>) || [];
+        const submitFirst = submitResultArr[0] || {};
+        if (
+          String(submitRes.api_status || "").toLowerCase() !== "success" ||
+          String(submitFirst.status || "").toLowerCase() !== "success"
+        ) {
+          return jsonResponse({
+            success: false,
+            error: String(
+              submitFirst.remarks || submitRes.error_remark || "Failed to create EasyParcel order"
+            ),
+          });
+        }
+
+        epOrderNo = String(submitFirst.order_number || "");
+        epParcelNo = String(submitFirst.parcel_number || "");
+        shippingCost = Number(submitFirst.price || body.quoted_price || 0);
+        let payRes: Record<string, unknown> = {};
+
+        if (autoPay && epOrderNo) {
+          payRes = await callClassicEasyParcel(auth.environment, "EPPayOrderBulk", {
+            api: auth.apiKey,
+            bulk: [{ order_no: epOrderNo }],
+          });
+          const payResultArr = (payRes.result as Array<Record<string, unknown>>) || [];
+          const payFirst = payResultArr[0] || {};
+          paymentMessage = String(payFirst.messagenow || "");
+          const parcels = (payFirst.parcel as Array<Record<string, unknown>>) || [];
+          const p0 = parcels[0] || {};
+          if (p0.awb) {
+            awbNumber = String(p0.awb || "");
+            awbPdfUrl = String(p0.awb_id_link || "");
+            trackingUrl = String(p0.tracking_url || "");
+            shipmentStatus = "paid";
+          } else if (paymentMessage.toLowerCase().includes("insufficient")) {
+            shipmentStatus = "unpaid_insufficient_credit";
+          }
+        }
+        rawResponse = { submit: submitRes, pay: payRes };
       }
 
-      // Step 4C: Persist in `order_shipments`
-      const { data: savedShipment, error: insertErr } = await supabase
+      const { data: savedShipment } = await supabase
         .from("order_shipments")
         .insert({
           business_id: businessId,
           order_id: orderId,
           provider: "easyparcel",
-          environment: creds.environment,
+          environment: auth.environment,
           ep_order_no: epOrderNo,
           ep_parcel_no: epParcelNo,
           courier_id: courierId,
@@ -524,22 +931,17 @@ serve(async (req: Request) => {
           latest_tracking_status: paymentMessage,
           sender_info: sender,
           receiver_info: receiver,
-          raw_response: { submit: submitRes, pay: payRes },
+          raw_response: rawResponse,
         })
         .select()
         .single();
 
-      if (insertErr) {
-        console.error("[easyparcel-proxy] Failed to save order_shipments:", insertErr);
-      }
-
-      // Step 4D: Sync tracking info back to `orders` table
-      if (awbNumber || courierName) {
+      if (awbNumber || epOrderNo || courierName) {
         await supabase
           .from("orders")
           .update({
             courier_name: courierName || serviceName || "EasyParcel",
-            tracking_number: awbNumber || epOrderNo,
+            tracking_number: awbNumber || epParcelNo || epOrderNo,
             tracking_url: trackingUrl || null,
             awb_pdf_url: awbPdfUrl || null,
           })
@@ -565,51 +967,70 @@ serve(async (req: Request) => {
     }
 
     // -------------------------------------------------------------------------
-    // 5. TRACK PARCEL (`EPTrackingBulk`)
+    // 5. TRACK PARCEL
     // -------------------------------------------------------------------------
     if (action === "track_parcel") {
       const awbNo = String(body.awb_number || "").trim();
       const shipmentId = String(body.shipment_id || "").trim();
-
       if (!awbNo) {
         return jsonResponse({ success: false, error: "awb_number is required" }, 400);
       }
 
-      const epRes = await callEasyParcel(creds.environment, "EPTrackingBulk", {
-        api: creds.apiKey,
-        bulk: [{ awb_no: awbNo }],
-      });
-
-      const ok = String(epRes.api_status || "").toLowerCase() === "success";
-      if (!ok) {
-        return jsonResponse({
-          success: false,
-          error: String(epRes.error_remark || "Tracking lookup failed"),
-        });
-      }
-
-      const resArr = (epRes.result as Array<Record<string, unknown>>) || [];
-      const first = resArr[0] || {};
-      const latestStatus = String(first.latest_status || "");
-      const latestUpdate = String(first.latest_update || "");
-
-      // EasyParcel returns `status_list` as an object with numeric keys ("0", "1", ...) plus metadata keys
-      const statusListObj = (first.status_list as Record<string, unknown>) || {};
+      let latestStatus = "";
+      let latestUpdate = "";
       const events: Array<Record<string, unknown>> = [];
-      for (const [k, v] of Object.entries(statusListObj)) {
-        if (/^\d+$/.test(k) && v && typeof v === "object") {
-          events.push(v as Record<string, unknown>);
+
+      if (auth.engine === "nextgen") {
+        const ngRes = await callNextGen("POST", "/shipment/tracking_status", auth.accessToken, {
+          awb_numbers: [awbNo],
+        });
+        const dataObj = (ngRes.data as Record<string, unknown>) || {};
+        const results = (dataObj.results as Array<Record<string, unknown>>) || [];
+        const r0 = results[0] || {};
+        if (Number(ngRes.status_code || 0) !== 200 || String(r0.status || "").toLowerCase() !== "success") {
+          return jsonResponse({
+            success: false,
+            error: String(ngRes.message || "Tracking lookup failed"),
+          });
+        }
+        latestStatus = String(r0.latest_tracking_status || "");
+        latestUpdate = String(r0.latest_event_date || "");
+        const logs = (r0.status_log as Array<Record<string, unknown>>) || [];
+        for (const l of logs) {
+          events.push({
+            event_date: String(l.event_date || ""),
+            event_time: "",
+            status: String(l.tracking_status || ""),
+            location: String(l.location || ""),
+          });
+        }
+      } else {
+        const epRes = await callClassicEasyParcel(auth.environment, "EPTrackingBulk", {
+          api: auth.apiKey,
+          bulk: [{ awb_no: awbNo }],
+        });
+        if (String(epRes.api_status || "").toLowerCase() !== "success") {
+          return jsonResponse({
+            success: false,
+            error: String(epRes.error_remark || "Tracking lookup failed"),
+          });
+        }
+        const resArr = (epRes.result as Array<Record<string, unknown>>) || [];
+        const first = resArr[0] || {};
+        latestStatus = String(first.latest_status || "");
+        latestUpdate = String(first.latest_update || "");
+        const statusListObj = (first.status_list as Record<string, unknown>) || {};
+        for (const [k, v] of Object.entries(statusListObj)) {
+          if (/^\d+$/.test(k) && v && typeof v === "object") {
+            events.push(v as Record<string, unknown>);
+          }
         }
       }
 
-      // Map EasyParcel status to simplified status
       let mappedStatus = "in_transit";
       const lower = latestStatus.toLowerCase();
-      if (lower.includes("deliver")) {
-        mappedStatus = "delivered";
-      } else if (lower.includes("return") || lower.includes("fail")) {
-        mappedStatus = "failed";
-      }
+      if (lower.includes("deliver")) mappedStatus = "delivered";
+      else if (lower.includes("return") || lower.includes("fail")) mappedStatus = "failed";
 
       if (shipmentId) {
         await supabase
