@@ -1,6 +1,6 @@
 {
-  "version": "1.0.98",
-  "build_number": 71,
-  "released_at": "2026-11-26T16:50:06Z",
-  "changelog": "Tambah sokongan berat produk (weight_kg) untuk pengiraan harga kurier EasyParcel yang tepat mengikut jumlah berat sebenar item dalam troli pelanggan."
+  "version": "1.0.99",
+  "build_number": 72,
+  "released_at": "2026-11-26T17:22:35Z",
+  "changelog": "Papar tab Penghantaran (Hantar / Delivery) secara automatik di troli pelanggan apabila kedai mengaktifkan EasyParcel, serta pramuat senarai harga kurier secara langsung sebaik troli dibuka."
 }

@@ -792,9 +792,16 @@ class _StoreCartViewState extends State<StoreCartView> {
         _autoApplyBestVoucher();
       }
       _syncShopDetails();
-      _loadSavedDeliveryAddress();
+      _initDeliveryAndCouriers();
     });
     _deliveryAddressController.addListener(_onDeliveryAddressChanged);
+  }
+
+  Future<void> _initDeliveryAndCouriers() async {
+    await _loadSavedDeliveryAddress();
+    if (mounted) {
+      await _fetchEasyParcelRates(force: true);
+    }
   }
 
   Future<void> _loadSavedDeliveryAddress() async {
@@ -802,9 +809,6 @@ class _StoreCartViewState extends State<StoreCartView> {
     final saved = await EasyParcelCustomerService.fetchMySavedAddress();
     if (saved != null && saved.isNotEmpty && mounted && _deliveryAddressController.text.trim().isEmpty) {
       _deliveryAddressController.text = saved;
-      if (_fulfillmentMode == 3) {
-        _fetchEasyParcelRates(force: true);
-      }
     }
   }
 
@@ -2491,8 +2495,9 @@ class _StoreCartViewState extends State<StoreCartView> {
   }
 
   Widget _buildFulfillmentCard(bool isDark, Color textPrimary, Color textSecondary) {
-    // Check if store supports delivery
-    final bool supportsDelivery = widget.shop['supports_delivery'] == true ||
+    // Show Delivery / Hantar tab when store enabled EasyParcel OR legacy delivery flags
+    final bool supportsDelivery = _epEnabled ||
+        widget.shop['supports_delivery'] == true ||
         widget.shop['enable_delivery'] == true ||
         widget.shop['is_delivery_enabled'] == true;
 
