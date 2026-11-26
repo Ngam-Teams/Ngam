@@ -1,6 +1,6 @@
 {
-  "version": "1.0.100",
-  "build_number": 73,
-  "released_at": "2026-11-26T17:29:38Z",
-  "changelog": "Naik taraf pemilih masa (Pilih Masa) di troli kepada 3 roda skrol berasingan (Jam, Minit, AM/PM) sambil mengekalkan had waktu operasi kedai."
+  "version": "1.0.101",
+  "build_number": 74,
+  "released_at": "2026-11-26T17:49:16Z",
+  "changelog": "Tambah pilihan susun kurier (Disyorkan, Termurah, Terpantas), lencana Pilihan Kedai, penapisan kurier ikut tetapan peniaga, serta simpanan kolum shipping_fee & service_id pada pesanan."
 }

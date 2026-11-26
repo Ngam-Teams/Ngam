@@ -1810,6 +1810,13 @@
     "status_awaiting_awb": "PREPARING SHIPMENT",
     "tracking_no_label": "Tracking No",
     "tracking_copied": "Tracking number copied.",
-    "track_parcel_btn": "Track Parcel Online"
+    "track_parcel_btn": "Track Parcel Online",
+    "sort_recommended": "Recommended",
+    "sort_cheapest": "Cheapest",
+    "sort_fastest": "Fastest",
+    "badge_store_pick": "Store Pick",
+    "badge_cheapest": "Best Price",
+    "badge_fastest": "Fastest",
+    "badge_auto_selected": "Auto-Selected by Store"
   }
 }

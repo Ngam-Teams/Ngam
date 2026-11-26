@@ -7,9 +7,12 @@ class CustomerCourierRate {
   final String serviceName;
   final String serviceDetail; // pickup / dropoff / dropoff/pickup
   final String courierId;
+  final String courierKey;
   final String courierName;
   final String courierLogo;
   final String delivery;
+  final int estimatedDays;
+  final bool isPreferred;
   final double price;
 
   const CustomerCourierRate({
@@ -17,9 +20,12 @@ class CustomerCourierRate {
     required this.serviceName,
     required this.serviceDetail,
     required this.courierId,
+    this.courierKey = '',
     required this.courierName,
     required this.courierLogo,
     required this.delivery,
+    this.estimatedDays = 3,
+    this.isPreferred = false,
     required this.price,
   });
 
@@ -51,15 +57,27 @@ class CustomerCourierRate {
     return raw.toString();
   }
 
+  static int _parseDays(dynamic rawDays, String deliveryText) {
+    if (rawDays is num) return rawDays.toInt();
+    final lower = deliveryText.toLowerCase();
+    if (lower.contains('hour') || lower.contains('same day')) return 0;
+    final m = RegExp(r'(\d+)').firstMatch(lower);
+    return m != null ? (int.tryParse(m.group(1) ?? '3') ?? 3) : 3;
+  }
+
   factory CustomerCourierRate.fromJson(Map<String, dynamic> json) {
+    final deliveryText = _formatDelivery(json['delivery']);
     return CustomerCourierRate(
       serviceId: json['service_id']?.toString() ?? '',
       serviceName: json['service_name']?.toString() ?? '',
       serviceDetail: json['service_detail']?.toString() ?? 'pickup',
       courierId: json['courier_id']?.toString() ?? '',
+      courierKey: json['courier_key']?.toString() ?? '',
       courierName: json['courier_name']?.toString() ?? '',
       courierLogo: json['courier_logo']?.toString() ?? '',
-      delivery: _formatDelivery(json['delivery']),
+      delivery: deliveryText,
+      estimatedDays: _parseDays(json['estimated_days'], deliveryText),
+      isPreferred: json['is_preferred'] == true,
       price: (json['price'] as num?)?.toDouble() ??
           double.tryParse(json['price']?.toString() ?? '0') ??
           0.0,
@@ -70,12 +88,14 @@ class CustomerCourierRate {
 class CustomerRatesResult {
   final bool easyparcelEnabled;
   final bool needsPostcode;
+  final String checkoutMode; // 'customer_choice' | 'auto_best'
   final List<CustomerCourierRate> rates;
   final String? error;
 
   const CustomerRatesResult({
     required this.easyparcelEnabled,
     this.needsPostcode = false,
+    this.checkoutMode = 'customer_choice',
     this.rates = const [],
     this.error,
   });
@@ -169,13 +189,21 @@ class EasyParcelCustomerService {
         return const CustomerRatesResult(easyparcelEnabled: false);
       }
 
+      final checkoutMode =
+          data['checkout_mode']?.toString() == 'auto_best' ? 'auto_best' : 'customer_choice';
+
       if (data['needs_postcode'] == true) {
-        return const CustomerRatesResult(easyparcelEnabled: true, needsPostcode: true);
+        return CustomerRatesResult(
+          easyparcelEnabled: true,
+          needsPostcode: true,
+          checkoutMode: checkoutMode,
+        );
       }
 
       if (data['success'] != true) {
         return CustomerRatesResult(
           easyparcelEnabled: true,
+          checkoutMode: checkoutMode,
           error: data['error']?.toString(),
         );
       }
@@ -188,6 +216,7 @@ class EasyParcelCustomerService {
 
       return CustomerRatesResult(
         easyparcelEnabled: true,
+        checkoutMode: checkoutMode,
         rates: rates,
       );
     } catch (e) {

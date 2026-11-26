@@ -1810,6 +1810,13 @@
     "status_awaiting_awb": "MENYEDIAKAN BUNGKUSAN",
     "tracking_no_label": "No. Tracking",
     "tracking_copied": "Nombor tracking disalin.",
-    "track_parcel_btn": "Jejak Bungkusan Dalam Talian"
+    "track_parcel_btn": "Jejak Bungkusan Dalam Talian",
+    "sort_recommended": "Disyorkan",
+    "sort_cheapest": "Termurah",
+    "sort_fastest": "Terpantas",
+    "badge_store_pick": "Pilihan Kedai",
+    "badge_cheapest": "Termurah",
+    "badge_fastest": "Terpantas",
+    "badge_auto_selected": "Pilihan Automatik Kedai"
   }
 }

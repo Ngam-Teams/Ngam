@@ -118,6 +118,8 @@ class _StoreCartViewState extends State<StoreCartView> {
   bool _epLoadingRates = false;
   bool _epNeedsPostcode = false;
   bool _epShowAllCouriers = false;
+  String _epCheckoutMode = 'customer_choice';
+  String _epSortMode = 'recommended'; // 'recommended' | 'cheapest' | 'fastest'
   String? _epRateError;
   String _lastQueriedPostcode = '';
   List<CustomerCourierRate> _epRates = [];
@@ -1122,6 +1124,7 @@ class _StoreCartViewState extends State<StoreCartView> {
       _epLoadingRates = false;
       _epEnabled = result.easyparcelEnabled;
       _epNeedsPostcode = result.needsPostcode;
+      _epCheckoutMode = result.checkoutMode;
       _epRateError = result.error;
       _epRates = result.rates;
       _lastQueriedPostcode = pc;
@@ -1580,8 +1583,13 @@ class _StoreCartViewState extends State<StoreCartView> {
           if (customerPhone.isNotEmpty) 'customer_phone': customerPhone,
           'total': _total,
           if (discountCents > 0) 'discount_cents': discountCents,
-          if (_fulfillmentMode == 3 && _selectedCourier != null)
+          if (_fulfillmentMode == 3 && _deliveryFee > 0) 'shipping_fee': _deliveryFee,
+          if (_fulfillmentMode == 3 && _selectedCourier != null) ...{
             'courier_name': _selectedCourier!.courierName,
+            'shipping_service_id': _selectedCourier!.serviceId,
+            if (_selectedCourier!.courierId.isNotEmpty)
+              'shipping_courier_id': _selectedCourier!.courierId,
+          },
           'status': 'pending',
           'source': source,
           'notes': finalNotes,
@@ -1599,9 +1607,12 @@ class _StoreCartViewState extends State<StoreCartView> {
         } catch (insertErr) {
           debugPrint('[StoreCartView] Insert failed ($insertErr), attempting fallback...');
           try {
-            // If check constraint on source or discount_cents fails, fallback gracefully
+            // If check constraint on source or new shipping/discount columns fail, fallback gracefully
             final fallbackData = Map<String, dynamic>.from(baseOrderData)
               ..remove('discount_cents')
+              ..remove('shipping_fee')
+              ..remove('shipping_service_id')
+              ..remove('shipping_courier_id')
               ..['source'] = 'online';
             orderRes = await Supabase.instance.client
                 .from('orders')
@@ -3346,9 +3357,100 @@ class _StoreCartViewState extends State<StoreCartView> {
     );
   }
 
+  List<CustomerCourierRate> get _sortedEpRates {
+    final list = List<CustomerCourierRate>.from(_epRates);
+    if (_epSortMode == 'cheapest') {
+      list.sort((a, b) => a.price.compareTo(b.price));
+    } else if (_epSortMode == 'fastest') {
+      list.sort((a, b) {
+        final cmp = a.estimatedDays.compareTo(b.estimatedDays);
+        return cmp != 0 ? cmp : a.price.compareTo(b.price);
+      });
+    } else {
+      // 'recommended': store preferred first, then cheapest
+      list.sort((a, b) {
+        if (a.isPreferred != b.isPreferred) return a.isPreferred ? -1 : 1;
+        return a.price.compareTo(b.price);
+      });
+    }
+    return list;
+  }
+
   Widget _buildEasyParcelCourierPicker(bool isDark, Color textPrimary, Color textSecondary) {
     const epPink = Color(0xFFEC008C);
-    final visibleRates = _epShowAllCouriers ? _epRates : _epRates.take(4).toList();
+    final sortedRates = _sortedEpRates;
+    final visibleRates = _epShowAllCouriers ? sortedRates : sortedRates.take(4).toList();
+    final isAutoBest = _epCheckoutMode == 'auto_best';
+
+    double? minPrice;
+    int? minDays;
+    if (sortedRates.length > 1) {
+      minPrice = sortedRates.map((r) => r.price).reduce((a, b) => a < b ? a : b);
+      minDays = sortedRates.map((r) => r.estimatedDays).reduce((a, b) => a < b ? a : b);
+    }
+
+    Widget sortChip(String id, String label, IconData icon) {
+      final active = _epSortMode == id;
+      return GestureDetector(
+        onTap: () => setState(() => _epSortMode = id),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: active
+                ? epPink.withValues(alpha: isDark ? 0.24 : 0.14)
+                : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
+            borderRadius: BorderRadius.circular(100),
+            border: Border.all(
+              color: active ? epPink.withValues(alpha: 0.75) : (isDark ? Colors.white12 : Colors.black12),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 12, color: active ? epPink : textSecondary),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: active ? (isDark ? const Color(0xFFF472B6) : epPink) : textSecondary,
+                  fontSize: 11,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    Widget microBadge(String text, Color color, {IconData? icon}) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: isDark ? 0.18 : 0.12),
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(color: color.withValues(alpha: 0.45), width: 0.8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 10, color: color),
+              const SizedBox(width: 3),
+            ],
+            Text(
+              text,
+              style: TextStyle(
+                color: color,
+                fontSize: 9.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -3356,10 +3458,10 @@ class _StoreCartViewState extends State<StoreCartView> {
       decoration: BoxDecoration(
         color: isDark
             ? Colors.white.withValues(alpha: 0.04)
-            : Colors.black.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(14),
+            : Colors.black.withValues(alpha: 0.025),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: epPink.withValues(alpha: isDark ? 0.35 : 0.25),
+          color: epPink.withValues(alpha: isDark ? 0.35 : 0.22),
         ),
       ),
       child: Column(
@@ -3367,11 +3469,20 @@ class _StoreCartViewState extends State<StoreCartView> {
         children: [
           Row(
             children: [
-              const Icon(Icons.local_shipping_rounded, color: epPink, size: 17),
-              const SizedBox(width: 7),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: epPink.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.local_shipping_rounded, color: epPink, size: 16),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'easyparcel.checkout_courier_title'.tr(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: textPrimary,
                     fontSize: 13,
@@ -3379,8 +3490,9 @@ class _StoreCartViewState extends State<StoreCartView> {
                   ),
                 ),
               ),
+              const SizedBox(width: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: epPink.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(100),
@@ -3390,7 +3502,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                   style: const TextStyle(color: epPink, fontSize: 10, fontWeight: FontWeight.w800),
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 2),
               GestureDetector(
                 onTap: _epLoadingRates ? null : () => _fetchEasyParcelRates(force: true),
                 child: Padding(
@@ -3400,6 +3512,21 @@ class _StoreCartViewState extends State<StoreCartView> {
               ),
             ],
           ),
+          if (!isAutoBest && !_epLoadingRates && sortedRates.length > 1) ...[
+            const SizedBox(height: 10),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  sortChip('recommended', 'easyparcel.sort_recommended'.tr(), Icons.auto_awesome_rounded),
+                  const SizedBox(width: 6),
+                  sortChip('cheapest', 'easyparcel.sort_cheapest'.tr(), Icons.savings_outlined),
+                  const SizedBox(width: 6),
+                  sortChip('fastest', 'easyparcel.sort_fastest'.tr(), Icons.bolt_rounded),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
           if (_epLoadingRates)
             Padding(
@@ -3413,9 +3540,13 @@ class _StoreCartViewState extends State<StoreCartView> {
                     child: CircularProgressIndicator(strokeWidth: 2, color: epPink),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    'easyparcel.checkout_loading_rates'.tr(),
-                    style: TextStyle(color: textSecondary, fontSize: 12),
+                  Flexible(
+                    child: Text(
+                      'easyparcel.checkout_loading_rates'.tr(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: textSecondary, fontSize: 12),
+                    ),
                   ),
                 ],
               ),
@@ -3425,12 +3556,12 @@ class _StoreCartViewState extends State<StoreCartView> {
               'easyparcel.checkout_enter_postcode_hint'.tr(),
               style: TextStyle(color: Colors.amber.shade400, fontSize: 12),
             )
-          else if (_epRateError != null && _epRates.isEmpty)
+          else if (_epRateError != null && sortedRates.isEmpty)
             Text(
               _epRateError!,
               style: const TextStyle(color: Colors.redAccent, fontSize: 12),
             )
-          else if (_epRates.isEmpty)
+          else if (sortedRates.isEmpty)
             Text(
               'easyparcel.checkout_no_couriers'.tr(),
               style: TextStyle(color: textSecondary, fontSize: 12),
@@ -3438,16 +3569,20 @@ class _StoreCartViewState extends State<StoreCartView> {
           else ...[
             ...visibleRates.map((rate) {
               final isSelected = _selectedCourier?.serviceId == rate.serviceId;
+              final isCheapest = minPrice != null && (rate.price - minPrice).abs() < 0.005;
+              final isFastest = minDays != null && rate.estimatedDays == minDays && !isCheapest;
+
               return GestureDetector(
                 onTap: () => setState(() => _selectedCourier = rate),
-                child: Container(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? epPink.withValues(alpha: isDark ? 0.16 : 0.08)
                         : (isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: isSelected
                           ? epPink
@@ -3456,32 +3591,44 @@ class _StoreCartViewState extends State<StoreCartView> {
                     ),
                   ),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Icon(
-                        isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                        isSelected ? Icons.check_circle_rounded : Icons.radio_button_off_rounded,
                         color: isSelected ? epPink : textSecondary,
-                        size: 18,
+                        size: 19,
                       ),
                       const SizedBox(width: 8),
-                      if (rate.courierLogo.isNotEmpty)
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: Image.network(
-                            rate.courierLogo,
-                            width: 30,
-                            height: 30,
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => Icon(
-                              Icons.local_shipping_outlined,
-                              size: 20,
-                              color: textSecondary,
-                            ),
-                          ),
+                      Container(
+                        width: 34,
+                        height: 34,
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(9),
+                          border: Border.all(color: Colors.black.withValues(alpha: 0.08)),
                         ),
-                      const SizedBox(width: 8),
+                        child: rate.courierLogo.isNotEmpty
+                            ? Image.network(
+                                rate.courierLogo,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.local_shipping_outlined,
+                                  size: 18,
+                                  color: epPink,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.local_shipping_outlined,
+                                size: 18,
+                                color: epPink,
+                              ),
+                      ),
+                      const SizedBox(width: 9),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
                               rate.courierName,
@@ -3493,20 +3640,61 @@ class _StoreCartViewState extends State<StoreCartView> {
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
+                            const SizedBox(height: 2),
                             Text(
                               '${rate.serviceDetail.toUpperCase()} • ${rate.delivery}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(color: textSecondary, fontSize: 11),
                             ),
+                            if (rate.isPreferred || isAutoBest || isCheapest || isFastest) ...[
+                              const SizedBox(height: 4),
+                              Wrap(
+                                spacing: 4,
+                                runSpacing: 4,
+                                children: [
+                                  if (isAutoBest)
+                                    microBadge(
+                                      'easyparcel.badge_auto_selected'.tr(),
+                                      const Color(0xFF38BDF8),
+                                      icon: Icons.verified_rounded,
+                                    )
+                                  else if (rate.isPreferred)
+                                    microBadge(
+                                      'easyparcel.badge_store_pick'.tr(),
+                                      const Color(0xFFF59E0B),
+                                      icon: Icons.star_rounded,
+                                    ),
+                                  if (!isAutoBest && isCheapest)
+                                    microBadge(
+                                      'easyparcel.badge_cheapest'.tr(),
+                                      const Color(0xFF10B981),
+                                    ),
+                                  if (!isAutoBest && isFastest)
+                                    microBadge(
+                                      'easyparcel.badge_fastest'.tr(),
+                                      const Color(0xFF38BDF8),
+                                    ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'RM ${rate.price.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          color: Color(0xFF10B981),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: isDark ? 0.14 : 0.10),
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Text(
+                          'RM ${rate.price.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            color: Color(0xFF10B981),
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                     ],
@@ -3514,7 +3702,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                 ),
               );
             }),
-            if (_epRates.length > 4)
+            if (!isAutoBest && sortedRates.length > 4)
               GestureDetector(
                 onTap: () => setState(() => _epShowAllCouriers = !_epShowAllCouriers),
                 child: Padding(
@@ -3522,14 +3710,18 @@ class _StoreCartViewState extends State<StoreCartView> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        _epShowAllCouriers
-                            ? 'easyparcel.checkout_show_less'.tr()
-                            : 'easyparcel.checkout_show_more'.tr(args: [_epRates.length.toString()]),
-                        style: const TextStyle(
-                          color: epPink,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                      Flexible(
+                        child: Text(
+                          _epShowAllCouriers
+                              ? 'easyparcel.checkout_show_less'.tr()
+                              : 'easyparcel.checkout_show_more'.tr(args: [sortedRates.length.toString()]),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: epPink,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                       Icon(

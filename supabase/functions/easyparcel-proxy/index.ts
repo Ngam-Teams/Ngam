@@ -630,6 +630,90 @@ serve(async (req: Request) => {
         return "1-3 working day(s)";
       };
 
+      const normalizeCourierKey = (name: string, id = ""): string => {
+        const s = `${name} ${id}`.toLowerCase();
+        if (s.includes("j&t") || s.includes("jnt") || s.includes("j & t")) return "jnt";
+        if (s.includes("pos laju") || s.includes("poslaju") || s.includes("pos malaysia")) return "poslaju";
+        if (s.includes("dhl")) return "dhl";
+        if (s.includes("ninja")) return "ninjavan";
+        if (s.includes("spx") || s.includes("shopee")) return "spx";
+        if (s.includes("flash")) return "flash";
+        if (s.includes("city-link") || s.includes("citylink") || s.includes("city link")) return "citylink";
+        if (s.includes("gdex")) return "gdex";
+        if (s.includes("skynet")) return "skynet";
+        if (s.includes("abx")) return "abx";
+        if (s.includes("lazada") || s.includes("lex")) return "lex";
+        if (s.includes("pgeon")) return "pgeon";
+        if (s.includes("line clear") || s.includes("lineclear")) return "lineclear";
+        if (s.includes("best express") || s.includes("best")) return "best";
+        if (s.includes("teleport")) return "teleport";
+        return name.toLowerCase().replace(/[^a-z0-9]/g, "") || id.toLowerCase();
+      };
+
+      const parseEstimatedDays = (delivery: string): number => {
+        const lower = delivery.toLowerCase();
+        if (lower.includes("hour") || lower.includes("same day")) return 0;
+        const m = lower.match(/(\d+)/);
+        return m ? Number(m[1]) : 3;
+      };
+
+      const disabledCouriers = Array.isArray(cfg.disabled_couriers)
+        ? (cfg.disabled_couriers as unknown[]).map((x) => String(x).toLowerCase().trim()).filter(Boolean)
+        : [];
+      const preferredCourier = String(cfg.preferred_courier || "").toLowerCase().trim();
+      const serviceMode = String(cfg.service_mode || "all").toLowerCase().trim(); // 'all' | 'pickup' | 'dropoff'
+      const checkoutMode =
+        String(cfg.checkout_mode || "customer_choice").toLowerCase().trim() === "auto_best"
+          ? "auto_best"
+          : "customer_choice";
+
+      const applyMerchantCourierRules = (
+        rawList: Array<{
+          rate_id: string;
+          service_id: string;
+          service_name: string;
+          service_detail: string;
+          courier_id: string;
+          courier_name: string;
+          courier_logo: string;
+          pickup_date: string;
+          delivery: string;
+          price: number;
+        }>
+      ) => {
+        const enriched = rawList
+          .filter((r) => r.service_id.length > 0 && r.price > 0)
+          .map((r) => {
+            const courierKey = normalizeCourierKey(r.courier_name, r.courier_id);
+            const isPreferred = preferredCourier.length > 0 && courierKey === preferredCourier;
+            return {
+              ...r,
+              courier_key: courierKey,
+              is_preferred: isPreferred,
+              estimated_days: parseEstimatedDays(r.delivery),
+            };
+          })
+          .filter((r) => !disabledCouriers.includes(r.courier_key))
+          .filter((r) => {
+            if (serviceMode === "pickup") {
+              return r.service_detail.toLowerCase().includes("pickup");
+            }
+            if (serviceMode === "dropoff") {
+              return r.service_detail.toLowerCase().includes("dropoff");
+            }
+            return true;
+          })
+          .sort((a, b) => {
+            if (a.is_preferred !== b.is_preferred) return a.is_preferred ? -1 : 1;
+            return a.price - b.price;
+          });
+
+        if (checkoutMode === "auto_best" && enriched.length > 1) {
+          return [enriched[0]];
+        }
+        return enriched;
+      };
+
       const dateColl = todayMytDate();
 
       if (auth.engine === "nextgen") {
@@ -661,40 +745,42 @@ serve(async (req: Request) => {
           return jsonResponse({
             success: false,
             easyparcel_enabled: true,
+            checkout_mode: checkoutMode,
             error: String(ngRes.message || first.message || "Unable to fetch shipping rates"),
             rates: [],
           });
         }
 
         const quotations = (first.quotations as Array<Record<string, unknown>>) || [];
-        const rates = quotations
-          .map((q) => {
-            const c = (q.courier as Record<string, unknown>) || {};
-            const p = (q.pricing as Record<string, unknown>) || {};
-            const isPickup = c.is_pickup === true;
-            const isDropoff = c.is_dropoff === true;
-            const detail =
-              isPickup && isDropoff ? "dropoff/pickup" : isPickup ? "pickup" : "dropoff";
-            const price = Number(p.total_amount ?? p.shipment_price ?? 0);
-            return {
-              rate_id: String(c.service_id || ""),
-              service_id: String(c.service_id || ""),
-              service_name: String(c.service_name || ""),
-              service_detail: detail,
-              courier_id: String(c.courier_id || ""),
-              courier_name: String(c.courier_name || ""),
-              courier_logo: String(c.courier_logo || ""),
-              pickup_date: dateColl,
-              delivery: formatDur(c.delivery_duration),
-              price,
-            };
-          })
-          .filter((r) => r.service_id.length > 0 && r.price > 0)
-          .sort((a, b) => a.price - b.price);
+        const mapped = quotations.map((q) => {
+          const c = (q.courier as Record<string, unknown>) || {};
+          const p = (q.pricing as Record<string, unknown>) || {};
+          const isPickup = c.is_pickup === true;
+          const isDropoff = c.is_dropoff === true;
+          const detail =
+            isPickup && isDropoff ? "dropoff/pickup" : isPickup ? "pickup" : "dropoff";
+          const price = Number(p.total_amount ?? p.shipment_price ?? 0);
+          return {
+            rate_id: String(c.service_id || ""),
+            service_id: String(c.service_id || ""),
+            service_name: String(c.service_name || ""),
+            service_detail: detail,
+            courier_id: String(c.courier_id || ""),
+            courier_name: String(c.courier_name || ""),
+            courier_logo: String(c.courier_logo || ""),
+            pickup_date: dateColl,
+            delivery: formatDur(c.delivery_duration),
+            price,
+          };
+        });
+
+        const rates = applyMerchantCourierRules(mapped);
 
         return jsonResponse({
           success: true,
           easyparcel_enabled: true,
+          checkout_mode: checkoutMode,
+          preferred_courier: preferredCourier,
           rates,
         });
       }
@@ -723,25 +809,26 @@ serve(async (req: Request) => {
       const resArr = (epRes.result as Array<Record<string, unknown>>) || [];
       const first = resArr[0] || {};
       const rawRates = (first.rates as Array<Record<string, unknown>>) || [];
-      const rates = rawRates
-        .map((r) => ({
-          rate_id: String(r.rate_id || ""),
-          service_id: String(r.service_id || ""),
-          service_name: String(r.service_name || ""),
-          service_detail: String(r.service_detail || "pickup"),
-          courier_id: String(r.courier_id || ""),
-          courier_name: String(r.courier_name || ""),
-          courier_logo: String(r.courier_logo || ""),
-          pickup_date: String(r.pickup_date || dateColl),
-          delivery: formatDur(r.delivery),
-          price: Number(r.price || 0),
-        }))
-        .filter((r) => r.service_id.length > 0 && r.price > 0)
-        .sort((a, b) => a.price - b.price);
+      const mapped = rawRates.map((r) => ({
+        rate_id: String(r.rate_id || ""),
+        service_id: String(r.service_id || ""),
+        service_name: String(r.service_name || ""),
+        service_detail: String(r.service_detail || "pickup"),
+        courier_id: String(r.courier_id || ""),
+        courier_name: String(r.courier_name || ""),
+        courier_logo: String(r.courier_logo || ""),
+        pickup_date: String(r.pickup_date || dateColl),
+        delivery: formatDur(r.delivery),
+        price: Number(r.price || 0),
+      }));
+
+      const rates = applyMerchantCourierRules(mapped);
 
       return jsonResponse({
         success: true,
         easyparcel_enabled: true,
+        checkout_mode: checkoutMode,
+        preferred_courier: preferredCourier,
         rates,
       });
     }
