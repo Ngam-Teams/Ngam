@@ -1,6 +1,6 @@
 {
-  "version": "1.0.99",
-  "build_number": 72,
-  "released_at": "2026-11-26T17:22:35Z",
-  "changelog": "Papar tab Penghantaran (Hantar / Delivery) secara automatik di troli pelanggan apabila kedai mengaktifkan EasyParcel, serta pramuat senarai harga kurier secara langsung sebaik troli dibuka."
+  "version": "1.0.100",
+  "build_number": 73,
+  "released_at": "2026-11-26T17:29:38Z",
+  "changelog": "Naik taraf pemilih masa (Pilih Masa) di troli kepada 3 roda skrol berasingan (Jam, Minit, AM/PM) sambil mengekalkan had waktu operasi kedai."
 }

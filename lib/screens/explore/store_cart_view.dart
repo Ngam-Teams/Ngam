@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'order_status_tracker_screen.dart';
@@ -611,153 +612,415 @@ class _StoreCartViewState extends State<StoreCartView> {
       return;
     }
 
-    int selectedIndex = 0;
+    TimeOfDay initialTime = validTimes.first;
     if (_customSelectedTime != null) {
       final idx = validTimes.indexWhere(
         (t) => t.hour == _customSelectedTime!.hour && t.minute == _customSelectedTime!.minute,
       );
-      if (idx != -1) selectedIndex = idx;
+      if (idx != -1) initialTime = validTimes[idx];
     }
 
-    final scrollController = FixedExtentScrollController(initialItem: selectedIndex);
+    final bool hasAm = validTimes.any((t) => t.hour < 12);
+    final bool hasPm = validTimes.any((t) => t.hour >= 12);
+    final List<bool> periods = [
+      if (hasAm) false,
+      if (hasPm) true,
+    ];
+
+    List<int> hoursForPeriod(bool isPm) {
+      final set = <int>{};
+      for (final t in validTimes) {
+        if ((t.hour >= 12) == isPm) {
+          set.add(t.hour);
+        }
+      }
+      return set.toList()..sort();
+    }
+
+    List<int> minutesForHour(int hour24) {
+      final set = <int>{};
+      for (final t in validTimes) {
+        if (t.hour == hour24) {
+          set.add(t.minute);
+        }
+      }
+      return set.toList()..sort();
+    }
+
+    int closestValue(List<int> list, int target) {
+      return list.reduce((a, b) => (a - target).abs() <= (b - target).abs() ? a : b);
+    }
+
+    bool selectedIsPm = initialTime.hour >= 12;
+    int selectedHour24 = initialTime.hour;
+    int selectedMinute = initialTime.minute;
+
+    List<int> currentHours = hoursForPeriod(selectedIsPm);
+    List<int> currentMinutes = minutesForHour(selectedHour24);
+
+    final List<FixedExtentScrollController> controllersToDispose = [];
+    FixedExtentScrollController makeController(int initialItem) {
+      final controller = FixedExtentScrollController(initialItem: initialItem);
+      controllersToDispose.add(controller);
+      return controller;
+    }
+
+    FixedExtentScrollController hourController = makeController(
+      currentHours.indexOf(selectedHour24).clamp(0, currentHours.length - 1),
+    );
+    FixedExtentScrollController minuteController = makeController(
+      currentMinutes.indexOf(selectedMinute).clamp(0, currentMinutes.length - 1),
+    );
+    final FixedExtentScrollController periodController = makeController(
+      periods.indexOf(selectedIsPm).clamp(0, periods.length - 1),
+    );
 
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withValues(alpha: 0.45),
       elevation: 0,
-      builder: (ctx) => ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-        child: SizedBox(
-          height: 330,
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: GlassContainer(
-                  useOwnLayer: true,
-                  quality: GlassQuality.standard,
-                  shape: const LiquidRoundedSuperellipse(borderRadius: 32.0),
-                  settings: LiquidGlassSettings(
-                    thickness: 0.1,
-                    blur: 20.0,
-                    glassColor: Colors.transparent,
-                    lightAngle: 45.0,
-                    lightIntensity: 0.1,
-                    ambientStrength: 1.0,
-                    saturation: 1.0,
-                    chromaticAberration: 0.0,
-                  ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? Colors.black.withValues(alpha: 0.30)
-                          : Colors.white.withValues(alpha: 0.45),
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                      border: Border(
-                        top: BorderSide(
-                          color: Colors.white.withValues(alpha: isDark ? 0.18 : 0.65),
-                          width: 1.0,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          child: SizedBox(
+            height: 350,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: GlassContainer(
+                    useOwnLayer: true,
+                    quality: GlassQuality.standard,
+                    shape: const LiquidRoundedSuperellipse(borderRadius: 32.0),
+                    settings: LiquidGlassSettings(
+                      thickness: 0.1,
+                      blur: 20.0,
+                      glassColor: Colors.transparent,
+                      lightAngle: 45.0,
+                      lightIntensity: 0.1,
+                      ambientStrength: 1.0,
+                      saturation: 1.0,
+                      chromaticAberration: 0.0,
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.black.withValues(alpha: 0.30)
+                            : Colors.white.withValues(alpha: 0.45),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                        border: Border(
+                          top: BorderSide(
+                            color: Colors.white.withValues(alpha: isDark ? 0.18 : 0.65),
+                            width: 1.0,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              Column(
-                children: [
-                  Center(
-                    child: Container(
-                      margin: const EdgeInsets.only(top: 12, bottom: 4),
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.white24 : Colors.black26,
-                        borderRadius: BorderRadius.circular(10),
+                Column(
+                  children: [
+                    Center(
+                      child: Container(
+                        margin: const EdgeInsets.only(top: 12, bottom: 4),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white24 : Colors.black26,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const SizedBox(width: 64),
-                        Column(
-                          children: [
-                            Text(
-                              'cart.select_time_title'.tr(),
-                              style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const SizedBox(width: 64),
+                          Column(
+                            children: [
+                              Text(
+                                'cart.select_time_title'.tr(),
+                                style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                hoursStr,
+                                style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11.5, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              final picked = TimeOfDay(hour: selectedHour24, minute: selectedMinute);
+                              setState(() {
+                                _customSelectedTime = picked;
+                                _selectedPickupTime = _formatTimeOfDay(picked);
+                              });
+                              Navigator.pop(ctx);
+                            },
+                            child: Text(
+                              'cart.picker_done'.tr(),
+                              style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.w800),
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              hoursStr,
-                              style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11.5, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 28),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Center(
+                              child: Text(
+                                'cart.picker_hour'.tr(),
+                                style: TextStyle(
+                                  color: textPrimary.withValues(alpha: 0.45),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            flex: 3,
+                            child: Center(
+                              child: Text(
+                                'cart.picker_minute'.tr(),
+                                style: TextStyle(
+                                  color: textPrimary.withValues(alpha: 0.45),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 3,
+                            child: Center(
+                              child: Text(
+                                'cart.picker_period'.tr(),
+                                style: TextStyle(
+                                  color: textPrimary.withValues(alpha: 0.45),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: ScrollConfiguration(
+                        behavior: ScrollConfiguration.of(ctx).copyWith(
+                          dragDevices: {
+                            PointerDeviceKind.touch,
+                            PointerDeviceKind.mouse,
+                            PointerDeviceKind.trackpad,
+                          },
+                        ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            IgnorePointer(
+                              child: Container(
+                                height: 44,
+                                margin: const EdgeInsets.symmetric(horizontal: 24),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.08)
+                                      : Colors.black.withValues(alpha: 0.06),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: const Color(0xFF38BDF8).withValues(alpha: 0.35),
+                                    width: 1.0,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 28),
+                              child: Row(
+                                children: [
+                                  // 1. Hours Wheel
+                                  Expanded(
+                                    flex: 3,
+                                    child: CupertinoPicker(
+                                      key: ValueKey('hr_${currentHours.first}_${currentHours.last}_${currentHours.length}'),
+                                      scrollController: hourController,
+                                      itemExtent: 42,
+                                      magnification: 1.12,
+                                      squeeze: 1.1,
+                                      useMagnifier: true,
+                                      selectionOverlay: const SizedBox.shrink(),
+                                      onSelectedItemChanged: (idx) {
+                                        if (idx < 0 || idx >= currentHours.length) return;
+                                        final newHour24 = currentHours[idx];
+                                        if (newHour24 == selectedHour24) return;
+                                        final nextMinutes = minutesForHour(newHour24);
+                                        final minutesChanged = nextMinutes.length != currentMinutes.length ||
+                                            nextMinutes.first != currentMinutes.first ||
+                                            nextMinutes.last != currentMinutes.last;
+                                        final nextMinute = nextMinutes.contains(selectedMinute)
+                                            ? selectedMinute
+                                            : closestValue(nextMinutes, selectedMinute);
+                                        setModalState(() {
+                                          selectedHour24 = newHour24;
+                                          selectedMinute = nextMinute;
+                                          if (minutesChanged) {
+                                            currentMinutes = nextMinutes;
+                                            minuteController = makeController(
+                                              currentMinutes.indexOf(selectedMinute).clamp(0, currentMinutes.length - 1),
+                                            );
+                                          }
+                                        });
+                                      },
+                                      children: currentHours.map((h24) {
+                                        final h12 = (h24 % 12) == 0 ? 12 : (h24 % 12);
+                                        return Center(
+                                          child: Text(
+                                            h12.toString().padLeft(2, '0'),
+                                            style: TextStyle(
+                                              color: textPrimary,
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w700,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: 14,
+                                    child: Center(
+                                      child: Text(
+                                        ':',
+                                        style: TextStyle(
+                                          color: textPrimary.withValues(alpha: 0.85),
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  // 2. Minutes Wheel
+                                  Expanded(
+                                    flex: 3,
+                                    child: CupertinoPicker(
+                                      key: ValueKey('min_${currentMinutes.first}_${currentMinutes.last}_${currentMinutes.length}'),
+                                      scrollController: minuteController,
+                                      itemExtent: 42,
+                                      magnification: 1.12,
+                                      squeeze: 1.1,
+                                      useMagnifier: true,
+                                      selectionOverlay: const SizedBox.shrink(),
+                                      onSelectedItemChanged: (idx) {
+                                        if (idx < 0 || idx >= currentMinutes.length) return;
+                                        selectedMinute = currentMinutes[idx];
+                                      },
+                                      children: currentMinutes.map((m) {
+                                        return Center(
+                                          child: Text(
+                                            m.toString().padLeft(2, '0'),
+                                            style: TextStyle(
+                                              color: textPrimary,
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w700,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                  // 3. AM / PM Wheel
+                                  Expanded(
+                                    flex: 3,
+                                    child: CupertinoPicker(
+                                      scrollController: periodController,
+                                      itemExtent: 42,
+                                      magnification: 1.12,
+                                      squeeze: 1.1,
+                                      useMagnifier: true,
+                                      selectionOverlay: const SizedBox.shrink(),
+                                      onSelectedItemChanged: (idx) {
+                                        if (idx < 0 || idx >= periods.length) return;
+                                        final newIsPm = periods[idx];
+                                        if (newIsPm == selectedIsPm) return;
+                                        final nextHours = hoursForPeriod(newIsPm);
+                                        final desiredHour24 = (selectedHour24 % 12) + (newIsPm ? 12 : 0);
+                                        final nextHour24 = nextHours.contains(desiredHour24)
+                                            ? desiredHour24
+                                            : closestValue(nextHours, desiredHour24);
+                                        final nextMinutes = minutesForHour(nextHour24);
+                                        final nextMinute = nextMinutes.contains(selectedMinute)
+                                            ? selectedMinute
+                                            : closestValue(nextMinutes, selectedMinute);
+                                        final hoursChanged = nextHours.length != currentHours.length ||
+                                            nextHours.first != currentHours.first ||
+                                            nextHours.last != currentHours.last;
+                                        final minutesChanged = nextMinutes.length != currentMinutes.length ||
+                                            nextMinutes.first != currentMinutes.first ||
+                                            nextMinutes.last != currentMinutes.last;
+                                        setModalState(() {
+                                          selectedIsPm = newIsPm;
+                                          selectedHour24 = nextHour24;
+                                          selectedMinute = nextMinute;
+                                          if (hoursChanged) {
+                                            currentHours = nextHours;
+                                            hourController = makeController(
+                                              currentHours.indexOf(selectedHour24).clamp(0, currentHours.length - 1),
+                                            );
+                                          }
+                                          if (minutesChanged) {
+                                            currentMinutes = nextMinutes;
+                                            minuteController = makeController(
+                                              currentMinutes.indexOf(selectedMinute).clamp(0, currentMinutes.length - 1),
+                                            );
+                                          }
+                                        });
+                                      },
+                                      children: periods.map((isPm) {
+                                        return Center(
+                                          child: Text(
+                                            isPm ? 'PM' : 'AM',
+                                            style: const TextStyle(
+                                              color: Color(0xFF38BDF8),
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: 0.6,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
-                        TextButton(
-                          onPressed: () {
-                            final picked = validTimes[selectedIndex];
-                            setState(() {
-                              _customSelectedTime = picked;
-                              _selectedPickupTime = _formatTimeOfDay(picked);
-                            });
-                            Navigator.pop(ctx);
-                          },
-                          child: Text(
-                            'cart.picker_done'.tr(),
-                            style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.w800),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: CupertinoPicker(
-                      scrollController: scrollController,
-                      itemExtent: 42,
-                      magnification: 1.12,
-                      squeeze: 1.1,
-                      useMagnifier: true,
-                      selectionOverlay: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 24),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.black.withValues(alpha: 0.06),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: const Color(0xFF38BDF8).withValues(alpha: 0.35),
-                            width: 1.0,
-                          ),
-                        ),
                       ),
-                      onSelectedItemChanged: (idx) {
-                        selectedIndex = idx;
-                      },
-                      children: validTimes.map((t) {
-                        return Center(
-                          child: Text(
-                            _formatTimeOfDay(t),
-                            style: TextStyle(
-                              color: textPrimary,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                        );
-                      }).toList(),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
-    scrollController.dispose();
+    for (final c in controllersToDispose) {
+      c.dispose();
+    }
   }
 
   @override
