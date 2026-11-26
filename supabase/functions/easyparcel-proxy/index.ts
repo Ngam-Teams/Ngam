@@ -25,6 +25,10 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const platformApiKey = (Deno.env.get("EASYPARCEL_API_KEY") || "").trim();
+const platformEnv = (Deno.env.get("EASYPARCEL_ENV") || "demo").trim().toLowerCase() === "live"
+  ? "live"
+  : "demo";
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 function jsonResponse(body: Record<string, unknown>, status = 200): Response {
@@ -144,20 +148,36 @@ async function verifyCallerAccess(
 async function getSavedCredentials(businessId: string): Promise<{
   apiKey: string;
   environment: string;
+  mode: "platform" | "custom";
   config: Record<string, unknown>;
 } | null> {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("business_integrations")
     .select("api_key, environment, is_connected, config")
     .eq("business_id", businessId)
     .eq("provider", "easyparcel")
     .maybeSingle();
 
-  if (error || !data || !data.api_key) return null;
+  const cfg = (data?.config as Record<string, unknown>) || {};
+  const mode = String(cfg.mode || "platform").toLowerCase();
+
+  // Optional: Enterprise merchant using their own EasyParcel API key
+  if (mode === "custom" && data?.api_key && String(data.api_key).trim().length > 0) {
+    return {
+      apiKey: String(data.api_key).trim(),
+      environment: String(data.environment || "demo") === "live" ? "live" : "demo",
+      mode: "custom",
+      config: cfg,
+    };
+  }
+
+  // Default: Ngam Platform Managed EasyParcel (1 master key in Supabase Secrets)
+  if (!platformApiKey) return null;
   return {
-    apiKey: String(data.api_key).trim(),
-    environment: String(data.environment || "demo"),
-    config: (data.config as Record<string, unknown>) || {},
+    apiKey: platformApiKey,
+    environment: platformEnv,
+    mode: "platform",
+    config: cfg,
   };
 }
 
@@ -204,7 +224,18 @@ serve(async (req: Request) => {
     }
 
     // -------------------------------------------------------------------------
-    // 1. VERIFY CONNECTION (with explicit api_key & environment)
+    // 0. PLATFORM STATUS (Check if Ngam Master EasyParcel key is active)
+    // -------------------------------------------------------------------------
+    if (action === "platform_status") {
+      return jsonResponse({
+        success: true,
+        platform_ready: platformApiKey.length > 0,
+        environment: platformEnv,
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // 1. VERIFY CONNECTION (with explicit custom api_key & environment)
     // -------------------------------------------------------------------------
     if (action === "verify_connection") {
       const apiKey = String(body.api_key || "").trim();
@@ -236,11 +267,15 @@ serve(async (req: Request) => {
       });
     }
 
-    // All subsequent actions use saved credentials from `business_integrations`
+    // All subsequent actions use Platform Master Key (default) or Merchant Custom Key
     const creds = await getSavedCredentials(businessId);
     if (!creds) {
       return jsonResponse(
-        { success: false, error: "EasyParcel is not configured for this business" },
+        {
+          success: false,
+          error:
+            "EasyParcel platform key (EASYPARCEL_API_KEY) is not set in Supabase Secrets yet.",
+        },
         400
       );
     }

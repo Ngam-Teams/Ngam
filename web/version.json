@@ -1,6 +1,6 @@
 {
-  "version": "1.0.94",
-  "build_number": 67,
-  "released_at": "2026-11-26T14:18:49Z",
-  "changelog": "Tambah backend integrasi logistik EasyParcel Malaysia: migrasi SQL jadual business_integrations & order_shipments berserta Edge Function easyparcel-proxy (semak baki, semak kadar kurier, tempah/bayar AWB & tracking)."
+  "version": "1.0.95",
+  "build_number": 68,
+  "released_at": "2026-11-26T14:45:48Z",
+  "changelog": "Naik taraf easyparcel-proxy kepada Mod Platform Ngam (guna EASYPARCEL_API_KEY & EASYPARCEL_ENV daripada Supabase Secrets supaya peniaga boleh aktifkan penghantaran 1-klik tanpa perlu daftar API key sendiri, dengan sokongan pilihan akaun sendiri)."
 }
