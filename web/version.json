@@ -1,6 +1,6 @@
 {
-  "version": "1.0.103",
-  "build_number": 76,
-  "released_at": "2026-11-27T05:21:51Z",
-  "changelog": "Naik taraf variasi produk gaya Shopee: paparan julat harga min–maks (RM rendah - RM tinggi) sebelum variasi dipilih, harga tepat & stok serta berat pos tersendiri bagi setiap variasi apabila dipilih."
+  "version": "1.0.104",
+  "build_number": 77,
+  "released_at": "2026-11-27T05:29:33Z",
+  "changelog": "Perbaiki fallback poskod & negeri daripada Profil Kedai (postcode, state, address_line) dalam Edge Function EasyParcel untuk kiraan kadar pos segera."
 }

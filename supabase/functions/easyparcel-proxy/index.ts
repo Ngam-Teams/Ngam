@@ -561,16 +561,45 @@ serve(async (req: Request) => {
       let pickCode = String(cfg.sender_postcode || "").trim();
       let pickState = String(cfg.sender_state || "").trim().toLowerCase();
 
-      // Fallback to business profile address if sender postcode not in config
-      if (!pickCode || pickCode.length < 5) {
+      // Fallback to business profile address fields if sender postcode/state not in config
+      if (!pickCode || pickCode.length < 5 || !pickState) {
         const { data: bizRows } = await supabase
           .from("businesses")
-          .select("address")
+          .select("postcode, state, address_line, business_city")
           .eq("id", businessId)
           .limit(1);
-        const addr = String(bizRows?.[0]?.address || "");
-        const pcMatch = addr.match(/\b(\d{5})\b/);
-        if (pcMatch) pickCode = pcMatch[1];
+        const biz = bizRows?.[0] as Record<string, unknown> | undefined;
+        if (biz) {
+          const directPc = String(biz.postcode || "").trim();
+          const addrLine = String(biz.address_line || "").trim();
+          if (!pickCode || pickCode.length < 5) {
+            if (directPc.length >= 5) {
+              pickCode = directPc;
+            } else {
+              const pcMatch = addrLine.match(/\b(\d{5})\b/);
+              if (pcMatch) pickCode = pcMatch[1];
+            }
+          }
+          if (!pickState) {
+            const rawSt = `${String(biz.state || "")} ${String(biz.business_city || "")} ${addrLine}`.toLowerCase();
+            if (rawSt.includes("kuala lumpur") || /\bkl\b/.test(rawSt)) pickState = "kul";
+            else if (rawSt.includes("putrajaya")) pickState = "pjy";
+            else if (rawSt.includes("selangor")) pickState = "sgr";
+            else if (rawSt.includes("johor")) pickState = "jhr";
+            else if (rawSt.includes("penang") || rawSt.includes("pulau pinang")) pickState = "png";
+            else if (rawSt.includes("perak")) pickState = "prk";
+            else if (rawSt.includes("kedah")) pickState = "kdh";
+            else if (rawSt.includes("perlis")) pickState = "pls";
+            else if (rawSt.includes("negeri sembilan")) pickState = "nsn";
+            else if (rawSt.includes("melaka") || rawSt.includes("malacca")) pickState = "mlk";
+            else if (rawSt.includes("pahang")) pickState = "phg";
+            else if (rawSt.includes("terengganu")) pickState = "trg";
+            else if (rawSt.includes("kelantan")) pickState = "ktn";
+            else if (rawSt.includes("sarawak")) pickState = "srw";
+            else if (rawSt.includes("sabah")) pickState = "sbh";
+            else if (rawSt.includes("labuan")) pickState = "lbn";
+          }
+        }
       }
       if (!pickState) pickState = "sgr";
 
