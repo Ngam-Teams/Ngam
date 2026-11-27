@@ -189,8 +189,11 @@ class _StoreCartViewState extends State<StoreCartView> {
     }
   }
 
+  String get _resolvedShopId =>
+      (widget.shop['id'] ?? widget.shop['business_id'] ?? widget.shop['shop_id'] ?? '').toString().trim();
+
   Future<void> _syncShopDetails() async {
-    final shopId = widget.shop['id']?.toString() ?? '';
+    final shopId = _resolvedShopId;
     if (shopId.length < 20) return;
 
     try {
@@ -224,8 +227,12 @@ class _StoreCartViewState extends State<StoreCartView> {
           .eq('business_id', shopId)
           .maybeSingle();
       if (settings != null && settings['operating_hours'] is Map && mounted) {
+        final opMap = Map<String, dynamic>.from(settings['operating_hours'] as Map);
         setState(() {
-          _syncedOperatingHours = Map<String, dynamic>.from(settings['operating_hours'] as Map);
+          _syncedOperatingHours = opMap;
+          if (opMap['shipping_enabled'] == true) {
+            _epEnabled = true;
+          }
           _reconcileFulfillmentForIndustry();
           _syncDefaultSlotForSelectedDate();
         });
@@ -1098,12 +1105,13 @@ class _StoreCartViewState extends State<StoreCartView> {
   }
 
   Future<void> _fetchEasyParcelRates({bool force = false}) async {
-    final shopId = widget.shop['id']?.toString() ?? '';
+    final shopId = _resolvedShopId;
     if (shopId.length < 20) return;
 
     final addr = _deliveryAddressController.text.trim();
     final pc = EasyParcelCustomerService.extractPostcode(addr);
-    if (!force && _epChecked && !_epEnabled) return;
+    final mirroredEnabled = _effectiveOperatingHours?['shipping_enabled'] == true;
+    if (!force && _epChecked && !_epEnabled && !mirroredEnabled) return;
     if (!force && pc == _lastQueriedPostcode && _epRates.isNotEmpty) return;
 
     setState(() {
@@ -1122,7 +1130,7 @@ class _StoreCartViewState extends State<StoreCartView> {
     setState(() {
       _epChecked = true;
       _epLoadingRates = false;
-      _epEnabled = result.easyparcelEnabled;
+      _epEnabled = result.easyparcelEnabled || (_effectiveOperatingHours?['shipping_enabled'] == true);
       _epNeedsPostcode = result.needsPostcode;
       _epCheckoutMode = result.checkoutMode;
       _epRateError = result.error;
@@ -2769,8 +2777,9 @@ class _StoreCartViewState extends State<StoreCartView> {
   }
 
   Widget _buildFulfillmentCard(bool isDark, Color textPrimary, Color textSecondary) {
-    // Show Delivery / Hantar tab when store enabled EasyParcel OR legacy delivery flags
+    // Show Delivery / Hantar tab when store enabled EasyParcel OR mirrored shipping_enabled OR legacy delivery flags
     final bool supportsDelivery = _epEnabled ||
+        _effectiveOperatingHours?['shipping_enabled'] == true ||
         widget.shop['supports_delivery'] == true ||
         widget.shop['enable_delivery'] == true ||
         widget.shop['is_delivery_enabled'] == true;

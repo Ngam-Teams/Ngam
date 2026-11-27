@@ -183,10 +183,22 @@ class EasyParcelCustomerService {
         },
       );
 
-      final data = res.data is Map ? Map<String, dynamic>.from(res.data as Map) : {};
+      Map<String, dynamic> data = {};
+      if (res.data is Map) {
+        data = Map<String, dynamic>.from(res.data as Map);
+      } else if (res.data is String && (res.data as String).trim().startsWith('{')) {
+        try {
+          final decoded = jsonDecode(res.data as String);
+          if (decoded is Map) data = Map<String, dynamic>.from(decoded);
+        } catch (_) {}
+      }
+
       final enabled = data['easyparcel_enabled'] == true;
       if (!enabled) {
-        return const CustomerRatesResult(easyparcelEnabled: false);
+        return CustomerRatesResult(
+          easyparcelEnabled: false,
+          error: data['error']?.toString(),
+        );
       }
 
       final checkoutMode =
@@ -221,7 +233,10 @@ class EasyParcelCustomerService {
       );
     } catch (e) {
       debugPrint('[EasyParcelCustomerService] checkCourierRates error: $e');
-      return const CustomerRatesResult(easyparcelEnabled: false);
+      return CustomerRatesResult(
+        easyparcelEnabled: false,
+        error: e.toString(),
+      );
     }
   }
 }

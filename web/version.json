@@ -1,6 +1,6 @@
 {
-  "version": "1.0.101",
-  "build_number": 74,
-  "released_at": "2026-11-26T17:49:16Z",
-  "changelog": "Tambah pilihan susun kurier (Disyorkan, Termurah, Terpantas), lencana Pilihan Kedai, penapisan kurier ikut tetapan peniaga, serta simpanan kolum shipping_fee & service_id pada pesanan."
+  "version": "1.0.102",
+  "build_number": 75,
+  "released_at": "2026-11-27T02:55:46Z",
+  "changelog": "Pastikan tab Hantar / Delivery sentiasa dipaparkan serta-merta apabila kedai aktifkan Ngam Shipping, serta perbaiki penyahkodan JSON Edge Function di Flutter Web."
 }
