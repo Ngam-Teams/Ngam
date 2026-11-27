@@ -621,12 +621,19 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
                                           mainAxisAlignment:
                                               MainAxisAlignment.spaceBetween,
                                           children: [
-                                            Text(
-                                              'RM ${product.price.toStringAsFixed(2)}',
-                                              style: TextStyle(
-                                                color: textPrimary,
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w900,
+                                            Expanded(
+                                              child: FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                alignment: Alignment.centerLeft,
+                                                child: Text(
+                                                  product.formattedPriceRange,
+                                                  maxLines: 1,
+                                                  style: TextStyle(
+                                                    color: textPrimary,
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.w900,
+                                                  ),
+                                                ),
                                               ),
                                             ),
                                           ],

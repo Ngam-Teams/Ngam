@@ -78,7 +78,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   final Map<String, double> _slideAspectRatios = {};
 
   // Selections
-  int _selectedVariantIndex = 0;
+  int _selectedVariantIndex = -1;
   final Set<int> _selectedModifierIndices = {};
   int _quantity = 1;
   final TextEditingController _noteCtrl = TextEditingController();
@@ -220,16 +220,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     return widget.shop['is_open'] ?? true;
   }
 
-  // ── Price calculations ─────────────────────────────────────────
+  // ── Price, Stock & Weight calculations ─────────────────────────
 
-  double get _selectedVariantExtraPrice {
-    if (_product.variants.isEmpty) return 0.0;
-    if (_selectedVariantIndex < 0 || _selectedVariantIndex >= _product.variants.length) {
-      return 0.0;
-    }
-    final v = _product.variants[_selectedVariantIndex];
-    return (v['price'] as num?)?.toDouble() ?? 0.0;
-  }
+  bool get _needsVariantSelection =>
+      _product.variants.isNotEmpty &&
+      (_selectedVariantIndex < 0 || _selectedVariantIndex >= _product.variants.length);
+
+  Map<String, dynamic>? get _selectedVariant =>
+      (!_needsVariantSelection && _product.variants.isNotEmpty)
+          ? _product.variants[_selectedVariantIndex]
+          : null;
 
   double get _selectedModifiersExtraPrice {
     if (_product.modifiers.isEmpty || _selectedModifierIndices.isEmpty) return 0.0;
@@ -244,12 +244,35 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   double get _unitPrice {
-    return _product.price + _selectedVariantExtraPrice + _selectedModifiersExtraPrice;
+    final baseOrVariant = _selectedVariant != null
+        ? _product.variantEffectivePrice(_selectedVariant!)
+        : _product.minPrice;
+    return baseOrVariant + _selectedModifiersExtraPrice;
   }
 
   double get _totalPrice {
     return _unitPrice * _quantity;
   }
+
+  int get _activeStock {
+    if (_selectedVariant != null) {
+      return _product.variantStock(_selectedVariant!) ?? _product.stock;
+    }
+    return _product.effectiveTotalStock;
+  }
+
+  bool get _isActiveOutOfStock =>
+      _product.isProduct && _product.trackInventory && _activeStock <= 0;
+
+  bool get _isActiveLowStock =>
+      _product.isProduct &&
+      _product.trackInventory &&
+      _activeStock > 0 &&
+      _activeStock <= _product.lowStockThreshold;
+
+  double get _activeWeightKg => _selectedVariant != null
+      ? _product.variantWeightKg(_selectedVariant!)
+      : _product.weightKg;
 
   String? get _selectedOptionName {
     final parts = <String>[];
@@ -457,7 +480,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       'id': _product.id,
       'shopId': _shopId,
       'name': _product.name,
-      'price': _product.price,
+      'price': _product.minPrice,
       'imageUrl': _product.imageUrl,
       'category': _product.category,
       'itemType': _product.itemType,
@@ -480,7 +503,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ? 'https://ngam.dev/@$handle?p=${_product.id}'
         : 'https://ngam.dev/c/$_shopId?p=${_product.id}';
     Share.share(
-      '${_product.name} (RM ${_product.price.toStringAsFixed(2)}) - $_shopName\n$url',
+      '${_product.name} (${_product.formattedPriceRange}) - $_shopName\n$url',
       subject: _product.name,
     );
   }
@@ -526,7 +549,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   void _onAddToCartPressed() {
-    if (_product.isOutOfStock) {
+    if (_needsVariantSelection) {
+      showGlassToast(context, 'product_detail.select_variation_required'.tr(), isError: true);
+      return;
+    }
+    if (_isActiveOutOfStock) {
       showGlassToast(context, 'product_detail.out_of_stock'.tr(), isError: true);
       return;
     }
@@ -538,13 +565,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       return;
     }
 
-    final extra = _selectedVariantExtraPrice + _selectedModifiersExtraPrice;
+    final effectiveProduct = _product.copyWith(weightKg: _activeWeightKg);
+    final extra = _unitPrice - effectiveProduct.price;
     final opt = _selectedOptionName;
     final note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
 
     StoreCartService.addItem(
       _shopId,
-      _product,
+      effectiveProduct,
       quantity: _quantity,
       selectedOption: opt,
       itemNote: note,
@@ -562,7 +590,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       return;
     }
 
-    if (_product.isOutOfStock) {
+    if (_needsVariantSelection) {
+      showGlassToast(context, 'product_detail.select_variation_required'.tr(), isError: true);
+      return;
+    }
+    if (_isActiveOutOfStock) {
       showGlassToast(context, 'product_detail.out_of_stock'.tr(), isError: true);
       return;
     }
@@ -574,12 +606,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       return;
     }
 
-    final extra = _selectedVariantExtraPrice + _selectedModifiersExtraPrice;
+    final effectiveProduct = _product.copyWith(weightKg: _activeWeightKg);
+    final extra = _unitPrice - effectiveProduct.price;
     final opt = _selectedOptionName;
     final note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
 
     final item = CartItem(
-      product: _product,
+      product: effectiveProduct,
       quantity: _quantity,
       selectedOption: opt,
       itemNote: note,
@@ -1832,64 +1865,84 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Price + Compare At + Discount Badge
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                'RM',
-                style: TextStyle(
-                  color: const Color(0xFF3B82F6),
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                _unitPrice.toStringAsFixed(2),
-                style: const TextStyle(
-                  color: Color(0xFF3B82F6),
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              if (_product.hasDiscount) ...[
-                const SizedBox(width: 8),
-                Text(
-                  'RM ${_product.compareAtPrice!.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    color: textSecondary,
-                    fontSize: 13,
-                    decoration: TextDecoration.lineThrough,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEF4444).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: const Color(0xFFEF4444).withValues(alpha: 0.4),
+          // Price (Shopee-style min - max range until a variation is selected) + Compare At + Discount Badge
+          Builder(
+            builder: (_) {
+              final showRange = _needsVariantSelection && _product.hasPriceRange;
+              final priceValueText = showRange
+                  ? '${(_product.minPrice + _selectedModifiersExtraPrice).toStringAsFixed(2)} - RM ${(_product.maxPrice + _selectedModifiersExtraPrice).toStringAsFixed(2)}'
+                  : _unitPrice.toStringAsFixed(2);
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'RM',
+                            style: TextStyle(
+                              color: Color(0xFF3B82F6),
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            priceValueText,
+                            style: TextStyle(
+                              color: const Color(0xFF3B82F6),
+                              fontSize: showRange ? 23 : 28,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  child: Text(
-                    'product_detail.off_badge'.tr(args: [_product.discountPercent.toString()]),
-                    style: const TextStyle(
-                      color: Color(0xFFEF4444),
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.bold,
+                  if (_product.hasDiscount && !showRange) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      'RM ${_product.compareAtPrice!.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        color: textSecondary,
+                        fontSize: 13,
+                        decoration: TextDecoration.lineThrough,
+                      ),
                     ),
-                  ),
-                ),
-              ],
-            ],
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Text(
+                        'product_detail.off_badge'.tr(args: [_product.discountPercent.toString()]),
+                        style: const TextStyle(
+                          color: Color(0xFFEF4444),
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
           ),
           const SizedBox(height: 10),
 
-          // Badges: SERVICE / PRODUCT, HALAL, FEATURED
+          // Badges: SERVICE / PRODUCT, HALAL, FEATURED, STOCK
           Wrap(
             spacing: 6,
             runSpacing: 6,
@@ -1910,15 +1963,20 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   label: 'product_detail.featured_badge'.tr(),
                   color: const Color(0xFFF59E0B),
                 ),
-              if (_product.isOutOfStock)
+              if (_isActiveOutOfStock)
                 _buildBadge(
                   label: 'product_detail.out_of_stock'.tr(),
                   color: const Color(0xFFEF4444),
                 )
-              else if (_product.isLowStock)
+              else if (_isActiveLowStock)
                 _buildBadge(
-                  label: 'product_detail.low_stock'.tr(args: [_product.stock.toString()]),
+                  label: 'product_detail.low_stock'.tr(args: [_activeStock.toString()]),
                   color: const Color(0xFFF97316),
+                )
+              else if (_product.isProduct && _product.trackInventory && _activeStock > 0)
+                _buildBadge(
+                  label: 'product_detail.stock_available'.tr(args: [_activeStock.toString()]),
+                  color: const Color(0xFF10B981),
                 ),
             ],
           ),
@@ -2114,19 +2172,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Variants (Single Selection: Saiz / Perisa dsb)
+          // 1. Variants (Single Selection: Saiz / Perisa dsb — Shopee style)
           if (_product.variants.isNotEmpty) ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'product_detail.variations_title'.tr(),
-                  style: TextStyle(
-                    color: textPrimary,
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.bold,
+                Flexible(
+                  child: Text(
+                    'product_detail.variations_title'.tr(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
+                const SizedBox(width: 8),
                 if (_selectedVariantIndex >= 0 &&
                     _selectedVariantIndex < _product.variants.length)
                   Text(
@@ -2134,6 +2197,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     style: const TextStyle(
                       color: Color(0xFF3B82F6),
                       fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  )
+                else
+                  Text(
+                    'product_detail.please_select_variation'.tr(),
+                    style: const TextStyle(
+                      color: Color(0xFFF59E0B),
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -2146,24 +2218,40 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               children: List.generate(_product.variants.length, (idx) {
                 final v = _product.variants[idx];
                 final name = (v['name'] ?? '').toString();
-                final price = (v['price'] as num?)?.toDouble() ?? 0.0;
+                final effectivePrice = _product.variantEffectivePrice(v);
+                final vStock = _product.variantStock(v);
+                final vOutOfStock = _product.isProduct &&
+                    _product.trackInventory &&
+                    vStock != null &&
+                    vStock <= 0;
                 final isSelected = _selectedVariantIndex == idx;
 
                 return GestureDetector(
-                  onTap: () => setState(() => _selectedVariantIndex = idx),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  onTap: vOutOfStock
+                      ? null
+                      : () => setState(() {
+                            _selectedVariantIndex = isSelected ? -1 : idx;
+                          }),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? const Color(0xFF3B82F6).withValues(alpha: 0.15)
-                          : (isDark
-                              ? Colors.white.withValues(alpha: 0.04)
-                              : Colors.black.withValues(alpha: 0.03)),
+                      color: vOutOfStock
+                          ? (isDark
+                              ? Colors.white.withValues(alpha: 0.02)
+                              : Colors.black.withValues(alpha: 0.02))
+                          : isSelected
+                              ? const Color(0xFF3B82F6).withValues(alpha: 0.16)
+                              : (isDark
+                                  ? Colors.white.withValues(alpha: 0.04)
+                                  : Colors.black.withValues(alpha: 0.03)),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected
-                            ? const Color(0xFF3B82F6)
-                            : (isDark ? Colors.white12 : Colors.black12),
+                        color: vOutOfStock
+                            ? (isDark ? Colors.white10 : Colors.black12)
+                            : isSelected
+                                ? const Color(0xFF3B82F6)
+                                : (isDark ? Colors.white12 : Colors.black12),
                         width: isSelected ? 1.5 : 1.0,
                       ),
                     ),
@@ -2173,19 +2261,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         Text(
                           name,
                           style: TextStyle(
-                            color: isSelected ? const Color(0xFF3B82F6) : textPrimary,
+                            color: vOutOfStock
+                                ? textSecondary.withValues(alpha: 0.45)
+                                : (isSelected ? const Color(0xFF3B82F6) : textPrimary),
                             fontSize: 13,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                            decoration: vOutOfStock ? TextDecoration.lineThrough : null,
                           ),
                         ),
-                        if (price > 0) ...[
-                          const SizedBox(width: 4),
+                        if (effectivePrice > 0) ...[
+                          const SizedBox(width: 6),
                           Text(
-                            '(+RM${price.toStringAsFixed(2)})',
+                            'RM ${effectivePrice.toStringAsFixed(2)}',
                             style: TextStyle(
-                              color: isSelected ? const Color(0xFF3B82F6) : textSecondary,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
+                              color: vOutOfStock
+                                  ? textSecondary.withValues(alpha: 0.4)
+                                  : (isSelected ? const Color(0xFF3B82F6) : textSecondary),
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
@@ -3254,12 +3347,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              'RM ${item.price.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                color: Color(0xFF3B82F6),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w900,
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                item.formattedPriceRange,
+                                maxLines: 1,
+                                style: const TextStyle(
+                                  color: Color(0xFF3B82F6),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
                             ),
                           ],

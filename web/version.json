@@ -1,6 +1,6 @@
 {
-  "version": "1.0.102",
-  "build_number": 75,
-  "released_at": "2026-11-27T02:55:46Z",
-  "changelog": "Pastikan tab Hantar / Delivery sentiasa dipaparkan serta-merta apabila kedai aktifkan Ngam Shipping, serta perbaiki penyahkodan JSON Edge Function di Flutter Web."
+  "version": "1.0.103",
+  "build_number": 76,
+  "released_at": "2026-11-27T05:21:51Z",
+  "changelog": "Naik taraf variasi produk gaya Shopee: paparan julat harga min–maks (RM rendah - RM tinggi) sebelum variasi dipilih, harga tepat & stok serta berat pos tersendiri bagi setiap variasi apabila dipilih."
 }

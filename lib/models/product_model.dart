@@ -75,11 +75,128 @@ class ProductModel {
 
   bool get isService => itemType.toLowerCase() == 'service';
   bool get isProduct => !isService;
-  bool get hasDiscount => compareAtPrice != null && compareAtPrice! > price;
+
+  /// Exact selling price of a single variant (falls back to base `price` if variant price <= 0).
+  double variantEffectivePrice(Map<String, dynamic> v) {
+    final vp = (v['price'] as num?)?.toDouble() ??
+        double.tryParse(v['price']?.toString() ?? '') ??
+        0.0;
+    return vp > 0 ? vp : price;
+  }
+
+  /// Per-variant stock if explicitly stored on the variant, else null.
+  int? variantStock(Map<String, dynamic> v) {
+    final raw = v['stock'];
+    if (raw == null) return null;
+    if (raw is num) return raw.toInt();
+    return int.tryParse(raw.toString());
+  }
+
+  /// Per-variant shipping weight (kg): uses explicit `weight_kg`, else smart-parses
+  /// common weight units from variant name (e.g. `400g` -> 0.4, `2kg` -> 2.0), else product `weightKg`.
+  double variantWeightKg(Map<String, dynamic> v) {
+    final raw = v['weight_kg'];
+    final explicit = raw is num ? raw.toDouble() : double.tryParse(raw?.toString() ?? '');
+    if (explicit != null && explicit > 0) return explicit;
+    final name = (v['name'] ?? '').toString().toLowerCase();
+    final kgMatch = RegExp(r'(\d+(?:\.\d+)?)\s*kg\b').firstMatch(name);
+    if (kgMatch != null) {
+      final parsed = double.tryParse(kgMatch.group(1) ?? '');
+      if (parsed != null && parsed > 0) return parsed;
+    }
+    final gMatch = RegExp(r'(\d+(?:\.\d+)?)\s*g(?:m|ram|rams)?\b').firstMatch(name);
+    if (gMatch != null) {
+      final parsed = double.tryParse(gMatch.group(1) ?? '');
+      if (parsed != null && parsed > 0) return (parsed / 1000.0).clamp(0.05, 500.0);
+    }
+    return weightKg > 0 ? weightKg : 0.5;
+  }
+
+  bool get hasVariants => variants.isNotEmpty;
+
+  double get minPrice {
+    if (variants.isEmpty) return price;
+    final prices = variants.map(variantEffectivePrice).where((p) => p > 0).toList();
+    if (prices.isEmpty) return price;
+    return prices.reduce((a, b) => a < b ? a : b);
+  }
+
+  double get maxPrice {
+    if (variants.isEmpty) return price;
+    final prices = variants.map(variantEffectivePrice).where((p) => p > 0).toList();
+    if (prices.isEmpty) return price;
+    return prices.reduce((a, b) => a > b ? a : b);
+  }
+
+  bool get hasPriceRange => variants.isNotEmpty && (maxPrice - minPrice).abs() >= 0.005;
+
+  /// Shopee-style price string: `RM 17.90 - RM 280.80` when variants span a range, else `RM 17.90`.
+  String get formattedPriceRange {
+    if (hasPriceRange) {
+      return 'RM ${minPrice.toStringAsFixed(2)} - RM ${maxPrice.toStringAsFixed(2)}';
+    }
+    return 'RM ${minPrice.toStringAsFixed(2)}';
+  }
+
+  /// True if at least one variant defines its own per-variant stock count.
+  bool get hasVariantStock => variants.any((v) => variantStock(v) != null);
+
+  /// Combined stock across variants (if per-variant stock is tracked), else product `stock`.
+  int get effectiveTotalStock {
+    if (variants.isNotEmpty && hasVariantStock) {
+      return variants.fold<int>(0, (sum, v) => sum + ((variantStock(v) ?? 0).clamp(0, 999999)));
+    }
+    return stock;
+  }
+
+  bool get hasDiscount => compareAtPrice != null && compareAtPrice! > minPrice && minPrice > 0;
   int get discountPercent =>
-      hasDiscount ? (((compareAtPrice! - price) / compareAtPrice!) * 100).round().clamp(1, 99) : 0;
-  bool get isLowStock => isProduct && trackInventory && stock > 0 && stock <= lowStockThreshold;
-  bool get isOutOfStock => isProduct && trackInventory && stock <= 0;
+      hasDiscount ? (((compareAtPrice! - minPrice) / compareAtPrice!) * 100).round().clamp(1, 99) : 0;
+  bool get isLowStock =>
+      isProduct && trackInventory && effectiveTotalStock > 0 && effectiveTotalStock <= lowStockThreshold;
+  bool get isOutOfStock => isProduct && trackInventory && effectiveTotalStock <= 0;
+
+  ProductModel copyWith({
+    double? price,
+    double? weightKg,
+    int? stock,
+  }) {
+    return ProductModel(
+      id: id,
+      shopId: shopId,
+      name: name,
+      description: description,
+      category: category,
+      subCategory: subCategory,
+      price: price ?? this.price,
+      compareAtPrice: compareAtPrice,
+      imageUrl: imageUrl,
+      imageUrls: imageUrls,
+      videoUrl: videoUrl,
+      stock: stock ?? this.stock,
+      trackInventory: trackInventory,
+      lowStockThreshold: lowStockThreshold,
+      unit: unit,
+      weightKg: weightKg ?? this.weightKg,
+      sku: sku,
+      barcode: barcode,
+      isActive: isActive,
+      itemType: itemType,
+      isFeatured: isFeatured,
+      isHalal: isHalal,
+      tags: tags,
+      variants: variants,
+      modifiers: modifiers,
+      durationMinutes: durationMinutes,
+      bufferMinutes: bufferMinutes,
+      depositAmount: depositAmount,
+      serviceLocation: serviceLocation,
+      maxPax: maxPax,
+      soldCount: soldCount,
+      rating: rating,
+      reviewCount: reviewCount,
+    );
+  }
 
   List<String> get galleryImages {
     final out = <String>[];
