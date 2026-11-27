@@ -179,7 +179,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
     return _discoveryProducts.where((p) {
       if (_selectedDiscoveryTab == 1) return p.isService;
       if (_selectedDiscoveryTab == 2) return p.isProduct;
-      if (_selectedDiscoveryTab == 3) return p.price > 0 && p.price <= 15.0;
+      if (_selectedDiscoveryTab == 3) return p.minPrice > 0 && p.minPrice <= 15.0;
       if (_selectedDiscoveryTab == 4) return p.hasDiscount;
       return true;
     }).toList();
@@ -2432,15 +2432,19 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                               ),
                             ),
                             const SizedBox(height: 6),
-                            Text(
-                              'RM${product.price.toStringAsFixed(2)}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Color(0xFF3B82F6),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w900,
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                product.hasPriceRange
+                                    ? 'RM${product.minPrice.toStringAsFixed(2)}+'
+                                    : 'RM${product.minPrice.toStringAsFixed(2)}',
+                                maxLines: 1,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Color(0xFF3B82F6),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
                             ),
                           ],
@@ -2862,12 +2866,19 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
                     children: [
-                      Text(
-                        'RM${product.price.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          color: Color(0xFF3B82F6),
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w900,
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            product.formattedPriceRange,
+                            maxLines: 1,
+                            style: const TextStyle(
+                              color: Color(0xFF3B82F6),
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
                         ),
                       ),
                       if (product.hasDiscount) ...[

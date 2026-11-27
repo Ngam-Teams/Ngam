@@ -602,7 +602,7 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
     final list = byId.values.where((p) {
       if (_typeFilter == _SearchTypeFilter.services && !p.isService) return false;
       if (_typeFilter == _SearchTypeFilter.products && !p.isProduct) return false;
-      if (_maxBudget != null && (p.price <= 0 || p.price > _maxBudget!)) return false;
+      if (_maxBudget != null && (p.minPrice <= 0 || p.minPrice > _maxBudget!)) return false;
 
       final shop = shopMap[p.shopId];
       final shopName = (shop?['name'] ?? shop?['business_name'] ?? '').toString();
@@ -630,10 +630,10 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
         });
         break;
       case _SearchSortMode.priceLow:
-        list.sort((a, b) => a.price.compareTo(b.price));
+        list.sort((a, b) => a.minPrice.compareTo(b.minPrice));
         break;
       case _SearchSortMode.priceHigh:
-        list.sort((a, b) => b.price.compareTo(a.price));
+        list.sort((a, b) => b.maxPrice.compareTo(a.maxPrice));
         break;
       case _SearchSortMode.relevance:
         if (q.isNotEmpty) {
@@ -2379,12 +2379,17 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
                 ),
               ),
               const SizedBox(height: 5),
-              Text(
-                'RM${product.price.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  color: Color(0xFF3B82F6),
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w900,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  product.formattedPriceRange,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    color: Color(0xFF3B82F6),
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
               const SizedBox(height: 5),

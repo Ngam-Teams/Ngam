@@ -1,6 +1,6 @@
 {
-  "version": "1.0.104",
-  "build_number": 77,
-  "released_at": "2026-11-27T05:29:33Z",
-  "changelog": "Perbaiki fallback poskod & negeri daripada Profil Kedai (postcode, state, address_line) dalam Edge Function EasyParcel untuk kiraan kadar pos segera."
+  "version": "1.0.105",
+  "build_number": 78,
+  "released_at": "2026-11-27T18:17:44Z",
+  "changelog": "Paparkan julat harga variasi (RM rendah - RM tinggi) di skrin Utama (Hot Deals & Feed), Carian, serta penapis Under RM15 supaya produk bervariasi tidak lagi menunjukkan RM0.00."
 }
