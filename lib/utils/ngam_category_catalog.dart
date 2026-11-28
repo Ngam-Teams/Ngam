@@ -480,11 +480,18 @@ class NgamCategoryCatalog {
       ],
       children: [
         NgamSubCategory(
+          id: 'futsal_court',
+          groupId: 'sports',
+          titleKey: 'category_explore.items.futsal_court',
+          icon: HugeIcons.strokeRoundedFootballPitch,
+          synonyms: ['futsal_court', 'futsal', 'arena futsal', 'gelanggang futsal', 'bola', 'padang', 'turf', '5v5'],
+        ),
+        NgamSubCategory(
           id: 'badminton_court',
           groupId: 'sports',
           titleKey: 'category_explore.items.badminton_court',
           icon: HugeIcons.strokeRoundedSparkles,
-          synonyms: ['badminton_court', 'badminton', 'futsal', 'gelanggang', 'court'],
+          synonyms: ['badminton_court', 'badminton', 'gelanggang', 'court'],
         ),
         NgamSubCategory(
           id: 'pickleball_court',

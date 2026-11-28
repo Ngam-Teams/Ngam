@@ -14,6 +14,7 @@ import '../../widgets/glass_toast.dart'; //  ADD THIS TO YOUR IMPORTS
 import '../../services/voucher_service.dart';
 import '../../widgets/voucher_selection_sheet.dart';
 import '../../widgets/customer_payment_modal.dart';
+import '../../widgets/hold_repeat_button.dart';
 import '../../utils/ngam_ref.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:math'; //  Required for generating the short ID
@@ -82,8 +83,73 @@ class _BookingsViewState extends State<BookingsView> {
   String _generatedBookingId = "";
 
   late BookingType _bookingType;
+  String _loadedBusinessType = '';
+  int _facilityDurationHours = 1;
   bool get _isOvernightBooking =>
       _bookingType == BookingType.hospitality || _bookingType == BookingType.petHotel;
+  bool get _isFacilityBooking => _bookingType == BookingType.facility;
+  bool get _isFutsalBooking {
+    if (!_isFacilityBooking) return false;
+    if (_loadedBusinessType == 'futsal_court') return true;
+    final combined =
+        '${_resolvedShopName.toLowerCase()} ${_shopCategory.toLowerCase()} ${widget.category.toLowerCase()}';
+    return combined.contains('futsal') ||
+        combined.contains('bola') ||
+        combined.contains('padang') ||
+        combined.contains('turf');
+  }
+
+  Color get _accentPrimary =>
+      _isFacilityBooking ? const Color(0xFF10B981) : const Color(0xFF3B82F6);
+  Color get _accentSecondary =>
+      _isFacilityBooking ? const Color(0xFF059669) : const Color(0xFF2563EB);
+
+  int? _parseTimeToMinutes(String t) {
+    final p = t.split(':');
+    if (p.length < 2) return null;
+    final h = int.tryParse(p[0].trim());
+    final m = int.tryParse(p[1].trim());
+    if (h == null || m == null) return null;
+    return h * 60 + m;
+  }
+
+  String _formatEndTime(String startTime, int durationMins) {
+    final startMins = _parseTimeToMinutes(startTime);
+    if (startMins == null) return startTime;
+    final endTotal = (startMins + durationMins) % (24 * 60);
+    final endH = endTotal ~/ 60;
+    final endM = endTotal % 60;
+    return '${endH.toString().padLeft(2, '0')}:${endM.toString().padLeft(2, '0')}';
+  }
+
+  String get _selectedTimeRangeLabel {
+    if (_selectedTimeIndex < 0 || _selectedTimeIndex >= _times.length) return '';
+    final start = _times[_selectedTimeIndex];
+    if (!_isFacilityBooking) return start;
+    final durMins = _totalTime >= 60 ? _totalTime : _facilityDurationHours * 60;
+    return '$start – ${_formatEndTime(start, durMins)}';
+  }
+
+  bool _isSlotIncludedInSelectedRange(int index) {
+    if (!_isFacilityBooking || _selectedTimeIndex < 0 || _selectedTimeIndex >= _times.length) {
+      return false;
+    }
+    if (index == _selectedTimeIndex) return false;
+    final durMins = _totalTime >= 60 ? _totalTime : _facilityDurationHours * 60;
+    if (durMins <= 60) return false;
+    final startMins = _parseTimeToMinutes(_times[_selectedTimeIndex]);
+    final slotMins = _parseTimeToMinutes(_times[index]);
+    if (startMins == null || slotMins == null) return false;
+    final diff = slotMins >= startMins ? slotMins - startMins : (slotMins + 24 * 60) - startMins;
+    return diff > 0 && diff < durMins;
+  }
+
+  bool _isNightSlot(String time) {
+    final mins = _parseTimeToMinutes(time);
+    if (mins == null) return false;
+    final h = mins ~/ 60;
+    return h >= 19 || h < 5;
+  }
   List<Map<String, String>> _staffs = [];
   final List<Map<String, String>> _dates = [];
   final List<String> _times = ["8:00", "9:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00", "19:00", "20:00"];
@@ -716,46 +782,84 @@ class _BookingsViewState extends State<BookingsView> {
         break;
 
       case BookingType.facility:
-        _staffs = [
-          {
-            "name": "Court 1 (Badminton Rubber Mat BWF Approved)",
-            "specialty": "Lantai Getah Hijau BWF & Pencahayaan Anti-Glare",
-            "rating": "5.0",
-            "image": "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?q=80&w=400",
-          },
-          {
-            "name": "Court 2 (Pickleball Tournament Indoor)",
-            "specialty": "Lantai Khas Pickleball & Jaring Bertauliah",
-            "rating": "4.9",
-            "image": "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=400",
-          },
-          {
-            "name": "Gelanggang Futsal Sintetik Premium",
-            "specialty": "Rumput Tiruan Lembut Bertaraf Antarabangsa",
-            "rating": "4.9",
-            "image": "https://images.unsplash.com/photo-1529900240041-22f1df4d189a?q=80&w=400",
-          },
-          {
-            "name": "Court VIP Berhawa Dingin (Aircond Lounge)",
-            "specialty": "Kawasan Eksklusif Tertutup & Ruang Rehat VIP",
-            "rating": "5.0",
-            "image": "https://images.unsplash.com/photo-1526676037777-05a232554f77?q=80&w=400",
-          },
-        ];
-        _servicesList = [
-          {"name": "Sesi 1 Jam Permainan Santai", "price": "RM25", "time": "60m"},
-          {"name": "Sesi 2 Jam Kombo Perlawanan", "price": "RM45", "time": "120m"},
-          {"name": "Sesi 3 Jam Latihan Pasukan / Liga Mini", "price": "RM65", "time": "180m"},
-          {"name": "Pas Pasukan / Kelab (Slot Bulanan)", "price": "RM160", "time": "240m"},
-        ];
-        _addonsList = [
-          {"name": "Sewa 2x Raket & 1 Tiub Bulu Tangkis (3 Biji)", "price": "+RM15", "time": "+0m"},
-          {"name": "Sewa Raket Pickleball & 2 Bola Khas", "price": "+RM12", "time": "+0m"},
-          {"name": "Sewa Bibs Pasukan (2 Warna Berbeza)", "price": "+RM10", "time": "+0m"},
-          {"name": "Sewa Bola Futsal Rasmi FIFA", "price": "+RM8", "time": "+0m"},
-          {"name": "Pek Air Mineral Sejuk (3 Botol 1.5L)", "price": "+RM10", "time": "+0m"},
-          {"name": "Sewa Kasut Sukan (Saiz Biasa 38-44)", "price": "+RM8", "time": "+0m"},
-        ];
+        if (_times.length <= 11 && !_times.contains('22:00')) {
+          _times.addAll(['21:00', '22:00', '23:00']);
+        }
+        if (_isFutsalBooking) {
+          if (_paxCount == 2) _paxCount = 10;
+          _staffs = [
+            {
+              "name": "Court A • Futsal Rumput Sintetik LED",
+              "specialty": "Rumput Tiruan Lembut 5v5 & Lampu LED Terang",
+              "rating": "5.0",
+              "image": "https://images.unsplash.com/photo-1529900240041-22f1df4d189a?q=80&w=400",
+            },
+            {
+              "name": "Court B • Futsal Indoor Pro",
+              "specialty": "Lantai Interlocking Anti-Licin & Berbumbung",
+              "rating": "4.9",
+              "image": "https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=400",
+            },
+            {
+              "name": "Court C • Gelanggang Latihan / Friendly",
+              "specialty": "Sesuai Untuk Sesi Santai & Liga Mini",
+              "rating": "4.8",
+              "image": "https://images.unsplash.com/photo-1518604666860-9ed391f76460?q=80&w=400",
+            },
+          ];
+          _servicesList = [
+            {"name": "Sewa Gelanggang Futsal (Per Jam)", "price": "RM80", "time": "60m"},
+            {"name": "Pakej Perlawanan 2 Jam (Kombo)", "price": "RM150", "time": "120m"},
+            {"name": "Pakej Liga Mini / Latihan 3 Jam", "price": "RM210", "time": "180m"},
+          ];
+          _addonsList = [
+            {"name": "Sewa Bola Futsal Rasmi", "price": "+RM8", "time": "+0m"},
+            {"name": "Sewa Bibs Pasukan (2 Warna)", "price": "+RM10", "time": "+0m"},
+            {"name": "Pek Air Mineral Sejuk (3x 1.5L)", "price": "+RM10", "time": "+0m"},
+            {"name": "Sewa Kasut Futsal (Saiz 38–44)", "price": "+RM10", "time": "+0m"},
+          ];
+        } else {
+          _staffs = [
+            {
+              "name": "Court 1 (Badminton Rubber Mat BWF Approved)",
+              "specialty": "Lantai Getah Hijau BWF & Pencahayaan Anti-Glare",
+              "rating": "5.0",
+              "image": "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?q=80&w=400",
+            },
+            {
+              "name": "Court 2 (Pickleball Tournament Indoor)",
+              "specialty": "Lantai Khas Pickleball & Jaring Bertauliah",
+              "rating": "4.9",
+              "image": "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=400",
+            },
+            {
+              "name": "Gelanggang Futsal Sintetik Premium",
+              "specialty": "Rumput Tiruan Lembut Bertaraf Antarabangsa",
+              "rating": "4.9",
+              "image": "https://images.unsplash.com/photo-1529900240041-22f1df4d189a?q=80&w=400",
+            },
+            {
+              "name": "Court VIP Berhawa Dingin (Aircond Lounge)",
+              "specialty": "Kawasan Eksklusif Tertutup & Ruang Rehat VIP",
+              "rating": "5.0",
+              "image": "https://images.unsplash.com/photo-1526676037777-05a232554f77?q=80&w=400",
+            },
+          ];
+          _servicesList = [
+            {"name": "Sesi 1 Jam Permainan Santai", "price": "RM25", "time": "60m"},
+            {"name": "Sesi 2 Jam Kombo Perlawanan", "price": "RM45", "time": "120m"},
+            {"name": "Sesi 3 Jam Latihan Pasukan / Liga Mini", "price": "RM65", "time": "180m"},
+            {"name": "Pas Pasukan / Kelab (Slot Bulanan)", "price": "RM160", "time": "240m"},
+          ];
+          _addonsList = [
+            {"name": "Sewa 2x Raket & 1 Tiub Bulu Tangkis (3 Biji)", "price": "+RM15", "time": "+0m"},
+            {"name": "Sewa Raket Pickleball & 2 Bola Khas", "price": "+RM12", "time": "+0m"},
+            {"name": "Sewa Bibs Pasukan (2 Warna Berbeza)", "price": "+RM10", "time": "+0m"},
+            {"name": "Sewa Bola Futsal Rasmi FIFA", "price": "+RM8", "time": "+0m"},
+            {"name": "Pek Air Mineral Sejuk (3 Botol 1.5L)", "price": "+RM10", "time": "+0m"},
+            {"name": "Sewa Kasut Sukan (Saiz Biasa 38-44)", "price": "+RM8", "time": "+0m"},
+          ];
+        }
         break;
 
       case BookingType.beauty:
@@ -917,12 +1021,20 @@ class _BookingsViewState extends State<BookingsView> {
 
   String _fmtMoney(double v) => v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);
 
+  int _serviceMultiplier(int serviceIdx) {
+    if (_isOvernightBooking) return _nightsCount;
+    if (_isFacilityBooking && serviceIdx >= 0 && serviceIdx < _servicesList.length) {
+      final dur = int.tryParse((_servicesList[serviceIdx]["time"] ?? '').replaceAll(RegExp(r'[^0-9]'), '')) ?? 60;
+      if (dur <= 60) return _facilityDurationHours;
+    }
+    return 1;
+  }
+
   double get _subtotal {
     double total = 0;
-    final int multiplier = _isOvernightBooking ? _nightsCount : 1;
     for (int i in _selectedServices) {
       if (i >= 0 && i < _servicesList.length) {
-        total += _parseMoney(_servicesList[i]["price"] ?? '') * multiplier;
+        total += _parseMoney(_servicesList[i]["price"] ?? '') * _serviceMultiplier(i);
       }
     }
     for (int i in _selectedAddons) {
@@ -943,8 +1055,20 @@ class _BookingsViewState extends State<BookingsView> {
 
   int get _totalTime {
     int time = 0;
-    for (int i in _selectedServices) { if (i >= 0 && i < _servicesList.length) time += int.tryParse((_servicesList[i]["time"] ?? '').replaceAll(RegExp(r'[^0-9]'), '')) ?? 0; }
-    for (int i in _selectedAddons) { if (i >= 0 && i < _addonsList.length) time += int.tryParse((_addonsList[i]["time"] ?? '').replaceAll(RegExp(r'[^0-9]'), '')) ?? 0; }
+    for (int i in _selectedServices) {
+      if (i >= 0 && i < _servicesList.length) {
+        final dur = int.tryParse((_servicesList[i]["time"] ?? '').replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+        time += dur * (_isFacilityBooking && dur <= 60 ? _facilityDurationHours : 1);
+      }
+    }
+    for (int i in _selectedAddons) {
+      if (i >= 0 && i < _addonsList.length) {
+        time += int.tryParse((_addonsList[i]["time"] ?? '').replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+      }
+    }
+    if (_isFacilityBooking && time < _facilityDurationHours * 60) {
+      return _facilityDurationHours * 60;
+    }
     return time;
   }
 
@@ -980,6 +1104,11 @@ class _BookingsViewState extends State<BookingsView> {
         if (_currentStep == 1) return "Pilih rawatan & ujian:";
         return "Sahkan janji temu klinik:";
       case BookingType.facility:
+        if (_isFutsalBooking) {
+          if (_currentStep == 0) return "booking.futsal_step_0".tr();
+          if (_currentStep == 1) return "booking.futsal_step_1".tr();
+          return "booking.futsal_step_2".tr();
+        }
         if (_currentStep == 0) return "Pilih gelanggang / court:";
         if (_currentStep == 1) return "Pilih tempoh & peralatan:";
         return "Sahkan tempahan court:";
@@ -1007,7 +1136,10 @@ class _BookingsViewState extends State<BookingsView> {
       case BookingType.barber: return "Pakej Potongan & Penggayaan";
       case BookingType.automotive: return "Pakej Servis Kenderaan";
       case BookingType.health: return "Pilihan Rawatan & Konsultasi";
-      case BookingType.facility: return "Tempoh Sesi Permainan";
+      case BookingType.facility:
+        return _isFutsalBooking
+            ? "booking.futsal_service_title".tr()
+            : "Tempoh Sesi Permainan";
       case BookingType.beauty: return "Pilihan Rawatan Utama";
       case BookingType.retail: return "Pilihan Sesi & Bantuan";
       case BookingType.service: return "Servis Utama";
@@ -1023,7 +1155,10 @@ class _BookingsViewState extends State<BookingsView> {
       case BookingType.barber: return "Servis Tambahan & Rawatan";
       case BookingType.automotive: return "Servis Tambahan Pilihan";
       case BookingType.health: return "Ujian & Rawatan Lanjutan";
-      case BookingType.facility: return "Sewa Peralatan Tambahan";
+      case BookingType.facility:
+        return _isFutsalBooking
+            ? "booking.futsal_addons_title".tr()
+            : "Sewa Peralatan Tambahan";
       case BookingType.beauty: return "Pakej Tambahan & Aroma";
       case BookingType.retail: return "Perkhidmatan Tambahan";
       case BookingType.service: return "Servis Tambahan (Add-ons)";
@@ -1039,7 +1174,10 @@ class _BookingsViewState extends State<BookingsView> {
       case BookingType.barber: return "Kulit Kepala Sensitif atau Alahan Sabun/Pewarna?";
       case BookingType.automotive: return "Kenderaan Saiz Besar (SUV / 4x4 / MPV)?";
       case BookingType.health: return "Alahan Ubat-ubatan (Drug Allergies)?";
-      case BookingType.facility: return "Perlu Bantuan Fasilitator / Pengadil?";
+      case BookingType.facility:
+        return _isFutsalBooking
+            ? "booking.futsal_toggle_title".tr()
+            : "Perlu Bantuan Fasilitator / Pengadil?";
       case BookingType.beauty: return "Kulit Sensitif atau Mengandung?";
       case BookingType.retail: return "Perlukan Bantuan Aksesibiliti?";
       case BookingType.service: return "Lokasi Bertingkat / Perlukan Tangga Khas?";
@@ -1055,7 +1193,10 @@ class _BookingsViewState extends State<BookingsView> {
       case BookingType.barber: return "Kulit sensitif terhadap sabun pencuci, minyak wangi atau pewarna rambut";
       case BookingType.automotive: return "Tandakan jika kenderaan anda memerlukan ruang bay besar";
       case BookingType.health: return "Tandakan jika ada alahan kepada sebarang jenis ubat";
-      case BookingType.facility: return "Tandakan jika memerlukan bantuan fasilitator perlawanan";
+      case BookingType.facility:
+        return _isFutsalBooking
+            ? "booking.futsal_toggle_sub".tr()
+            : "Tandakan jika memerlukan bantuan fasilitator perlawanan";
       case BookingType.beauty: return "Tandakan jika ada alahan produk kulit atau perlukan minyak mesra ibu mengandung";
       case BookingType.retail: return "Tandakan jika memerlukan bantuan kerusi roda atau panduan khas";
       case BookingType.service: return "Tandakan jika perlu membawa tangga panjang atau alat pemanjat khas";
@@ -1071,7 +1212,10 @@ class _BookingsViewState extends State<BookingsView> {
       case BookingType.barber: return "Pakar Barber";
       case BookingType.automotive: return "Stesen / Servis";
       case BookingType.health: return "Doktor / Pakar";
-      case BookingType.facility: return "Gelanggang / Bilik";
+      case BookingType.facility:
+        return _isFutsalBooking
+            ? "booking.futsal_provider_label".tr()
+            : "Gelanggang / Bilik";
       case BookingType.beauty: return "Terapis / Bilik";
       case BookingType.retail: return "Sesi / Butik";
       case BookingType.service: return "Juruteknik / Staf";
@@ -1095,7 +1239,9 @@ class _BookingsViewState extends State<BookingsView> {
       case BookingType.health:
         return HugeIcons.strokeRoundedHospital02;
       case BookingType.facility:
-        return HugeIcons.strokeRoundedBadminton;
+        return _isFutsalBooking
+            ? HugeIcons.strokeRoundedFootballPitch
+            : HugeIcons.strokeRoundedBadminton;
       case BookingType.beauty:
         return HugeIcons.strokeRoundedSparkles;
       case BookingType.retail:
@@ -1389,7 +1535,9 @@ class _BookingsViewState extends State<BookingsView> {
       case BookingType.health:
         return 'Cth: Simptom demam / pemeriksaan kesihatan tahunan';
       case BookingType.facility:
-        return 'Cth: 6 pemain / perlukan sewa raket tambahan';
+        return _isFutsalBooking
+            ? 'booking.futsal_notes_hint'.tr()
+            : 'Cth: 6 pemain / perlukan sewa raket tambahan';
       case BookingType.beauty:
         return 'Cth: Kulit sensitif / pilihan urutan sederhana';
       case BookingType.retail:
@@ -1529,6 +1677,9 @@ class _BookingsViewState extends State<BookingsView> {
           if (realIndustry.trim().isNotEmpty) {
             _shopCategory = realIndustry.trim();
           }
+          if (realBusinessType != null && realBusinessType.trim().isNotEmpty) {
+            _loadedBusinessType = realBusinessType.trim().toLowerCase();
+          }
           final detected = _detectBookingType(
             realIndustry,
             realName,
@@ -1536,7 +1687,7 @@ class _BookingsViewState extends State<BookingsView> {
             realCategoryGroup,
             realBookingMode,
           );
-          if (detected != _bookingType) {
+          if (detected != _bookingType || _loadedBusinessType == 'futsal_court') {
             _bookingType = detected;
             _initCategoryTemplate();
           }
@@ -1563,6 +1714,7 @@ class _BookingsViewState extends State<BookingsView> {
         if ((realBusinessType == null || realBusinessType.isEmpty) &&
             opBizType != null &&
             opBizType.isNotEmpty) {
+          _loadedBusinessType = opBizType.trim().toLowerCase();
           final detected = _detectBookingType(
             realIndustry,
             realName,
@@ -1570,7 +1722,7 @@ class _BookingsViewState extends State<BookingsView> {
             realCategoryGroup ?? opCatGroup,
             realBookingMode ?? opBookMode,
           );
-          if (detected != _bookingType) {
+          if (detected != _bookingType || _loadedBusinessType == 'futsal_court') {
             _bookingType = detected;
             _initCategoryTemplate();
             if (mounted) setState(() {});
@@ -2239,10 +2391,10 @@ class _BookingsViewState extends State<BookingsView> {
                 radius: 20,
                 padding: const EdgeInsets.all(12),
                 fillColor: isSelected
-                    ? const Color(0xFF2563EB).withValues(alpha: isDark ? 0.22 : 0.14)
+                    ? _accentSecondary.withValues(alpha: isDark ? 0.22 : 0.14)
                     : null,
                 borderColor: isSelected
-                    ? const Color(0xFF3B82F6)
+                    ? _accentPrimary
                     : null,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2256,7 +2408,7 @@ class _BookingsViewState extends State<BookingsView> {
                             shape: BoxShape.circle,
                             border: Border.all(
                               color: isSelected
-                                  ? const Color(0xFF3B82F6)
+                                  ? _accentPrimary
                                   : Colors.white.withValues(alpha: 0.35),
                               width: 1.8,
                             ),
@@ -2369,7 +2521,7 @@ class _BookingsViewState extends State<BookingsView> {
             _selectedTimeIndex < _times.length &&
             _selectedDateIndex >= 0 &&
             _selectedDateIndex < _dates.length
-        ? '${_dates[_selectedDateIndex]['date']} ${_dates[_selectedDateIndex]['month']} • ${_times[_selectedTimeIndex]}'
+        ? '${_dates[_selectedDateIndex]['date']} ${_dates[_selectedDateIndex]['month']} • $_selectedTimeRangeLabel'
         : 'booking.select_slot_hint'.tr();
 
     final String buttonLabel = _currentStep == 0
@@ -2795,7 +2947,14 @@ class _BookingsViewState extends State<BookingsView> {
 
     final String paxNoteText = _bookingType == BookingType.petHotel
         ? 'booking.pets_unit'.tr(args: ['$_paxCount'])
-        : '$_paxCount Pax';
+        : (_isFacilityBooking
+            ? 'booking.players_unit'.tr(args: ['$_paxCount'])
+            : '$_paxCount Pax');
+    final String? facilityEndTime = _isFacilityBooking
+        ? _formatEndTime(targetTime, _totalTime >= 60 ? _totalTime : _facilityDurationHours * 60)
+        : null;
+    final String? facilityTimeRange =
+        facilityEndTime != null ? '$targetTime – $facilityEndTime' : null;
 
     Map<String, dynamic> buildMetadataPayload(String currentPayStatus, String currentRef) => {
       'short_ref': shortBookingId,
@@ -2804,10 +2963,14 @@ class _BookingsViewState extends State<BookingsView> {
       'customer_name': finalCustomerName,
       'phone': finalCustomerPhone,
       'provider_name': staff["name"],
+      if (_isFacilityBooking) 'court_name': staff["name"],
       if (staffId != null) 'staff_id': staffId,
       if (serviceId != null && serviceId.isNotEmpty) 'service_id': serviceId,
       'addons_list': selectedAddonNames,
       'estimated_duration_mins': _totalTime,
+      if (_isFacilityBooking) 'duration_hours': _facilityDurationHours,
+      if (facilityEndTime != null) 'end_time': facilityEndTime,
+      if (facilityTimeRange != null) 'time_range': facilityTimeRange,
       'payment_method': chosenPaymentName,
       'payment_status': currentPayStatus,
       if (currentRef.isNotEmpty) 'transaction_ref': currentRef,
@@ -2830,6 +2993,8 @@ class _BookingsViewState extends State<BookingsView> {
         if (_bookingType == BookingType.dining || _isOvernightBooking || _bookingType == BookingType.facility)
           paxNoteText,
         if (_isOvernightBooking) 'booking.nights_unit'.tr(args: ['$_nightsCount']),
+        if (_isFacilityBooking && facilityTimeRange != null)
+          '$facilityTimeRange (${'booking.hours_unit'.tr(args: ['$_facilityDurationHours'])})',
         if (_industryDetailCtrl.text.trim().isNotEmpty) _industryDetailCtrl.text.trim(),
         if (combinedNotes.isNotEmpty) combinedNotes,
       ].join(' • ').isNotEmpty
@@ -2837,6 +3002,8 @@ class _BookingsViewState extends State<BookingsView> {
               if (_bookingType == BookingType.dining || _isOvernightBooking || _bookingType == BookingType.facility)
                 paxNoteText,
               if (_isOvernightBooking) 'booking.nights_unit'.tr(args: ['$_nightsCount']),
+              if (_isFacilityBooking && facilityTimeRange != null)
+                '$facilityTimeRange (${'booking.hours_unit'.tr(args: ['$_facilityDurationHours'])})',
               if (_industryDetailCtrl.text.trim().isNotEmpty) _industryDetailCtrl.text.trim(),
               if (combinedNotes.isNotEmpty) combinedNotes,
             ].join(' • ')
@@ -3424,14 +3591,49 @@ class _BookingsViewState extends State<BookingsView> {
 
         const SizedBox(height: 20),
 
+        // 3b. Match Duration Selector (1-4 Hours) for Futsal & Sports Courts
+        if (_isFacilityBooking) ...[
+          _buildCourtDurationSelector(isDark),
+          const SizedBox(height: 18),
+        ],
+
         // 4. Time Slots Section
-        Text(
-          l10n.bkAvailTime,
-          style: TextStyle(
-            fontSize: 15.5,
-            fontWeight: FontWeight.w700,
-            color: isDark ? Colors.white : const Color(0xFF0F172A),
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                l10n.bkAvailTime,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                ),
+              ),
+            ),
+            if (_isFacilityBooking)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.nightlight_round,
+                    size: 12,
+                    color: Color(0xFFFBBF24),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'booking.night_led_hint'.tr(),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+          ],
         ),
         const SizedBox(height: 10),
 
@@ -3475,11 +3677,13 @@ class _BookingsViewState extends State<BookingsView> {
                 children: List.generate(_times.length, (i) {
                   final bool isValid = _isTimeValid(_times[i], _selectedDateIndex);
                   final bool isSelected = i == _selectedTimeIndex;
+                  final bool isInRange = _isSlotIncludedInSelectedRange(i);
                   return SizedBox(
                     width: itemWidth,
                     child: _buildModernTimeChip(
                       _times[i],
                       isSelected: isSelected,
+                      isInRange: isInRange,
                       isValid: isValid,
                       isDark: isDark,
                       index: i,
@@ -3528,7 +3732,9 @@ class _BookingsViewState extends State<BookingsView> {
                           Text(
                             _bookingType == BookingType.petHotel
                                 ? 'booking.guests_pet_sub'.tr()
-                                : 'booking.guests_sub'.tr(),
+                                : (_isFutsalBooking
+                                    ? 'booking.guests_futsal_sub'.tr()
+                                    : 'booking.guests_sub'.tr()),
                             style: TextStyle(
                               fontSize: 11,
                               color: isDark
@@ -3541,8 +3747,9 @@ class _BookingsViewState extends State<BookingsView> {
                     ),
                     Row(
                       children: [
-                        GestureDetector(
-                          onTap: () {
+                        HoldRepeatButton(
+                          enabled: _paxCount > 1,
+                          onStep: () {
                             if (_paxCount > 1) setState(() => _paxCount--);
                           },
                           child: Container(
@@ -3566,7 +3773,9 @@ class _BookingsViewState extends State<BookingsView> {
                           child: Text(
                             _bookingType == BookingType.petHotel
                                 ? 'booking.pets_unit'.tr(args: ['$_paxCount'])
-                                : '$_paxCount Pax',
+                                : (_isFacilityBooking
+                                    ? 'booking.players_unit'.tr(args: ['$_paxCount'])
+                                    : '$_paxCount Pax'),
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w900,
@@ -3576,15 +3785,16 @@ class _BookingsViewState extends State<BookingsView> {
                             ),
                           ),
                         ),
-                        GestureDetector(
-                          onTap: () {
+                        HoldRepeatButton(
+                          enabled: _paxCount < 30,
+                          onStep: () {
                             if (_paxCount < 30) setState(() => _paxCount++);
                           },
                           child: Container(
                             width: 32,
                             height: 32,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF3B82F6),
+                            decoration: BoxDecoration(
+                              color: _accentPrimary,
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
@@ -3707,14 +3917,168 @@ class _BookingsViewState extends State<BookingsView> {
     );
   }
 
+  Widget _buildCourtDurationSelector(bool isDark) {
+    final String rangeText = _selectedTimeRangeLabel;
+    return _buildGlassBox(
+      isDark: isDark,
+      radius: 20,
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: _accentPrimary.withValues(alpha: isDark ? 0.18 : 0.12),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: HugeIcon(
+                  icon: _providerSummaryIcon,
+                  size: 16,
+                  color: _accentPrimary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'booking.court_duration_title'.tr(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      'booking.court_duration_sub'.tr(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (rangeText.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: _accentPrimary.withValues(alpha: isDark ? 0.2 : 0.13),
+                    borderRadius: BorderRadius.circular(100),
+                    border: Border.all(
+                      color: _accentPrimary.withValues(alpha: 0.45),
+                      width: 0.9,
+                    ),
+                  ),
+                  child: Text(
+                    rangeText,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? const Color(0xFF34D399) : _accentSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [1, 2, 3, 4].map((hours) {
+              final bool active = _facilityDurationHours == hours;
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(right: hours < 4 ? 7 : 0),
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_facilityDurationHours == hours) return;
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        _facilityDurationHours = hours;
+                        if (_selectedTimeIndex >= 0 &&
+                            _selectedTimeIndex < _times.length &&
+                            !_isTimeValid(_times[_selectedTimeIndex], _selectedDateIndex)) {
+                          _selectedTimeIndex = -1;
+                          _selectedTime = '';
+                        }
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      height: 38,
+                      decoration: BoxDecoration(
+                        gradient: active
+                            ? LinearGradient(
+                                colors: [_accentPrimary, _accentSecondary],
+                              )
+                            : null,
+                        color: active
+                            ? null
+                            : (isDark
+                                ? Colors.white.withValues(alpha: 0.06)
+                                : Colors.black.withValues(alpha: 0.04)),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: active
+                              ? _accentPrimary
+                              : (isDark
+                                  ? Colors.white.withValues(alpha: 0.12)
+                                  : Colors.black.withValues(alpha: 0.08)),
+                        ),
+                        boxShadow: active
+                            ? [
+                                BoxShadow(
+                                  color: _accentSecondary.withValues(alpha: 0.32),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Center(
+                        child: Text(
+                          'booking.hours_unit'.tr(args: ['$hours']),
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+                            color: active
+                                ? Colors.white
+                                : (isDark ? Colors.white70 : const Color(0xFF334155)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildModernTimeChip(
     String time, {
     required bool isSelected,
+    bool isInRange = false,
     required bool isValid,
     required bool isDark,
     required int index,
   }) {
-    if (!isValid) {
+    final bool showNightLed = _isFacilityBooking && _isNightSlot(time);
+
+    if (!isValid && !isInRange) {
       return Container(
         height: 42,
         decoration: BoxDecoration(
@@ -3743,42 +4107,48 @@ class _BookingsViewState extends State<BookingsView> {
     }
 
     return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        setState(() {
-          _selectedTimeIndex = index;
-          _selectedTime = time;
-          _shopName = _resolvedShopName;
-        });
-        _saveDraftToPreventLoss(_shopName, _selectedTime);
-      },
+      onTap: isValid
+          ? () {
+              HapticFeedback.selectionClick();
+              setState(() {
+                _selectedTimeIndex = index;
+                _selectedTime = time;
+                _shopName = _resolvedShopName;
+              });
+              _saveDraftToPreventLoss(_shopName, _selectedTime);
+            }
+          : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         height: 42,
         decoration: BoxDecoration(
           gradient: isSelected
-              ? const LinearGradient(
-                  colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+              ? LinearGradient(
+                  colors: [_accentPrimary, _accentSecondary],
                 )
               : null,
           color: isSelected
               ? null
-              : (isDark
-                  ? Colors.white.withValues(alpha: 0.07)
-                  : Colors.white.withValues(alpha: 0.72)),
+              : (isInRange
+                  ? _accentPrimary.withValues(alpha: isDark ? 0.22 : 0.16)
+                  : (isDark
+                      ? Colors.white.withValues(alpha: 0.07)
+                      : Colors.white.withValues(alpha: 0.72))),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isSelected
-                ? const Color(0xFF60A5FA)
-                : (isDark
-                    ? Colors.white.withValues(alpha: 0.14)
-                    : Colors.white.withValues(alpha: 0.9)),
-            width: 1.0,
+                ? _accentPrimary
+                : (isInRange
+                    ? _accentPrimary.withValues(alpha: 0.7)
+                    : (isDark
+                        ? Colors.white.withValues(alpha: 0.14)
+                        : Colors.white.withValues(alpha: 0.9))),
+            width: isSelected || isInRange ? 1.2 : 1.0,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: const Color(0xFF2563EB).withValues(alpha: 0.38),
+                    color: _accentSecondary.withValues(alpha: 0.38),
                     blurRadius: 10,
                     offset: const Offset(0, 3),
                   ),
@@ -3786,15 +4156,32 @@ class _BookingsViewState extends State<BookingsView> {
               : null,
         ),
         child: Center(
-          child: Text(
-            time,
-            style: TextStyle(
-              fontSize: 13.5,
-              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-              color: isSelected
-                  ? Colors.white
-                  : (isDark ? Colors.white : const Color(0xFF0F172A)),
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                time,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected || isInRange ? FontWeight.w800 : FontWeight.w600,
+                  color: isSelected
+                      ? Colors.white
+                      : (isInRange
+                          ? (isDark ? const Color(0xFF6EE7B7) : _accentSecondary)
+                          : (isDark ? Colors.white : const Color(0xFF0F172A))),
+                ),
+              ),
+              if (showNightLed) ...[
+                const SizedBox(width: 2),
+                Icon(
+                  Icons.nightlight_round,
+                  size: 10,
+                  color: isSelected
+                      ? const Color(0xFFFDE68A)
+                      : const Color(0xFFFBBF24),
+                ),
+              ],
+            ],
           ),
         ),
       ),
@@ -3923,7 +4310,7 @@ class _BookingsViewState extends State<BookingsView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ..._selectedServices.map((i) {
-                final int mult = _isOvernightBooking ? _nightsCount : 1;
+                final int mult = _serviceMultiplier(i);
                 final double unitPrice =
                     _parseMoney(_servicesList[i]["price"]!);
                 final String title = mult > 1
@@ -3972,8 +4359,10 @@ class _BookingsViewState extends State<BookingsView> {
               ),
               const SizedBox(height: 10),
               _buildSummaryRow(
-                "booking.time_label".tr(),
-                _times[_selectedTimeIndex],
+                _isFacilityBooking
+                    ? "booking.match_window_label".tr()
+                    : "booking.time_label".tr(),
+                _selectedTimeRangeLabel,
                 HugeIcons.strokeRoundedClock01,
                 isDark,
               ),
@@ -3990,7 +4379,9 @@ class _BookingsViewState extends State<BookingsView> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "booking.estimated_duration".tr(),
+                    _isFacilityBooking
+                        ? "booking.court_duration_title".tr()
+                        : "booking.estimated_duration".tr(),
                     style: TextStyle(
                       fontSize: 13.5,
                       color: isDark ? Colors.white70 : const Color(0xFF475569),
@@ -4000,15 +4391,17 @@ class _BookingsViewState extends State<BookingsView> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF3B82F6).withValues(alpha: 0.14),
+                      color: _accentPrimary.withValues(alpha: 0.14),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      "~$_totalTime mins",
-                      style: const TextStyle(
+                      _isFacilityBooking
+                          ? 'booking.hours_unit_full'.tr(args: ['${(_totalTime / 60).ceil()}'])
+                          : "~$_totalTime mins",
+                      style: TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF3B82F6),
+                        color: _accentPrimary,
                       ),
                     ),
                   ),

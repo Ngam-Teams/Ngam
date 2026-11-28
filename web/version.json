@@ -1,6 +1,6 @@
 {
-  "version": "1.0.115",
-  "build_number": 88,
-  "released_at": "2026-11-28T18:49:20Z",
-  "changelog": "Sokong penuh gambar produk lut sinar (transparent PNG/WebP) pada halaman Butiran Produk & semua kad produk tanpa kotak latar hitam serta tidak terpotong (BoxFit.contain + latar lut sinar)."
+  "version": "1.0.116",
+  "build_number": 89,
+  "released_at": "2026-11-28T18:54:10Z",
+  "changelog": "Naik taraf penuh tempahan Gelanggang Futsal & Sukan: kategori khas Gelanggang Futsal, pemilih tempoh main 1–4 jam dengan sorotan blok masa & petunjuk slot LED malam, kiraan pemain 5v5, serta tema hijau gelanggang."
 }
