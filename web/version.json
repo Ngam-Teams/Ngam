@@ -1,6 +1,6 @@
 {
-  "version": "1.0.107",
-  "build_number": 80,
-  "released_at": "2026-11-28T01:16:31Z",
-  "changelog": "Selaraskan warna tema Dark Mode semua halaman Ngam (kecuali Feed video) supaya sepadan dengan tema gelap obsidian Ngam Business (#0A0A14 / #161622 / #1A1A24) tanpa biasan biru."
+  "version": "1.0.108",
+  "build_number": 81,
+  "released_at": "2026-11-28T01:25:21Z",
+  "changelog": "Buang butang GPS di baris utiliti & buang Vouchers berganda di baris kategori, baiki padanan sinonim semua kategori (BM & EN), serta tambah halaman Teroka Kategori baharu (Kategori Besar → Sub-Kategori)."
 }

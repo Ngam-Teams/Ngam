@@ -15,6 +15,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:shimmer/shimmer.dart';
 
+import 'category_explore_screen.dart';
 import 'home_search_screen.dart';
 import 'notifications_sheet.dart';
 import '../../models/notification_data.dart';
@@ -23,12 +24,12 @@ import '../../services/voucher_service.dart';
 import '../../widgets/glass_toast.dart';
 import '../../widgets/natural_aspect_image.dart';
 import '../explore/business_store_view.dart';
-import '../explore/explore_view.dart';
 import '../explore/my_bookings_view.dart';
 import '../explore/order_status_tracker_screen.dart';
 import '../explore/product_detail_screen.dart';
 import '../explore/qr_scanner_screen.dart';
 import '../shared/voucher_screen.dart';
+import '../../utils/ngam_category_catalog.dart';
 import '../../utils/ngam_ref.dart';
 import '../../utils/qr_route_helper.dart';
 
@@ -77,13 +78,13 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
   final List<Map<String, dynamic>> _quickIntents = [
     {
       'titleKey': 'customer.cat_haircut',
-      'categoryKey': 'barber',
+      'categoryKey': 'barbershop',
       'icon': HugeIcons.strokeRoundedScissor,
       'color': Color(0xFF3B82F6),
     },
     {
       'titleKey': 'customer.cat_fnb',
-      'categoryKey': 'cafe',
+      'categoryKey': 'fnb',
       'icon': HugeIcons.strokeRoundedCoffee02,
       'color': Color(0xFFF59E0B),
     },
@@ -101,7 +102,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
     },
     {
       'titleKey': 'customer.cat_salon',
-      'categoryKey': 'salon',
+      'categoryKey': 'beauty',
       'icon': HugeIcons.strokeRoundedSparkles,
       'color': Color(0xFF8B5CF6),
     },
@@ -110,12 +111,6 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
       'categoryKey': 'health',
       'icon': HugeIcons.strokeRoundedFirstAidKit,
       'color': Color(0xFF10B981),
-    },
-    {
-      'titleKey': 'customer.utility_vouchers',
-      'categoryKey': '__vouchers__',
-      'icon': HugeIcons.strokeRoundedTicket01,
-      'color': Color(0xFFEC4899),
     },
     {
       'titleKey': 'customer.cat_more',
@@ -577,25 +572,9 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
 
   int _getCategoryShopCount(String catKey) {
     if (_nearbyShops.isEmpty) return 0;
-    return _nearbyShops.where((shop) {
-      final cat = (shop['category'] ?? shop['business_industry'] ?? '').toString().toLowerCase();
-      switch (catKey) {
-        case 'barber':
-          return cat.contains('barber') || cat.contains('rambut') || cat.contains('gunting');
-        case 'carwash':
-          return cat.contains('carwash') || cat.contains('cuci') || cat.contains('kereta') || cat.contains('auto') || cat.contains('detailing');
-        case 'cafe':
-          return cat.contains('cafe') || cat.contains('kafe') || cat.contains('kopi') || cat.contains('food') || cat.contains('makan') || cat.contains('restoran');
-        case 'workshop':
-          return cat.contains('workshop') || cat.contains('bengkel') || cat.contains('servis') || cat.contains('motor');
-        case 'salon':
-          return cat.contains('salon') || cat.contains('salun') || cat.contains('spa');
-        case 'health':
-          return cat.contains('health') || cat.contains('klinik') || cat.contains('clinic') || cat.contains('kesihatan') || cat.contains('farmasi');
-        default:
-          return cat.contains(catKey);
-      }
-    }).length;
+    return _nearbyShops
+        .where((shop) => NgamCategoryCatalog.matchesShop(shop, catKey))
+        .length;
   }
 
   void _applyLoadedShops(List<dynamic> data) {
@@ -1373,14 +1352,6 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
       VoidCallback onTap,
     })> items = [
       (
-        icon: HugeIcons.strokeRoundedLocation01,
-        color: const Color(0xFFEF4444),
-        label: _shortLocationLabel,
-        badge: null,
-        isLoading: _isFetchingLocation,
-        onTap: () => _fetchAndApplyLiveLocation(silent: false, requestPermission: true),
-      ),
-      (
         icon: HugeIcons.strokeRoundedShoppingBag02,
         color: const Color(0xFF3B82F6),
         label: 'customer.utility_orders'.tr(),
@@ -1566,7 +1537,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                     final cat = _quickIntents[index];
                     final Color catColor = cat['color'] as Color;
                     final String catKey = cat['categoryKey'] as String;
-                    final int count = (catKey == '__vouchers__' || catKey == '__all__')
+                    final int count = catKey == '__all__'
                         ? 0
                         : _getCategoryShopCount(catKey);
 
@@ -1574,20 +1545,33 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                       cursor: SystemMouseCursors.click,
                       child: GestureDetector(
                         onTap: () {
-                          if (catKey == '__vouchers__') {
+                          if (catKey == '__all__') {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const VoucherScreen()),
+                              MaterialPageRoute(
+                                builder: (_) => CategoryExploreScreen(
+                                  shops: _nearbyShops,
+                                  products: _discoveryProducts,
+                                  userLat: _userLat,
+                                  userLng: _userLng,
+                                ),
+                              ),
                             );
                             return;
                           }
-                          if (catKey == '__all__') {
-                            widget.onSwitchTab?.call(1);
-                            return;
-                          }
-                          ExploreView.pendingSearch.value =
-                              ExploreSearchRequest(categoryId: catKey);
-                          widget.onSwitchTab?.call(1);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => HomeSearchScreen(
+                                initialShops: _nearbyShops,
+                                initialProducts: _discoveryProducts,
+                                userLat: _userLat,
+                                userLng: _userLng,
+                                initialCategoryFilter: catKey,
+                                initialCategoryLabel: (cat['titleKey'] as String).tr(),
+                              ),
+                            ),
+                          );
                         },
                         behavior: HitTestBehavior.opaque,
                         child: SizedBox(

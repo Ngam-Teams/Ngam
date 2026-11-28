@@ -29,6 +29,7 @@ import '../../widgets/ngam_maps_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/review_video_dialog.dart';
 import '../../widgets/customer_desktop_sidebar.dart';
+import '../../utils/ngam_category_catalog.dart';
 
 enum ShopStatus { open, closingSoon, closed }
 
@@ -669,7 +670,10 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       targetIds = [categoryId];
     }
 
-    List<Map<String, dynamic>> results = _nearbyShops.where((shop) => targetIds.contains(shop['category'])).toList();
+    List<Map<String, dynamic>> results = _nearbyShops.where((shop) {
+      if (NgamCategoryCatalog.matchesShop(shop, categoryId)) return true;
+      return targetIds.any((tid) => NgamCategoryCatalog.matchesShop(shop, tid));
+    }).toList();
     _applySearchResults(results, categoryLabel);
   }
 

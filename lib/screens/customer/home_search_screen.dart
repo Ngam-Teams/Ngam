@@ -14,6 +14,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/product_model.dart';
+import '../../utils/ngam_category_catalog.dart';
 import '../../widgets/tiktok_video_cover_preview.dart';
 import '../explore/business_store_view.dart';
 import '../explore/product_detail_screen.dart';
@@ -37,6 +38,8 @@ class HomeSearchScreen extends StatefulWidget {
   final bool openFiltersOnStart;
   final int initialResultTab; // 0: All, 1: Stores, 2: Products & Services, 3: Videos
   final bool isVideoFocused;
+  final String? initialCategoryFilter;
+  final String? initialCategoryLabel;
 
   const HomeSearchScreen({
     super.key,
@@ -48,6 +51,8 @@ class HomeSearchScreen extends StatefulWidget {
     this.openFiltersOnStart = false,
     this.initialResultTab = 0,
     this.isVideoFocused = false,
+    this.initialCategoryFilter,
+    this.initialCategoryLabel,
   });
 
   @override
@@ -93,6 +98,10 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
   void initState() {
     super.initState();
     _selectedResultTab = widget.initialResultTab.clamp(0, 3);
+    if (widget.initialCategoryFilter != null &&
+        widget.initialCategoryFilter!.trim().isNotEmpty) {
+      _selectedCategoryFilter = widget.initialCategoryFilter!.trim();
+    }
     _allShops = List<Map<String, dynamic>>.from(widget.initialShops);
     _allProducts = List<ProductModel>.from(widget.initialProducts);
     _allFeedPosts = widget.initialFeedPosts
@@ -108,7 +117,7 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
       if (!mounted) return;
       if (widget.openFiltersOnStart) {
         _openFilterSheet();
-      } else {
+      } else if (_selectedCategoryFilter == null) {
         _searchFocusNode.requestFocus();
       }
     });
@@ -527,23 +536,7 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
   }
 
   bool _matchesCategoryKey(String text, String catKey) {
-    final c = text.toLowerCase();
-    switch (catKey) {
-      case 'barber':
-        return c.contains('barber') || c.contains('rambut') || c.contains('gunting') || c.contains('hair');
-      case 'cafe':
-        return c.contains('cafe') || c.contains('kafe') || c.contains('kopi') || c.contains('coffee') || c.contains('food') || c.contains('makan') || c.contains('fnb');
-      case 'carwash':
-        return c.contains('carwash') || c.contains('cuci') || c.contains('kereta') || c.contains('detailing') || c.contains('auto');
-      case 'workshop':
-        return c.contains('workshop') || c.contains('bengkel') || c.contains('servis') || c.contains('motor');
-      case 'salon':
-        return c.contains('salon') || c.contains('salun') || c.contains('spa') || c.contains('beauty');
-      case 'health':
-        return c.contains('health') || c.contains('klinik') || c.contains('clinic') || c.contains('farmasi');
-      default:
-        return c.contains(catKey.toLowerCase());
-    }
+    return NgamCategoryCatalog.matchesText(text, catKey);
   }
 
   Map<String, Map<String, dynamic>> get _mergedShopById {
@@ -571,7 +564,8 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
       final cat = (s['business_industry'] ?? s['category'] ?? '').toString();
       final city = (s['address_city'] ?? s['address_line'] ?? '').toString();
 
-      if (_selectedCategoryFilter != null && !_matchesCategoryKey('$cat $name', _selectedCategoryFilter!)) {
+      if (_selectedCategoryFilter != null &&
+          !NgamCategoryCatalog.matchesShop(s, _selectedCategoryFilter!)) {
         return false;
       }
       if (q.isEmpty) return true;
@@ -608,9 +602,14 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
       final shopName = (shop?['name'] ?? shop?['business_name'] ?? '').toString();
       final shopCat = (shop?['category'] ?? shop?['business_industry'] ?? '').toString();
 
-      if (_selectedCategoryFilter != null &&
-          !_matchesCategoryKey('${p.category} ${p.name} $shopCat', _selectedCategoryFilter!)) {
-        return false;
+      if (_selectedCategoryFilter != null) {
+        final shopMatched = shop != null &&
+            NgamCategoryCatalog.matchesShop(shop, _selectedCategoryFilter!);
+        final prodMatched = _matchesCategoryKey(
+          '${p.category} ${p.subCategory} ${p.name} $shopCat $shopName',
+          _selectedCategoryFilter!,
+        );
+        if (!shopMatched && !prodMatched) return false;
       }
 
       if (q.isEmpty) return true;
