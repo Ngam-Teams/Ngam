@@ -2191,7 +2191,11 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                           child: product.imageUrl.isNotEmpty
                               ? Image.network(
                                   product.imageUrl,
-                                  fit: BoxFit.cover,
+                                  cacheWidth: 600,
+                                  fit: (product.imageUrl.split('?').first.toLowerCase().endsWith('.png') ||
+                                          product.imageUrl.split('?').first.toLowerCase().endsWith('.webp'))
+                                      ? BoxFit.contain
+                                      : BoxFit.cover,
                                   gaplessPlayback: true,
                                   errorBuilder: (_, __, ___) =>
                                       _imageFallback(isDark, minH),

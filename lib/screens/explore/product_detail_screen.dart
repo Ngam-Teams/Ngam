@@ -1553,7 +1553,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       curve: Curves.easeOutCubic,
       height: sliderH,
       width: double.infinity,
-      color: isDark ? const Color(0xFF0A0A14) : const Color(0xFFF3F4F6),
+      color: Colors.transparent,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -1579,55 +1579,56 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   return _buildHeroVideoSlide(isDark);
                 }
                 final imgIdx = hasVideo ? idx - 1 : idx;
-                return Image.network(
-                  images[imgIdx],
-                  width: double.infinity,
-                  height: double.infinity,
-                  fit: BoxFit.contain,
-                  gaplessPlayback: true,
-                  errorBuilder: (_, __, ___) => _buildFallbackHero(isDark),
-                  loadingBuilder: (context, child, progress) {
-                    if (progress == null) return child;
-                    return Container(
-                      color: isDark
-                          ? const Color(0xFF161622)
-                          : const Color(0xFFE5E7EB),
-                      child: const Center(
+                return ValueListenableBuilder<int>(
+                  valueListenable: NaturalImageAspectCache.resumeEpoch,
+                  builder: (_, epoch, __) => Image.network(
+                    images[imgIdx],
+                    key: ValueKey('${images[imgIdx]}_$epoch'),
+                    width: double.infinity,
+                    height: double.infinity,
+                    cacheWidth: 1080,
+                    fit: BoxFit.contain,
+                    gaplessPlayback: true,
+                    errorBuilder: (_, __, ___) => _buildFallbackHero(isDark),
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return const Center(
                         child: SizedBox(
                           width: 24,
                           height: 24,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 );
               },
             )
           else
             _buildFallbackHero(isDark),
 
-          // Bottom gradient overlay
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: 80,
-            child: IgnorePointer(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.5),
-                    ],
+          // Bottom gradient overlay only on video slide so transparent product PNGs stay 100% clean
+          if (hasVideo && _currentImageIndex == 0)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 80,
+              child: IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.5),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
 
           // Shopee-style [ Video | Photos ] Switcher at Bottom-Left
           if (hasVideo && images.isNotEmpty)

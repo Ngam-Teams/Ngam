@@ -2301,7 +2301,11 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
                               product.imageUrl,
                               width: double.infinity,
                               height: imgHeight,
-                              fit: BoxFit.cover,
+                              cacheWidth: 500,
+                              fit: (product.imageUrl.split('?').first.toLowerCase().endsWith('.png') ||
+                                      product.imageUrl.split('?').first.toLowerCase().endsWith('.webp'))
+                                  ? BoxFit.contain
+                                  : BoxFit.cover,
                               gaplessPlayback: true,
                               frameBuilder: (_, child, frame, sync) {
                                 if (sync || frame != null) return child;
@@ -2314,7 +2318,10 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
                               imageUrl: product.imageUrl,
                               width: double.infinity,
                               height: imgHeight,
-                              fit: BoxFit.cover,
+                              fit: (product.imageUrl.split('?').first.toLowerCase().endsWith('.png') ||
+                                      product.imageUrl.split('?').first.toLowerCase().endsWith('.webp'))
+                                  ? BoxFit.contain
+                                  : BoxFit.cover,
                               memCacheWidth: 500,
                               placeholder: (_, __) => _buildImageShimmer(isDark, imgHeight),
                               errorWidget: (_, __, ___) => imageFallback(imgHeight),

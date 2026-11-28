@@ -1,6 +1,6 @@
 {
-  "version": "1.0.114",
-  "build_number": 87,
-  "released_at": "2026-11-28T18:31:55Z",
-  "changelog": "Baiki isu gambar hilang bila tukar halaman atau buka semula aplikasi/PWA (cacheWidth WebGL, perkongsian ResizeImage cache, auto-pulih pada resume & auto-retry) + bar carian & pil kanan Home (QR Scanner dahulu diikuti loceng tanpa garisan pemisah) guna 100% glassmorphism 1:1 Navbar dan butang Cari 1:1 Active Pill Navbar."
+  "version": "1.0.115",
+  "build_number": 88,
+  "released_at": "2026-11-28T18:49:20Z",
+  "changelog": "Sokong penuh gambar produk lut sinar (transparent PNG/WebP) pada halaman Butiran Produk & semua kad produk tanpa kotak latar hitam serta tidak terpotong (BoxFit.contain + latar lut sinar)."
 }

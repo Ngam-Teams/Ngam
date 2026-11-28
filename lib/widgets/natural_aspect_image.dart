@@ -160,10 +160,14 @@ class _NaturalAspectNetworkImageState extends State<NaturalAspectNetworkImage> {
     final double rawRatio = _naturalRatio ?? widget.defaultAspectRatio;
     final double clampedRatio =
         rawRatio.clamp(widget.minAspectRatio, widget.maxAspectRatio);
-    // Use BoxFit.contain if the photo's natural aspect exceeds the extreme
-    // clamp bounds so it still never crops, otherwise cover fills edge-to-edge.
+    // Use BoxFit.contain for transparent PNG/WebP cutouts or clamped extreme
+    // ratios so product cutouts blend cleanly onto cards with zero clipping.
+    final String lowerUrl = widget.imageUrl.split('?').first.toLowerCase();
+    final bool isTransparentFormat =
+        lowerUrl.endsWith('.png') || lowerUrl.endsWith('.webp');
     final bool isClamped = (rawRatio - clampedRatio).abs() > 0.01;
-    final BoxFit fit = isClamped ? BoxFit.contain : BoxFit.cover;
+    final BoxFit fit =
+        (isTransparentFormat || isClamped) ? BoxFit.contain : BoxFit.cover;
 
     return ValueListenableBuilder<int>(
       valueListenable: NaturalImageAspectCache.resumeEpoch,
