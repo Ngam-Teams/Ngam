@@ -99,6 +99,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   List<ProductModel> _moreProducts = [];
   Map<String, dynamic>? _shopDetails;
 
+  // Smart Auto-Contrast (Option 2 — iPhone Lock Screen style)
+  // Samples top-left (Back) & top-right (Share/Like/Cart) brightness independently
+  final Map<String, ({bool leftDark, bool rightDark})> _slideTopContrast = {};
+  final Set<String> _contrastInFlight = {};
+  bool _isScrolledPastHero = false;
+
   @override
   void initState() {
     super.initState();
@@ -106,9 +112,91 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     _isSaved = SavedService.isProductSaved(_product.id);
     _shopDetails = Map<String, dynamic>.from(widget.shop);
 
+    _scrollCtrl.addListener(_onMainScroll);
     _resolveGalleryAspectRatios();
     _initHeroVideo();
     _initAsyncData();
+  }
+
+  void _onMainScroll() {
+    if (!_scrollCtrl.hasClients) return;
+    final passed = _scrollCtrl.offset > 220;
+    if (passed != _isScrolledPastHero && mounted) {
+      setState(() => _isScrolledPastHero = passed);
+    }
+  }
+
+  void _analyzeSlideTopContrast(String url, bool isDarkTheme) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return;
+    final cacheKey = '${trimmed}_$isDarkTheme';
+    if (_slideTopContrast.containsKey(cacheKey) || _contrastInFlight.contains(cacheKey)) {
+      return;
+    }
+    _contrastInFlight.add(cacheKey);
+
+    final provider = ResizeImage.resizeIfNeeded(64, null, NetworkImage(trimmed));
+    final stream = provider.resolve(ImageConfiguration.empty);
+    late ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (ImageInfo info, bool _) async {
+        stream.removeListener(listener);
+        try {
+          final img = info.image;
+          final byteData = await img.toByteData(format: ImageByteFormat.rawRgba);
+          if (byteData == null) {
+            _contrastInFlight.remove(cacheKey);
+            return;
+          }
+          final bytes = byteData.buffer.asUint8List();
+          final w = img.width;
+          final h = img.height;
+          final bgR = isDarkTheme ? 10.0 : 248.0;
+          final bgG = isDarkTheme ? 10.0 : 250.0;
+          final bgB = isDarkTheme ? 20.0 : 252.0;
+
+          double sampleRegion(int x0, int x1, int y0, int y1) {
+            double sum = 0;
+            int count = 0;
+            for (int y = y0; y < y1; y++) {
+              for (int x = x0; x < x1; x++) {
+                final idx = (y * w + x) * 4;
+                if (idx + 3 >= bytes.length) continue;
+                final a = bytes[idx + 3] / 255.0;
+                final r = bytes[idx] * a + bgR * (1.0 - a);
+                final g = bytes[idx + 1] * a + bgG * (1.0 - a);
+                final b = bytes[idx + 2] * a + bgB * (1.0 - a);
+                sum += 0.299 * r + 0.587 * g + 0.114 * b;
+                count++;
+              }
+            }
+            return count > 0 ? sum / count : (isDarkTheme ? 30.0 : 220.0);
+          }
+
+          final topH = (h * 0.28).round().clamp(1, h);
+          final leftW = (w * 0.30).round().clamp(1, w);
+          final rightX0 = (w * 0.62).round().clamp(0, w - 1);
+
+          final leftLum = sampleRegion(0, leftW, 0, topH);
+          final rightLum = sampleRegion(rightX0, w, 0, topH);
+
+          _slideTopContrast[cacheKey] = (
+            leftDark: leftLum < 138.0,
+            rightDark: rightLum < 138.0,
+          );
+          if (mounted) setState(() {});
+        } catch (_) {
+          // CORS or WebGL readback fallback: keep theme default safely
+        } finally {
+          _contrastInFlight.remove(cacheKey);
+        }
+      },
+      onError: (_, __) {
+        stream.removeListener(listener);
+        _contrastInFlight.remove(cacheKey);
+      },
+    );
+    stream.addListener(listener);
   }
 
   void _resolveGalleryAspectRatios() {
@@ -162,6 +250,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   void dispose() {
     _heroVideoCtrl?.dispose();
     _imagePageCtrl.dispose();
+    _scrollCtrl.removeListener(_onMainScroll);
     _scrollCtrl.dispose();
     _noteCtrl.dispose();
     super.dispose();
@@ -1847,11 +1936,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // ── Floating Top Bar (100% 1:1 clone of CustomBottomNav glassmorphism) ────
+  // ── Floating Top Bar (100% 1:1 Navbar glassmorphism + Compact + Smart Auto-Contrast) ──
 
   Widget _buildNavbarGlassShell({
     required bool isDark,
     required Widget child,
+    EdgeInsetsGeometry? padding,
   }) {
     return GlassContainer(
       useOwnLayer: true,
@@ -1869,7 +1959,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         chromaticAberration: 0.0,
       ),
       child: Container(
-        height: 44.0,
+        height: 42.0,
+        padding: padding,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(50),
           border: Border.all(
@@ -1894,18 +1985,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Widget _buildNavbarGlassIconTap({
-    required bool isDark,
+    required bool useWhiteIcon,
     required dynamic icon,
     required VoidCallback onTap,
+    double width = 36.0,
     Color? iconColor,
     Widget? badge,
   }) {
     final Color effectiveColor = iconColor ??
-        (isDark ? Colors.white.withValues(alpha: 0.90) : const Color(0xFF1E293B));
+        (useWhiteIcon ? Colors.white.withValues(alpha: 0.94) : const Color(0xFF1E293B));
     Widget iconWidget = Center(
       child: HugeIcon(
         icon: icon,
-        size: 20,
+        size: 19,
         color: effectiveColor,
       ),
     );
@@ -1915,7 +2007,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         alignment: Alignment.center,
         children: [
           iconWidget,
-          Positioned(top: 4, right: 4, child: badge),
+          Positioned(top: 4, right: 2, child: badge),
         ],
       );
     }
@@ -1924,11 +2016,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(50),
-        splashColor: isDark ? Colors.white12 : Colors.black12,
-        highlightColor: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+        splashColor: useWhiteIcon ? Colors.white12 : Colors.black12,
+        highlightColor: useWhiteIcon ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
         child: SizedBox(
-          width: 44.0,
-          height: 44.0,
+          width: width,
+          height: 42.0,
           child: iconWidget,
         ),
       ),
@@ -1937,6 +2029,34 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Widget _buildFloatingTopBar(bool isDark) {
     final topPadding = MediaQuery.of(context).padding.top;
+
+    // Resolve adaptive icon contrast independently for top-left (Back) & top-right (Share/Like/Cart)
+    bool leftUseWhite = isDark;
+    bool rightUseWhite = isDark;
+    if (!_isScrolledPastHero) {
+      final hasVideo = _product.videoUrl.isNotEmpty;
+      final images = _product.galleryImages;
+      if (hasVideo && _currentImageIndex == 0) {
+        leftUseWhite = true;
+        rightUseWhite = true;
+      } else {
+        final imgIdx = hasVideo ? _currentImageIndex - 1 : _currentImageIndex;
+        if (imgIdx >= 0 && imgIdx < images.length) {
+          final activeUrl = images[imgIdx];
+          final cacheKey = '${activeUrl.trim()}_$isDark';
+          final contrast = _slideTopContrast[cacheKey];
+          if (contrast != null) {
+            leftUseWhite = contrast.leftDark;
+            rightUseWhite = contrast.rightDark;
+          } else {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _analyzeSlideTopContrast(activeUrl, isDark);
+            });
+          }
+        }
+      }
+    }
+
     return Positioned(
       top: topPadding + 12.0,
       left: 16.0,
@@ -1949,34 +2069,39 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           return Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Back Button (1:1 Navbar Glassmorphism)
+              // Back Button (1:1 Navbar Glassmorphism + Auto-Contrast)
               _buildNavbarGlassShell(
                 isDark: isDark,
                 child: _buildNavbarGlassIconTap(
-                  isDark: isDark,
+                  useWhiteIcon: leftUseWhite,
+                  width: 42.0,
                   icon: HugeIcons.strokeRoundedArrowLeft01,
                   onTap: () => Navigator.pop(context),
                 ),
               ),
-              // Share + Like + Cart Pill (1:1 Navbar Glassmorphism)
+              // Compact Share + Like + Cart Pill (1:1 Navbar Glassmorphism + Auto-Contrast)
               _buildNavbarGlassShell(
                 isDark: isDark,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildNavbarGlassIconTap(
-                      isDark: isDark,
+                      useWhiteIcon: rightUseWhite,
+                      width: 36.0,
                       icon: HugeIcons.strokeRoundedShare01,
                       onTap: _shareProduct,
                     ),
                     _buildNavbarGlassIconTap(
-                      isDark: isDark,
+                      useWhiteIcon: rightUseWhite,
+                      width: 36.0,
                       icon: HugeIcons.strokeRoundedFavourite,
                       iconColor: _isSaved ? const Color(0xFFEF4444) : null,
                       onTap: _toggleSave,
                     ),
                     _buildNavbarGlassIconTap(
-                      isDark: isDark,
+                      useWhiteIcon: rightUseWhite,
+                      width: 36.0,
                       icon: HugeIcons.strokeRoundedShoppingCart02,
                       badge: cartCount > 0
                           ? Container(
