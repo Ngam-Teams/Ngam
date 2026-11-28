@@ -1,6 +1,6 @@
 {
-  "version": "1.0.108",
-  "build_number": 81,
-  "released_at": "2026-11-28T01:25:21Z",
-  "changelog": "Buang butang GPS di baris utiliti & buang Vouchers berganda di baris kategori, baiki padanan sinonim semua kategori (BM & EN), serta tambah halaman Teroka Kategori baharu (Kategori Besar → Sub-Kategori)."
+  "version": "1.0.109",
+  "build_number": 82,
+  "released_at": "2026-11-28T02:37:35Z",
+  "changelog": "Hotfix SQL trigger audit produk (`trg_audit_products_critical_fn`) supaya baca kolum `shop_id` pada `business_products` dan elak ralat 42703 semasa ubah harga/padam produk."
 }
