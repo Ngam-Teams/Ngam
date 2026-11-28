@@ -1,6 +1,6 @@
 {
-  "version": "1.0.113",
-  "build_number": 86,
-  "released_at": "2026-11-28T18:25:08Z",
-  "changelog": "Gaya Shopee di Troli (tab Delivery terus muncul tanpa lengah & jadi pilihan utama kedai produk, buang tab Pre-Order, buang butang Now pada Self-Pickup dan terus pilih tarikh/slot masa dengan buffer +30 minit) + butang atas halaman Butiran Produk (Back, Share, Like, Cart) menggunakan 100% glassmorphism 1:1 Navbar."
+  "version": "1.0.114",
+  "build_number": 87,
+  "released_at": "2026-11-28T18:31:55Z",
+  "changelog": "Baiki isu gambar hilang bila tukar halaman atau buka semula aplikasi/PWA (cacheWidth WebGL, perkongsian ResizeImage cache, auto-pulih pada resume & auto-retry) + bar carian & pil kanan Home (QR Scanner dahulu diikuti loceng tanpa garisan pemisah) guna 100% glassmorphism 1:1 Navbar dan butang Cari 1:1 Active Pill Navbar."
 }

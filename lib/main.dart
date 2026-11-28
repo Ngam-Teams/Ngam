@@ -37,6 +37,7 @@ import 'services/ereceipt_service.dart';
 import 'core/router/url_strategy.dart';
 
 import 'widgets/app_lock_wrapper.dart';
+import 'widgets/natural_aspect_image.dart';
 import 'widgets/responsive_landscape_scale.dart';
 
 // ============================================================
@@ -46,10 +47,16 @@ import 'widgets/responsive_landscape_scale.dart';
 
 // ─── Global Navigator Key ─────────────────────────────────────
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+AppLifecycleListener? _appLifecycleListener;
 
 void main() async {
   setCleanUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
+  PaintingBinding.instance.imageCache.maximumSize = 400;
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 120 * 1024 * 1024;
+  _appLifecycleListener ??= AppLifecycleListener(
+    onResume: NaturalImageAspectCache.notifyAppResumed,
+  );
   AppUpdateService.getAppVersion();
 
   // Edge-to-edge transparent status bar & dark navigation bar matching website (#0A0A14)

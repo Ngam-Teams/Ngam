@@ -1076,54 +1076,58 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
     NgamQrRouteHelper.handleScannedQr(context, rawData);
   }
 
-  // --- WIDGET 1: COMPACT FLOATING LIQUID GLASS SEARCH + ACTIONS HEADER ---
+  // --- WIDGET 1: FLOATING SEARCH BAR + RIGHT PILL (100% 1:1 NAVBAR GLASSMORPHISM) ---
   Widget _buildTopSearchHeader(bool isDark) {
     final bool isLoggedIn = Supabase.instance.client.auth.currentUser != null;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Integrated Liquid Glass Search Pill (Search + QR + Search CTA)
+        // Search Bar (100% 1:1 clone of CustomBottomNav glassmorphism; Search button = 1:1 Active Pill)
         Expanded(
           child: GestureDetector(
             onTap: () => _openSearchPage(),
             child: GlassContainer(
               useOwnLayer: true,
               quality: GlassQuality.standard,
-              shape: const LiquidRoundedSuperellipse(borderRadius: 24.0),
+              shape: const LiquidRoundedSuperellipse(borderRadius: 50.0),
               settings: LiquidGlassSettings(
                 thickness: 0.1,
-                blur: 10.0,
-                lightIntensity: isDark ? 0.1 : 0.2,
+                blur: 2.0,
+                refractiveIndex: 1.0,
                 glassColor: Colors.transparent,
+                lightAngle: 45.0,
+                lightIntensity: isDark ? 0.1 : 0.2,
+                ambientStrength: 1.0,
+                saturation: 1.0,
+                chromaticAberration: 0.0,
               ),
               child: Container(
-                height: 42,
-                padding: const EdgeInsets.only(left: 12, right: 5),
+                height: 44,
+                padding: const EdgeInsets.only(left: 14, right: 6),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  color: isDark
-                      ? const Color(0xFF161622).withValues(alpha: 0.82)
-                      : Colors.white.withValues(alpha: 0.88),
+                  borderRadius: BorderRadius.circular(50),
                   border: Border.all(
-                    color: isDark
-                        ? const Color(0xFF3B82F6).withValues(alpha: 0.35)
-                        : const Color(0xFF3B82F6).withValues(alpha: 0.28),
-                    width: 1.1,
+                    color: Colors.white.withValues(
+                      alpha: isDark ? 0.15 : 0.4,
+                    ),
+                    width: 1.0,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.06),
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.2 : 0.05,
+                      ),
                       blurRadius: 12,
-                      offset: const Offset(0, 3),
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
                 child: Row(
                   children: [
-                    const HugeIcon(
+                    HugeIcon(
                       icon: HugeIcons.strokeRoundedSearch01,
-                      color: Color(0xFF38BDF8),
+                      color: isDark ? Colors.white70 : Colors.grey.shade700,
                       size: 17,
                     ),
                     const SizedBox(width: 8),
@@ -1133,38 +1137,43 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: isDark ? Colors.white54 : Colors.grey.shade600,
+                          color: isDark ? Colors.white60 : Colors.grey.shade600,
                           fontSize: 12.5,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
-                    GestureDetector(
-                      onTap: _openQrScanner,
-                      behavior: HitTestBehavior.opaque,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
-                        child: HugeIcon(
-                          icon: HugeIcons.strokeRoundedQrCode01,
-                          color: isDark ? Colors.white70 : const Color(0xFF475569),
-                          size: 17,
-                        ),
-                      ),
-                    ),
+                    const SizedBox(width: 6),
+                    // Search CTA Button — 100% 1:1 clone of CustomBottomNav Active Pill
                     Container(
-                      height: 30,
-                      padding: const EdgeInsets.symmetric(horizontal: 11),
+                      height: 32,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.white.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(32),
+                        border: Border.all(
+                          color: Colors.white.withValues(
+                            alpha: isDark ? 0.2 : 0.8,
+                          ),
+                          width: 1.0,
                         ),
-                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.2 : 0.05,
+                            ),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       child: Center(
                         child: Text(
                           'customer.search_btn'.tr(),
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.grey.shade900,
                             fontSize: 11.5,
                             fontWeight: FontWeight.w800,
                           ),
@@ -1180,47 +1189,70 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
 
         const SizedBox(width: 8),
 
-        // Compact Right Liquid Glass Action Pill (Notification + Orders OR Guest Login)
+        // Right Action Pill (100% 1:1 Navbar Glassmorphism): [ QR Scanner | Bell ] with NO divider
         GlassContainer(
           useOwnLayer: true,
           quality: GlassQuality.standard,
-          shape: const LiquidRoundedSuperellipse(borderRadius: 24.0),
+          shape: const LiquidRoundedSuperellipse(borderRadius: 50.0),
           settings: LiquidGlassSettings(
             thickness: 0.1,
-            blur: 10.0,
-            lightIntensity: isDark ? 0.1 : 0.2,
+            blur: 2.0,
+            refractiveIndex: 1.0,
             glassColor: Colors.transparent,
+            lightAngle: 45.0,
+            lightIntensity: isDark ? 0.1 : 0.2,
+            ambientStrength: 1.0,
+            saturation: 1.0,
+            chromaticAberration: 0.0,
           ),
           child: Container(
-            height: 42,
-            padding: const EdgeInsets.symmetric(horizontal: 2),
+            height: 44,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              color: isDark
-                  ? const Color(0xFF161622).withValues(alpha: 0.82)
-                  : Colors.white.withValues(alpha: 0.88),
+              borderRadius: BorderRadius.circular(50),
               border: Border.all(
-                color: Colors.white.withValues(alpha: isDark ? 0.14 : 0.70),
+                color: Colors.white.withValues(
+                  alpha: isDark ? 0.15 : 0.4,
+                ),
                 width: 1.0,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.06),
+                  color: Colors.black.withValues(
+                    alpha: isDark ? 0.2 : 0.05,
+                  ),
                   blurRadius: 12,
-                  offset: const Offset(0, 3),
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // 1. QR Scanner (First)
+                GestureDetector(
+                  onTap: _openQrScanner,
+                  behavior: HitTestBehavior.opaque,
+                  child: SizedBox(
+                    width: 38,
+                    height: 42,
+                    child: Center(
+                      child: HugeIcon(
+                        icon: HugeIcons.strokeRoundedQrCode01,
+                        color: isDark ? Colors.white.withValues(alpha: 0.90) : const Color(0xFF1E293B),
+                        size: 19,
+                      ),
+                    ),
+                  ),
+                ),
+                // 2. Notifications Bell (or Login for guest) — NO divider
                 if (!isLoggedIn)
                   GestureDetector(
                     onTap: () => Navigator.of(context).pushNamed('/login'),
                     behavior: HitTestBehavior.opaque,
                     child: SizedBox(
-                      width: 40,
-                      height: 40,
+                      width: 38,
+                      height: 42,
                       child: Center(
                         child: Tooltip(
                           message: 'customer.login_tooltip'.tr(),
@@ -1233,14 +1265,13 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                       ),
                     ),
                   )
-                else ...[
-                  // Notifications Bell with Live Unread Badge
+                else
                   GestureDetector(
                     onTap: () => CustomerNotificationCenterSheet.show(context),
                     behavior: HitTestBehavior.opaque,
                     child: SizedBox(
                       width: 38,
-                      height: 40,
+                      height: 42,
                       child: Center(
                         child: Stack(
                           clipBehavior: Clip.none,
@@ -1248,7 +1279,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                           children: [
                             HugeIcon(
                               icon: HugeIcons.strokeRoundedNotification01,
-                              color: isDark ? Colors.white70 : const Color(0xFF1E293B),
+                              color: isDark ? Colors.white.withValues(alpha: 0.90) : const Color(0xFF1E293B),
                               size: 19,
                             ),
                             ValueListenableBuilder<int>(
@@ -1289,28 +1320,6 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                       ),
                     ),
                   ),
-                  Container(
-                    width: 1,
-                    height: 18,
-                    color: isDark ? Colors.white12 : Colors.black12,
-                  ),
-                  // Quick Filter Search Button
-                  GestureDetector(
-                    onTap: () => _openSearchPage(openFilters: true),
-                    behavior: HitTestBehavior.opaque,
-                    child: SizedBox(
-                      width: 38,
-                      height: 40,
-                      child: Center(
-                        child: HugeIcon(
-                          icon: HugeIcons.strokeRoundedSlidersHorizontal,
-                          color: isDark ? Colors.white70 : const Color(0xFF1E293B),
-                          size: 17,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -1931,11 +1940,16 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
 
     if (url.isEmpty) return fallback();
     if (kIsWeb) {
-      return Image.network(
-        url,
-        fit: BoxFit.cover,
-        gaplessPlayback: true,
-        errorBuilder: (_, __, ___) => fallback(),
+      return ValueListenableBuilder<int>(
+        valueListenable: NaturalImageAspectCache.resumeEpoch,
+        builder: (_, epoch, __) => Image.network(
+          url,
+          key: ValueKey('${url}_$epoch'),
+          cacheWidth: 240,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          errorBuilder: (_, __, ___) => fallback(),
+        ),
       );
     }
     return CachedNetworkImage(
