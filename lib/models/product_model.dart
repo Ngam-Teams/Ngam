@@ -130,12 +130,129 @@ class ProductModel {
 
   bool get hasPriceRange => variants.isNotEmpty && (maxPrice - minPrice).abs() >= 0.005;
 
-  /// Shopee-style price string: `RM 17.90 - RM 280.80` when variants span a range, else `RM 17.90`.
+  /// Clean single lowest price for front feed/store/search cards (Shopee-style: `RM 17.90`).
+  String get formattedMinPrice => 'RM ${minPrice.toStringAsFixed(2)}';
+
+  /// Compact Shopee-style price range for product detail & variation sheet: `RM 17.90 - 280.80`.
   String get formattedPriceRange {
     if (hasPriceRange) {
-      return 'RM ${minPrice.toStringAsFixed(2)} - RM ${maxPrice.toStringAsFixed(2)}';
+      return 'RM ${minPrice.toStringAsFixed(2)} - ${maxPrice.toStringAsFixed(2)}';
     }
     return 'RM ${minPrice.toStringAsFixed(2)}';
+  }
+
+  /// Optional per-variant image URL if stored on the variant.
+  String? variantImageUrl(Map<String, dynamic> v) {
+    final raw = (v['image_url'] ?? v['image'] ?? '').toString().trim();
+    return raw.isNotEmpty ? raw : null;
+  }
+
+  /// True when variants use Shopee-style 2-tier attributes (e.g. Color x Size).
+  bool get isTwoTierVariants => variants.any((v) {
+        final t1 = (v['tier1_value'] ?? '').toString().trim();
+        final t2 = (v['tier2_value'] ?? '').toString().trim();
+        return t1.isNotEmpty && t2.isNotEmpty;
+      });
+
+  String get tier1Label {
+    for (final v in variants) {
+      final lbl = (v['tier1_label'] ?? '').toString().trim();
+      if (lbl.isNotEmpty) return lbl;
+    }
+    return '';
+  }
+
+  String get tier2Label {
+    for (final v in variants) {
+      final lbl = (v['tier2_label'] ?? '').toString().trim();
+      if (lbl.isNotEmpty) return lbl;
+    }
+    return '';
+  }
+
+  List<String> get tier1Values {
+    final out = <String>[];
+    for (final v in variants) {
+      final val = (v['tier1_value'] ?? '').toString().trim();
+      if (val.isNotEmpty && !out.contains(val)) out.add(val);
+    }
+    return out;
+  }
+
+  List<String> get tier2Values {
+    final out = <String>[];
+    for (final v in variants) {
+      final val = (v['tier2_value'] ?? '').toString().trim();
+      if (val.isNotEmpty && !out.contains(val)) out.add(val);
+    }
+    return out;
+  }
+
+  String? tier1ImageUrl(String t1Value) {
+    for (final v in variants) {
+      if ((v['tier1_value'] ?? '').toString().trim() == t1Value) {
+        final img = variantImageUrl(v);
+        if (img != null) return img;
+      }
+    }
+    return null;
+  }
+
+  List<Map<String, dynamic>> matchingVariants({String? tier1, String? tier2}) {
+    return variants.where((v) {
+      if (tier1 != null && tier1.isNotEmpty) {
+        if ((v['tier1_value'] ?? '').toString().trim() != tier1) return false;
+      }
+      if (tier2 != null && tier2.isNotEmpty) {
+        if ((v['tier2_value'] ?? '').toString().trim() != tier2) return false;
+      }
+      return true;
+    }).toList();
+  }
+
+  Map<String, dynamic>? findTwoTierVariant(String? tier1, String? tier2) {
+    if (tier1 == null || tier1.isEmpty || tier2 == null || tier2.isEmpty) return null;
+    for (final v in variants) {
+      if ((v['tier1_value'] ?? '').toString().trim() == tier1 &&
+          (v['tier2_value'] ?? '').toString().trim() == tier2) {
+        return v;
+      }
+    }
+    return null;
+  }
+
+  bool isVariantInStock(Map<String, dynamic> v) {
+    if (!isProduct || !trackInventory) return true;
+    final st = variantStock(v);
+    if (st == null) return stock > 0;
+    return st > 0;
+  }
+
+  bool isTierOptionAvailable({String? tier1, String? tier2}) {
+    final matches = matchingVariants(tier1: tier1, tier2: tier2);
+    if (matches.isEmpty) return false;
+    return matches.any(isVariantInStock);
+  }
+
+  String formattedRangeForVariants(List<Map<String, dynamic>> subset, {double extraPrice = 0.0}) {
+    if (subset.isEmpty) {
+      return 'RM ${(minPrice + extraPrice).toStringAsFixed(2)}';
+    }
+    final prices = subset.map((v) => variantEffectivePrice(v) + extraPrice).where((p) => p > 0).toList();
+    if (prices.isEmpty) return 'RM ${(minPrice + extraPrice).toStringAsFixed(2)}';
+    final lo = prices.reduce((a, b) => a < b ? a : b);
+    final hi = prices.reduce((a, b) => a > b ? a : b);
+    if ((hi - lo).abs() >= 0.005) {
+      return 'RM ${lo.toStringAsFixed(2)} - ${hi.toStringAsFixed(2)}';
+    }
+    return 'RM ${lo.toStringAsFixed(2)}';
+  }
+
+  int totalStockForVariants(List<Map<String, dynamic>> subset) {
+    if (subset.isEmpty) return effectiveTotalStock;
+    final subsetHasStock = subset.any((v) => variantStock(v) != null);
+    if (!subsetHasStock) return stock;
+    return subset.fold<int>(0, (sum, v) => sum + ((variantStock(v) ?? 0).clamp(0, 999999)));
   }
 
   /// True if at least one variant defines its own per-variant stock count.

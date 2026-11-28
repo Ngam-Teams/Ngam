@@ -2240,7 +2240,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          product.formattedPriceRange,
+                          product.formattedMinPrice,
                           maxLines: 1,
                           style: TextStyle(
                             color: textPrimary,

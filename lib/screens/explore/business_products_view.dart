@@ -626,7 +626,7 @@ class _BusinessProductsViewState extends State<BusinessProductsView>
                                                 fit: BoxFit.scaleDown,
                                                 alignment: Alignment.centerLeft,
                                                 child: Text(
-                                                  product.formattedPriceRange,
+                                                  product.formattedMinPrice,
                                                   maxLines: 1,
                                                   style: TextStyle(
                                                     color: textPrimary,

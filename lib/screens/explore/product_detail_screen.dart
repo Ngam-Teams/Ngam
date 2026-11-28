@@ -79,6 +79,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   // Selections
   int _selectedVariantIndex = -1;
+  String? _selectedTier1;
+  String? _selectedTier2;
   final Set<int> _selectedModifierIndices = {};
   int _quantity = 1;
   final TextEditingController _noteCtrl = TextEditingController();
@@ -222,14 +224,31 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   // ── Price, Stock & Weight calculations ─────────────────────────
 
-  bool get _needsVariantSelection =>
-      _product.variants.isNotEmpty &&
-      (_selectedVariantIndex < 0 || _selectedVariantIndex >= _product.variants.length);
+  bool get _isTwoTier => _product.isTwoTierVariants;
 
-  Map<String, dynamic>? get _selectedVariant =>
-      (!_needsVariantSelection && _product.variants.isNotEmpty)
-          ? _product.variants[_selectedVariantIndex]
-          : null;
+  bool get _needsVariantSelection {
+    if (_product.variants.isEmpty) return false;
+    if (_isTwoTier) {
+      return _product.findTwoTierVariant(_selectedTier1, _selectedTier2) == null;
+    }
+    return _selectedVariantIndex < 0 || _selectedVariantIndex >= _product.variants.length;
+  }
+
+  Map<String, dynamic>? get _selectedVariant {
+    if (_product.variants.isEmpty) return null;
+    if (_isTwoTier) {
+      return _product.findTwoTierVariant(_selectedTier1, _selectedTier2);
+    }
+    if (_selectedVariantIndex >= 0 && _selectedVariantIndex < _product.variants.length) {
+      return _product.variants[_selectedVariantIndex];
+    }
+    return null;
+  }
+
+  List<Map<String, dynamic>> get _matchingSubset {
+    if (!_isTwoTier) return _product.variants;
+    return _product.matchingVariants(tier1: _selectedTier1, tier2: _selectedTier2);
+  }
 
   double get _selectedModifiersExtraPrice {
     if (_product.modifiers.isEmpty || _selectedModifierIndices.isEmpty) return 0.0;
@@ -250,13 +269,33 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     return baseOrVariant + _selectedModifiersExtraPrice;
   }
 
-  double get _totalPrice {
-    return _unitPrice * _quantity;
+  /// Compact Shopee price text without the `RM` prefix (e.g. `10.82 - 15.90` or `15.80`).
+  (bool isRange, String valueText) get _activePriceDisplay {
+    if (_selectedVariant != null || _product.variants.isEmpty) {
+      return (false, _unitPrice.toStringAsFixed(2));
+    }
+    final subset = _matchingSubset;
+    final prices = subset
+        .map((v) => _product.variantEffectivePrice(v) + _selectedModifiersExtraPrice)
+        .where((p) => p > 0)
+        .toList();
+    if (prices.isEmpty) {
+      return (false, _unitPrice.toStringAsFixed(2));
+    }
+    final lo = prices.reduce((a, b) => a < b ? a : b);
+    final hi = prices.reduce((a, b) => a > b ? a : b);
+    if ((hi - lo).abs() >= 0.005) {
+      return (true, '${lo.toStringAsFixed(2)} - ${hi.toStringAsFixed(2)}');
+    }
+    return (false, lo.toStringAsFixed(2));
   }
 
   int get _activeStock {
     if (_selectedVariant != null) {
       return _product.variantStock(_selectedVariant!) ?? _product.stock;
+    }
+    if (_isTwoTier && (_selectedTier1 != null || _selectedTier2 != null)) {
+      return _product.totalStockForVariants(_matchingSubset);
     }
     return _product.effectiveTotalStock;
   }
@@ -276,11 +315,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   String? get _selectedOptionName {
     final parts = <String>[];
-    if (_product.variants.isNotEmpty &&
-        _selectedVariantIndex >= 0 &&
-        _selectedVariantIndex < _product.variants.length) {
-      final vName = (_product.variants[_selectedVariantIndex]['name'] ?? '').toString().trim();
-      if (vName.isNotEmpty) parts.add(vName);
+    final selVar = _selectedVariant;
+    if (selVar != null) {
+      final vName = (selVar['name'] ?? '').toString().trim();
+      if (vName.isNotEmpty) {
+        parts.add(vName);
+      } else if (_isTwoTier && _selectedTier1 != null && _selectedTier2 != null) {
+        parts.add('$_selectedTier1 / $_selectedTier2');
+      }
     }
     for (final idx in _selectedModifierIndices) {
       if (idx >= 0 && idx < _product.modifiers.length) {
@@ -550,7 +592,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   void _onAddToCartPressed() {
     if (_needsVariantSelection) {
-      showGlassToast(context, 'product_detail.select_variation_required'.tr(), isError: true);
+      _showVariationBottomSheet(buyNow: false);
       return;
     }
     if (_isActiveOutOfStock) {
@@ -591,7 +633,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
 
     if (_needsVariantSelection) {
-      showGlassToast(context, 'product_detail.select_variation_required'.tr(), isError: true);
+      _showVariationBottomSheet(buyNow: true);
       return;
     }
     if (_isActiveOutOfStock) {
@@ -1865,13 +1907,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Price (Shopee-style min - max range until a variation is selected) + Compare At + Discount Badge
+          // Price (Shopee-style live range narrowed by selected tier, exact once fully selected)
           Builder(
             builder: (_) {
-              final showRange = _needsVariantSelection && _product.hasPriceRange;
-              final priceValueText = showRange
-                  ? '${(_product.minPrice + _selectedModifiersExtraPrice).toStringAsFixed(2)} - RM ${(_product.maxPrice + _selectedModifiersExtraPrice).toStringAsFixed(2)}'
-                  : _unitPrice.toStringAsFixed(2);
+              final (showRange, priceValueText) = _activePriceDisplay;
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -2164,7 +2203,662 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // ── Variations / Options Picker ────────────────────────────────
+  // ── Variations / Options Picker (Shopee 1-Tier & 2-Tier) ───────
+
+  Widget _buildVariantChip({
+    required String label,
+    String? priceTag,
+    String? imageUrl,
+    required bool isSelected,
+    required bool isDisabled,
+    required bool isDark,
+    required Color textPrimary,
+    required Color textSecondary,
+    required VoidCallback? onTap,
+    double minWidth = 0,
+  }) {
+    final hasThumb = imageUrl != null && imageUrl.trim().isNotEmpty;
+    return GestureDetector(
+      onTap: isDisabled ? null : onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        constraints: minWidth > 0 ? BoxConstraints(minWidth: minWidth) : null,
+        padding: EdgeInsets.fromLTRB(
+          hasThumb ? 6 : 13,
+          hasThumb ? 5 : 8,
+          13,
+          hasThumb ? 5 : 8,
+        ),
+        decoration: BoxDecoration(
+          color: isDisabled
+              ? (isDark
+                  ? Colors.white.withValues(alpha: 0.02)
+                  : Colors.black.withValues(alpha: 0.02))
+              : isSelected
+                  ? const Color(0xFF3B82F6).withValues(alpha: 0.16)
+                  : (isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.black.withValues(alpha: 0.035)),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDisabled
+                ? (isDark ? Colors.white10 : Colors.black12)
+                : isSelected
+                    ? const Color(0xFF3B82F6)
+                    : (isDark ? Colors.white12 : Colors.black12),
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (hasThumb) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(7),
+                child: Opacity(
+                  opacity: isDisabled ? 0.4 : 1.0,
+                  child: Image.network(
+                    imageUrl,
+                    width: 26,
+                    height: 26,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 7),
+            ],
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: isDisabled
+                      ? textSecondary.withValues(alpha: 0.4)
+                      : (isSelected ? const Color(0xFF3B82F6) : textPrimary),
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                ),
+              ),
+            ),
+            if (priceTag != null && priceTag.isNotEmpty) ...[
+              const SizedBox(width: 6),
+              Text(
+                priceTag,
+                style: TextStyle(
+                  color: isDisabled
+                      ? textSecondary.withValues(alpha: 0.35)
+                      : (isSelected ? const Color(0xFF3B82F6) : textSecondary),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVariantSelectors({
+    required bool isDark,
+    required Color textPrimary,
+    required Color textSecondary,
+    required int selectedVariantIndex,
+    required String? selectedTier1,
+    required String? selectedTier2,
+    required void Function(int idx) onSelectSingle,
+    required void Function(String? t1) onSelectTier1,
+    required void Function(String? t2) onSelectTier2,
+  }) {
+    if (_product.variants.isEmpty) return const SizedBox.shrink();
+
+    if (_isTwoTier) {
+      final t1Title = _product.tier1Label.isNotEmpty
+          ? _product.tier1Label
+          : 'product_detail.tier1_default_label'.tr();
+      final t2Title = _product.tier2Label.isNotEmpty
+          ? _product.tier2Label
+          : 'product_detail.tier2_default_label'.tr();
+      final t1Values = _product.tier1Values;
+      final t2Values = _product.tier2Values;
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Tier 1 (e.g. Color)
+          Row(
+            children: [
+              Text(
+                '$t1Title:',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  selectedTier1 ?? 'product_detail.select_tier_hint'.tr(args: [t1Title]),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: selectedTier1 != null
+                        ? const Color(0xFF3B82F6)
+                        : const Color(0xFFF59E0B),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: t1Values.map((val) {
+              final isSelected = selectedTier1 == val;
+              final available = _product.isTierOptionAvailable(
+                tier1: val,
+                tier2: selectedTier2,
+              );
+              final thumb = _product.tier1ImageUrl(val);
+              return _buildVariantChip(
+                label: val,
+                imageUrl: thumb,
+                isSelected: isSelected,
+                isDisabled: !available,
+                isDark: isDark,
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
+                onTap: () => onSelectTier1(isSelected ? null : val),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
+
+          // Tier 2 (e.g. Size)
+          Row(
+            children: [
+              Text(
+                '$t2Title:',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  selectedTier2 ?? 'product_detail.select_tier_hint'.tr(args: [t2Title]),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: selectedTier2 != null
+                        ? const Color(0xFF3B82F6)
+                        : const Color(0xFFF59E0B),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: t2Values.map((val) {
+              final isSelected = selectedTier2 == val;
+              final available = _product.isTierOptionAvailable(
+                tier1: selectedTier1,
+                tier2: val,
+              );
+              return _buildVariantChip(
+                label: val,
+                minWidth: 56,
+                isSelected: isSelected,
+                isDisabled: !available,
+                isDark: isDark,
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
+                onTap: () => onSelectTier2(isSelected ? null : val),
+              );
+            }).toList(),
+          ),
+        ],
+      );
+    }
+
+    // 1-Tier Variants (e.g. 400g / 2kg / 4kg / 10kg)
+    final selectedName = (selectedVariantIndex >= 0 &&
+            selectedVariantIndex < _product.variants.length)
+        ? (_product.variants[selectedVariantIndex]['name'] ?? '').toString()
+        : null;
+    final headerTitle = _product.tier1Label.isNotEmpty
+        ? _product.tier1Label
+        : 'product_detail.variations_title'.tr();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Flexible(
+              child: Text(
+                headerTitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (selectedName != null && selectedName.isNotEmpty)
+              Flexible(
+                child: Text(
+                  selectedName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF3B82F6),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              )
+            else
+              Text(
+                'product_detail.please_select_variation'.tr(),
+                style: const TextStyle(
+                  color: Color(0xFFF59E0B),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: List.generate(_product.variants.length, (idx) {
+            final v = _product.variants[idx];
+            final name = (v['name'] ?? '').toString();
+            final effectivePrice = _product.variantEffectivePrice(v);
+            final vStock = _product.variantStock(v);
+            final vOutOfStock = _product.isProduct &&
+                _product.trackInventory &&
+                vStock != null &&
+                vStock <= 0;
+            final isSelected = selectedVariantIndex == idx;
+            return _buildVariantChip(
+              label: name,
+              priceTag: effectivePrice > 0 ? 'RM ${effectivePrice.toStringAsFixed(2)}' : null,
+              imageUrl: _product.variantImageUrl(v),
+              isSelected: isSelected,
+              isDisabled: vOutOfStock,
+              isDark: isDark,
+              textPrimary: textPrimary,
+              textSecondary: textSecondary,
+              onTap: () => onSelectSingle(isSelected ? -1 : idx),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showVariationBottomSheet({required bool buyNow}) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSecondary = isDark ? Colors.white60 : const Color(0xFF64748B);
+
+    int tempIdx = _selectedVariantIndex;
+    String? tempT1 = _selectedTier1;
+    String? tempT2 = _selectedTier2;
+    int tempQty = _quantity;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            final Map<String, dynamic>? currentVariant = _isTwoTier
+                ? _product.findTwoTierVariant(tempT1, tempT2)
+                : (tempIdx >= 0 && tempIdx < _product.variants.length
+                    ? _product.variants[tempIdx]
+                    : null);
+            final bool isComplete = currentVariant != null;
+            final subset = _isTwoTier
+                ? _product.matchingVariants(tier1: tempT1, tier2: tempT2)
+                : _product.variants;
+
+            final String priceLabel = currentVariant != null
+                ? 'RM ${(_product.variantEffectivePrice(currentVariant) + _selectedModifiersExtraPrice).toStringAsFixed(2)}'
+                : _product.formattedRangeForVariants(
+                    subset,
+                    extraPrice: _selectedModifiersExtraPrice,
+                  );
+
+            final int displayStock = currentVariant != null
+                ? (_product.variantStock(currentVariant) ?? _product.stock)
+                : (_isTwoTier && (tempT1 != null || tempT2 != null)
+                    ? _product.totalStockForVariants(subset)
+                    : _product.effectiveTotalStock);
+            final bool isOut = _product.isProduct && _product.trackInventory && displayStock <= 0;
+
+            String thumbUrl = _product.imageUrl;
+            if (currentVariant != null) {
+              thumbUrl = _product.variantImageUrl(currentVariant) ?? thumbUrl;
+            } else if (_isTwoTier && tempT1 != null) {
+              thumbUrl = _product.tier1ImageUrl(tempT1!) ?? thumbUrl;
+            }
+
+            final int maxQty = (_product.trackInventory && displayStock > 0)
+                ? displayStock
+                : 99;
+            if (tempQty > maxQty) tempQty = maxQty;
+            if (tempQty < 1) tempQty = 1;
+
+            return ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.84,
+              ),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF0F1322).withValues(alpha: 0.94)
+                          : Colors.white.withValues(alpha: 0.96),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+                      border: Border(
+                        top: BorderSide(
+                          color: isDark ? Colors.white12 : Colors.black12,
+                        ),
+                      ),
+                    ),
+                    child: SafeArea(
+                      top: false,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Drag handle
+                          Center(
+                            child: Container(
+                              margin: const EdgeInsets.only(top: 10, bottom: 6),
+                              width: 40,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.white24 : Colors.black12,
+                                borderRadius: BorderRadius.circular(100),
+                              ),
+                            ),
+                          ),
+                          // Header: Thumbnail + Live Price + Live Stock + Close
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 6, 12, 12),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: thumbUrl.isNotEmpty
+                                      ? Image.network(
+                                          thumbUrl,
+                                          width: 84,
+                                          height: 84,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Container(
+                                            width: 84,
+                                            height: 84,
+                                            color: isDark ? Colors.white10 : Colors.black12,
+                                            child: const Icon(Icons.image_not_supported_outlined),
+                                          ),
+                                        )
+                                      : Container(
+                                          width: 84,
+                                          height: 84,
+                                          color: isDark ? Colors.white10 : Colors.black12,
+                                          child: const Icon(Icons.inventory_2_outlined),
+                                        ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const SizedBox(height: 6),
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          priceLabel,
+                                          maxLines: 1,
+                                          style: const TextStyle(
+                                            color: Color(0xFF3B82F6),
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.w900,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 5),
+                                      if (_product.isProduct && _product.trackInventory)
+                                        Text(
+                                          isOut
+                                              ? 'product_detail.out_of_stock'.tr()
+                                              : 'product_detail.stock_label'
+                                                  .tr(args: ['$displayStock']),
+                                          style: TextStyle(
+                                            color: isOut ? Colors.redAccent : textSecondary,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      if (currentVariant != null) ...[
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          (currentVariant['name'] ?? '').toString(),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: textPrimary,
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () => Navigator.pop(sheetCtx),
+                                  icon: Icon(Icons.close_rounded, color: textSecondary),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Divider(
+                            height: 1,
+                            color: isDark ? Colors.white10 : Colors.black12,
+                          ),
+                          // Scrollable Variation Selectors + Quantity
+                          Flexible(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildVariantSelectors(
+                                    isDark: isDark,
+                                    textPrimary: textPrimary,
+                                    textSecondary: textSecondary,
+                                    selectedVariantIndex: tempIdx,
+                                    selectedTier1: tempT1,
+                                    selectedTier2: tempT2,
+                                    onSelectSingle: (idx) => setSheetState(() => tempIdx = idx),
+                                    onSelectTier1: (t1) => setSheetState(() => tempT1 = t1),
+                                    onSelectTier2: (t2) => setSheetState(() => tempT2 = t2),
+                                  ),
+                                  const SizedBox(height: 18),
+                                  Divider(
+                                    height: 1,
+                                    color: isDark ? Colors.white10 : Colors.black12,
+                                  ),
+                                  const SizedBox(height: 14),
+                                  // Quantity Row
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'product_detail.quantity_label'.tr(),
+                                        style: TextStyle(
+                                          color: textPrimary,
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: isDark
+                                              ? Colors.white.withValues(alpha: 0.06)
+                                              : Colors.black.withValues(alpha: 0.04),
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(
+                                            color: isDark ? Colors.white12 : Colors.black12,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              constraints: const BoxConstraints(
+                                                minWidth: 34,
+                                                minHeight: 34,
+                                              ),
+                                              padding: EdgeInsets.zero,
+                                              onPressed: tempQty > 1
+                                                  ? () => setSheetState(() => tempQty--)
+                                                  : null,
+                                              icon: Icon(
+                                                Icons.remove_rounded,
+                                                size: 16,
+                                                color: tempQty > 1
+                                                    ? textPrimary
+                                                    : textSecondary.withValues(alpha: 0.35),
+                                              ),
+                                            ),
+                                            Padding(
+                                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                                              child: Text(
+                                                '$tempQty',
+                                                style: TextStyle(
+                                                  color: textPrimary,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                            IconButton(
+                                              constraints: const BoxConstraints(
+                                                minWidth: 34,
+                                                minHeight: 34,
+                                              ),
+                                              padding: EdgeInsets.zero,
+                                              onPressed: tempQty < maxQty
+                                                  ? () => setSheetState(() => tempQty++)
+                                                  : null,
+                                              icon: Icon(
+                                                Icons.add_rounded,
+                                                size: 16,
+                                                color: tempQty < maxQty
+                                                    ? textPrimary
+                                                    : textSecondary.withValues(alpha: 0.35),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          // Bottom CTA Button
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
+                            child: SizedBox(
+                              width: double.infinity,
+                              height: 48,
+                              child: ElevatedButton(
+                                onPressed: (isComplete && !isOut)
+                                    ? () {
+                                        setState(() {
+                                          _selectedVariantIndex = tempIdx;
+                                          _selectedTier1 = tempT1;
+                                          _selectedTier2 = tempT2;
+                                          _quantity = tempQty;
+                                        });
+                                        Navigator.pop(sheetCtx);
+                                        if (buyNow) {
+                                          _onBuyNowPressed();
+                                        } else {
+                                          _onAddToCartPressed();
+                                        }
+                                      }
+                                    : null,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF3B82F6),
+                                  disabledBackgroundColor: isDark
+                                      ? Colors.white.withValues(alpha: 0.08)
+                                      : Colors.black.withValues(alpha: 0.08),
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                child: Text(
+                                  buyNow
+                                      ? 'product_detail.buy_now'.tr()
+                                      : 'product_detail.add_to_cart'.tr(),
+                                  style: TextStyle(
+                                    color: (isComplete && !isOut)
+                                        ? Colors.white
+                                        : textSecondary.withValues(alpha: 0.5),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   Widget _buildVariationsCard(bool isDark, Color textPrimary, Color textSecondary) {
     return _liquidCard(
@@ -2172,123 +2866,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Variants (Single Selection: Saiz / Perisa dsb — Shopee style)
-          if (_product.variants.isNotEmpty) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: Text(
-                    'product_detail.variations_title'.tr(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: textPrimary,
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                if (_selectedVariantIndex >= 0 &&
-                    _selectedVariantIndex < _product.variants.length)
-                  Text(
-                    (_product.variants[_selectedVariantIndex]['name'] ?? '').toString(),
-                    style: const TextStyle(
-                      color: Color(0xFF3B82F6),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  )
-                else
-                  Text(
-                    'product_detail.please_select_variation'.tr(),
-                    style: const TextStyle(
-                      color: Color(0xFFF59E0B),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-              ],
+          if (_product.variants.isNotEmpty)
+            _buildVariantSelectors(
+              isDark: isDark,
+              textPrimary: textPrimary,
+              textSecondary: textSecondary,
+              selectedVariantIndex: _selectedVariantIndex,
+              selectedTier1: _selectedTier1,
+              selectedTier2: _selectedTier2,
+              onSelectSingle: (idx) => setState(() => _selectedVariantIndex = idx),
+              onSelectTier1: (t1) => setState(() => _selectedTier1 = t1),
+              onSelectTier2: (t2) => setState(() => _selectedTier2 = t2),
             ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: List.generate(_product.variants.length, (idx) {
-                final v = _product.variants[idx];
-                final name = (v['name'] ?? '').toString();
-                final effectivePrice = _product.variantEffectivePrice(v);
-                final vStock = _product.variantStock(v);
-                final vOutOfStock = _product.isProduct &&
-                    _product.trackInventory &&
-                    vStock != null &&
-                    vStock <= 0;
-                final isSelected = _selectedVariantIndex == idx;
-
-                return GestureDetector(
-                  onTap: vOutOfStock
-                      ? null
-                      : () => setState(() {
-                            _selectedVariantIndex = isSelected ? -1 : idx;
-                          }),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 160),
-                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: vOutOfStock
-                          ? (isDark
-                              ? Colors.white.withValues(alpha: 0.02)
-                              : Colors.black.withValues(alpha: 0.02))
-                          : isSelected
-                              ? const Color(0xFF3B82F6).withValues(alpha: 0.16)
-                              : (isDark
-                                  ? Colors.white.withValues(alpha: 0.04)
-                                  : Colors.black.withValues(alpha: 0.03)),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: vOutOfStock
-                            ? (isDark ? Colors.white10 : Colors.black12)
-                            : isSelected
-                                ? const Color(0xFF3B82F6)
-                                : (isDark ? Colors.white12 : Colors.black12),
-                        width: isSelected ? 1.5 : 1.0,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          name,
-                          style: TextStyle(
-                            color: vOutOfStock
-                                ? textSecondary.withValues(alpha: 0.45)
-                                : (isSelected ? const Color(0xFF3B82F6) : textPrimary),
-                            fontSize: 13,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                            decoration: vOutOfStock ? TextDecoration.lineThrough : null,
-                          ),
-                        ),
-                        if (effectivePrice > 0) ...[
-                          const SizedBox(width: 6),
-                          Text(
-                            'RM ${effectivePrice.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              color: vOutOfStock
-                                  ? textSecondary.withValues(alpha: 0.4)
-                                  : (isSelected ? const Color(0xFF3B82F6) : textSecondary),
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                );
-              }),
-            ),
-          ],
 
           // 2. Modifiers (Multiple Selection: Topping / Add-on)
           if (_product.modifiers.isNotEmpty) ...[
@@ -3351,7 +3940,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               fit: BoxFit.scaleDown,
                               alignment: Alignment.centerLeft,
                               child: Text(
-                                item.formattedPriceRange,
+                                item.formattedMinPrice,
                                 maxLines: 1,
                                 style: const TextStyle(
                                   color: Color(0xFF3B82F6),

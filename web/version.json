@@ -1,6 +1,6 @@
 {
-  "version": "1.0.105",
-  "build_number": 78,
-  "released_at": "2026-11-27T18:17:44Z",
-  "changelog": "Paparkan julat harga variasi (RM rendah - RM tinggi) di skrin Utama (Hot Deals & Feed), Carian, serta penapis Under RM15 supaya produk bervariasi tidak lagi menunjukkan RM0.00."
+  "version": "1.0.106",
+  "build_number": 79,
+  "released_at": "2026-11-28T01:09:24Z",
+  "changelog": "Gaya Shopee lengkap: kad hadapan (Utama, Carian, Kedai) paparkan harga terendah yang besar & jelas, halaman produk menyokong variasi 1-tingkat & 2-tingkat (cth. Warna × Saiz) serta Variation Bottom Sheet dengan gambar, stok & kuantiti langsung."
 }

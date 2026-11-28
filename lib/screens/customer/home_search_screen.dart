@@ -2383,7 +2383,7 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  product.formattedPriceRange,
+                  product.formattedMinPrice,
                   maxLines: 1,
                   style: const TextStyle(
                     color: Color(0xFF3B82F6),

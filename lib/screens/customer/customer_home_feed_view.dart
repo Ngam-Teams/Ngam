@@ -2435,9 +2435,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                             FittedBox(
                               fit: BoxFit.scaleDown,
                               child: Text(
-                                product.hasPriceRange
-                                    ? 'RM${product.minPrice.toStringAsFixed(2)}+'
-                                    : 'RM${product.minPrice.toStringAsFixed(2)}',
+                                'RM${product.minPrice.toStringAsFixed(2)}',
                                 maxLines: 1,
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
@@ -2871,7 +2869,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            product.formattedPriceRange,
+                            product.formattedMinPrice,
                             maxLines: 1,
                             style: const TextStyle(
                               color: Color(0xFF3B82F6),

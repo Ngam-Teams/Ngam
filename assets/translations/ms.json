@@ -1684,7 +1684,15 @@
     "unsaved_toast": "Dibuang daripada Kegemaran.",
     "share_copied_toast": "Pautan item disalin!",
     "chat_prefill": "Hai, saya ingin bertanya tentang \"{}\" (RM {}).",
-    "photo_upload_failed": "Gagal memuat naik gambar. Sila cuba lagi."
+    "photo_upload_failed": "Gagal memuat naik gambar. Sila cuba lagi.",
+    "stock_label": "Stok: {}",
+    "quantity_label": "Kuantiti",
+    "select_tier_hint": "Pilih {}",
+    "variation_sheet_select_prompt": "Sila pilih semua variasi",
+    "tier1_default_label": "Variasi",
+    "tier2_default_label": "Saiz",
+    "add_to_cart": "Tambah ke Troli",
+    "buy_now": "Beli Sekarang"
   },
   "dispute": {
     "title": "Pusat Pertikaian & Mediasi",

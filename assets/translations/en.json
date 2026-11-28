@@ -1684,7 +1684,15 @@
     "unsaved_toast": "Removed from Favourites.",
     "share_copied_toast": "Item link copied to clipboard!",
     "chat_prefill": "Hi, I would like to ask about \"{}\" (RM {}).",
-    "photo_upload_failed": "Failed to upload photo. Please try again."
+    "photo_upload_failed": "Failed to upload photo. Please try again.",
+    "stock_label": "Stock: {}",
+    "quantity_label": "Quantity",
+    "select_tier_hint": "Select {}",
+    "variation_sheet_select_prompt": "Please select all options",
+    "tier1_default_label": "Variation",
+    "tier2_default_label": "Size",
+    "add_to_cart": "Add to Cart",
+    "buy_now": "Buy Now"
   },
   "dispute": {
     "title": "Dispute & Mediation Center",
