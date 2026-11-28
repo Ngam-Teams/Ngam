@@ -20,6 +20,7 @@ import '../../services/voucher_service.dart';
 import '../../utils/business_industry_helper.dart';
 import '../../utils/glass_toast.dart';
 import '../../widgets/glass_nav_button.dart';
+import '../../widgets/hold_repeat_button.dart';
 import '../../widgets/natural_aspect_image.dart';
 import '../shared/chat_screen.dart';
 import 'bookings_view.dart';
@@ -607,10 +608,30 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       return;
     }
 
-    final effectiveProduct = _product.copyWith(weightKg: _activeWeightKg);
+    final effectiveProduct = _product.copyWith(
+      stock: _activeStock,
+      weightKg: _activeWeightKg,
+    );
     final extra = _unitPrice - effectiveProduct.price;
     final opt = _selectedOptionName;
     final note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
+
+    if (_product.isProduct && _product.trackInventory) {
+      final inCart = StoreCartService.existingQtyFor(
+        _shopId,
+        effectiveProduct.id,
+        selectedOption: opt,
+        itemNote: note,
+      );
+      if (inCart + _quantity > _activeStock) {
+        showGlassToast(
+          context,
+          'product_detail.max_stock_reached'.tr(args: ['$_activeStock']),
+          isError: true,
+        );
+        return;
+      }
+    }
 
     StoreCartService.addItem(
       _shopId,
@@ -641,6 +662,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       return;
     }
 
+    if (_product.isProduct && _product.trackInventory && _quantity > _activeStock) {
+      setState(() => _quantity = _activeStock.clamp(1, 999));
+      showGlassToast(
+        context,
+        'product_detail.max_stock_reached'.tr(args: ['$_activeStock']),
+        isError: true,
+      );
+      return;
+    }
+
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
       showGlassToast(context, 'auth.sign_in_required'.tr(), isError: true);
@@ -648,7 +679,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       return;
     }
 
-    final effectiveProduct = _product.copyWith(weightKg: _activeWeightKg);
+    final effectiveProduct = _product.copyWith(
+      stock: _activeStock,
+      weightKg: _activeWeightKg,
+    );
     final extra = _unitPrice - effectiveProduct.price;
     final opt = _selectedOptionName;
     final note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
@@ -2566,10 +2600,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               thumbUrl = _product.tier1ImageUrl(tempT1!) ?? thumbUrl;
             }
 
-            final int maxQty = (_product.trackInventory && displayStock > 0)
-                ? displayStock
+            final int maxQty = (_product.isProduct && _product.trackInventory)
+                ? displayStock.clamp(0, 999)
                 : 99;
-            if (tempQty > maxQty) tempQty = maxQty;
+            if (maxQty > 0 && tempQty > maxQty) tempQty = maxQty;
             if (tempQty < 1) tempQty = 1;
 
             return ConstrainedBox(
@@ -2745,21 +2779,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            IconButton(
-                                              constraints: const BoxConstraints(
-                                                minWidth: 34,
-                                                minHeight: 34,
-                                              ),
-                                              padding: EdgeInsets.zero,
-                                              onPressed: tempQty > 1
-                                                  ? () => setSheetState(() => tempQty--)
-                                                  : null,
-                                              icon: Icon(
-                                                Icons.remove_rounded,
-                                                size: 16,
-                                                color: tempQty > 1
-                                                    ? textPrimary
-                                                    : textSecondary.withValues(alpha: 0.35),
+                                            HoldRepeatButton(
+                                              enabled: tempQty > 1,
+                                              onStep: () => setSheetState(() {
+                                                if (tempQty > 1) tempQty--;
+                                              }),
+                                              child: SizedBox(
+                                                width: 34,
+                                                height: 34,
+                                                child: Center(
+                                                  child: Icon(
+                                                    Icons.remove_rounded,
+                                                    size: 16,
+                                                    color: tempQty > 1
+                                                        ? textPrimary
+                                                        : textSecondary.withValues(alpha: 0.35),
+                                                  ),
+                                                ),
                                               ),
                                             ),
                                             Padding(
@@ -2773,21 +2809,33 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                                 ),
                                               ),
                                             ),
-                                            IconButton(
-                                              constraints: const BoxConstraints(
-                                                minWidth: 34,
-                                                minHeight: 34,
-                                              ),
-                                              padding: EdgeInsets.zero,
-                                              onPressed: tempQty < maxQty
-                                                  ? () => setSheetState(() => tempQty++)
-                                                  : null,
-                                              icon: Icon(
-                                                Icons.add_rounded,
-                                                size: 16,
-                                                color: tempQty < maxQty
-                                                    ? textPrimary
-                                                    : textSecondary.withValues(alpha: 0.35),
+                                            HoldRepeatButton(
+                                              enabled: tempQty < maxQty,
+                                              onStep: () => setSheetState(() {
+                                                if (tempQty < maxQty) tempQty++;
+                                              }),
+                                              onDisabledTap: () {
+                                                if (_product.isProduct && _product.trackInventory) {
+                                                  showGlassToast(
+                                                    context,
+                                                    'product_detail.max_stock_reached'
+                                                        .tr(args: ['$displayStock']),
+                                                    isError: true,
+                                                  );
+                                                }
+                                              },
+                                              child: SizedBox(
+                                                width: 34,
+                                                height: 34,
+                                                child: Center(
+                                                  child: Icon(
+                                                    Icons.add_rounded,
+                                                    size: 16,
+                                                    color: tempQty < maxQty
+                                                        ? textPrimary
+                                                        : textSecondary.withValues(alpha: 0.35),
+                                                  ),
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -2874,9 +2922,33 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               selectedVariantIndex: _selectedVariantIndex,
               selectedTier1: _selectedTier1,
               selectedTier2: _selectedTier2,
-              onSelectSingle: (idx) => setState(() => _selectedVariantIndex = idx),
-              onSelectTier1: (t1) => setState(() => _selectedTier1 = t1),
-              onSelectTier2: (t2) => setState(() => _selectedTier2 = t2),
+              onSelectSingle: (idx) => setState(() {
+                _selectedVariantIndex = idx;
+                if (_product.isProduct &&
+                    _product.trackInventory &&
+                    _activeStock > 0 &&
+                    _quantity > _activeStock) {
+                  _quantity = _activeStock;
+                }
+              }),
+              onSelectTier1: (t1) => setState(() {
+                _selectedTier1 = t1;
+                if (_product.isProduct &&
+                    _product.trackInventory &&
+                    _activeStock > 0 &&
+                    _quantity > _activeStock) {
+                  _quantity = _activeStock;
+                }
+              }),
+              onSelectTier2: (t2) => setState(() {
+                _selectedTier2 = t2;
+                if (_product.isProduct &&
+                    _product.trackInventory &&
+                    _activeStock > 0 &&
+                    _quantity > _activeStock) {
+                  _quantity = _activeStock;
+                }
+              }),
             ),
 
           // 2. Modifiers (Multiple Selection: Topping / Add-on)
@@ -2998,14 +3070,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
                 child: Row(
                   children: [
-                    IconButton(
-                      iconSize: 18,
-                      padding: const EdgeInsets.all(6),
-                      constraints: const BoxConstraints(),
-                      icon: Icon(Icons.remove, color: textPrimary),
-                      onPressed: _quantity > 1
-                          ? () => setState(() => _quantity -= 1)
-                          : null,
+                    HoldRepeatButton(
+                      enabled: _quantity > 1,
+                      onStep: () => setState(() {
+                        if (_quantity > 1) _quantity -= 1;
+                      }),
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Icon(
+                          Icons.remove,
+                          size: 18,
+                          color: _quantity > 1
+                              ? textPrimary
+                              : textSecondary.withValues(alpha: 0.35),
+                        ),
+                      ),
                     ),
                     Container(
                       constraints: const BoxConstraints(minWidth: 32),
@@ -3019,16 +3098,38 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                       ),
                     ),
-                    IconButton(
-                      iconSize: 18,
-                      padding: const EdgeInsets.all(6),
-                      constraints: const BoxConstraints(),
-                      icon: Icon(Icons.add, color: textPrimary),
-                      onPressed: (!_product.trackInventory ||
-                              _quantity < _product.stock ||
-                              _product.isService)
-                          ? () => setState(() => _quantity += 1)
-                          : null,
+                    Builder(
+                      builder: (_) {
+                        final bool canIncrease = _product.isService ||
+                            !_product.trackInventory ||
+                            _quantity < _activeStock;
+                        return HoldRepeatButton(
+                          enabled: canIncrease,
+                          onStep: () => setState(() {
+                            if (_product.isService ||
+                                !_product.trackInventory ||
+                                _quantity < _activeStock) {
+                              _quantity += 1;
+                            }
+                          }),
+                          onDisabledTap: () => showGlassToast(
+                            context,
+                            'product_detail.max_stock_reached'
+                                .tr(args: ['$_activeStock']),
+                            isError: true,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: Icon(
+                              Icons.add,
+                              size: 18,
+                              color: canIncrease
+                                  ? textPrimary
+                                  : textSecondary.withValues(alpha: 0.35),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),

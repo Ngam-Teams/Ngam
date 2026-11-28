@@ -25,6 +25,20 @@ class StoreCartService {
     return itemsForShop(shopId).fold(0, (sum, item) => sum + item.quantity);
   }
 
+  static int existingQtyFor(
+    String shopId,
+    String productId, {
+    String? selectedOption,
+    String? itemNote,
+  }) {
+    final items = itemsForShop(shopId);
+    final idx = items.indexWhere((c) =>
+        c.product.id == productId &&
+        (c.selectedOption ?? '') == (selectedOption ?? '') &&
+        (c.itemNote ?? '') == (itemNote ?? ''));
+    return idx >= 0 ? items[idx].quantity : 0;
+  }
+
   static void addItem(
     String shopId,
     ProductModel product, {
@@ -34,6 +48,10 @@ class StoreCartService {
     double optionExtraPrice = 0.0,
   }) {
     if (quantity <= 0) return;
+    final bool hasCap = product.isProduct && product.trackInventory;
+    final int maxStock = product.stock;
+    if (hasCap && maxStock <= 0) return;
+
     final notifier = notifierForShop(shopId);
     final updated = List<CartItem>.from(notifier.value);
     final index = updated.indexWhere((c) =>
@@ -41,11 +59,13 @@ class StoreCartService {
         (c.selectedOption ?? '') == (selectedOption ?? '') &&
         (c.itemNote ?? '') == (itemNote ?? ''));
     if (index >= 0) {
-      updated[index].quantity += quantity;
+      final nextQty = updated[index].quantity + quantity;
+      updated[index].quantity = hasCap ? nextQty.clamp(1, maxStock) : nextQty;
     } else {
+      final initQty = hasCap ? quantity.clamp(1, maxStock) : quantity;
       updated.add(CartItem(
         product: product,
-        quantity: quantity,
+        quantity: initQty,
         selectedOption: selectedOption,
         itemNote: itemNote,
         optionExtraPrice: optionExtraPrice,
@@ -70,9 +90,15 @@ class StoreCartService {
             (c.itemNote ?? '') == (itemNote ?? ''))
         : updated.indexWhere((c) => c.product.id == product.id);
     if (index >= 0) {
-      updated[index].quantity += delta;
-      if (updated[index].quantity <= 0) {
+      final item = updated[index];
+      final bool hasCap = item.product.isProduct && item.product.trackInventory;
+      final nextQty = item.quantity + delta;
+      if (nextQty <= 0) {
         updated.removeAt(index);
+      } else if (hasCap && item.product.stock > 0) {
+        item.quantity = nextQty.clamp(1, item.product.stock);
+      } else if (!hasCap) {
+        item.quantity = nextQty;
       }
       notifier.value = updated;
     }

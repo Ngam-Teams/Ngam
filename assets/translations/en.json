@@ -1244,7 +1244,8 @@
     "opt_with_bag": "Include Carry Bag",
     "opt_gift_wrap": "Gift Wrap",
     "opt_seal_check": "Sealed / New Unit",
-    "opt_collect_with_appt": "Collect During Visit"
+    "opt_collect_with_appt": "Collect During Visit",
+    "max_stock_reached": "Maximum stock reached ({} available)"
   },
   "store": {
     "call": "Call Store",
@@ -1692,7 +1693,8 @@
     "tier1_default_label": "Variation",
     "tier2_default_label": "Size",
     "add_to_cart": "Add to Cart",
-    "buy_now": "Buy Now"
+    "buy_now": "Buy Now",
+    "max_stock_reached": "Only {} left in stock for this option"
   },
   "dispute": {
     "title": "Dispute & Mediation Center",

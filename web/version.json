@@ -1,6 +1,6 @@
 {
-  "version": "1.0.109",
-  "build_number": 82,
-  "released_at": "2026-11-28T02:37:35Z",
-  "changelog": "Hotfix SQL trigger audit produk (`trg_audit_products_critical_fn`) supaya baca kolum `shop_id` pada `business_products` dan elak ralat 42703 semasa ubah harga/padam produk."
+  "version": "1.0.110",
+  "build_number": 83,
+  "released_at": "2026-11-28T02:56:27Z",
+  "changelog": "Hadkan pemilihan kuantiti secara ketat mengikut baki stok sebenar (termasuk stok setiap variasi & baki sedia ada dalam troli) serta sokongan tekan-dan-tahan (hold) untuk naik/turun kuantiti secara automatik."
 }

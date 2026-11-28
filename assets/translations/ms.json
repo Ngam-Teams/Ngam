@@ -1244,7 +1244,8 @@
     "opt_with_bag": "Sertakan Beg",
     "opt_gift_wrap": "Balut Hadiah",
     "opt_seal_check": "Unit Baru / Bersegel",
-    "opt_collect_with_appt": "Ambil Semasa Kunjungan"
+    "opt_collect_with_appt": "Ambil Semasa Kunjungan",
+    "max_stock_reached": "Had stok maksimum dicapai (baki {} sahaja)"
   },
   "store": {
     "call": "Hubungi Kedai",
@@ -1692,7 +1693,8 @@
     "tier1_default_label": "Variasi",
     "tier2_default_label": "Saiz",
     "add_to_cart": "Tambah ke Troli",
-    "buy_now": "Beli Sekarang"
+    "buy_now": "Beli Sekarang",
+    "max_stock_reached": "Hanya tinggal {} stok untuk pilihan ini"
   },
   "dispute": {
     "title": "Pusat Pertikaian & Mediasi",

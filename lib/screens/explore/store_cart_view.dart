@@ -15,6 +15,7 @@ import '../../services/voucher_service.dart';
 import '../../utils/business_industry_helper.dart';
 import '../../utils/ngam_ref.dart';
 import '../../widgets/glass_toast.dart';
+import '../../widgets/hold_repeat_button.dart';
 import '../../widgets/glass_nav_button.dart';
 import '../../widgets/customer_payment_modal.dart';
 import '../../widgets/voucher_selection_sheet.dart';
@@ -1312,6 +1313,17 @@ class _StoreCartViewState extends State<StoreCartView> {
   }
 
   void _updateQuantity(CartItem item, int delta) {
+    if (delta > 0 &&
+        item.product.isProduct &&
+        item.product.trackInventory &&
+        item.quantity + delta > item.product.stock) {
+      showGlassToast(
+        context,
+        'cart.max_stock_reached'.tr(args: ['${item.product.stock}']),
+        isError: true,
+      );
+      return;
+    }
     setState(() {
       item.quantity += delta;
       if (item.quantity <= 0) {
@@ -2181,8 +2193,9 @@ class _StoreCartViewState extends State<StoreCartView> {
                                     // Stepper
                                     Row(
                                       children: [
-                                        GestureDetector(
-                                          onTap: () => _updateQuantity(item, -1),
+                                        HoldRepeatButton(
+                                          enabled: true,
+                                          onStep: () => _updateQuantity(item, -1),
                                           child: Container(
                                             width: 30,
                                             height: 30,
@@ -2206,19 +2219,39 @@ class _StoreCartViewState extends State<StoreCartView> {
                                             ),
                                           ),
                                         ),
-                                        GestureDetector(
-                                          onTap: () => _updateQuantity(item, 1),
-                                          child: Container(
-                                            width: 30,
-                                            height: 30,
-                                            decoration: BoxDecoration(
-                                              color: Colors.blue,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: const Center(
-                                              child: HugeIcon(icon: HugeIcons.strokeRoundedAdd01, size: 16, color: Colors.white),
-                                            ),
-                                          ),
+                                        Builder(
+                                          builder: (_) {
+                                            final bool atStockLimit =
+                                                item.product.isProduct &&
+                                                    item.product.trackInventory &&
+                                                    item.quantity >= item.product.stock;
+                                            return HoldRepeatButton(
+                                              enabled: !atStockLimit,
+                                              onStep: () => _updateQuantity(item, 1),
+                                              onDisabledTap: () => _updateQuantity(item, 1),
+                                              child: Container(
+                                                width: 30,
+                                                height: 30,
+                                                decoration: BoxDecoration(
+                                                  color: atStockLimit
+                                                      ? (isDark
+                                                          ? Colors.white.withValues(alpha: 0.08)
+                                                          : Colors.black.withValues(alpha: 0.08))
+                                                      : Colors.blue,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Center(
+                                                  child: HugeIcon(
+                                                    icon: HugeIcons.strokeRoundedAdd01,
+                                                    size: 16,
+                                                    color: atStockLimit
+                                                        ? (isDark ? Colors.white30 : Colors.black26)
+                                                        : Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          },
                                         ),
                                       ],
                                     ),
