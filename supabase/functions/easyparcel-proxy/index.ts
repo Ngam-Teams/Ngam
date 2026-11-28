@@ -734,13 +734,29 @@ serve(async (req: Request) => {
           })
           .sort((a, b) => {
             if (a.is_preferred !== b.is_preferred) return a.is_preferred ? -1 : 1;
-            return a.price - b.price;
+            if (Math.abs(a.price - b.price) > 0.001) return a.price - b.price;
+            // Tie-break same-price rates: prefer pickup unless merchant chose dropoff-only
+            const preferDropoff = serviceMode === "dropoff";
+            const aMatch = a.service_detail.toLowerCase().includes(preferDropoff ? "dropoff" : "pickup");
+            const bMatch = b.service_detail.toLowerCase().includes(preferDropoff ? "dropoff" : "pickup");
+            if (aMatch !== bMatch) return aMatch ? -1 : 1;
+            return 0;
           });
 
-        if (checkoutMode === "auto_best" && enriched.length > 1) {
-          return [enriched[0]];
+        // Customer only picks the courier; dropoff vs pickup is a merchant fulfillment choice.
+        // Deduplicate to 1 best rate per courier_key.
+        const seenCouriers = new Set<string>();
+        const deduped = enriched.filter((r) => {
+          const key = (r.courier_key || r.courier_name || "").toLowerCase().trim();
+          if (!key || seenCouriers.has(key)) return false;
+          seenCouriers.add(key);
+          return true;
+        });
+
+        if (checkoutMode === "auto_best" && deduped.length > 1) {
+          return [deduped[0]];
         }
-        return enriched;
+        return deduped;
       };
 
       const dateColl = todayMytDate();

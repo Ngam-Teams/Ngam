@@ -3684,7 +3684,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '${rate.serviceDetail.toUpperCase()} • ${rate.delivery}',
+                              rate.delivery,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(color: textSecondary, fontSize: 11),

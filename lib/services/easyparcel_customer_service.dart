@@ -221,10 +221,33 @@ class EasyParcelCustomerService {
       }
 
       final rawRates = (data['rates'] as List?) ?? [];
-      final rates = rawRates
+      final parsedRates = rawRates
           .whereType<Map>()
           .map((e) => CustomerCourierRate.fromJson(Map<String, dynamic>.from(e)))
           .toList();
+
+      // Customers only choose the courier; dropoff vs pickup is a merchant-side
+      // fulfillment choice. Collapse duplicate pickup/dropoff rows to 1 per courier.
+      final Map<String, CustomerCourierRate> uniqueByCourier = {};
+      for (final rate in parsedRates) {
+        final key = rate.courierKey.trim().isNotEmpty
+            ? rate.courierKey.trim().toLowerCase()
+            : rate.courierName.trim().toLowerCase();
+        if (key.isEmpty) continue;
+        final existing = uniqueByCourier[key];
+        if (existing == null) {
+          uniqueByCourier[key] = rate;
+        } else {
+          final isCheaper = rate.price < existing.price - 0.001;
+          final isSamePrice = (rate.price - existing.price).abs() <= 0.001;
+          final rateHasPickup = rate.serviceDetail.toLowerCase().contains('pickup');
+          final existingHasPickup = existing.serviceDetail.toLowerCase().contains('pickup');
+          if (isCheaper || (isSamePrice && rateHasPickup && !existingHasPickup)) {
+            uniqueByCourier[key] = rate;
+          }
+        }
+      }
+      final rates = uniqueByCourier.values.toList();
 
       return CustomerRatesResult(
         easyparcelEnabled: true,

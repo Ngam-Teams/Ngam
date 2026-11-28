@@ -1,6 +1,6 @@
 {
-  "version": "1.0.110",
-  "build_number": 83,
-  "released_at": "2026-11-28T02:56:27Z",
-  "changelog": "Hadkan pemilihan kuantiti secara ketat mengikut baki stok sebenar (termasuk stok setiap variasi & baki sedia ada dalam troli) serta sokongan tekan-dan-tahan (hold) untuk naik/turun kuantiti secara automatik."
+  "version": "1.0.111",
+  "build_number": 84,
+  "released_at": "2026-11-28T07:44:10Z",
+  "changelog": "Kemas kini pilihan kurier di troli pelanggan: hanya 1 pilihan bersih bagi setiap syarikat kurier tanpa duplikasi serta buang label DROPOFF/PICKUP (pilihan serahan kedai sahaja)."
 }
