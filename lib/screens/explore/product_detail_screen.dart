@@ -19,8 +19,8 @@ import '../../services/store_cart_service.dart';
 import '../../services/voucher_service.dart';
 import '../../utils/business_industry_helper.dart';
 import '../../utils/glass_toast.dart';
-import '../../widgets/glass_nav_button.dart';
 import '../../widgets/hold_repeat_button.dart';
+import '../../widgets/liquid_glass_compat.dart';
 import '../../widgets/natural_aspect_image.dart';
 import '../shared/chat_screen.dart';
 import 'bookings_view.dart';
@@ -1846,90 +1846,200 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // ── Floating Top Bar ───────────────────────────────────────────
+  // ── Floating Top Bar (100% 1:1 clone of CustomBottomNav glassmorphism) ────
+
+  Widget _buildNavbarGlassShell({
+    required bool isDark,
+    required Widget child,
+  }) {
+    return GlassContainer(
+      useOwnLayer: true,
+      quality: GlassQuality.standard,
+      shape: const LiquidRoundedSuperellipse(borderRadius: 50.0),
+      settings: LiquidGlassSettings(
+        thickness: 0.1,
+        blur: 2.0,
+        refractiveIndex: 1.0,
+        glassColor: Colors.transparent,
+        lightAngle: 45.0,
+        lightIntensity: isDark ? 0.1 : 0.2,
+        ambientStrength: 1.0,
+        saturation: 1.0,
+        chromaticAberration: 0.0,
+      ),
+      child: Container(
+        height: 44.0,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(50),
+          border: Border.all(
+            color: Colors.white.withValues(
+              alpha: isDark ? 0.15 : 0.4,
+            ),
+            width: 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(
+                alpha: isDark ? 0.2 : 0.05,
+              ),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: child,
+      ),
+    );
+  }
+
+  Widget _buildNavbarGlassIconTap({
+    required bool isDark,
+    required dynamic icon,
+    required VoidCallback onTap,
+    Color? iconColor,
+    Widget? badge,
+  }) {
+    final Color effectiveColor = iconColor ??
+        (isDark ? Colors.white.withValues(alpha: 0.90) : const Color(0xFF1E293B));
+    Widget iconWidget = Center(
+      child: HugeIcon(
+        icon: icon,
+        size: 20,
+        color: effectiveColor,
+      ),
+    );
+    if (badge != null) {
+      iconWidget = Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          iconWidget,
+          Positioned(top: 4, right: 4, child: badge),
+        ],
+      );
+    }
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(50),
+        splashColor: isDark ? Colors.white12 : Colors.black12,
+        highlightColor: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+        child: SizedBox(
+          width: 44.0,
+          height: 44.0,
+          child: iconWidget,
+        ),
+      ),
+    );
+  }
 
   Widget _buildFloatingTopBar(bool isDark) {
     final topPadding = MediaQuery.of(context).padding.top;
-    return ValueListenableBuilder<List<CartItem>>(
-      valueListenable: StoreCartService.notifierForShop(_shopId),
-      builder: (context, cartItems, _) {
-        final int cartCount =
-            cartItems.fold(0, (sum, item) => sum + item.quantity);
-        return FloatingTopBar(
-          isDark: isDark,
-          top: topPadding + 12.0,
-          horizontal: 16.0,
-          onBack: () => Navigator.pop(context),
-          actionItems: [
-            GlassNavPillItem(
-              icon: HugeIcons.strokeRoundedShare01,
-              onTap: _shareProduct,
-            ),
-            GlassNavPillItem(
-              icon: HugeIcons.strokeRoundedFavourite,
-              iconColor: _isSaved ? const Color(0xFFEF4444) : null,
-              onTap: _toggleSave,
-            ),
-            GlassNavPillItem(
-              icon: HugeIcons.strokeRoundedShoppingCart02,
-              badge: cartCount > 0
-                  ? Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: const BoxDecoration(
-                        color: Colors.blue,
-                        shape: BoxShape.circle,
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
-                      ),
-                      child: Text(
-                        '$cartCount',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    )
-                  : null,
-              onTap: () {
-                final user = Supabase.instance.client.auth.currentUser;
-                if (user == null) {
-                  showGlassToast(
-                    context,
-                    'auth.sign_in_required'.tr(),
-                    isError: true,
-                  );
-                  Navigator.pushNamed(context, '/login');
-                  return;
-                }
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => StoreCartView(
-                      shop: {
-                        ...widget.shop,
-                        if (_shopDetails != null) ..._shopDetails!,
-                        'name': _shopName,
-                        'business_name': _shopName,
-                      },
-                      cartItems: cartItems,
-                      tableNumber: widget.tableNumber,
-                      promoCode: widget.promoCode,
-                      onUpdateQuantity: (product, delta) =>
-                          StoreCartService.updateQuantity(
-                              _shopId, product, delta),
-                      onClearCart: () => StoreCartService.clearShop(_shopId),
+    return Positioned(
+      top: topPadding + 12.0,
+      left: 16.0,
+      right: 16.0,
+      child: ValueListenableBuilder<List<CartItem>>(
+        valueListenable: StoreCartService.notifierForShop(_shopId),
+        builder: (context, cartItems, _) {
+          final int cartCount =
+              cartItems.fold(0, (sum, item) => sum + item.quantity);
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Back Button (1:1 Navbar Glassmorphism)
+              _buildNavbarGlassShell(
+                isDark: isDark,
+                child: _buildNavbarGlassIconTap(
+                  isDark: isDark,
+                  icon: HugeIcons.strokeRoundedArrowLeft01,
+                  onTap: () => Navigator.pop(context),
+                ),
+              ),
+              // Share + Like + Cart Pill (1:1 Navbar Glassmorphism)
+              _buildNavbarGlassShell(
+                isDark: isDark,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildNavbarGlassIconTap(
+                      isDark: isDark,
+                      icon: HugeIcons.strokeRoundedShare01,
+                      onTap: _shareProduct,
                     ),
-                  ),
-                );
-              },
-            ),
-          ],
-        );
-      },
+                    _buildNavbarGlassIconTap(
+                      isDark: isDark,
+                      icon: HugeIcons.strokeRoundedFavourite,
+                      iconColor: _isSaved ? const Color(0xFFEF4444) : null,
+                      onTap: _toggleSave,
+                    ),
+                    _buildNavbarGlassIconTap(
+                      isDark: isDark,
+                      icon: HugeIcons.strokeRoundedShoppingCart02,
+                      badge: cartCount > 0
+                          ? Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: const BoxDecoration(
+                                color: Colors.blue,
+                                shape: BoxShape.circle,
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 16,
+                                minHeight: 16,
+                              ),
+                              child: Text(
+                                '$cartCount',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            )
+                          : null,
+                      onTap: () {
+                        final user = Supabase.instance.client.auth.currentUser;
+                        if (user == null) {
+                          showGlassToast(
+                            context,
+                            'auth.sign_in_required'.tr(),
+                            isError: true,
+                          );
+                          Navigator.pushNamed(context, '/login');
+                          return;
+                        }
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => StoreCartView(
+                              shop: {
+                                ...widget.shop,
+                                if (_shopDetails != null) ..._shopDetails!,
+                                'name': _shopName,
+                                'business_name': _shopName,
+                              },
+                              cartItems: cartItems,
+                              tableNumber: widget.tableNumber,
+                              promoCode: widget.promoCode,
+                              onUpdateQuantity: (product, delta) =>
+                                  StoreCartService.updateQuantity(
+                                      _shopId, product, delta),
+                              onClearCart: () =>
+                                  StoreCartService.clearShop(_shopId),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 

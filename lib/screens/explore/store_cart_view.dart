@@ -90,9 +90,10 @@ class _StoreCartViewState extends State<StoreCartView> {
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _voucherController = TextEditingController();
   final TextEditingController _tableController = TextEditingController();
-  int _fulfillmentMode = 0; // 0: Bungkus (Takeaway), 1: Dine-in, 2: Pre-Order, 3: Delivery
-  bool _bungkusChooseTime = false; // false = Sekarang, true = Pilih Masa
-  String _selectedPickupTime = 'Segera (~15 minit)';
+  int _fulfillmentMode = 0; // 0: Self-Pickup, 1: Dine-in (F&B), 3: Delivery
+  final bool _bungkusChooseTime = true; // Always Choose Date & Time (no immediate "Now" option)
+  bool _userPickedFulfillment = false;
+  String _selectedPickupTime = '30 minit lagi';
   String _selectedPickupDate = 'Hari Ini';
   DateTime? _customSelectedDate;
   TimeOfDay? _customSelectedTime;
@@ -147,10 +148,6 @@ class _StoreCartViewState extends State<StoreCartView> {
 
   bool get _isFnbBusiness => _orderContext == StoreOrderContext.fnb;
 
-  String get _immediatePickupLabel => _isFnbBusiness
-      ? 'cart.bungkus_immediate_label'.tr()
-      : 'cart.pickup_immediate_label'.tr();
-
   String? get _effectiveTableNumber {
     final t = _tableController.text.trim();
     return t.isNotEmpty ? t : null;
@@ -185,8 +182,8 @@ class _StoreCartViewState extends State<StoreCartView> {
     if (!_isFnbBusiness && _fulfillmentMode == 1) {
       _fulfillmentMode = 0;
     }
-    if (_fulfillmentMode == 0 && !_bungkusChooseTime) {
-      _selectedPickupTime = _immediatePickupLabel;
+    if (_fulfillmentMode == 2) {
+      _fulfillmentMode = 0;
     }
   }
 
@@ -229,10 +226,17 @@ class _StoreCartViewState extends State<StoreCartView> {
           .maybeSingle();
       if (settings != null && settings['operating_hours'] is Map && mounted) {
         final opMap = Map<String, dynamic>.from(settings['operating_hours'] as Map);
+        final shippingOn = opMap['shipping_enabled'] == true;
+        if (shippingOn) {
+          EasyParcelCustomerService.cacheShippingEnabled(shopId, true);
+        }
         setState(() {
           _syncedOperatingHours = opMap;
-          if (opMap['shipping_enabled'] == true) {
+          if (shippingOn) {
             _epEnabled = true;
+            if (!_isFnbBusiness && !_userPickedFulfillment) {
+              _fulfillmentMode = 3;
+            }
           }
           _reconcileFulfillmentForIndustry();
           _syncDefaultSlotForSelectedDate();
@@ -357,9 +361,6 @@ class _StoreCartViewState extends State<StoreCartView> {
         return [];
       }
       final slots = <String>[];
-      if (!isBungkus && widget.isStoreOpen && nowMins >= openMins) {
-        slots.add(_immediatePickupLabel);
-      }
       const offsets = [
         (mins: 30, label: '30 minit lagi'),
         (mins: 45, label: '45 minit lagi'),
@@ -373,9 +374,9 @@ class _StoreCartViewState extends State<StoreCartView> {
           slots.add(off.label);
         }
       }
-      // If store opens later today, generate slots starting from openMins
+      // If store opens later today, generate slots starting from openMins + 30 min prep buffer
       if (nowMins < openMins) {
-        for (int m = openMins + 15; m <= closeMins - 15 && slots.length < 6; m += 60) {
+        for (int m = openMins + 30; m <= closeMins - 15 && slots.length < 6; m += 60) {
           final h = (m ~/ 60) % 24;
           final min = m % 60;
           slots.add(_formatTimeOfDay(TimeOfDay(hour: h, minute: min)));
@@ -384,7 +385,7 @@ class _StoreCartViewState extends State<StoreCartView> {
       return slots;
     } else {
       final slots = <String>[];
-      for (int m = openMins + 15; m <= closeMins - 15 && slots.length < 8; m += 60) {
+      for (int m = openMins + 30; m <= closeMins - 15 && slots.length < 8; m += 60) {
         final h = (m ~/ 60) % 24;
         final min = m % 60;
         slots.add(_formatTimeOfDay(TimeOfDay(hour: h, minute: min)));
@@ -400,7 +401,7 @@ class _StoreCartViewState extends State<StoreCartView> {
       if (!slots.contains(_selectedPickupTime)) {
         _selectedPickupTime = slots.first;
       }
-    } else if (_fulfillmentMode == 2 && _selectedPickupDate == 'Hari Ini') {
+    } else if (_fulfillmentMode == 0 && _selectedPickupDate == 'Hari Ini') {
       // Auto-switch to Tomorrow if today's operating hours already ended
       _selectedPickupDate = 'Esok';
       final tmrSlots = _getAvailableSlotsForDate(DateTime.now().add(const Duration(days: 1)));
@@ -1045,11 +1046,25 @@ class _StoreCartViewState extends State<StoreCartView> {
               optionExtraPrice: c.optionExtraPrice,
             ))
         .toList();
+    // Synchronously check cached / shop shipping flags so Delivery tab renders immediately on frame 1 (no pop-in!)
+    final cachedShipping = EasyParcelCustomerService.getCachedShippingEnabled(_resolvedShopId);
+    final shopShippingFlag = _effectiveOperatingHours?['shipping_enabled'] == true ||
+        widget.shop['supports_delivery'] == true ||
+        widget.shop['enable_delivery'] == true ||
+        widget.shop['is_delivery_enabled'] == true ||
+        cachedShipping == true;
+    if (shopShippingFlag) {
+      _epEnabled = true;
+    }
+
     if (_isFnbBusiness && widget.tableNumber != null && widget.tableNumber!.isNotEmpty) {
       _tableController.text = widget.tableNumber!;
       _fulfillmentMode = 1; // Dine-in (F&B only)
+    } else if (!_isFnbBusiness && cachedShipping != false) {
+      // Retail / Product stores: default to Delivery immediately (Shopee-style, zero pop-in)
+      _fulfillmentMode = 3;
     } else {
-      _selectedPickupTime = _immediatePickupLabel;
+      _fulfillmentMode = 0; // Self-Pickup (scheduled time)
     }
     _syncDefaultSlotForSelectedDate();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1137,6 +1152,14 @@ class _StoreCartViewState extends State<StoreCartView> {
       _epRateError = result.error;
       _epRates = result.rates;
       _lastQueriedPostcode = pc;
+      if (!_epEnabled && _fulfillmentMode == 3 &&
+          widget.shop['supports_delivery'] != true &&
+          widget.shop['enable_delivery'] != true &&
+          widget.shop['is_delivery_enabled'] != true) {
+        // Store does not support delivery — gracefully fall back to Self-Pickup
+        _fulfillmentMode = 0;
+        _syncDefaultSlotForSelectedDate();
+      }
       if (result.rates.isNotEmpty) {
         final prevId = _selectedCourier?.serviceId;
         final match = result.rates.where((r) => r.serviceId == prevId).toList();
@@ -1510,17 +1533,13 @@ class _StoreCartViewState extends State<StoreCartView> {
       final String courierTag = (_fulfillmentMode == 3 && _selectedCourier != null)
           ? '[Kurier: ${_selectedCourier!.courierName} | Service: ${_selectedCourier!.serviceId} | Pos: RM${_selectedCourier!.price.toStringAsFixed(2)}] '
           : '';
-      final String scheduleInfo = _fulfillmentMode == 2
-          ? 'Pre-Order: $_selectedPickupDate, $_selectedPickupTime'
-          : (_fulfillmentMode == 3
-              ? (_selectedCourier != null
-                  ? 'Courier: ${_selectedCourier!.courierName}${deliveryAddress.isNotEmpty ? " (Alamat: $deliveryAddress)" : ""}'
-                  : 'Delivery: $_selectedPickupDate, $_selectedPickupTime${deliveryAddress.isNotEmpty ? " (Alamat: $deliveryAddress)" : ""}')
-              : (_isFnbBusiness && _fulfillmentMode == 1
-                  ? 'Dine In'
-                  : (_bungkusChooseTime
-                      ? 'cart.pickup_scheduled_tag'.tr(args: [_selectedPickupTime])
-                      : 'cart.pickup_immediate_tag'.tr())));
+      final String scheduleInfo = _fulfillmentMode == 3
+          ? (_selectedCourier != null
+              ? 'Courier: ${_selectedCourier!.courierName}${deliveryAddress.isNotEmpty ? " (Alamat: $deliveryAddress)" : ""}'
+              : 'Delivery: $_selectedPickupDate, $_selectedPickupTime${deliveryAddress.isNotEmpty ? " (Alamat: $deliveryAddress)" : ""}')
+          : (_isFnbBusiness && _fulfillmentMode == 1
+              ? 'Dine In'
+              : 'Self-Pickup: $_selectedPickupDate, $_selectedPickupTime');
 
       final String fulfillmentLabel = scheduleInfo;
 
@@ -2810,12 +2829,14 @@ class _StoreCartViewState extends State<StoreCartView> {
   }
 
   Widget _buildFulfillmentCard(bool isDark, Color textPrimary, Color textSecondary) {
-    // Show Delivery / Hantar tab when store enabled EasyParcel OR mirrored shipping_enabled OR legacy delivery flags
+    // Show Delivery tab immediately from frame 1 (no pop-in delay!) when enabled or pending check for retail stores
+    final cachedShipping = EasyParcelCustomerService.getCachedShippingEnabled(_resolvedShopId);
     final bool supportsDelivery = _epEnabled ||
         _effectiveOperatingHours?['shipping_enabled'] == true ||
         widget.shop['supports_delivery'] == true ||
         widget.shop['enable_delivery'] == true ||
-        widget.shop['is_delivery_enabled'] == true;
+        widget.shop['is_delivery_enabled'] == true ||
+        (!_epChecked && !_isFnbBusiness && cachedShipping != false);
 
     return _liquidGlassBox(
       isDark: isDark,
@@ -2836,7 +2857,8 @@ class _StoreCartViewState extends State<StoreCartView> {
           ),
           const SizedBox(height: 14),
 
-          // Fulfillment Tabs: Universal Self-Pickup, Dine In (F&B only), Pre-Order, and Delivery (if supported)
+          // Shopee-style Fulfillment Tabs:
+          // Retail: [ Delivery | Self-Pickup ]  |  F&B: [ Self-Pickup | Dine-In | Delivery ]
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
@@ -2845,11 +2867,12 @@ class _StoreCartViewState extends State<StoreCartView> {
             ),
             child: Row(
               children: [
+                if (!_isFnbBusiness && supportsDelivery)
+                  _buildFulfillmentTab(3, 'cart.delivery_tab'.tr(), HugeIcons.strokeRoundedDeliveryTruck01, isDark, textPrimary, textSecondary),
                 _buildFulfillmentTab(0, 'cart.pickup_tab'.tr(), HugeIcons.strokeRoundedStore01, isDark, textPrimary, textSecondary),
                 if (_isFnbBusiness)
                   _buildFulfillmentTab(1, 'cart.dine_in_tab'.tr(), HugeIcons.strokeRoundedDesk01, isDark, textPrimary, textSecondary),
-                _buildFulfillmentTab(2, 'cart.preorder_tab'.tr(), HugeIcons.strokeRoundedCalendar02, isDark, textPrimary, textSecondary),
-                if (supportsDelivery)
+                if (_isFnbBusiness && supportsDelivery)
                   _buildFulfillmentTab(3, 'cart.delivery_tab'.tr(), HugeIcons.strokeRoundedDeliveryTruck01, isDark, textPrimary, textSecondary),
               ],
             ),
@@ -2858,248 +2881,7 @@ class _StoreCartViewState extends State<StoreCartView> {
           const SizedBox(height: 16),
 
           // Details depending on fulfillment mode
-          if (_fulfillmentMode == 0) ...[
-            // Self-Pickup: Toggle Sekarang vs Pilih Masa
-            Builder(
-              builder: (context) {
-                final today = DateTime.now();
-                final sched = _getScheduleForDate(today);
-                final hoursStr = '${_formatTimeOfDay(sched.openTime)} – ${_formatTimeOfDay(sched.closeTime)}';
-                final slots = _getAvailableSlotsForDate(today, isBungkus: true);
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _bungkusChooseTime = false;
-                                _selectedPickupTime = _immediatePickupLabel;
-                              });
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 180),
-                              padding: const EdgeInsets.symmetric(vertical: 9),
-                              decoration: BoxDecoration(
-                                color: !_bungkusChooseTime
-                                    ? const Color(0xFF10B981).withValues(alpha: 0.16)
-                                    : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: !_bungkusChooseTime ? const Color(0xFF10B981) : Colors.transparent,
-                                  width: 1.2,
-                                ),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  'cart.bungkus_now'.tr(),
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: !_bungkusChooseTime ? FontWeight.bold : FontWeight.w500,
-                                    color: !_bungkusChooseTime ? const Color(0xFF10B981) : textPrimary,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _bungkusChooseTime = true;
-                                _selectedPickupDate = 'Hari Ini';
-                                _syncDefaultSlotForSelectedDate();
-                              });
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 180),
-                              padding: const EdgeInsets.symmetric(vertical: 9),
-                              decoration: BoxDecoration(
-                                color: _bungkusChooseTime
-                                    ? const Color(0xFF00E5FF).withValues(alpha: 0.16)
-                                    : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: _bungkusChooseTime ? const Color(0xFF00E5FF) : Colors.transparent,
-                                  width: 1.2,
-                                ),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  'cart.bungkus_choose_time'.tr(),
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: _bungkusChooseTime ? FontWeight.bold : FontWeight.w500,
-                                    color: _bungkusChooseTime ? const Color(0xFF00E5FF) : textPrimary,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    if (!_bungkusChooseTime) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: (sched.isOpen && widget.isStoreOpen ? const Color(0xFF10B981) : Colors.orangeAccent)
-                              .withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: (sched.isOpen && widget.isStoreOpen ? const Color(0xFF10B981) : Colors.orangeAccent)
-                                .withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            HugeIcon(
-                              icon: sched.isOpen && widget.isStoreOpen
-                                  ? HugeIcons.strokeRoundedCheckmarkCircle03
-                                  : HugeIcons.strokeRoundedAlert02,
-                              color: sched.isOpen && widget.isStoreOpen ? const Color(0xFF10B981) : Colors.orangeAccent,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                sched.isOpen && widget.isStoreOpen
-                                    ? (_isFnbBusiness
-                                        ? 'cart.bungkus_now_ready'.tr()
-                                        : 'cart.pickup_now_ready'.tr())
-                                    : 'cart.bungkus_closed_now'.tr(args: [hoursStr]),
-                                style: TextStyle(fontSize: 12, color: textPrimary, fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ] else ...[
-                      Text(
-                        'cart.operating_hours_label'.tr(args: [hoursStr]),
-                        style: TextStyle(fontSize: 11, color: textSecondary, fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 8),
-                      if (!sched.isOpen || slots.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.orangeAccent.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.35)),
-                          ),
-                          child: Row(
-                            children: [
-                              const HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.orangeAccent, size: 17),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  !sched.isOpen
-                                      ? 'cart.closed_on_selected_date'.tr(args: [sched.closedReason ?? 'Tutup'])
-                                      : 'cart.no_slots_today_closed'.tr(args: [hoursStr]),
-                                  style: TextStyle(fontSize: 12, color: textPrimary, fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      else ...[
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Pilih Slot Masa Ambil:',
-                              style: TextStyle(fontSize: 12, color: textSecondary, fontWeight: FontWeight.w600),
-                            ),
-                            GestureDetector(
-                              onTap: () => _showWheelTimePicker(isDark, textPrimary),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF00E5FF).withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.4), width: 0.8),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    HugeIcon(icon: HugeIcons.strokeRoundedClock01, color: Color(0xFF00E5FF), size: 13),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      'Masa Khusus',
-                                      style: TextStyle(fontSize: 11, color: Color(0xFF00E5FF), fontWeight: FontWeight.bold),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            ...slots.map((slot) {
-                              final bool isSel = _selectedPickupTime == slot;
-                              return GestureDetector(
-                                onTap: () => setState(() => _selectedPickupTime = slot),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 180),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                                  decoration: BoxDecoration(
-                                    color: isSel
-                                        ? const Color(0xFF00E5FF).withValues(alpha: 0.18)
-                                        : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: isSel ? const Color(0xFF00E5FF) : Colors.transparent,
-                                      width: 1.2,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    slot,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
-                                      color: isSel ? const Color(0xFF00E5FF) : textPrimary,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }),
-                            if (!slots.contains(_selectedPickupTime))
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF00E5FF).withValues(alpha: 0.22),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: const Color(0xFF00E5FF), width: 1.2),
-                                ),
-                                child: Text(
-                                  _selectedPickupTime,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF00E5FF),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ],
-                );
-              },
-            ),
-          ] else if (_isFnbBusiness && _fulfillmentMode == 1) ...[
+          if (_isFnbBusiness && _fulfillmentMode == 1) ...[
             // Dine In Table + Dedicated Transparent Table No. Field + QR Scan Button
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -3787,12 +3569,11 @@ class _StoreCartViewState extends State<StoreCartView> {
       child: GestureDetector(
         onTap: () {
           setState(() {
+            _userPickedFulfillment = true;
             _fulfillmentMode = index;
-            _isPreOrder = index == 2;
-            if (index == 2 || index == 3 || (index == 0 && _bungkusChooseTime)) {
+            _isPreOrder = false;
+            if (index == 0 || index == 3) {
               _syncDefaultSlotForSelectedDate();
-            } else if (index == 0 && !_bungkusChooseTime) {
-              _selectedPickupTime = _immediatePickupLabel;
             }
           });
           if (index == 3) {

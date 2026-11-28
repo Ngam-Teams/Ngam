@@ -154,6 +154,17 @@ class EasyParcelCustomerService {
     }
   }
 
+  static final Map<String, bool> _shippingEnabledCache = {};
+
+  static bool? getCachedShippingEnabled(String businessId) =>
+      _shippingEnabledCache[businessId];
+
+  static void cacheShippingEnabled(String businessId, bool enabled) {
+    if (businessId.isNotEmpty) {
+      _shippingEnabledCache[businessId] = enabled;
+    }
+  }
+
   static Future<CustomerRatesResult> checkCourierRates({
     required String businessId,
     required String deliveryAddress,
@@ -194,6 +205,7 @@ class EasyParcelCustomerService {
       }
 
       final enabled = data['easyparcel_enabled'] == true;
+      cacheShippingEnabled(businessId, enabled);
       if (!enabled) {
         return CustomerRatesResult(
           easyparcelEnabled: false,
