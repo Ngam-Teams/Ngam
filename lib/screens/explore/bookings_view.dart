@@ -1824,77 +1824,70 @@ class _BookingsViewState extends State<BookingsView> {
       },
       child: Scaffold(
         backgroundColor:
-            isDark ? const Color(0xFF0B0F17) : const Color(0xFFEEF3F9),
+            isDark ? const Color(0xFF0A0A14) : const Color(0xFFEEF3F9),
         body: SizedBox.expand(
           child: Stack(
             children: [
-              // Ambient luminous gradient backdrop
-              Positioned.fill(
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: isDark
-                          ? const [
-                              Color(0xFF0E1525),
-                              Color(0xFF0B0F17),
-                              Color(0xFF101827),
-                            ]
-                          : const [
-                              Color(0xFFF0F6FF),
-                              Color(0xFFE9EFF8),
-                              Color(0xFFF6F9FC),
-                            ],
+              // Ambient luminous gradient backdrop (light mode only — dark mode matches Ngam Business #0A0A14)
+              if (!isDark) ...[
+                Positioned.fill(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color(0xFFF0F6FF),
+                          Color(0xFFE9EFF8),
+                          Color(0xFFF6F9FC),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              Positioned(
-                top: -90,
-                left: -80,
-                child: Container(
-                  width: 300,
-                  height: 300,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF3B82F6)
-                        .withValues(alpha: isDark ? 0.20 : 0.24),
+                Positioned(
+                  top: -90,
+                  left: -80,
+                  child: Container(
+                    width: 300,
+                    height: 300,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF3B82F6).withValues(alpha: 0.24),
+                    ),
                   ),
                 ),
-              ),
-              Positioned(
-                top: 180,
-                right: -90,
-                child: Container(
-                  width: 240,
-                  height: 240,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF6366F1)
-                        .withValues(alpha: isDark ? 0.14 : 0.18),
+                Positioned(
+                  top: 180,
+                  right: -90,
+                  child: Container(
+                    width: 240,
+                    height: 240,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.18),
+                    ),
                   ),
                 ),
-              ),
-              Positioned(
-                bottom: 60,
-                left: -60,
-                child: Container(
-                  width: 220,
-                  height: 220,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF0EA5E9)
-                        .withValues(alpha: isDark ? 0.12 : 0.16),
+                Positioned(
+                  bottom: 60,
+                  left: -60,
+                  child: Container(
+                    width: 220,
+                    height: 220,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF0EA5E9).withValues(alpha: 0.16),
+                    ),
                   ),
                 ),
-              ),
-              Positioned.fill(
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 70, sigmaY: 70),
-                  child: const SizedBox.expand(),
+                Positioned.fill(
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 70, sigmaY: 70),
+                    child: const SizedBox.expand(),
+                  ),
                 ),
-              ),
+              ],
 
               SafeArea(
                 bottom: false,
@@ -2401,7 +2394,7 @@ class _BookingsViewState extends State<BookingsView> {
           ),
           decoration: BoxDecoration(
             color: isDark
-                ? const Color(0xFF0F172A).withValues(alpha: 0.78)
+                ? const Color(0xFF161622).withValues(alpha: 0.78)
                 : Colors.white.withValues(alpha: 0.82),
             border: Border(
               top: BorderSide(

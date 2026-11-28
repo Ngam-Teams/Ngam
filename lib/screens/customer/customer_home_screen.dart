@@ -193,43 +193,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   ),
                 ),
 
-                // Ambient Aurora Glow behind the glass sidebar for authentic refraction (only when NOT on map or feed)
-                if (isDark && _currentIndex != 1 && _currentIndex != 2) ...[
-                  Positioned(
-                    top: -60,
-                    left: -60,
-                    child: Container(
-                      width: 340,
-                      height: 340,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            const Color(0xFF2196F3).withValues(alpha: 0.22),
-                            const Color(0xFF2196F3).withValues(alpha: 0.0),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 30,
-                    left: -30,
-                    child: Container(
-                      width: 300,
-                      height: 300,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            const Color(0xFF6366F1).withValues(alpha: 0.18),
-                            const Color(0xFF6366F1).withValues(alpha: 0.0),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                // Desktop sidebar floats cleanly over Ngam Business obsidian #0A0A14 dark background
 
                 // 2. Floating Glassmorphic Sidebar (Floats right on top of the edge-to-edge map!)
                 Positioned(

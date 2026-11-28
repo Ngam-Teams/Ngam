@@ -284,7 +284,7 @@ class _PostRouteLoaderState extends State<PostRouteLoader> {
     final Widget content;
     if (_isLoading) {
       content = const Scaffold(
-        backgroundColor: Color(0xFF0B0F17),
+        backgroundColor: Color(0xFF0A0A14),
         body: Center(
           child: CircularProgressIndicator(
             color: Color(0xFF00E5FF),
@@ -294,7 +294,7 @@ class _PostRouteLoaderState extends State<PostRouteLoader> {
       );
     } else if (_errorMessage != null || _post == null) {
       content = Scaffold(
-        backgroundColor: isDark ? const Color(0xFF0B0F17) : const Color(0xFFF8FAFC),
+        backgroundColor: isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8FAFC),
         body: SafeArea(
           child: Stack(
             children: [

@@ -1185,7 +1185,7 @@ class _MyBookingsViewState extends State<MyBookingsView> {
                             builder: (ctx, setModalState) {
                               final bool isOther = selectedIdx == presetReasons.length - 1;
                               return AlertDialog(
-                                backgroundColor: isDark ? const Color(0xFF1E242B) : Colors.white,
+                                backgroundColor: isDark ? const Color(0xFF161622) : Colors.white,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                                 title: Text(
                                   'order_status.cancel_reason_title'.tr(),

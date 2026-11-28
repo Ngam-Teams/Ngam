@@ -273,7 +273,7 @@ class _VoucherScreenState extends State<VoucherScreen> {
         return Container(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF141424) : Colors.white,
+            color: isDark ? const Color(0xFF161622) : Colors.white,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             border: Border.all(
               color: isDark ? Colors.white12 : Colors.black12,
@@ -331,7 +331,7 @@ class _VoucherScreenState extends State<VoucherScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E1E34) : const Color(0xFFF1F5F9),
+                  color: isDark ? const Color(0xFF1A1A24) : const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
@@ -527,7 +527,7 @@ class _VoucherScreenState extends State<VoucherScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8FAFC);
-    final cardBg = isDark ? const Color(0xFF141424) : Colors.white;
+    final cardBg = isDark ? const Color(0xFF161622) : Colors.white;
     final textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
     final textSecondary = isDark ? Colors.white60 : const Color(0xFF64748B);
 
@@ -649,7 +649,7 @@ class _VoucherScreenState extends State<VoucherScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF141424) : Colors.black.withValues(alpha: 0.05),
+                      color: isDark ? const Color(0xFF161622) : Colors.black.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: ValueListenableBuilder<List<Map<String, dynamic>>>(
@@ -1009,7 +1009,7 @@ class _VoucherScreenState extends State<VoucherScreen> {
                         : null,
                     color: isSelected
                         ? null
-                        : (isDark ? const Color(0xFF141424) : Colors.white),
+                        : (isDark ? const Color(0xFF161622) : Colors.white),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: isSelected
@@ -1141,7 +1141,7 @@ class _VoucherScreenState extends State<VoucherScreen> {
             const SizedBox(height: 20),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                backgroundColor: isDark ? const Color(0xFF1A1A24) : const Color(0xFFE2E8F0),
                 foregroundColor: textPrimary,
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),

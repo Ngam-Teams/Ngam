@@ -1486,7 +1486,7 @@ class _OrderStatusTrackerScreenState extends State<OrderStatusTrackerScreen> {
         safeNavBack(context, fallbackRoute: '/customer-home');
       },
       child: Scaffold(
-        backgroundColor: isDark ? const Color(0xFF07090E) : const Color(0xFFF4F6F9),
+        backgroundColor: isDark ? const Color(0xFF0A0A14) : const Color(0xFFF4F6F9),
         body: SafeArea(
         child: StreamBuilder<List<Map<String, dynamic>>>(
           stream: Supabase.instance.client

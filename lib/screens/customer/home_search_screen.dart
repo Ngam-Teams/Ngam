@@ -928,7 +928,7 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
     final bool isLandscape = media.size.width > media.size.height;
     final bool isDesktop = media.size.width >= 768 || (isLandscape && media.size.width >= 500);
     final Color bgStart = isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8F9FA);
-    final Color bgEnd = isDark ? const Color(0xFF10101C) : const Color(0xFFF1F5F9);
+    final Color bgEnd = isDark ? const Color(0xFF0A0A14) : const Color(0xFFF1F5F9);
 
     final matchedShops = _filteredShops;
     final matchedProducts = _filteredProducts;
@@ -947,26 +947,27 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
         ),
         child: Stack(
           children: [
-            // Subtle ambient glow
-            Positioned(
-              top: -70,
-              right: -60,
-              child: IgnorePointer(
-                child: Container(
-                  width: 240,
-                  height: 240,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        const Color(0xFF2196F3).withValues(alpha: isDark ? 0.14 : 0.09),
-                        const Color(0xFF2196F3).withValues(alpha: 0.0),
-                      ],
+            // Subtle ambient glow (light mode only)
+            if (!isDark)
+              Positioned(
+                top: -70,
+                right: -60,
+                child: IgnorePointer(
+                  child: Container(
+                    width: 240,
+                    height: 240,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          const Color(0xFF2196F3).withValues(alpha: 0.09),
+                          const Color(0xFF2196F3).withValues(alpha: 0.0),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
             SafeArea(
               bottom: false,
               child: Center(
@@ -1864,7 +1865,7 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           color: isDark
-              ? const Color(0xFF141926).withValues(alpha: 0.90)
+              ? const Color(0xFF161622).withValues(alpha: 0.90)
               : Colors.white.withValues(alpha: 0.92),
           border: Border.all(
             color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.75),
@@ -2075,7 +2076,7 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           color: isDark
-              ? const Color(0xFF141926).withValues(alpha: 0.88)
+              ? const Color(0xFF161622).withValues(alpha: 0.88)
               : Colors.white.withValues(alpha: 0.90),
           border: Border.all(
             color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.7),
@@ -2259,7 +2260,7 @@ class _HomeSearchScreenState extends State<HomeSearchScreen> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
             color: isDark
-                ? const Color(0xFF141926).withValues(alpha: 0.86)
+                ? const Color(0xFF161622).withValues(alpha: 0.86)
                 : Colors.white.withValues(alpha: 0.90),
             border: Border.all(
               color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.75),

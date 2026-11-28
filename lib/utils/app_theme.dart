@@ -133,7 +133,7 @@ class AppTheme {
       onPrimary: Colors.white,
       secondary: accent,
       onSecondary: Colors.black,
-      surface: Color(0xFF1E1E2C),
+      surface: Color(0xFF0A0A14),
       onSurface: Color(0xFFE8E8E8),
       error: error,
     ),
@@ -167,7 +167,7 @@ class AppTheme {
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
       ),
-      color: const Color(0xFF1E1E2C),
+      color: const Color(0xFF161622),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
@@ -200,7 +200,7 @@ class AppTheme {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: const Color(0xFF252536),
+      fillColor: const Color(0xFF1A1A24),
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
@@ -217,14 +217,14 @@ class AppTheme {
       hintStyle: TextStyle(color: Colors.grey.shade500),
     ),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      backgroundColor: Color(0xFF1E1E2C),
+      backgroundColor: Color(0xFF161622),
       selectedItemColor: primary,
       unselectedItemColor: Colors.grey,
       type: BottomNavigationBarType.fixed,
       elevation: 8,
     ),
     chipTheme: ChipThemeData(
-      backgroundColor: const Color(0xFF252536),
+      backgroundColor: const Color(0xFF1A1A24),
       selectedColor: primary.withValues(alpha: 0.25),
       labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
       shape: RoundedRectangleBorder(

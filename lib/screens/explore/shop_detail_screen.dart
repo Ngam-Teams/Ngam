@@ -31,7 +31,7 @@ class ShopDetailScreen extends StatelessWidget {
         safeNavBack(context, fallbackRoute: '/customer-home');
       },
       child: Scaffold(
-        backgroundColor: isDark ? const Color(0xFF13171B) : const Color(0xFFE5ECF1),
+        backgroundColor: isDark ? const Color(0xFF0A0A14) : const Color(0xFFE5ECF1),
         body: Stack(
         children: [
           // --- 1. HERO BACKGROUND IMAGE ---
@@ -51,7 +51,7 @@ class ShopDetailScreen extends StatelessWidget {
                       colors: [
                         Colors.black.withValues(alpha: 0.4),
                         Colors.transparent,
-                        isDark ? const Color(0xFF13171B) : const Color(0xFFE5ECF1),
+                        isDark ? const Color(0xFF0A0A14) : const Color(0xFFE5ECF1),
                       ],
                       stops: const [0.0, 0.5, 1.0],
                     ),
@@ -214,8 +214,8 @@ class ShopDetailScreen extends StatelessWidget {
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
                   colors: [
-                    isDark ? const Color(0xFF13171B) : const Color(0xFFE5ECF1),
-                    (isDark ? const Color(0xFF13171B) : const Color(0xFFE5ECF1)).withValues(alpha: 0.0),
+                    isDark ? const Color(0xFF0A0A14) : const Color(0xFFE5ECF1),
+                    (isDark ? const Color(0xFF0A0A14) : const Color(0xFFE5ECF1)).withValues(alpha: 0.0),
                   ],
                 ),
               ),

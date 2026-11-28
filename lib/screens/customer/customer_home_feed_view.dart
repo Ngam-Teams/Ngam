@@ -797,7 +797,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                   padding: const EdgeInsets.fromLTRB(22, 24, 22, 20),
                   decoration: BoxDecoration(
                     color: isDark
-                        ? const Color(0xFF141826).withValues(alpha: 0.90)
+                        ? const Color(0xFF161622).withValues(alpha: 0.90)
                         : Colors.white.withValues(alpha: 0.92),
                     borderRadius: BorderRadius.circular(26),
                     border: Border.all(
@@ -935,7 +935,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
     final bool isLandscape = media.size.width > media.size.height;
     final bool isDesktop = media.size.width >= 768 || (isLandscape && media.size.width >= 500);
     final Color bgGradStart = isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8F9FA);
-    final Color bgGradEnd = isDark ? const Color(0xFF10101C) : const Color(0xFFF1F5F9);
+    final Color bgGradEnd = isDark ? const Color(0xFF0A0A14) : const Color(0xFFF1F5F9);
 
     return Scaffold(
       backgroundColor: bgGradStart,
@@ -949,45 +949,47 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
         ),
         child: Stack(
           children: [
-            // Subtle Ambient Aurora Glows for authentic glassmorphism depth
-            Positioned(
-              top: -80,
-              right: -70,
-              child: IgnorePointer(
-                child: Container(
-                  width: 280,
-                  height: 280,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        const Color(0xFF2196F3).withValues(alpha: isDark ? 0.14 : 0.10),
-                        const Color(0xFF2196F3).withValues(alpha: 0.0),
-                      ],
+            // Subtle Ambient Glows (light mode only — dark mode matches Ngam Business obsidian #0A0A14)
+            if (!isDark) ...[
+              Positioned(
+                top: -80,
+                right: -70,
+                child: IgnorePointer(
+                  child: Container(
+                    width: 280,
+                    height: 280,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          const Color(0xFF2196F3).withValues(alpha: 0.10),
+                          const Color(0xFF2196F3).withValues(alpha: 0.0),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            Positioned(
-              top: 220,
-              left: -90,
-              child: IgnorePointer(
-                child: Container(
-                  width: 260,
-                  height: 260,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        const Color(0xFF6366F1).withValues(alpha: isDark ? 0.11 : 0.07),
-                        const Color(0xFF6366F1).withValues(alpha: 0.0),
-                      ],
+              Positioned(
+                top: 220,
+                left: -90,
+                child: IgnorePointer(
+                  child: Container(
+                    width: 260,
+                    height: 260,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          const Color(0xFF6366F1).withValues(alpha: 0.07),
+                          const Color(0xFF6366F1).withValues(alpha: 0.0),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
+            ],
             SafeArea(
               bottom: false,
               child: Center(
@@ -1122,7 +1124,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(24),
                   color: isDark
-                      ? const Color(0xFF141926).withValues(alpha: 0.82)
+                      ? const Color(0xFF161622).withValues(alpha: 0.82)
                       : Colors.white.withValues(alpha: 0.88),
                   border: Border.all(
                     color: isDark
@@ -1216,7 +1218,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
               color: isDark
-                  ? const Color(0xFF141926).withValues(alpha: 0.82)
+                  ? const Color(0xFF161622).withValues(alpha: 0.82)
                   : Colors.white.withValues(alpha: 0.88),
               border: Border.all(
                 color: Colors.white.withValues(alpha: isDark ? 0.14 : 0.70),
@@ -1284,7 +1286,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                                       color: const Color(0xFFFF4757),
                                       borderRadius: BorderRadius.circular(10),
                                       border: Border.all(
-                                        color: isDark ? const Color(0xFF141926) : Colors.white,
+                                        color: isDark ? const Color(0xFF161622) : Colors.white,
                                         width: 1.2,
                                       ),
                                     ),
@@ -1534,7 +1536,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             color: isDark
-                ? const Color(0xFF141926).withValues(alpha: 0.72)
+                ? const Color(0xFF161622).withValues(alpha: 0.72)
                 : Colors.white.withValues(alpha: 0.86),
             border: Border.all(
               color: Colors.white.withValues(alpha: isDark ? 0.11 : 0.75),
@@ -1633,7 +1635,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                                           borderRadius: BorderRadius.circular(9),
                                           border: Border.all(
                                             color: isDark
-                                                ? const Color(0xFF141926)
+                                                ? const Color(0xFF161622)
                                                 : Colors.white,
                                             width: 1.3,
                                           ),
@@ -1901,7 +1903,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             color: isDark
-                ? const Color(0xFF141926).withValues(alpha: 0.78)
+                ? const Color(0xFF161622).withValues(alpha: 0.78)
                 : Colors.white.withValues(alpha: 0.88),
             border: Border.all(
               color: Colors.white.withValues(alpha: isDark ? 0.11 : 0.75),
@@ -2170,7 +2172,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                                     padding: const EdgeInsets.all(1.5),
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: isDark ? const Color(0xFF141926) : Colors.white,
+                                      color: isDark ? const Color(0xFF161622) : Colors.white,
                                     ),
                                     child: ClipOval(
                                       child: _buildBentoNetworkThumb(
@@ -2194,7 +2196,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
                                           color: isDark
-                                              ? const Color(0xFF141926)
+                                              ? const Color(0xFF161622)
                                               : Colors.white,
                                           width: 1.2,
                                         ),
@@ -2644,7 +2646,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         color: isDark
-            ? const Color(0xFF141926).withValues(alpha: 0.85)
+            ? const Color(0xFF161622).withValues(alpha: 0.85)
             : Colors.white.withValues(alpha: 0.88),
         border: Border.all(
           color: Colors.white.withValues(alpha: isDark ? 0.10 : 0.70),
@@ -2769,7 +2771,7 @@ class _CustomerHomeFeedViewState extends State<CustomerHomeFeedView> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
               color: isDark
-                  ? const Color(0xFF141926).withValues(alpha: 0.86)
+                  ? const Color(0xFF161622).withValues(alpha: 0.86)
                   : Colors.white.withValues(alpha: 0.88),
               border: Border.all(
                 color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.75),

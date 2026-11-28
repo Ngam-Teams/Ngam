@@ -31,7 +31,7 @@ class NgamQrRouteHelper {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF141424),
+          backgroundColor: const Color(0xFF161622),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
             side: const BorderSide(color: Colors.white12),

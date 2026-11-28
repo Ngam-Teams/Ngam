@@ -91,7 +91,7 @@ class _SavedScreenState extends State<SavedScreen> {
         ? const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF0A0A14), Color(0xFF141424)],
+            colors: [Color(0xFF0A0A14), Color(0xFF161622)],
           )
         : const LinearGradient(
             begin: Alignment.topLeft,

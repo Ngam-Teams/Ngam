@@ -47,7 +47,7 @@ class _CustomerNotificationCenterSheetState
         bottomInset > 0 ? bottomInset + 12 : 16,
       ),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A).withValues(alpha: 0.94),
+        color: const Color(0xFF161622).withValues(alpha: 0.94),
         borderRadius: BorderRadius.circular(30),
         border: Border.all(
           color: Colors.white.withValues(alpha: 0.15),

@@ -46,7 +46,7 @@ class NgamMapsDialog extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 380),
             decoration: BoxDecoration(
               color: isDark
-                  ? const Color(0xFF0F172A).withValues(alpha: 0.82)
+                  ? const Color(0xFF161622).withValues(alpha: 0.82)
                   : Colors.white.withValues(alpha: 0.78),
               borderRadius: BorderRadius.circular(28),
               border: Border.all(
@@ -377,7 +377,7 @@ class _NgamMapsHeroPainter extends CustomPainter {
 
     // Curving road on island
     final roadPaint = Paint()
-      ..color = isDark ? const Color(0xFF1E293B) : const Color(0xFFE8F4FD)
+      ..color = isDark ? const Color(0xFF1A1A24) : const Color(0xFFE8F4FD)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 8;
     final roadPath = Path()

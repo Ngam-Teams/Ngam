@@ -265,7 +265,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E242B).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8),
+                  color: isDark ? const Color(0xFF161622).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8),
                   border: Border(top: BorderSide(color: Colors.white.withValues(alpha: isDark ? 0.1 : 0.4), width: 1.5)),
                 ),
                 child: SingleChildScrollView(
@@ -365,7 +365,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1E242B).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8),
+                        color: isDark ? const Color(0xFF161622).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8),
                         border: Border(top: BorderSide(color: Colors.white.withValues(alpha: isDark ? 0.1 : 0.4), width: 1.5)),
                       ),
                       child: SingleChildScrollView(
@@ -471,7 +471,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E242B).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8),
+                      color: isDark ? const Color(0xFF161622).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8),
                       border: Border(top: BorderSide(color: Colors.white.withValues(alpha: isDark ? 0.1 : 0.4), width: 1.5)),
                     ),
                     child: SingleChildScrollView(

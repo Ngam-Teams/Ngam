@@ -369,7 +369,7 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
       builder: (context) {
         return Container(
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E242B) : Colors.white,
+            color: isDark ? const Color(0xFF161622) : Colors.white,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -505,7 +505,7 @@ Boleh saya sahkan slot tempahan saya? Terima kasih!
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) => Container(
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E242B) : Colors.white,
+            color: isDark ? const Color(0xFF161622) : Colors.white,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
@@ -805,7 +805,7 @@ Disahkan melalui aplikasi *Ngam*.
         safeNavBack(context, fallbackRoute: '/customer-home');
       },
       child: Scaffold(
-        backgroundColor: isDark ? const Color(0xFF13171B) : const Color(0xFFE5ECF1),
+        backgroundColor: isDark ? const Color(0xFF0A0A14) : const Color(0xFFE5ECF1),
         body: SafeArea(
         bottom: false,
         child: Stack(
@@ -924,7 +924,7 @@ Disahkan melalui aplikasi *Ngam*.
                   //  REARRANGED CLEAN TICKET CARD
                   Container(
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E242B) : Colors.white,
+                      color: isDark ? const Color(0xFF161622) : Colors.white,
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
@@ -1162,7 +1162,7 @@ Disahkan melalui aplikasi *Ngam*.
           Container(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
             decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF13171B) : const Color(0xFFE5ECF1),
+                color: isDark ? const Color(0xFF0A0A14) : const Color(0xFFE5ECF1),
                 boxShadow: [BoxShadow(color: isDark ? Colors.black26 : Colors.black12, blurRadius: 10, offset: const Offset(0, -4))]
             ),
             child: SafeArea(
@@ -1358,7 +1358,7 @@ Disahkan melalui aplikasi *Ngam*.
                     color: isDark ? Colors.white : Colors.black,
                     size: 22.0,
                   ),
-                  color: isDark ? const Color(0xFF1E242B) : Colors.white,
+                  color: isDark ? const Color(0xFF161622) : Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   onSelected: (value) {
                     if (value == 'cancel') {
@@ -1451,7 +1451,7 @@ Disahkan melalui aplikasi *Ngam*.
           Container(
             height: 20, width: 10,
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF13171B) : const Color(0xFFE5ECF1),
+              color: isDark ? const Color(0xFF0A0A14) : const Color(0xFFE5ECF1),
               borderRadius: const BorderRadius.horizontal(right: Radius.circular(20)),
             ),
           ),
@@ -1481,7 +1481,7 @@ Disahkan melalui aplikasi *Ngam*.
           Container(
             height: 20, width: 10,
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF13171B) : const Color(0xFFE5ECF1),
+              color: isDark ? const Color(0xFF0A0A14) : const Color(0xFFE5ECF1),
               borderRadius: const BorderRadius.horizontal(left: Radius.circular(20)),
             ),
           ),
@@ -1542,7 +1542,7 @@ Disahkan melalui aplikasi *Ngam*.
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E242B) : Colors.white,
+        color: isDark ? const Color(0xFF161622) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: statusColor.withValues(alpha: 0.35),

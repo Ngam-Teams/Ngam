@@ -172,7 +172,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
         child: Container(
           margin: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            color: isDark ? const Color(0xFF1A1A24) : Colors.white,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
               color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.08),
@@ -344,7 +344,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
     final authUser = context.watch<AuthProvider>().user;
     final isRunner = context.watch<AuthProvider>().isRunner;
 
-    final bgColor = isDark ? const Color(0xFF0C0E17) : const Color(0xFFF8FAFC);
+    final bgColor = isDark ? const Color(0xFF0A0A14) : const Color(0xFFF8FAFC);
 
     return PopScope(
       canPop: false,
@@ -773,7 +773,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: isDark
-                                  ? const Color(0xFF1E293B)
+                                  ? const Color(0xFF1A1A24)
                                   : const Color(0xFFE2E8F0),
                               border: Border.all(
                                 color: const Color(0xFF38BDF8)
@@ -1139,7 +1139,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                     height: 130,
                     decoration: BoxDecoration(
                       color: isDark
-                          ? const Color(0xFF1E293B)
+                          ? const Color(0xFF1A1A24)
                           : const Color(0xFFE2E8F0),
                       borderRadius: BorderRadius.circular(14),
                       image: (qrUrl != null && qrUrl.isNotEmpty)

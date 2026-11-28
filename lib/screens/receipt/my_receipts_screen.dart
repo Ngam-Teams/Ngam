@@ -74,7 +74,7 @@ class _MyReceiptsScreenState extends State<MyReceiptsScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF0A0D16) : const Color(0xFFF4F7FC);
+    final bgColor = isDark ? const Color(0xFF0A0A14) : const Color(0xFFF4F7FC);
     final cardColor = isDark ? const Color(0xFF131926) : Colors.white;
     final borderColor = isDark
         ? Colors.white.withValues(alpha: 0.09)

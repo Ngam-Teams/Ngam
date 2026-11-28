@@ -787,7 +787,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               bottom: MediaQuery.of(modalCtx).viewInsets.bottom + 20,
             ),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF151522) : Colors.white,
+              color: isDark ? const Color(0xFF161622) : Colors.white,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
               border: Border.all(
                 color: isDark ? Colors.white12 : Colors.black12,
@@ -1141,7 +1141,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textPrimary = isDark ? Colors.white : const Color(0xFF1C1C1E);
     final textSecondary = isDark ? Colors.white70 : const Color(0xFF6B7280);
-    final bgColor = isDark ? const Color(0xFF0F0F1A) : const Color(0xFFF3F4F6);
+    final bgColor = isDark ? const Color(0xFF0A0A14) : const Color(0xFFF3F4F6);
     final screenW = MediaQuery.of(context).size.width;
     final bool isDesktop = screenW >= 900;
 
@@ -1436,7 +1436,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         : Colors.white.withValues(alpha: isDark ? 0.14 : 0.65),
                     width: isSelected ? 2.2 : 1.0,
                   ),
-                  color: isDark ? const Color(0xFF141926) : Colors.white,
+                  color: isDark ? const Color(0xFF161622) : Colors.white,
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
@@ -1519,7 +1519,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       curve: Curves.easeOutCubic,
       height: sliderH,
       width: double.infinity,
-      color: isDark ? const Color(0xFF0F0F1A) : const Color(0xFFF3F4F6),
+      color: isDark ? const Color(0xFF0A0A14) : const Color(0xFFF3F4F6),
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -1556,7 +1556,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     if (progress == null) return child;
                     return Container(
                       color: isDark
-                          ? const Color(0xFF141424)
+                          ? const Color(0xFF161622)
                           : const Color(0xFFE5E7EB),
                       child: const Center(
                         child: SizedBox(
@@ -1799,7 +1799,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Widget _buildFallbackHero(bool isDark) {
     return Container(
-      color: isDark ? const Color(0xFF141424) : const Color(0xFFE2E8F0),
+      color: isDark ? const Color(0xFF161622) : const Color(0xFFE2E8F0),
       child: Center(
         child: HugeIcon(
           icon: _product.isService
@@ -2583,7 +2583,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   child: Container(
                     decoration: BoxDecoration(
                       color: isDark
-                          ? const Color(0xFF0F1322).withValues(alpha: 0.94)
+                          ? const Color(0xFF161622).withValues(alpha: 0.94)
                           : Colors.white.withValues(alpha: 0.96),
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
                       border: Border(
@@ -4084,7 +4084,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ),
           decoration: BoxDecoration(
             color: isDark
-                ? const Color(0xFF0F172A).withValues(alpha: 0.78)
+                ? const Color(0xFF161622).withValues(alpha: 0.78)
                 : Colors.white.withValues(alpha: 0.84),
             borderRadius: barRadius,
             border: isInlineDesktop

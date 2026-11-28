@@ -211,7 +211,7 @@ class _StoreRouteLoaderState extends State<StoreRouteLoader> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: const Color(0xFF0F141C),
+        backgroundColor: const Color(0xFF0A0A14),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -275,7 +275,7 @@ class _StoreRouteLoaderState extends State<StoreRouteLoader> {
 
     if (_errorMessage != null || _shopData == null) {
       return Scaffold(
-        backgroundColor: const Color(0xFF0F141C),
+        backgroundColor: const Color(0xFF0A0A14),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(28.0),

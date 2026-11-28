@@ -189,9 +189,11 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
         body: Stack(
         children: [
-          // Orbs Bercahaya kat Background
-          Positioned(top: 50, left: -100, child: Container(width: 300, height: 300, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [AppTheme.primary.withValues(alpha: 0.3), Colors.transparent])))),
-          Positioned(top: 250, right: -150, child: Container(width: 350, height: 350, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [AppTheme.accent.withValues(alpha: 0.2), Colors.transparent])))),
+          // Orbs Bercahaya kat Background (light mode only — dark mode matches Ngam Business #0A0A14)
+          if (!isDark) ...[
+            Positioned(top: 50, left: -100, child: Container(width: 300, height: 300, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [AppTheme.primary.withValues(alpha: 0.3), Colors.transparent])))),
+            Positioned(top: 250, right: -150, child: Container(width: 350, height: 350, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [AppTheme.accent.withValues(alpha: 0.2), Colors.transparent])))),
+          ],
           
           SafeArea(
             child: ValueListenableBuilder<List<Map<String, dynamic>>>(
@@ -597,7 +599,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     return Container(
       height: cardHeight,
       decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E242B) : Colors.white,
+          color: isDark ? const Color(0xFF161622) : Colors.white,
           borderRadius: BorderRadius.circular(24.0),
           border: Border.all(color: const Color(0xFF00A86B).withValues(alpha: 0.3), width: 2.0),
           boxShadow: isFront ? [
@@ -707,7 +709,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
       builder: (ctx) => StatefulBuilder(
         builder: (context, setState) {
           return AlertDialog(
-            backgroundColor: isDark ? const Color(0xFF1E242B) : Colors.white,
+            backgroundColor: isDark ? const Color(0xFF161622) : Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: Text(title, style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
             content: Column(
@@ -1212,7 +1214,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E242B).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8),
+                  color: isDark ? const Color(0xFF161622).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8),
                   border: Border(top: BorderSide(color: Colors.white.withValues(alpha: isDark ? 0.1 : 0.4), width: 1.5)),
                 ),
                 child: SingleChildScrollView(
@@ -1314,7 +1316,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                     child: Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1E242B).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8),
+                        color: isDark ? const Color(0xFF161622).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8),
                         border: Border(top: BorderSide(color: Colors.white.withValues(alpha: isDark ? 0.1 : 0.4), width: 1.5)),
                       ),
                       child: SingleChildScrollView(

@@ -55,7 +55,7 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
         return Container(
           padding: const EdgeInsets.all(24),
           decoration: const BoxDecoration(
-            color: Color(0xFF141424),
+            color: Color(0xFF161622),
             borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
             border: Border(top: BorderSide(color: Colors.white24)),
           ),
@@ -260,7 +260,7 @@ class _MyStampCardsScreenState extends State<MyStampCardsScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF141424) : Colors.white,
+        color: isDark ? const Color(0xFF161622) : Colors.white,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
           color: isReady ? const Color(0xFF10B981) : (isDark ? Colors.white12 : Colors.black12),

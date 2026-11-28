@@ -2073,7 +2073,7 @@ class _BusinessStoreViewState extends State<BusinessStoreView>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isDark
-              ? [const Color(0xFF1E242B), const Color(0xFF0F1216)]
+              ? [const Color(0xFF161622), const Color(0xFF0F1216)]
               : [const Color(0xFF2563EB), const Color(0xFF1E40AF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,

@@ -435,7 +435,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF161624),
+        backgroundColor: const Color(0xFF161622),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'queue.cancel_title'.tr(),
@@ -685,7 +685,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF141424),
+      backgroundColor: const Color(0xFF161622),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -830,7 +830,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
                         filled: true,
-                        fillColor: const Color(0xFF1E1E34),
+                        fillColor: const Color(0xFF1A1A24),
                         hintText: 'queue.enter_name_hint'.tr(),
                         hintStyle: const TextStyle(color: Colors.white38),
                         border: OutlineInputBorder(
@@ -861,7 +861,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
                         filled: true,
-                        fillColor: const Color(0xFF1E1E34),
+                        fillColor: const Color(0xFF1A1A24),
                         hintText: 'e.g. 012-3456789',
                         hintStyle: const TextStyle(color: Colors.white38),
                         border: OutlineInputBorder(
@@ -895,7 +895,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                           label: Text(s),
                           selected: isSel,
                           selectedColor: const Color(0xFF42A5F5),
-                          backgroundColor: const Color(0xFF1E1E34),
+                          backgroundColor: const Color(0xFF1A1A24),
                           labelStyle: TextStyle(
                             color: isSel ? Colors.white : Colors.white70,
                             fontSize: 12,
@@ -1566,7 +1566,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
           // 2. Main Boarding-Pass Style Ticket Card
           Container(
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF141424) : Colors.white,
+              color: isDark ? const Color(0xFF161622) : Colors.white,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
                 color: isCalling
@@ -1699,7 +1699,7 @@ class _MyQueueTicketScreenState extends State<MyQueueTicketScreen>
                         ),
                         decoration: BoxDecoration(
                           color: isDark
-                              ? const Color(0xFF1E1E34)
+                              ? const Color(0xFF1A1A24)
                               : const Color(0xFFF1F5F9),
                           borderRadius: BorderRadius.circular(12),
                         ),

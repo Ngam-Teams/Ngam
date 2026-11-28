@@ -1788,7 +1788,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         margin: const EdgeInsets.all(24),
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E242B) : Colors.white,
+          color: isDark ? const Color(0xFF161622) : Colors.white,
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
@@ -1874,7 +1874,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
         },
         child: Scaffold(
           key: _scaffoldKey,
-          backgroundColor: isDark ? const Color(0xFF181D24) : const Color(0xFFEDE8DF),
+          backgroundColor: isDark ? const Color(0xFF161622) : const Color(0xFFEDE8DF),
           resizeToAvoidBottomInset: false,
           body: Stack(
             children: [
@@ -1886,7 +1886,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                     Positioned.fill(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF181D24) : const Color(0xFFEDE8DF),
+                          color: isDark ? const Color(0xFF161622) : const Color(0xFFEDE8DF),
                         ),
                         child: CustomPaint(
                           painter: _MapGridPlaceholderPainter(isDark: isDark),
@@ -1977,7 +1977,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
 
                         // Seamless land background so unloaded or fading tiles never flash white
                         return ColoredBox(
-                          color: isDark ? const Color(0xFF181D24) : const Color(0xFFEDE8DF),
+                          color: isDark ? const Color(0xFF161622) : const Color(0xFFEDE8DF),
                           child: themedTile,
                         );
                       },
@@ -3318,7 +3318,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isDark
-              ? [const Color(0xFF1E242B), const Color(0xFF0F1216)]
+              ? [const Color(0xFF161622), const Color(0xFF0F1216)]
               : [const Color(0xFF2563EB), const Color(0xFF1E40AF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -4329,7 +4329,7 @@ class _ExploreViewState extends State<ExploreView> with TickerProviderStateMixin
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 decoration: BoxDecoration(
                   color: isDark
-                      ? const Color(0xFF0F172A).withValues(alpha: 0.60)
+                      ? const Color(0xFF161622).withValues(alpha: 0.60)
                       : Colors.white.withValues(alpha: 0.60),
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(24),

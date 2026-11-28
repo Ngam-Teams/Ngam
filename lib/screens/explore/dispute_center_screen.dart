@@ -601,7 +601,7 @@ class _DisputeRoomScreenState extends State<DisputeRoomScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF171B28) : Colors.white,
+        backgroundColor: isDark ? const Color(0xFF161622) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
         title: Row(
           children: [
@@ -704,7 +704,7 @@ class _DisputeRoomScreenState extends State<DisputeRoomScreen> {
     final currFmt = NumberFormat.currency(locale: 'ms_MY', symbol: 'RM ');
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0A0D18) : const Color(0xFFF4F6FA),
+      backgroundColor: isDark ? const Color(0xFF0A0A14) : const Color(0xFFF4F6FA),
       body: StreamBuilder<DisputeCase>(
         stream: DisputeService.watchDispute(widget.initialDispute.id),
         initialData: widget.initialDispute,

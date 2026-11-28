@@ -2400,7 +2400,7 @@ class _StoreCartViewState extends State<StoreCartView> {
                           final confirmed = await showDialog<bool>(
                             context: context,
                             builder: (dlgCtx) => AlertDialog(
-                              backgroundColor: isDark ? const Color(0xFF141424) : Colors.white,
+                              backgroundColor: isDark ? const Color(0xFF161622) : Colors.white,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                               title: Text(
                                 'Kosongkan Bakul?',
