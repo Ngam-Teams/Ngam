@@ -2540,9 +2540,10 @@ class _CustomerFeedScreenState extends State<CustomerFeedScreen>
         final bottomInset = MediaQuery.of(ctx).viewInsets.bottom;
         final topPad = MediaQuery.of(ctx).padding.top;
         final bool keyboardOpen = bottomInset > 80;
+        final double maxAvail = math.max(180.0, size.height - bottomInset - topPad - 24);
         final double sheetHeight = keyboardOpen
-            ? (size.height - bottomInset - topPad - 60).clamp(300.0, size.height * 0.78)
-            : (size.height * 0.70).clamp(380.0, 700.0);
+            ? math.min(maxAvail, size.height * 0.76)
+            : math.min(maxAvail, (size.height * 0.70).clamp(360.0, 700.0));
 
         return Column(
           children: [
@@ -2763,6 +2764,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
   bool _sortByTop = false;
   bool _showEmojiStrip = false;
   String? _loadedPostId;
+  String? _activeFetchPostId;
   int _baseCommentOffset = 0;
   Timer? _livePollTimer;
 
@@ -3168,8 +3170,9 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
   }
 
   Future<void> _fetchLiveComments(String postId, {bool silent = false}) async {
-    if (_isLoading && !silent) return;
-    if (_comments.isEmpty && !silent) {
+    if (_activeFetchPostId == postId && !silent) return;
+    _activeFetchPostId = postId;
+    if (_comments.isEmpty && !silent && mounted) {
       setState(() => _isLoading = true);
     }
     try {
@@ -3181,6 +3184,8 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
           .limit(200);
 
       if (!mounted || _loadedPostId != postId) return;
+      // Jangan timpa senarai jika pengguna sedang menghantar komen secara optimistik
+      if (silent && _isSubmitting) return;
 
       final myUid = Supabase.instance.client.auth.currentUser?.id;
       final String shopName = widget.post['shopName']?.toString() ?? '';
@@ -3222,6 +3227,9 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
         }
       }
 
+      if (!mounted || _loadedPostId != postId) return;
+      if (silent && _isSubmitting) return;
+
       final List<Map<String, dynamic>> topLevelDb = [];
       final Map<String, List<Map<String, dynamic>>> repliesByParent = {};
 
@@ -3258,21 +3266,23 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
             userName.toLowerCase().trim() == shopName.toLowerCase().trim();
         final bool isCreator =
             hasOwnerTagInText || isRowByOwnerId || isRowMatchingShopName;
+        final bool isOfficialBrandReply = hasOwnerTagInText || isRowMatchingShopName;
 
-        // Jika bukan balasan rasmi jenama kedai yang menggunakan nama kedai, gunakan profil Ngam dari public.users
-        if (rowUserId.isNotEmpty && appProfilesByUid.containsKey(rowUserId)) {
+        // Jika bukan balasan rasmi jenama kedai, gunakan profil Ngam dari public.users
+        if (!isOfficialBrandReply &&
+            rowUserId.isNotEmpty &&
+            appProfilesByUid.containsKey(rowUserId)) {
           final appProf = appProfilesByUid[rowUserId]!;
-          if (!isRowMatchingShopName && (appProf['name'] ?? '').isNotEmpty) {
+          if ((appProf['name'] ?? '').isNotEmpty) {
             userName = appProf['name']!;
           }
-          // Sentiasa utamakan avatar dari public.users (supaya tidak guna gambar Google OAuth lama)
-          if (!isRowMatchingShopName) {
-            userAvatar = appProf['avatar'] ?? '';
-          }
+          userAvatar = appProf['avatar'] ?? '';
         }
 
         if (userName.isEmpty) {
-          userName = 'feed_comments.default_customer'.tr();
+          userName = isOfficialBrandReply && shopName.isNotEmpty
+              ? shopName
+              : 'feed_comments.default_customer'.tr();
         }
         if (isCreator && userAvatar.isEmpty && shopAvatar.isNotEmpty) {
           userAvatar = shopAvatar;
@@ -3282,6 +3292,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
         final int likes = (row['likes_count'] as num?)?.toInt() ?? 0;
         final bool isMine = myUid != null && rowUserId == myUid;
         final bool isLikedByMe = _likedCommentIds.contains(rowId);
+        final bool likedByOwner = row['liked_by_owner'] == true;
 
         if (match != null) {
           final String parentId = match.group(1)!.trim();
@@ -3306,6 +3317,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
             'isLiked': isLikedByMe,
             'isMyComment': isMine,
             'isCreator': isCreator,
+            'likedByOwner': likedByOwner,
           });
         } else {
           final parsed = _extractCommentTextAndImage(rawText);
@@ -3322,13 +3334,13 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
             'isLiked': isLikedByMe,
             'isMyComment': isMine,
             'isCreator': isCreator,
-            'likedByOwner': false,
+            'likedByOwner': likedByOwner,
             'replies': <Map<String, dynamic>>[],
           });
         }
       }
 
-      // Attach DB replies to their parent comments (and mark if Owner replied!)
+      // Attach DB replies to their parent comments
       for (final c in topLevelDb) {
         final cid = c['id'].toString();
         if (repliesByParent.containsKey(cid)) {
@@ -3366,8 +3378,12 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
 
       await _persistAndNotifyCount(postId);
     } catch (e) {
-      debugPrint('[FeedCommentsView] Supabase fetch fallback to local cache: $e');
-      if (mounted) setState(() => _isLoading = false);
+      debugPrint('[FeedCommentsView] Supabase fetch error: $e');
+      if (mounted && _loadedPostId == postId) setState(() => _isLoading = false);
+    } finally {
+      if (_activeFetchPostId == postId) {
+        _activeFetchPostId = null;
+      }
     }
   }
 
@@ -3625,6 +3641,7 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     await _persistAndNotifyCount(postId);
 
     // Simpan ke Supabase dan kemas kini ID tempatan dengan UUID sebenar supaya balasan (reply) merentas semua peranti 100% tepat
+    bool dbInsertSucceeded = true;
     if (postId.length > 20) {
       try {
         final inserted = await Supabase.instance.client
@@ -3663,17 +3680,46 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
           await _persistAndNotifyCount(postId);
         }
       } catch (err) {
-        debugPrint('[FeedCommentsView] Supabase insert note (saved locally): $err');
+        dbInsertSucceeded = false;
+        debugPrint('[FeedCommentsView] Supabase insert failed: $err');
+        // Rollback komen optimistik supaya tidak hilang secara tiba-tiba selepas 8 saat
+        if (mounted) {
+          setState(() {
+            if (!isReply) {
+              _comments.removeWhere((c) => c['id'] == tempId);
+            } else {
+              for (final c in _comments) {
+                final replies = c['replies'];
+                if (replies is List) {
+                  replies.removeWhere((r) => r is Map && r['id'] == tempId);
+                }
+              }
+              _comments.removeWhere((c) => c['id'] == tempId);
+            }
+            if (text.isNotEmpty && _commentController.text.isEmpty) {
+              _commentController.text = text;
+            }
+          });
+          await _persistAndNotifyCount(postId);
+        }
       }
     }
 
     if (mounted) {
       setState(() => _isSubmitting = false);
-      showGlassToast(
-        context,
-        isReply ? 'feed_comments.reply_sent'.tr() : 'feed_comments.comment_sent'.tr(),
-        icon: HugeIcons.strokeRoundedCheckmarkCircle02,
-      );
+      if (dbInsertSucceeded) {
+        showGlassToast(
+          context,
+          isReply ? 'feed_comments.reply_sent'.tr() : 'feed_comments.comment_sent'.tr(),
+          icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+        );
+      } else {
+        showGlassToast(
+          context,
+          'feed_comments.send_failed'.tr(),
+          isError: true,
+        );
+      }
     }
   }
 
@@ -3732,26 +3778,44 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
 
     await _persistAndNotifyCount(postId);
 
+    bool dbDeleted = true;
     final commentId = removed['id']?.toString();
     if (commentId != null &&
         !commentId.startsWith('cm_') &&
         !commentId.startsWith('demo_') &&
         postId.length > 20) {
       try {
-        await Supabase.instance.client
-            .from('feed_comments')
-            .delete()
-            .eq('id', commentId);
+        try {
+          await Supabase.instance.client.rpc(
+            'delete_feed_comment_cascade',
+            params: {'p_comment_id': commentId},
+          );
+        } catch (_) {
+          await Supabase.instance.client
+              .from('feed_comments')
+              .delete()
+              .eq('id', commentId);
+        }
       } catch (e) {
+        dbDeleted = false;
         debugPrint('[FeedCommentsView] Supabase delete error: $e');
+        if (mounted) {
+          setState(() {
+            _comments.insert(math.min(index, _comments.length), removed);
+          });
+          await _persistAndNotifyCount(postId);
+        }
       }
     }
 
     if (mounted) {
       showGlassToast(
         context,
-        'feed_comments.comment_deleted'.tr(),
-        icon: HugeIcons.strokeRoundedDelete02,
+        dbDeleted
+            ? 'feed_comments.comment_deleted'.tr()
+            : 'feed_comments.delete_failed'.tr(),
+        isError: !dbDeleted,
+        icon: dbDeleted ? HugeIcons.strokeRoundedDelete02 : null,
       );
     }
   }
@@ -3817,24 +3881,45 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
 
     await _persistAndNotifyCount(postId);
 
+    bool dbDeleted = true;
     final replyId = removedReply['id']?.toString();
     if (replyId != null &&
         !replyId.startsWith('rp_') &&
         !replyId.startsWith('demo_') &&
         postId.length > 20) {
       try {
-        await Supabase.instance.client
-            .from('feed_comments')
-            .delete()
-            .eq('id', replyId);
-      } catch (_) {}
+        try {
+          await Supabase.instance.client.rpc(
+            'delete_feed_comment_cascade',
+            params: {'p_comment_id': replyId},
+          );
+        } catch (_) {
+          await Supabase.instance.client
+              .from('feed_comments')
+              .delete()
+              .eq('id', replyId);
+        }
+      } catch (e) {
+        dbDeleted = false;
+        debugPrint('[FeedCommentsView] Supabase delete reply error: $e');
+        if (mounted) {
+          setState(() {
+            replies.insert(math.min(replyIndex, replies.length), removedReply);
+            parent['replies'] = replies;
+          });
+          await _persistAndNotifyCount(postId);
+        }
+      }
     }
 
     if (mounted) {
       showGlassToast(
         context,
-        'feed_comments.reply_deleted'.tr(),
-        icon: HugeIcons.strokeRoundedDelete02,
+        dbDeleted
+            ? 'feed_comments.reply_deleted'.tr()
+            : 'feed_comments.delete_failed'.tr(),
+        isError: !dbDeleted,
+        icon: dbDeleted ? HugeIcons.strokeRoundedDelete02 : null,
       );
     }
   }
@@ -3856,7 +3941,12 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     _commentFocusNode.requestFocus();
   }
 
-  Future<void> _persistCommentLike(String commentId, bool nowLiked, int newLikes) async {
+  Future<void> _persistCommentLike(
+    String commentId,
+    bool nowLiked,
+    int newLikes, {
+    bool isOwner = false,
+  }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       if (nowLiked) {
@@ -3871,11 +3961,24 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
         !commentId.startsWith('cm_') &&
         !commentId.startsWith('rp_')) {
       try {
-        await Supabase.instance.client
-            .from('feed_comments')
-            .update({'likes_count': newLikes})
-            .eq('id', commentId);
-      } catch (_) {}
+        await Supabase.instance.client.rpc(
+          'toggle_feed_comment_like',
+          params: {
+            'p_comment_id': commentId,
+            'p_delta': nowLiked ? 1 : -1,
+            'p_is_owner': isOwner,
+          },
+        );
+      } catch (_) {
+        try {
+          await Supabase.instance.client
+              .from('feed_comments')
+              .update({'likes_count': newLikes})
+              .eq('id', commentId);
+        } catch (e) {
+          debugPrint('[FeedCommentsView] Like sync error: $e');
+        }
+      }
     }
   }
 
@@ -3901,7 +4004,12 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     });
 
     if (cid.isNotEmpty) {
-      await _persistCommentLike(cid, nowLiked, newLikes);
+      await _persistCommentLike(
+        cid,
+        nowLiked,
+        newLikes,
+        isOwner: _isCurrentUserStoreOwner,
+      );
     }
     final String postId = widget.post['id']?.toString() ?? '';
     await _persistAndNotifyCount(postId);
@@ -3935,7 +4043,12 @@ class _FeedCommentsViewState extends State<_FeedCommentsView> {
     });
 
     if (rid.isNotEmpty) {
-      await _persistCommentLike(rid, nowLiked, newLikes);
+      await _persistCommentLike(
+        rid,
+        nowLiked,
+        newLikes,
+        isOwner: _isCurrentUserStoreOwner,
+      );
     }
     final String postId = widget.post['id']?.toString() ?? '';
     await _persistAndNotifyCount(postId);

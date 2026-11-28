@@ -1508,7 +1508,9 @@
     "delete_comment_confirm": "Adakah anda pasti mahu memadam komen ini?",
     "delete_reply_title": "Padam Balasan?",
     "delete_reply_confirm": "Adakah anda pasti mahu memadam balasan ini?",
-    "cancel_btn": "Batal"
+    "cancel_btn": "Batal",
+    "send_failed": "Gagal menghantar komen. Sila cuba lagi.",
+    "delete_failed": "Gagal memadam komen. Sila cuba lagi."
   },
   "ereceipt": {
     "title": "e-Resit Digital",

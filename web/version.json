@@ -1,6 +1,6 @@
 {
-  "version": "1.0.111",
-  "build_number": 84,
-  "released_at": "2026-11-28T07:44:10Z",
-  "changelog": "Kemas kini pilihan kurier di troli pelanggan: hanya 1 pilihan bersih bagi setiap syarikat kurier tanpa duplikasi serta buang label DROPOFF/PICKUP (pilihan serahan kedai sahaja)."
+  "version": "1.0.112",
+  "build_number": 85,
+  "released_at": "2026-11-28T17:54:15Z",
+  "changelog": "Baiki sistem komen Ngam Feed secara menyeluruh: hentikan ralat senyap (rollback + notifikasi tepat bila insert/delete gagal), baiki race condition loading berpanjangan bila tukar post, RPC atomik like & liked_by_owner, padam komen cascade beserta balasan, baiki overflow papan kekunci mudah alih & skrip SQL RLS/trigger."
 }
